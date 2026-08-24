@@ -1,0 +1,113 @@
+{
+  "key": "juniper::__extraction__",
+  "sourcetype": "juniper",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:37:44.405Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header: timestamp, host, process, pid, and remaining message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) (?<process>[\\w\\/]+)(?:\\[(?<pid>\\d+)\\])?: (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^session (created|closed)/)",
+      "disabled": false,
+      "description": "Parse RT_FLOW session created/closed events",
+      "conf": {
+        "source": "message",
+        "regex": "/^session (?:created|closed)(?: TCP FIN:)? (?<src_ip>[\\d.]+)\\/(?<src_port>\\d+)->(?<dst_ip>[\\d.]+)\\/(?<dst_port>\\d+) (?<service>\\S+) (?<nat_dst_ip>[\\d.]+)\\/(?<nat_dst_port>\\d+)->(?<nat_src_ip>[\\d.]+)\\/(?<nat_src_port>\\d+) \\S+ (?<protocol_num>\\d+) (?<policy>\\S+) (?<src_zone>\\S+) (?<dst_zone>\\S+) (?<session_id>\\d+)(?: (?<bytes_in>\\S+) (?<bytes_out>\\S+)(?: (?<duration>\\d+))?)?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('session denied')",
+      "disabled": false,
+      "description": "Parse RT_FLOW session denied events",
+      "conf": {
+        "source": "message",
+        "regex": "/^session denied (?<src_ip>[\\d.]+)\\/(?<src_port>\\d+)->(?<dst_ip>[\\d.]+)\\/(?<dst_port>\\d+) (?<protocol_name>\\S+) (?<protocol_num>\\d+) (?<policy>\\S+) (?<src_zone>\\S+) (?<dst_zone>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('SYN flood')",
+      "disabled": false,
+      "description": "Parse RT_SCREEN_TCP SYN flood attack events",
+      "conf": {
+        "source": "message",
+        "regex": "/source: (?<src_ip>[\\d.]+), destination: (?<dst_ip>[\\d.]+), zone: (?<dst_zone>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Failed|Accepted) password/)",
+      "disabled": false,
+      "description": "Parse sshd authentication events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<ssh_result>Failed|Accepted) password for (?:invalid user )?(?<user>\\S+) from (?<src_ip>[\\d.]+) port (?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.startsWith('bgp_event') || message.startsWith('BGP peer') || message.startsWith('interface'))",
+      "disabled": false,
+      "description": "Parse BGP peer state changes, BGP down events, and interface state changes",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?:bgp_event: peer (?<bgp_peer>[\\d.]+) \\(External AS (?<bgp_as>\\d+)\\) old state (?<bgp_old_state>\\S+) event (?<bgp_event>\\S+) new state (?<bgp_new_state>\\S+)|BGP peer (?<bgp_peer_down>[\\d.]+) \\(External AS (?<bgp_as_down>\\d+)\\) down, reason: (?<bgp_down_reason>.+)|interface (?<interface>\\S+) changed state to (?<interface_state>\\S+))$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action, protocol, and severity fields across all Juniper event types",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message && message.startsWith('session created') ? 'allow' : message && message.startsWith('session denied') ? 'deny' : message && message.startsWith('session closed') ? 'close' : message && message.startsWith('Failed password') ? 'failure' : message && message.startsWith('Accepted password') ? 'success' : message && message.includes('SYN flood') ? 'blocked' : message && message.startsWith('BGP peer') ? 'down' : message && message.startsWith('bgp_event') ? 'state_change' : message && message.startsWith('interface') ? 'state_change' : 'unknown'"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol_num == '6' ? 'tcp' : protocol_num == '17' ? 'udp' : protocol_num == '1' ? 'icmp' : (protocol_name ? protocol_name : protocol_num)"
+          },
+          {
+            "name": "severity",
+            "value": "message && (message.includes('SYN flood') || message.startsWith('Failed password')) ? 'high' : message && (message.startsWith('session denied') || message.startsWith('BGP peer')) ? 'medium' : 'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

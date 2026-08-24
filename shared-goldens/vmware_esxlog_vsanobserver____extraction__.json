@@ -1,0 +1,95 @@
+{
+  "key": "vmware_esxlog_vsanobserver::__extraction__",
+  "sourcetype": "vmware_esxlog_vsanobserver",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:38:36.547Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog-style header: timestamp, host, process, pid, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<component>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract severity keyword, IPs, users and object/disk identifiers from the message body",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:^(?<severity_raw>WARNING|ERROR|SECURITY|INFO|CRITICAL):\\s*)?(?:.*?\\b(?:from source|to remote host|host)\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3}))?(?:.*?\\buser=(?<user>[\\w.\\-$]+))?(?:.*?\\b(?:naa\\.(?<disk_id>[0-9a-f]+)))?(?:.*?\\buuid=(?<object_uuid>[0-9a-fA-F\\-]{8,}))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /iops=|readIops=|throughput=|latency=|congestion value=|ratio=|Capacity=|pendingObjects=/.test(message)",
+      "disabled": false,
+      "description": "Extract vSAN performance and capacity metrics from stats messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\biops=(?<iops>[\\d.]+))?(?:.*?\\bthroughput=(?<throughput_mbps>[\\d.]+)MBps)?(?:.*?\\blatency=(?<latency_ms>[\\d.]+)ms)?(?:.*?\\breadIops=(?<read_iops>[\\d.]+))?(?:.*?\\bwriteIops=(?<write_iops>[\\d.]+))?(?:.*?\\breadLatencyAvg=(?<read_latency_ms>[\\d.]+)ms)?(?:.*?\\bwriteLatencyAvg=(?<write_latency_ms>[\\d.]+)ms)?(?:.*?\\bcongestion value=(?<congestion_value>\\d+))?(?:.*?\\bthreshold=(?<congestion_threshold>\\d+))?(?:.*?\\bratio=(?<dedup_ratio>[\\d.]+))?(?:.*?\\btotalCapacity=(?<total_capacity>[\\d.]+\\w+))?(?:.*?\\busedCapacity=(?<used_capacity>[\\d.]+\\w+))?(?:.*?\\bfreeCapacity=(?<free_capacity>[\\d.]+\\w+))?(?:.*?\\bpendingObjects=(?<pending_objects>\\d+))?(?:.*?\\bhealthyObjects=(?<healthy_objects>\\d+))?(?:.*?\\babsentObjects=(?<absent_objects>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, severity, action, and classify vSAN event type",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'vSAN'"
+          },
+          {
+            "name": "severity",
+            "value": "severity_raw ? (severity_raw == 'ERROR' || severity_raw == 'CRITICAL' ? 'high' : (severity_raw == 'WARNING' ? 'medium' : (severity_raw == 'SECURITY' ? 'high' : 'informational'))) : 'informational'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "/action denied|Unauthorized|denied/i.test(message) ? 'blocked' : (/completed|processed|engaged/i.test(message) ? 'success' : (/ERROR:|Unable to/i.test(message) ? 'failure' : 'allowed'))"
+          },
+          {
+            "name": "event_type",
+            "value": "/SECURITY:/.test(message) ? 'security' : (/Network partition|CMMDS connection/i.test(message) ? 'network' : (/capacity|Capacity|Deduplication/i.test(message) ? 'capacity' : (/iops=|readIops=|latency|congestion/i.test(message) ? 'performance' : (/resync|Resync/i.test(message) ? 'resync' : (/health|non-compliant|I\\/O errors/i.test(message) ? 'health' : 'operational')))))"
+          },
+          {
+            "name": "src_host",
+            "value": "dst_host"
+          }
+        ],
+        "remove": [
+          "severity_raw"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

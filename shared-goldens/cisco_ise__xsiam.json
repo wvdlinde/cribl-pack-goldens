@@ -1,0 +1,214 @@
+{
+  "key": "cisco_ise::xsiam",
+  "sourcetype": "cisco_ise",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:23.305Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "cisco_ise → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'cisco ise'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_ise:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "cisco_ise_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "<2024-01-15T00:03:12.445Z> CISE_Passed_Authentications 0000001 1 0 2024-01-15 00:03:12.445 +00:00 0001234567 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=89, Device IP Address=10.1.1.105, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=jsmith, Protocol=Radius, RequestLatency=12, NetworkDeviceName=SW-CORE-01, User-Name=jsmith, NAS-IP-Address=10.1.1.105, NAS-Port=50017, AuthenticationMethod=PAP_ASCII, SelectedAuthorizationProfiles=Corp_Access, IdentityGroup=Domain_Users",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T00:17:45.123Z> CISE_Failed_Authentications 0000002 1 0 2024-01-15 00:17:45.123 +00:00 0001234568 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=10.1.1.108, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=baduser, Protocol=Radius, RequestLatency=8, NetworkDeviceName=SW-ACCESS-02, User-Name=baduser, NAS-IP-Address=10.1.1.108, NAS-Port=50022, AuthenticationMethod=PAP_ASCII, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T00:31:08.776Z> CISE_RADIUS_Accounting 0000003 1 0 2024-01-15 00:31:08.776 +00:00 0001234569 3000 NOTICE Radius-Accounting: RADIUS Accounting watchdog update, ConfigVersionId=89, Device IP Address=172.16.50.22, UserName=kpatel, Protocol=Radius, NetworkDeviceName=VPN-GW-01, NAS-IP-Address=172.16.50.22, NAS-Port=1024, Acct-Status-Type=Interim-Update, Acct-Session-Id=0B2F4A1C, Acct-Input-Octets=1048576, Acct-Output-Octets=524288, Acct-Session-Time=1800, Framed-IP-Address=10.100.5.45",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T01:02:33.901Z> CISE_Passed_Authentications 0000004 1 0 2024-01-15 01:02:33.901 +00:00 0001234570 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=89, Device IP Address=192.168.10.55, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=mwilliams, Protocol=Radius, RequestLatency=9, NetworkDeviceName=AP-FLOOR3-07, User-Name=mwilliams, NAS-IP-Address=192.168.10.55, NAS-Port=50001, AuthenticationMethod=PEAP, SelectedAuthorizationProfiles=Wireless_Corp, IdentityGroup=Domain_Users, EapTunnel=PEAP, EapAuthentication=EAP-MSCHAPv2",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T01:15:22.334Z> CISE_Posture_and_Client_Provisioning_Audit 0000005 1 0 2024-01-15 01:15:22.334 +00:00 0001234571 6300 NOTICE Posture-Assessment: Posture Assessment failed, ConfigVersionId=89, UserName=bthompson, EndpointIPAddress=10.50.1.77, EndpointMACAddress=AA:BB:CC:DD:EE:01, PostureStatus=NonCompliant, FailureReason=Antivirus definitions out of date, NetworkDeviceName=SW-ACCESS-05, SelectedAuthorizationProfiles=Quarantine_VLAN",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T01:44:57.009Z> CISE_Guest_Authentication 0000006 1 0 2024-01-15 01:44:57.009 +00:00 0001234572 5200 NOTICE Passed-Authentication: Guest authentication succeeded, ConfigVersionId=89, Device IP Address=192.168.20.1, DestinationIPAddress=192.168.1.10, DestinationPort=8443, UserName=guest_visitor01, Protocol=Portal, NetworkDeviceName=WLC-MAIN-01, GuestType=Daily, PortalName=Guest_Portal_v2, IdentityGroup=GuestEndpoints",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T02:05:14.882Z> CISE_Failed_Authentications 0000007 1 0 2024-01-15 02:05:14.882 +00:00 0001234573 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=203.0.113.45, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=admin, Protocol=Radius, RequestLatency=5, NetworkDeviceName=VPN-GW-01, User-Name=admin, NAS-IP-Address=203.0.113.45, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password, AuthenticationMethod=PAP_ASCII",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      },
+      {
+        "_raw": "<2024-01-15T02:19:38.567Z> CISE_Failed_Authentications 0000008 1 0 2024-01-15 02:19:38.567 +00:00 0001234574 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=203.0.113.45, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=admin, Protocol=Radius, RequestLatency=4, NetworkDeviceName=VPN-GW-01, User-Name=admin, NAS-IP-Address=203.0.113.45, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password, AuthenticationMethod=PAP_ASCII",
+        "_time": 1784049784.88,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco ise",
+        "__product": "Security",
+        "sourcetype": "cisco_ise:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "ConfigVersionId",
+      "Address",
+      "DestinationIPAddress",
+      "DestinationPort",
+      "UserName",
+      "Protocol",
+      "RequestLatency",
+      "NetworkDeviceName",
+      "AuthenticationMethod",
+      "SelectedAuthorizationProfiles",
+      "IdentityGroup",
+      "FailureReason",
+      "EapTunnel",
+      "EapAuthentication",
+      "EndpointIPAddress",
+      "EndpointMACAddress",
+      "PostureStatus",
+      "GuestType",
+      "PortalName"
+    ],
+    "sampleRaw": [
+      "<2024-01-15T00:03:12.445Z> CISE_Passed_Authentications 0000001 1 0 2024-01-15 00:03:12.445 +00:00 0001234567 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=89, Device IP Address=10.1.1.105, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=jsmith, Protocol=Radius, RequestLatency=12, NetworkDeviceName=SW-CORE-01, User-Name=jsmith, NAS-IP-Address=10.1.1.105, NAS-Port=50017, AuthenticationMethod=PAP_ASCII, SelectedAuthorizationProfiles=Corp_Access, IdentityGroup=Domain_Users",
+      "<2024-01-15T00:17:45.123Z> CISE_Failed_Authentications 0000002 1 0 2024-01-15 00:17:45.123 +00:00 0001234568 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=10.1.1.108, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=baduser, Protocol=Radius, RequestLatency=8, NetworkDeviceName=SW-ACCESS-02, User-Name=baduser, NAS-IP-Address=10.1.1.108, NAS-Port=50022, AuthenticationMethod=PAP_ASCII, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password",
+      "<2024-01-15T00:31:08.776Z> CISE_RADIUS_Accounting 0000003 1 0 2024-01-15 00:31:08.776 +00:00 0001234569 3000 NOTICE Radius-Accounting: RADIUS Accounting watchdog update, ConfigVersionId=89, Device IP Address=172.16.50.22, UserName=kpatel, Protocol=Radius, NetworkDeviceName=VPN-GW-01, NAS-IP-Address=172.16.50.22, NAS-Port=1024, Acct-Status-Type=Interim-Update, Acct-Session-Id=0B2F4A1C, Acct-Input-Octets=1048576, Acct-Output-Octets=524288, Acct-Session-Time=1800, Framed-IP-Address=10.100.5.45",
+      "<2024-01-15T01:02:33.901Z> CISE_Passed_Authentications 0000004 1 0 2024-01-15 01:02:33.901 +00:00 0001234570 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=89, Device IP Address=192.168.10.55, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=mwilliams, Protocol=Radius, RequestLatency=9, NetworkDeviceName=AP-FLOOR3-07, User-Name=mwilliams, NAS-IP-Address=192.168.10.55, NAS-Port=50001, AuthenticationMethod=PEAP, SelectedAuthorizationProfiles=Wireless_Corp, IdentityGroup=Domain_Users, EapTunnel=PEAP, EapAuthentication=EAP-MSCHAPv2",
+      "<2024-01-15T01:15:22.334Z> CISE_Posture_and_Client_Provisioning_Audit 0000005 1 0 2024-01-15 01:15:22.334 +00:00 0001234571 6300 NOTICE Posture-Assessment: Posture Assessment failed, ConfigVersionId=89, UserName=bthompson, EndpointIPAddress=10.50.1.77, EndpointMACAddress=AA:BB:CC:DD:EE:01, PostureStatus=NonCompliant, FailureReason=Antivirus definitions out of date, NetworkDeviceName=SW-ACCESS-05, SelectedAuthorizationProfiles=Quarantine_VLAN",
+      "<2024-01-15T01:44:57.009Z> CISE_Guest_Authentication 0000006 1 0 2024-01-15 01:44:57.009 +00:00 0001234572 5200 NOTICE Passed-Authentication: Guest authentication succeeded, ConfigVersionId=89, Device IP Address=192.168.20.1, DestinationIPAddress=192.168.1.10, DestinationPort=8443, UserName=guest_visitor01, Protocol=Portal, NetworkDeviceName=WLC-MAIN-01, GuestType=Daily, PortalName=Guest_Portal_v2, IdentityGroup=GuestEndpoints",
+      "<2024-01-15T02:05:14.882Z> CISE_Failed_Authentications 0000007 1 0 2024-01-15 02:05:14.882 +00:00 0001234573 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=203.0.113.45, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=admin, Protocol=Radius, RequestLatency=5, NetworkDeviceName=VPN-GW-01, User-Name=admin, NAS-IP-Address=203.0.113.45, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password, AuthenticationMethod=PAP_ASCII",
+      "<2024-01-15T02:19:38.567Z> CISE_Failed_Authentications 0000008 1 0 2024-01-15 02:19:38.567 +00:00 0001234574 5400 ERROR Failed-Authentication: Authentication failed, ConfigVersionId=89, Device IP Address=203.0.113.45, DestinationIPAddress=192.168.1.10, DestinationPort=1812, UserName=admin, Protocol=Radius, RequestLatency=4, NetworkDeviceName=VPN-GW-01, User-Name=admin, NAS-IP-Address=203.0.113.45, FailureReason=24408 User authentication against Active Directory failed since user has entered the wrong password, AuthenticationMethod=PAP_ASCII"
+    ],
+    "sourcetype": "cisco_ise"
+  }
+}

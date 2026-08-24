@@ -1,0 +1,100 @@
+{
+  "key": "nci_splk_nci_splk_nr_network_data::__extraction__",
+  "sourcetype": "nci_splk_nci_splk_nr_network_data",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:54:39.918Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract core network fields (timestamp, host, IPs, ports, protocol, action, bytes, duration, zones, user, severity, interface, session_id) from the KVP-style raw event",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) host=(?<host>\\S+) nci_splk_nr_network_data src_ip=(?<src_ip>\\S+) src_port=(?<src_port>\\d+) dst_ip=(?<dst_ip>\\S+) dst_port=(?<dst_port>\\d+) protocol=(?<protocol>\\S+) action=(?<action>\\S+) bytes_in=(?<bytes_in>\\d+) bytes_out=(?<bytes_out>\\d+) duration=(?<duration>[\\d.]+) zone_src=(?<zone_src>\\S+) zone_dst=(?<zone_dst>\\S+) user=(?<user>\\S*) severity=(?<severity>\\S+) interface=(?<interface>\\S+) session_id=(?<session_id>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.indexOf('reason=') > -1",
+      "disabled": false,
+      "description": "Extract optional reason field for denied/blocked events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/reason=\"(?<reason>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.indexOf('note=') > -1",
+      "disabled": false,
+      "description": "Extract optional note field for annotated events (e.g. large_transfer, possible_tor_exit_node)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/note=\"(?<note>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, protocol, action, direction, and cast numeric fields",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol.toLowerCase() === 'tcp6' ? 'tcp' : protocol.toLowerCase()"
+          },
+          {
+            "name": "ip_version",
+            "value": "protocol.toLowerCase() === 'tcp6' || (dst_ip && dst_ip.indexOf(':') > -1) ? 6 : 4"
+          },
+          {
+            "name": "action",
+            "value": "action === 'allowed' ? 'allow' : (action === 'denied' ? 'deny' : action)"
+          },
+          {
+            "name": "direction",
+            "value": "zone_src === 'trust' && zone_dst === 'untrust' ? 'outbound' : (zone_src === 'untrust' && zone_dst === 'trust' ? 'inbound' : 'internal')"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(bytes_in)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(bytes_out)"
+          },
+          {
+            "name": "duration",
+            "value": "Number(duration)"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

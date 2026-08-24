@@ -1,0 +1,62 @@
+{
+  "key": "vmware_esxlog_localcli::__extraction__",
+  "sourcetype": "vmware_esxlog_localcli",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:51:37.758Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, pid, user, command, and result from localcli log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+localcli\\[(?<pid>\\d+)\\]:\\s+\\[User=(?<user>[^\\]]+)\\]\\s+(?<command>.*?)\\s+--\\s+(?<result>SUCCESS|FAILED)(?::\\s*(?<failure_reason>.*?))?(?:\\s+\\[SECURITY-RELEVANT:\\s*(?<security_note>[^\\]]+)\\])?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action and severity based on result and security relevance",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result === 'SUCCESS' ? 'success' : 'failure'"
+          },
+          {
+            "name": "severity",
+            "value": "security_note ? 'high' : (result === 'FAILED' ? 'medium' : 'low')"
+          },
+          {
+            "name": "is_security_relevant",
+            "value": "security_note ? true : false"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Flag IPv6 host values in dst_host field",
+      "conf": {
+        "add": [
+          {
+            "name": "dst_host_is_ipv6",
+            "value": "dst_host.match(/:.*:/) ? true : false"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,38 @@
+{
+  "key": "windows_powershell::__optimization__",
+  "sourcetype": "windows_powershell",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 265,
+  "updated_at": "2026-07-16T14:31:16.611Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "event_code === '600' || event_code === '800' || EventCode === '600' || EventCode === '800'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop provider lifecycle events (600/800) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "event_code === '4105' || event_code === '4106' || EventCode === '4105' || EventCode === '4106'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop script start/stop (4105/4106) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "(event_code === '4104' || EventCode === '4104') && ScriptBlockText && /^(prompt|\\$global:?|TabExpansion2|\\$ErrorActionPreference\\s*=|Set-StrictMode|Import-Module\\s+Microsoft\\.PowerShell)$/i.test(String(ScriptBlockText).trim())",
+      "disabled": true,
+      "final": true,
+      "description": "Drop trivial noise script blocks (prompt, TabExpansion, module imports) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

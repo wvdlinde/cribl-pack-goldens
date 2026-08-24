@@ -1,0 +1,127 @@
+{
+  "key": "rsa_securid_syslog::__extraction__",
+  "sourcetype": "rsa_securid_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:18:54.453Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host, pid) and remaining KVP payload from RSA SecurID syslog line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+SecurID\\[(?<pid>\\d+)\\]:\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the KVP-formatted body (ID=... SEVERITY=... USER=... etc.) extracted from the syslog message",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Map raw KVP field names to normalized schema field names",
+      "conf": {
+        "add": [
+          {
+            "name": "event_id",
+            "value": "ID"
+          },
+          {
+            "name": "severity",
+            "value": "SEVERITY"
+          },
+          {
+            "name": "result",
+            "value": "RESULT"
+          },
+          {
+            "name": "user",
+            "value": "USER"
+          },
+          {
+            "name": "domain",
+            "value": "DOMAIN"
+          },
+          {
+            "name": "src_ip",
+            "value": "SRC"
+          },
+          {
+            "name": "dst_host",
+            "value": "AGENT"
+          },
+          {
+            "name": "token",
+            "value": "TOKEN"
+          },
+          {
+            "name": "reason",
+            "value": "REASON"
+          },
+          {
+            "name": "message",
+            "value": "MSG"
+          }
+        ],
+        "remove": [
+          "ID",
+          "SEVERITY",
+          "RESULT",
+          "USER",
+          "DOMAIN",
+          "SRC",
+          "AGENT",
+          "TOKEN",
+          "REASON",
+          "MSG",
+          "__kvp"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action based on result and classify severity/event category",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result=='SUCCESS' ? 'success' : result=='FAILURE' ? 'failure' : result=='PENDING' ? 'pending' : 'unknown'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : 'unknown'"
+          },
+          {
+            "name": "event_category",
+            "value": "event_id && event_id.match(/AUTHN/) ? 'authentication' : event_id=='TOKEN_LOCKED' || event_id=='TOKEN_EXPIRED' ? 'token' : event_id=='ADMIN_LOGIN' ? 'admin' : event_id=='BLACKLIST_BLOCK' || event_id=='POLICY_VIOLATION' ? 'security_policy' : event_id=='REPLICATION_EVENT' ? 'system' : 'other'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,120 @@
+{
+  "key": "vmware_esxlog_backup_check::__extraction__",
+  "sourcetype": "vmware_esxlog_backup_check",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:24:29.338Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog priority, timestamp, host, process, pid and BackupCheck severity/message",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^<(?<__pri>\\d+)>(?<__ts>\\d{4}-\\d{2}-\\d{2}T[\\d:.]+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[\\w.]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<component>[^\\]]+)\\]\\s+(?<severity>[A-Z]+)\\s+(?<message>.*)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract VM name, vmid, user, IPs and job/metric details from the message body",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:VM\\s+'(?<vm_name>[^']+)')?(?:.*?\\(vmid=(?<vmid>\\d+)\\))?(?:.*?job\\s+'(?<backup_job>[^']+)')?(?:.*?(?:user=|User\\s+')(?<user>[^\\s,'@]+(?:@[\\w.]+)?)'?)?(?:.*?(?:size=(?<size>\\d+[KMGT]?B)))?(?:.*?duration=(?<duration>\\d+)s)?/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d+\\.\\d+\\.\\d+\\.\\d+|[0-9a-fA-F]{0,4}:[0-9a-fA-F:]+:[0-9a-fA-F]{1,4}/)",
+      "disabled": false,
+      "description": "Extract source IPv4 or IPv6 address referenced in the message",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:source=|from\\s+|dest=|@|,\\s*)(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{1,4})/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, syslog facility/severity, action classification and IP version",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Math.floor(Date.parse(__ts)/1000)"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "syslog_priority",
+            "value": "__pri ? Number(__pri) : null"
+          },
+          {
+            "name": "syslog_facility",
+            "value": "__pri ? Math.floor(Number(__pri)/8) : null"
+          },
+          {
+            "name": "syslog_severity",
+            "value": "__pri ? Number(__pri)%8 : null"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          },
+          {
+            "name": "vmid",
+            "value": "vmid ? Number(vmid) : null"
+          },
+          {
+            "name": "pid",
+            "value": "pid ? Number(pid) : null"
+          },
+          {
+            "name": "duration",
+            "value": "duration ? Number(duration) : null"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/blocked|access denied|Unauthorized/i) ? 'blocked' : (message.match(/failed|aborted|Failed to open|exceeded/i) ? 'failure' : (message.match(/verified successfully|completed|match/i) ? 'success' : 'informational'))"
+          },
+          {
+            "name": "event_outcome",
+            "value": "severity && severity.match(/ERROR|CRITICAL/) ? 'failure' : (severity == 'WARNING' || severity == 'NOTICE' ? 'warning' : 'success')"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':') > -1 ? 'ipv6' : 'ipv4') : null"
+          },
+          {
+            "name": "is_security_event",
+            "value": "message.match(/Unauthorized|privileges|access denied|blocked/i) ? true : false"
+          }
+        ],
+        "remove": [
+          "__pri",
+          "__ts"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

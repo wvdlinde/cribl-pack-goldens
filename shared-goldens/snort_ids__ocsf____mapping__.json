@@ -1,0 +1,317 @@
+{
+  "key": "snort_ids::ocsf::__mapping__",
+  "sourcetype": "snort_ids",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:39.419Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_month>\\d{2})\\/(?<event_day>\\d{2})-(?<event_time>\\d{2}:\\d{2}:\\d{2}\\.\\d{3})\\d{3}\\s+\\[\\*\\*\\]\\s+\\[(?<gid>\\d+):(?<sid>\\d+):(?<rev>\\d+)\\]\\s+(?<signature>.*?)\\s+\\[\\*\\*\\]\\s+\\[Classification:\\s+(?<classification>[^\\]]+)\\]\\s+\\[Priority:\\s+(?<priority>\\d+)\\]\\s+\\{(?<protocol>[^}]+)\\}\\s+(?<src_ip>[^\\s:]+):(?<src_port>\\d+)\\s+->\\s+(?<dst_ip>[^\\s:]+):(?<dst_port>\\d+)$/gm"
+      },
+      "id": "regex_extract",
+      "description": "Extract Suricata alert timestamp, signature metadata, classification, priority, protocol, and endpoints."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "signature"
+          },
+          {
+            "name": "category_uid",
+            "value": "2"
+          },
+          {
+            "name": "finding_info",
+            "value": "{}"
+          },
+          {
+            "name": "finding_info.uid",
+            "value": "gid + ':' + sid + ':' + rev"
+          },
+          {
+            "name": "finding_info.title",
+            "value": "signature"
+          },
+          {
+            "name": "finding_info.analytic",
+            "value": "{}"
+          },
+          {
+            "name": "finding_info.analytic.name",
+            "value": "signature"
+          },
+          {
+            "name": "finding_info.analytic.type_id",
+            "value": "1"
+          },
+          {
+            "name": "finding_info.analytic.uid",
+            "value": "sid"
+          },
+          {
+            "name": "status_detail",
+            "value": "priority ? 'Priority: ' + priority + '; Classification: ' + classification : classification"
+          },
+          {
+            "name": "status_code",
+            "value": "classification"
+          },
+          {
+            "name": "status_id",
+            "value": "1"
+          },
+          {
+            "name": "time",
+            "value": "Date.parse((new Date(_time*1000)).getUTCFullYear()+'-'+event_month+'-'+event_day+'T'+event_time+'Z')/1000"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.gid",
+            "value": "gid"
+          },
+          {
+            "name": "unmapped.sid",
+            "value": "sid"
+          },
+          {
+            "name": "unmapped.rev",
+            "value": "rev"
+          },
+          {
+            "name": "unmapped.priority",
+            "value": "priority"
+          },
+          {
+            "name": "unmapped.protocol",
+            "value": "protocol"
+          },
+          {
+            "name": "unmapped.src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "unmapped.src_port",
+            "value": "src_port"
+          },
+          {
+            "name": "unmapped.dst_ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "unmapped.dst_port",
+            "value": "dst_port"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Populate OCSF Detection Finding target fields and preserve source-specific fields under unmapped."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_ts>\\d{2}\\/\\d{2}-\\d{2}:\\d{2}:\\d{2}\\.\\d+)\\s+/gm",
+        "regexList": [
+          {
+            "regex": "/\\[\\d+:(?<signature_id>\\d+):\\d+\\]/gm"
+          },
+          {
+            "regex": "/\\]\\s+(?<signature_name>[^\\[]+?)\\s+\\[\\*\\*\\]/gm"
+          },
+          {
+            "regex": "/\\[Classification:\\s*(?<classification>[^\\]]+)\\]/gm"
+          },
+          {
+            "regex": "/\\[Priority:\\s*(?<priority>\\d+)\\]/gm"
+          },
+          {
+            "regex": "/\\{(?<protocol>[^}]+)\\}\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<src_port>\\d+)\\s+->\\s+(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<dst_port>\\d+)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract IDS alert fields from raw event."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "format": "none"
+      },
+      "id": "numerify",
+      "description": "Convert extracted numeric fields to numbers."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "class_uid",
+            "value": "2004"
+          },
+          {
+            "name": "severity_id",
+            "value": "priority===1?4:(priority===2?3:(priority===3?2:0))"
+          },
+          {
+            "name": "confidence_id",
+            "value": "2"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "is_alert",
+            "value": "true"
+          },
+          {
+            "name": "resources",
+            "value": "[{ip: dst_ip, name: dst_ip, role_id: 1}]"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'src_ip',type_id:2},{name:'dst_ip',type_id:2},{name:'src_port',type_id:11},{name:'dst_port',type_id:11}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Populate OCSF Detection Finding schema fields and remove parser helper fields."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<original_time>\\d{2}\\/\\d{2}-\\d{2}:\\d{2}:\\d{2}\\.\\d+)/gm",
+        "regexList": [
+          {
+            "regex": "/\\[(?<gid>\\d+):(?<sid>\\d+):(?<rev>\\d+)\\]/gm"
+          },
+          {
+            "regex": "/\\[\\d+:\\d+:\\d+\\]\\s+(?<finding_title>.+?)\\s+\\[\\*\\*\\]/gm"
+          },
+          {
+            "regex": "/\\[Classification:\\s+(?<classification>[^\\]]+)\\]/gm"
+          },
+          {
+            "regex": "/\\[Priority:\\s+(?<priority>\\d+)\\]/gm"
+          },
+          {
+            "regex": "/\\{(?<protocol>[^}]+)\\}/gm"
+          },
+          {
+            "regex": "/(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<src_port>\\d+)\\s+->\\s+(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<dst_port>\\d+)$/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract alert timestamp, signature IDs, classification, priority, protocol, and endpoints from raw IDS alert."
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF Detection Finding required fields and network evidence objects from parsed IDS alert data.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "200401"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'IDS Alert'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "_raw.indexOf('ET ') >= 0 ? 'Emerging Threats Ruleset' : 'Network IDS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "_raw.indexOf('ET ') >= 0 ? 'Proofpoint Emerging Threats' : 'Unknown'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "sid"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "rev"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "evidences",
+            "value": "[{}]"
+          }
+        ],
+        "remove": [
+          "original_time",
+          "gid",
+          "sid",
+          "rev",
+          "finding_title",
+          "classification",
+          "priority",
+          "protocol",
+          "src_ip",
+          "src_port",
+          "dst_ip",
+          "dst_port"
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 10,
+        "ignoreFields": [
+          "metadata.product.uid",
+          "metadata.product.version",
+          "metadata.original_time"
+        ],
+        "format": "none"
+      },
+      "id": "numerify",
+      "description": "Convert mapped numeric OCSF fields such as ports and enum IDs to numbers."
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

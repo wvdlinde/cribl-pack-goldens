@@ -1,0 +1,322 @@
+{
+  "key": "sap_audit::cef::__mapping__",
+  "sourcetype": "sap_audit",
+  "dest_format": "cef::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 435,
+  "updated_at": "2026-08-12T05:14:17.299Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'SAP'"
+          },
+          {
+            "name": "product",
+            "value": "'Security Audit Log'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Build CEF header",
+      "conf": {
+        "add": [
+          {
+            "name": "__sig",
+            "value": "event_code || asa_code || ftd_code || signature || 'event'"
+          },
+          {
+            "name": "__name",
+            "value": "message || action || 'Event'"
+          },
+          {
+            "name": "__sev",
+            "value": "severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1"
+          },
+          {
+            "name": "__hdr",
+            "value": "'CEF:0|SAP|Security Audit Log|1.0|' + String(__sig) + '|' + String(__name) + '|' + String(__sev) + '|'"
+          },
+          {
+            "name": "__ext",
+            "value": "''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Build CEF extension",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_ip) && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' ? __ext + 'src=' + String(src_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_port) && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' ? __ext + 'spt=' + String(src_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_ip) && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' ? __ext + 'dst=' + String(dest_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_port) && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' ? __ext + 'dpt=' + String(dest_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(transport || protocol) && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' ? __ext + 'proto=' + String(transport || protocol) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(action) && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' ? __ext + 'act=' + String(action) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 7)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_user || user) && String(src_user || user) != 'undefined' && String(src_user || user) != 'null' && String(src_user || user) != '-' ? __ext + 'suser=' + String(src_user || user) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_user) && String(dest_user) != 'undefined' && String(dest_user) != 'null' && String(dest_user) != '-' ? __ext + 'duser=' + String(dest_user) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(bytes_in || bytes) && String(bytes_in || bytes) != 'undefined' && String(bytes_in || bytes) != 'null' && String(bytes_in || bytes) != '-' ? __ext + 'in=' + String(bytes_in || bytes) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(bytes_out) && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' ? __ext + 'out=' + String(bytes_out) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(app || application || protocol) && String(app || application || protocol) != 'undefined' && String(app || application || protocol) != 'null' && String(app || application || protocol) != '-' ? __ext + 'app=' + String(app || application || protocol) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(host) && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' ? __ext + 'dvchost=' + String(host) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 13)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(session_id) && String(session_id) != 'undefined' && String(session_id) != 'null' && String(session_id) != '-' ? __ext + 'externalId=' + String(session_id) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(url) && String(url) != 'undefined' && String(url) != 'null' && String(url) != '-' ? __ext + 'request=' + String(url) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(fqdn || domain) && String(fqdn || domain) != 'undefined' && String(fqdn || domain) != 'null' && String(fqdn || domain) != '-' ? __ext + 'dhost=' + String(fqdn || domain) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(rule_id || policy_name || acl_name) && String(rule_id || policy_name || acl_name) != 'undefined' && String(rule_id || policy_name || acl_name) != 'null' && String(rule_id || policy_name || acl_name) != '-' && (rule_id || policy_name || acl_name) ? __ext + 'cs1=' + String(rule_id || policy_name || acl_name) + ' cs1Label=Rule ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(policy_id || policy_name) && String(policy_id || policy_name) != 'undefined' && String(policy_id || policy_name) != 'null' && String(policy_id || policy_name) != '-' && ((policy_id || policy_name) && String(policy_id || policy_name) != '0') ? __ext + 'cs2=' + String(policy_id || policy_name) + ' cs2Label=PolicyID ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dev_id || device_ip) && String(dev_id || device_ip) != 'undefined' && String(dev_id || device_ip) != 'null' && String(dev_id || device_ip) != '-' && (dev_id || device_ip) ? __ext + 'deviceExternalId=' + String(dev_id || device_ip) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 19)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_host || src_hostname) && String(src_host || src_hostname) != 'undefined' && String(src_host || src_hostname) != 'null' && String(src_host || src_hostname) != '-' && (src_host || src_hostname) ? __ext + 'sourceHostName=' + String(src_host || src_hostname) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(os) && String(os) != 'undefined' && String(os) != 'null' && String(os) != '-' && (os) ? __ext + 'cs6=' + String(os) + ' cs6Label=SrcOS ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(report) && String(report) != 'undefined' && String(report) != 'null' && String(report) != '-' && (report) ? __ext + 'deviceProcessName=' + String(report) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(device_ip) && String(device_ip) != 'undefined' && String(device_ip) != 'null' && String(device_ip) != '-' ? __ext + 'dvc=' + String(device_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(vdom) && String(vdom) != 'undefined' && String(vdom) != 'null' && String(vdom) != '-' ? __ext + 'cs5=' + String(vdom) + ' cs5Label=VDOM ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_mac) && String(src_mac) != 'undefined' && String(src_mac) != 'null' && String(src_mac) != '-' ? __ext + 'smac=' + String(src_mac) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 25)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(dest_mac || dst_mac) && String(dest_mac || dst_mac) != 'undefined' && String(dest_mac || dst_mac) != 'null' && String(dest_mac || dst_mac) != '-' ? __ext + 'dmac=' + String(dest_mac || dst_mac) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_interface || src_zone) && String(src_interface || src_zone) != 'undefined' && String(src_interface || src_zone) != 'null' && String(src_interface || src_zone) != '-' ? __ext + 'deviceInboundInterface=' + String(src_interface || src_zone) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_interface || dest_zone) && String(dest_interface || dest_zone) != 'undefined' && String(dest_interface || dest_zone) != 'null' && String(dest_interface || dest_zone) != '-' ? __ext + 'deviceOutboundInterface=' + String(dest_interface || dest_zone) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_translated_ip) && String(src_translated_ip) != 'undefined' && String(src_translated_ip) != 'null' && String(src_translated_ip) != '-' ? __ext + 'sourceTranslatedAddress=' + String(src_translated_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_translated_port) && String(src_translated_port) != 'undefined' && String(src_translated_port) != 'null' && String(src_translated_port) != '-' ? __ext + 'sourceTranslatedPort=' + String(src_translated_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_translated_ip) && String(dest_translated_ip) != 'undefined' && String(dest_translated_ip) != 'null' && String(dest_translated_ip) != '-' ? __ext + 'destinationTranslatedAddress=' + String(dest_translated_ip) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(dest_translated_port) && String(dest_translated_port) != 'undefined' && String(dest_translated_port) != 'null' && String(dest_translated_port) != '-' ? __ext + 'destinationTranslatedPort=' + String(dest_translated_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(sent_pkts) && String(sent_pkts) != 'undefined' && String(sent_pkts) != 'null' && String(sent_pkts) != '-' ? __ext + 'spkt=' + String(sent_pkts) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(rcvd_pkts) && String(rcvd_pkts) != 'undefined' && String(rcvd_pkts) != 'null' && String(rcvd_pkts) != '-' ? __ext + 'rpkt=' + String(rcvd_pkts) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_country) && String(src_country) != 'undefined' && String(src_country) != 'null' && String(src_country) != '-' ? __ext + 'cs3=' + String(src_country) + ' cs3Label=SrcCountry ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_country) && String(dest_country) != 'undefined' && String(dest_country) != 'null' && String(dest_country) != '-' ? __ext + 'cs4=' + String(dest_country) + ' cs4Label=DstCountry ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(icmp_type) && String(icmp_type) != 'undefined' && String(icmp_type) != 'null' && String(icmp_type) != '-' && (!transport || /icmp/i.test(String(transport))) ? __ext + 'cn1=' + String(icmp_type) + ' cn1Label=icmpType ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 37)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(icmp_code) && String(icmp_code) != 'undefined' && String(icmp_code) != 'null' && String(icmp_code) != '-' && (!transport || /icmp/i.test(String(transport))) ? __ext + 'cn2=' + String(icmp_code) + ' cn2Label=icmpCode ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(duration) && String(duration) != 'undefined' && String(duration) != 'null' && String(duration) != '-' ? __ext + 'cn3=' + String(duration) + ' cn3Label=DurationSec ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(log_time) && String(log_time) != 'undefined' && String(log_time) != 'null' && String(log_time) != '-' ? __ext + 'rt=' + String((/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) || '') + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(message) && String(message) != 'undefined' && String(message) != 'null' && String(message) != '-' ? __ext + 'msg=' + String(message).substring(0, 200) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Assemble CEF _raw + set _time + sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "__hdr + __ext.trim()"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'sap_audit'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Keep only CEF _raw + routing (strip source fields)",
+      "conf": {
+        "remove": [
+          "__sig",
+          "__name",
+          "__sev",
+          "__hdr",
+          "__ext",
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "cribl_breaker",
+          "cribl_pipe",
+          "index",
+          "source",
+          "sourcetype",
+          "host"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

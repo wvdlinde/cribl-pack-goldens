@@ -1,0 +1,105 @@
+{
+  "key": "vmware_esxlog_sandboxd::__extraction__",
+  "sourcetype": "vmware_esxlog_sandboxd",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:19.602Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base sandboxd log structure: timestamp, host, process pid, component, severity, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+sandboxd\\[(?<proc_pid>\\d+)\\]:\\s+\\[(?<component>\\w+)\\]\\s+(?<severity>\\w+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes(\"VM '\")",
+      "disabled": false,
+      "description": "Extract VM name from messages referencing a sandboxed VM",
+      "conf": {
+        "source": "message",
+        "regex": "/VM '(?<vm_name>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('pid=')",
+      "disabled": false,
+      "description": "Extract process id referenced in sandbox message",
+      "conf": {
+        "source": "message",
+        "regex": "/pid=(?<pid>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('user=')",
+      "disabled": false,
+      "description": "Extract user field when present (e.g., escape attempts, unauthorized access)",
+      "conf": {
+        "source": "message",
+        "regex": "/user=(?<user>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and classify sandboxd action/event type based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/Successfully created sandbox/) ? 'sandbox_created' : message.match(/Destroying sandbox/) ? 'sandbox_destroyed' : message.match(/Failed to create sandbox/) ? 'sandbox_create_failed' : message.match(/escape attempt/) ? 'sandbox_escape_attempt' : message.match(/permission check failed/) ? 'permission_denied' : message.match(/heartbeat/) ? 'heartbeat' : message.match(/restart requested/) ? 'sandbox_restart' : message.match(/Cgroup limits applied/) ? 'cgroup_applied' : message.match(/chroot jail established/) ? 'chroot_established' : message.match(/modify sandbox root filesystem/) ? 'unauthorized_modification_attempt' : message.match(/mmap failed/) ? 'mmap_failure' : message.match(/Unable to resolve hostname/) ? 'hostname_resolution_failure' : message.match(/Repeated sandbox creation failures/) ? 'repeated_failures' : 'other'"
+          }
+        ],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "actual",
+        "cpu",
+        "errno",
+        "exitcode",
+        "mem",
+        "owner",
+        "path",
+        "pid",
+        "resource",
+        "root",
+        "signal",
+        "size",
+        "threshold",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

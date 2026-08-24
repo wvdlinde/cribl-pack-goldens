@@ -1,0 +1,111 @@
+{
+  "key": "vmware_esxlog_healthdplugins::__extraction__",
+  "sourcetype": "vmware_esxlog_healthdplugins",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:20:32.247Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse ESXi Healthd HealthdPlugins base structure: timestamp, host, process, thread, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>\\w+):\\s+\\[(?<thread_id>[^\\]]+)\\]\\s+(?<component_module>HealthdPlugins):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract key=value pairs from message body",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:component=(?<component>[^\\s]+))|(?:status=(?<status>[^\\s]+))|(?:reading=(?<reading>[^\\s]+))|(?:threshold=(?<threshold>[^\\s]+))|(?:severity=(?<severity_raw>[^\\s]+))|(?:result=(?<result>[^\\s]+))|(?:errorCode=(?<error_code>[^\\s]+))|(?:sensor=(?<sensor>[^\\s]+))|(?:reason=(?<reason>[^\\s]+))|(?:count=(?<failure_count>\\d+))|(?:action=(?<action_raw>[^\\s]+))|(?:port=(?<dst_port>\\d+))|(?:oldState=(?<old_state>[^\\s]+))|(?:newState=(?<new_state>[^\\s]+))|(?:version=(?<plugin_version>[^\\s]+))|(?:disk=(?<disk>[^\\s]+))|(?:slot=(?<slot>\\d+))|(?:fan=(?<fan>[^\\s]+))|(?:rpm=(?<rpm>\\d+))|(?:OverallStatus=(?<overall_status>[^\\s]+))/",
+        "iterations": 25,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(source=|from |requestedBy=)/.test(message)",
+      "disabled": false,
+      "description": "Extract source IP (IPv4/IPv6) and user from auth/access messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:source=(?<src_ip>[0-9a-fA-F:.]+))|(?:from\\s+(?<src_ip2>[0-9a-fA-F:.]+))|(?:user=(?<user>[^\\s]+))|(?:requestedBy=(?<user2>[^@\\s]+)@(?<src_ip3>[0-9a-fA-F:.]+))/",
+        "iterations": 5,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /plugin\\s|Plugin\\s/.test(message)",
+      "disabled": false,
+      "description": "Extract plugin name from plugin lifecycle messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:[Pp]lugin\\s+(?<plugin>cim_\\w+))/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize source IP/user, action, severity, and classify event type",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip : (src_ip2 ? src_ip2 : src_ip3)"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : user2"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (String(src_ip).indexOf(':') > -1 ? 'ipv6' : 'ipv4') : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action_raw ? (/Blocked|DENIED|Denied/i.test(action_raw) ? 'blocked' : 'allowed') : (result ? (/SUCCESS/i.test(result) ? 'allowed' : (/DENIED|FAILURE/i.test(result) ? 'blocked' : String(result).toLowerCase())) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "severity_raw ? String(severity_raw).toLowerCase() : (/Failed|failure|Unauthorized|predictive failure|timeout|anomaly/i.test(message) ? 'error' : 'info')"
+          },
+          {
+            "name": "event_type",
+            "value": "/Unauthorized|Login failure|authentication failures/i.test(message) ? 'authentication' : (/CIM indication subscription/i.test(message) ? 'subscription' : (/[Pp]lugin/.test(message) ? 'plugin' : (/Sensor|Voltage|Fan RPM|threshold/i.test(message) ? 'sensor' : (/Health (state|rollup)/i.test(message) ? 'health_status' : (/Storage predictive/i.test(message) ? 'storage' : 'other')))))"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          }
+        ],
+        "remove": [
+          "src_ip2",
+          "src_ip3",
+          "user2",
+          "action_raw",
+          "severity_raw"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

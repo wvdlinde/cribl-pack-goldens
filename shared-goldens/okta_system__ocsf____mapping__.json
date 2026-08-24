@@ -1,0 +1,198 @@
+{
+  "key": "okta_system::ocsf::__mapping__",
+  "sourcetype": "okta_system",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:10.950Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse Okta System Log JSON from _raw into an object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "okta",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed Okta fields to the required OCSF application lifecycle target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.okta",
+            "value": "okta"
+          },
+          {
+            "name": "message",
+            "value": "okta.displayMessage"
+          },
+          {
+            "name": "category_uid",
+            "value": "6"
+          },
+          {
+            "name": "status_detail",
+            "value": "okta.outcome && okta.outcome.reason ? okta.outcome.reason : okta.displayMessage"
+          },
+          {
+            "name": "status_code",
+            "value": "okta.outcome && okta.outcome.result ? okta.outcome.result : null"
+          },
+          {
+            "name": "time",
+            "value": "okta.published ? Date.parse(okta.published)/1000 : _time"
+          },
+          {
+            "name": "status_id",
+            "value": "okta.outcome && okta.outcome.result==='SUCCESS'?1:okta.outcome && okta.outcome.result==='FAILURE'?2:okta.outcome && okta.outcome.result?99:0"
+          },
+          {
+            "name": "status",
+            "value": "okta.outcome && okta.outcome.result==='SUCCESS'?'Success':okta.outcome && okta.outcome.result==='FAILURE'?'Failure':okta.outcome && okta.outcome.result?okta.outcome.result:'Unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse Okta System Log JSON from _raw into parsed object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "app",
+            "value": "{}"
+          },
+          {
+            "name": "app.name",
+            "value": "parsed.target && parsed.target[0] ? parsed.target[0].displayName : null"
+          },
+          {
+            "name": "app.uid",
+            "value": "parsed.target && parsed.target[0] ? parsed.target[0].id : null"
+          },
+          {
+            "name": "app.vendor_name",
+            "value": "'Okta'"
+          },
+          {
+            "name": "app.version",
+            "value": "parsed.version"
+          },
+          {
+            "name": "activity_id",
+            "value": "parsed.eventType==='application.lifecycle.create'||parsed.eventType==='application.lifecycle.install'?1:parsed.eventType==='application.lifecycle.delete'||parsed.eventType==='application.lifecycle.remove'?2:parsed.eventType==='application.lifecycle.activate'||parsed.eventType==='application.lifecycle.start'?3:parsed.eventType==='application.lifecycle.deactivate'||parsed.eventType==='application.lifecycle.stop'?4:parsed.eventType==='application.lifecycle.restart'?5:parsed.eventType==='application.lifecycle.enable'?6:parsed.eventType==='application.lifecycle.disable'?7:parsed.eventType==='application.lifecycle.update'||parsed.legacyEventType==='app.generic.config.app_updated'||(parsed.displayMessage&&parsed.displayMessage.toLowerCase().indexOf('update')>=0)?8:99"
+          },
+          {
+            "name": "class_uid",
+            "value": "6002"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "severity_id",
+            "value": "parsed.severity==='INFO'?1:parsed.severity==='DEBUG'?1:parsed.severity==='WARN'?3:parsed.severity==='WARNING'?3:parsed.severity==='ERROR'?4:parsed.severity==='FATAL'?6:0"
+          },
+          {
+            "name": "type_uid",
+            "value": "6002*100+(parsed.eventType==='application.lifecycle.create'||parsed.eventType==='application.lifecycle.install'?1:parsed.eventType==='application.lifecycle.delete'||parsed.eventType==='application.lifecycle.remove'?2:parsed.eventType==='application.lifecycle.activate'||parsed.eventType==='application.lifecycle.start'?3:parsed.eventType==='application.lifecycle.deactivate'||parsed.eventType==='application.lifecycle.stop'?4:parsed.eventType==='application.lifecycle.restart'?5:parsed.eventType==='application.lifecycle.enable'?6:parsed.eventType==='application.lifecycle.disable'?7:parsed.eventType==='application.lifecycle.update'||parsed.legacyEventType==='app.generic.config.app_updated'||(parsed.displayMessage&&parsed.displayMessage.toLowerCase().indexOf('update')>=0)?8:99)"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'Okta System Log'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.published"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Okta System Log'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "parsed.uuid"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Okta'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "parsed.version"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "parsed.securityContext && parsed.securityContext.domain ? parsed.securityContext.domain : 'Okta'"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "parsed.actor && parsed.actor.id ? parsed.actor.id : null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'app.uid',type_id:10},{name:'app.name',type_id:38},{name:'metadata.product.uid',type_id:10}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed Okta fields to OCSF Application Lifecycle schema"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "remove": [
+          "_raw",
+          "_time",
+          "parsed"
+        ]
+      },
+      "id": "eval",
+      "description": "Remove non-OCSF intermediate and source fields while preserving Cribl internal fields"
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

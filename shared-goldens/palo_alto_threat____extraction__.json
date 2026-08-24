@@ -1,0 +1,98 @@
+{
+  "key": "palo_alto_threat::__extraction__",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:25:20.910Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use2",
+          "generated_time",
+          "src_ip",
+          "dest_ip",
+          "nat_src_ip",
+          "nat_dest_ip",
+          "rule_name",
+          "src_user",
+          "dest_user",
+          "application",
+          "virtual_system",
+          "src_zone",
+          "dest_zone",
+          "inbound_if",
+          "outbound_if",
+          "log_action",
+          "future_use3",
+          "session_id",
+          "repeat_count",
+          "src_port",
+          "dest_port",
+          "nat_src_port",
+          "nat_dest_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_id",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "src_location",
+          "dest_location",
+          "future_use4",
+          "content_type",
+          "pcap_id",
+          "filedigest",
+          "cloud",
+          "url_idx",
+          "user_agent",
+          "file_type",
+          "xff",
+          "referer",
+          "sender",
+          "subject",
+          "recipient"
+        ]
+      },
+      "description": "Parse PAN-OS CSV threat log with named columns"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "generated_time || receive_time || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (generated_time, receive_time) so _time reflects the source event, not pipeline processing time"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from palo_alto_threat::cim: 54/55 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

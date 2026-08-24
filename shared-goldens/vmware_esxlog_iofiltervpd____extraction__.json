@@ -1,0 +1,76 @@
+{
+  "key": "vmware_esxlog_iofiltervpd::__extraction__",
+  "sourcetype": "vmware_esxlog_iofiltervpd",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:08:36.576Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, pid, severity and message from the base IOFilterVPD log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Iofiltervpd\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+)\\s+IOFilterVPD:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/user[=\\s]+[\\w.\\-]+@\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "description": "Extract user and source IP when the message contains a user@ip pattern (e.g. user=root@10.20.4.51 or user svc_backup@192.168.55.20)",
+      "conf": {
+        "source": "message",
+        "regex": "/user[=\\s]+(?<user>[\\w.\\-]+)@(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!src_ip && message && message.match(/from\\s+(?:host\\s+)?\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "description": "Extract source IP from messages referencing a remote host or connection origin without an accompanying user (e.g. 'from 203.0.113.44 rejected' or 'from host 198.51.100.77')",
+      "conf": {
+        "source": "message",
+        "regex": "/from\\s+(?:host\\s+)?(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity, classify action based on message content, and derive event time from the extracted timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "message && message.match(/rejected|blocked|Repeated authentication failures/) ? 'blocked' : message && message.match(/approved|accepted|Successfully registered|completed|started successfully|applied/) ? 'allowed' : message && message.match(/failed|Failed|crashed|timeout|expires|signature verification failed/) ? 'error' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

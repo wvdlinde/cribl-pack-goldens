@@ -1,0 +1,63 @@
+{
+  "key": "ivanti_iostat::__extraction__",
+  "sourcetype": "ivanti_iostat",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:13:43.385Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract leading ISO timestamp and the remaining key=value payload into a scratch field for KVP parsing",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the space-delimited key=value pairs (host, proc/auth_module, device, metrics, user, src_ip, event, status, severity, msg/reason, etc.) from the scratch field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity/status into lowercase action field, derive protocol for auth events, and clean up scratch field",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "status ? status.toLowerCase() : status"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port ? 'tcp' : undefined"
+          }
+        ],
+        "remove": [
+          "__kvp"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

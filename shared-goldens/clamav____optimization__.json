@@ -1,0 +1,24 @@
+{
+  "key": "clamav::__optimization__",
+  "sourcetype": "clamav",
+  "dest_format": "__optimization__",
+  "score": 93,
+  "part": "optimization",
+  "author": "pack-mining",
+  "build": 0,
+  "updated_at": "2026-07-15T18:49:57.530Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "my__Infected_files == '0'",
+      "disabled": true,
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Mined from cribl-clamav/clamav_log",
+    "scoreSource": "valueCoverage"
+  }
+}

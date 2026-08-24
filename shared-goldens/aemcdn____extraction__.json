@@ -1,0 +1,67 @@
+{
+  "key": "aemcdn::__extraction__",
+  "sourcetype": "aemcdn",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:20:27.150Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base CDN access log fields (timestamp, edge node, client IP, HTTP request line, status, bytes, referrer, user agent) and capture the trailing key=value segment for later KVP parsing.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<edge_node>\\S+)\\s+(?<src_ip>\\S+)\\s+(?<http_method>\\S+)\\s+(?<url>\\S+)\\s+HTTP\\/(?<http_version>\\S+)\\s+(?<status>\\d+)\\s+(?<bytes>\\d+)\\s+\"(?<referrer>[^\"]*)\"\\s+\"(?<user_agent>[^\"]*)\"\\s+(?<__kvp_tail>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract the trailing key=value pairs (cache, ttl, xff, host, rt, req_id, reason, rule, backend, error, user, auth_result, severity) from the scratch KVP tail field.",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_tail",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, destination host, action, and severity based on status code and WAF/security reason codes; drop scratch field.",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          },
+          {
+            "name": "action",
+            "value": "status>=500 ? 'error' : (status>=400 ? 'blocked' : 'allowed')"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : (reason=='WAF_BLOCKED' ? 'high' : (reason=='PATH_TRAVERSAL_BLOCKED' ? 'medium' : 'info'))"
+          }
+        ],
+        "remove": [
+          "__kvp_tail"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

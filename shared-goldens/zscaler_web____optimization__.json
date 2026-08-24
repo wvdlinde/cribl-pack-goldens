@@ -1,0 +1,22 @@
+{
+  "key": "zscaler_web::__optimization__",
+  "sourcetype": "zscaler_web",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 245,
+  "updated_at": "2026-07-16T06:18:30.072Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

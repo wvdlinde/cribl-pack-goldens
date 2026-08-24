@@ -1,0 +1,681 @@
+{
+  "key": "google_workspace::ocsf",
+  "sourcetype": "google_workspace",
+  "dest_format": "ocsf",
+  "score": 80,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-06T08:34:45.866Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "google_workspace to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Try JSON parse"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Extract event fields for mapping ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_appName",
+            "value": "id && id.applicationName ? id.applicationName : ''"
+          },
+          {
+            "name": "_evtName",
+            "value": "events && events[0] ? events[0].name : ''"
+          },
+          {
+            "name": "_evtType",
+            "value": "events && events[0] ? events[0].type : ''"
+          },
+          {
+            "name": "_params",
+            "value": "events && events[0] && events[0].parameters ? events[0].parameters : []"
+          }
+        ]
+      },
+      "description": "Extract event parameters into flat temp fields"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "new Date(id && id.time ? id.time : _time).getTime()"
+          },
+          {
+            "name": "class_uid",
+            "value": "_appName == 'login' ? 3002 : (_appName == 'admin' ? 3005 : (_appName == 'drive' ? 4010 : 4010))"
+          },
+          {
+            "name": "class_name",
+            "value": "_appName == 'login' ? 'Authentication' : (_appName == 'admin' ? 'User Account Management' : (_appName == 'drive' ? 'File System Activity' : 'File System Activity'))"
+          },
+          {
+            "name": "category_uid",
+            "value": "_appName == 'login' ? 3 : (_appName == 'admin' ? 3 : 4)"
+          },
+          {
+            "name": "category_name",
+            "value": "_appName == 'login' ? 'Identity & Access Management' : (_appName == 'admin' ? 'Identity & Access Management' : 'System Activity')"
+          },
+          {
+            "name": "activity_id",
+            "value": "_appName == 'login' ? (_evtName == 'login_success' ? 1 : (_evtName == 'login_failure' ? 6 : (_evtName == 'login_logout' ? 2 : 1))) : (_appName == 'admin' ? (_evtName == 'CREATE_USER' ? 1 : (_evtName == 'DELETE_USER' ? 2 : 3)) : (_evtName == 'download' ? 2 : (_evtName == 'change_user_access' ? 6 : 99)))"
+          },
+          {
+            "name": "activity_name",
+            "value": "_appName == 'login' ? (_evtName == 'login_success' ? 'Logon' : (_evtName == 'login_failure' ? 'Logon' : (_evtName == 'login_logout' ? 'Logoff' : 'Logon'))) : (_appName == 'admin' ? (_evtName == 'CREATE_USER' ? 'Create' : (_evtName == 'DELETE_USER' ? 'Delete' : 'Other')) : (_evtName == 'download' ? 'Read' : (_evtName == 'change_user_access' ? 'Set Attributes' : 'Other')))"
+          },
+          {
+            "name": "type_uid",
+            "value": "(_appName == 'login' ? 3002 : (_appName == 'admin' ? 3005 : 4010)) * 100 + (_appName == 'login' ? (_evtName == 'login_success' ? 1 : (_evtName == 'login_failure' ? 6 : (_evtName == 'login_logout' ? 2 : 1))) : (_appName == 'admin' ? (_evtName == 'CREATE_USER' ? 1 : (_evtName == 'DELETE_USER' ? 2 : 3)) : (_evtName == 'download' ? 2 : (_evtName == 'change_user_access' ? 6 : 99))))"
+          },
+          {
+            "name": "type_name",
+            "value": "_appName == 'login' ? (_evtName == 'login_success' ? 'Authentication: Logon' : (_evtName == 'login_failure' ? 'Authentication: Logon' : 'Authentication: Logoff')) : (_appName == 'admin' ? (_evtName == 'CREATE_USER' ? 'User Account Management: Create' : 'User Account Management: Other') : (_evtName == 'download' ? 'File System Activity: Read' : 'File System Activity: Set Attributes'))"
+          },
+          {
+            "name": "severity_id",
+            "value": "_evtName == 'login_failure' ? 3 : (_evtName == 'change_user_access' ? 3 : 1)"
+          },
+          {
+            "name": "severity",
+            "value": "_evtName == 'login_failure' ? 'Medium' : (_evtName == 'change_user_access' ? 'Medium' : 'Informational')"
+          },
+          {
+            "name": "status",
+            "value": "_appName == 'login' ? (_evtName == 'login_success' ? 'Success' : (_evtName == 'login_failure' ? 'Failure' : 'Success')) : 'Success'"
+          },
+          {
+            "name": "status_id",
+            "value": "_appName == 'login' ? (_evtName == 'login_success' ? 1 : (_evtName == 'login_failure' ? 2 : 1)) : 1"
+          },
+          {
+            "name": "status_detail",
+            "value": "_login_failure_type || ''"
+          },
+          {
+            "name": "metadata",
+            "value": "{version:'1.4.0',product:{name:'Google Workspace',vendor_name:'Google'},log_name:_appName,uid:id && id.uniqueQualifier ? id.uniqueQualifier : ''}"
+          },
+          {
+            "name": "actor",
+            "value": "{'user':{'email_addr':id && actor && actor.email ? actor.email : '','uid':actor && actor.profileId ? actor.profileId : '','name':actor && actor.email ? actor.email : ''}}"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{'ip':ipAddress || ''}"
+          },
+          {
+            "name": "unmapped_data",
+            "value": "{'login_type':_login_type,'login_challenge_method':_login_challenge,'login_failure_type':_login_failure_type,'event_name':_evtName,'event_type':_evtType,'target_user':_target_user,'org_unit':_org_unit,'old_value':_old_value,'new_value':_new_value}"
+          }
+        ]
+      },
+      "description": "Map core OCSF fields"
+    },
+    {
+      "id": "eval",
+      "filter": "_appName == 'login'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "auth_protocol",
+            "value": "_login_type == 'saml' ? 'SAML' : (_login_type == 'google_password' ? 'Other' : 'Other')"
+          },
+          {
+            "name": "auth_protocol_id",
+            "value": "_login_type == 'saml' ? 4 : 99"
+          },
+          {
+            "name": "is_mfa",
+            "value": "_login_challenge == 'totp' || _login_challenge == 'idv_preregistered_phone' ? true : false"
+          }
+        ]
+      },
+      "description": "Auth-specific fields"
+    },
+    {
+      "id": "eval",
+      "filter": "_appName == 'drive'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "file",
+            "value": "{'name':_doc_title,'type':_doc_type,'owner':{'email_addr':_doc_owner},'path':_doc_title}"
+          }
+        ]
+      },
+      "description": "Drive file object"
+    },
+    {
+      "id": "eval",
+      "filter": "_appName == 'admin'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "{'email_addr':_user_email_param,'name':_user_email_param}"
+          },
+          {
+            "name": "group",
+            "value": "{'name':_org_unit}"
+          }
+        ]
+      },
+      "description": "Admin user management object"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "time ? time / 1000 : _time"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'google_workspace'"
+          }
+        ]
+      },
+      "description": "Set _time from OCSF time field"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 5: Final cleanup — remove raw/intermediate fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "_appName",
+          "_evtName",
+          "_evtType",
+          "_params",
+          "_login_type",
+          "_login_failure_type",
+          "_login_challenge",
+          "_doc_title",
+          "_doc_type",
+          "_doc_owner",
+          "_target_user",
+          "_user_email_param",
+          "_org_unit",
+          "_old_value",
+          "_new_value",
+          "kind",
+          "id",
+          "ipAddress",
+          "events",
+          "__*",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__kvp_src"
+        ]
+      },
+      "description": "Remove raw/intermediate source fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "google_workspace_ocsf",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 53,
+    "outputSample": [
+      {
+        "_time": 1705277002,
+        "actor": {
+          "user": {
+            "email_addr": "sarah.johnson@acmecorp.com",
+            "uid": "112938475612",
+            "name": "sarah.johnson@acmecorp.com"
+          }
+        },
+        "time": 1705277002000,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 1,
+        "activity_name": "Logon",
+        "type_uid": 300201,
+        "type_name": "Authentication: Logon",
+        "severity_id": 1,
+        "severity": "Informational",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "login",
+          "uid": "8471920384756123"
+        },
+        "src_endpoint": {
+          "ip": ""
+        },
+        "unmapped_data": {
+          "event_name": "login_success",
+          "event_type": "login"
+        },
+        "auth_protocol": "Other",
+        "auth_protocol_id": 99,
+        "is_mfa": false,
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705277865,
+        "actor": {
+          "user": {
+            "email_addr": "unknown@external.net",
+            "uid": "",
+            "name": "unknown@external.net"
+          }
+        },
+        "time": 1705277865000,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 6,
+        "activity_name": "Logon",
+        "type_uid": 300206,
+        "type_name": "Authentication: Logon",
+        "severity_id": 3,
+        "severity": "Medium",
+        "status": "Failure",
+        "status_id": 2,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "login",
+          "uid": "9382716450293847"
+        },
+        "src_endpoint": {
+          "ip": "203.45.178.92"
+        },
+        "unmapped_data": {
+          "event_name": "login_failure",
+          "event_type": "login"
+        },
+        "auth_protocol": "Other",
+        "auth_protocol_id": 99,
+        "is_mfa": false,
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705279331,
+        "actor": {
+          "user": {
+            "email_addr": "mike.chen@acmecorp.com",
+            "uid": "998271634052",
+            "name": "mike.chen@acmecorp.com"
+          }
+        },
+        "time": 1705279331000,
+        "class_uid": 4010,
+        "class_name": "File System Activity",
+        "category_uid": 4,
+        "category_name": "System Activity",
+        "activity_id": 2,
+        "activity_name": "Read",
+        "type_uid": 401002,
+        "type_name": "File System Activity: Read",
+        "severity_id": 1,
+        "severity": "Informational",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "drive",
+          "uid": "7261849302847561"
+        },
+        "src_endpoint": {
+          "ip": "10.0.1.45"
+        },
+        "unmapped_data": {
+          "event_name": "download",
+          "event_type": "access"
+        },
+        "file": {
+          "owner": {}
+        },
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705280733,
+        "actor": {
+          "user": {
+            "email_addr": "admin@acmecorp.com",
+            "uid": "102938475601",
+            "name": "admin@acmecorp.com"
+          }
+        },
+        "time": 1705280733000,
+        "class_uid": 3005,
+        "class_name": "User Account Management",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "type_uid": 300501,
+        "type_name": "User Account Management: Create",
+        "severity_id": 1,
+        "severity": "Informational",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "admin",
+          "uid": "3847561029384756"
+        },
+        "src_endpoint": {
+          "ip": "192.168.1.100"
+        },
+        "unmapped_data": {
+          "event_name": "CREATE_USER",
+          "event_type": "USER_SETTINGS"
+        },
+        "user": {},
+        "group": {},
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705282089,
+        "actor": {
+          "user": {
+            "email_addr": "contractor.bob@external.com",
+            "uid": "556271849302",
+            "name": "contractor.bob@external.com"
+          }
+        },
+        "time": 1705282089000,
+        "class_uid": 4010,
+        "class_name": "File System Activity",
+        "category_uid": 4,
+        "category_name": "System Activity",
+        "activity_id": 6,
+        "activity_name": "Set Attributes",
+        "type_uid": 401006,
+        "type_name": "File System Activity: Set Attributes",
+        "severity_id": 3,
+        "severity": "Medium",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "drive",
+          "uid": "6192847503817264"
+        },
+        "src_endpoint": {
+          "ip": "185.220.101.47"
+        },
+        "unmapped_data": {
+          "event_name": "change_user_access",
+          "event_type": "acl_change"
+        },
+        "file": {
+          "owner": {}
+        },
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705283747,
+        "actor": {
+          "user": {
+            "email_addr": "lisa.patel@acmecorp.com",
+            "uid": "774859302847",
+            "name": "lisa.patel@acmecorp.com"
+          }
+        },
+        "time": 1705283747000,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 1,
+        "activity_name": "Logon",
+        "type_uid": 300201,
+        "type_name": "Authentication: Logon",
+        "severity_id": 1,
+        "severity": "Informational",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "login",
+          "uid": "2938475610293847"
+        },
+        "src_endpoint": {
+          "ip": "172.16.5.23"
+        },
+        "unmapped_data": {
+          "event_name": "login_success",
+          "event_type": "login"
+        },
+        "auth_protocol": "Other",
+        "auth_protocol_id": 99,
+        "is_mfa": false,
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705284862,
+        "actor": {
+          "user": {
+            "email_addr": "dev.team@acmecorp.com",
+            "uid": "334857291038",
+            "name": "dev.team@acmecorp.com"
+          }
+        },
+        "time": 1705284862000,
+        "class_uid": 4010,
+        "class_name": "File System Activity",
+        "category_uid": 4,
+        "category_name": "System Activity",
+        "activity_id": 99,
+        "activity_name": "Other",
+        "type_uid": 401099,
+        "type_name": "File System Activity: Set Attributes",
+        "severity_id": 1,
+        "severity": "Informational",
+        "status": "Success",
+        "status_id": 1,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "token",
+          "uid": "5847291038475610"
+        },
+        "src_endpoint": {
+          "ip": "10.0.2.78"
+        },
+        "unmapped_data": {
+          "event_name": "authorize",
+          "event_type": "auth"
+        },
+        "sourcetype": "google_workspace"
+      },
+      {
+        "_time": 1705286038,
+        "actor": {
+          "user": {
+            "email_addr": "james.wu@acmecorp.com",
+            "uid": "889203847561",
+            "name": "james.wu@acmecorp.com"
+          }
+        },
+        "time": 1705286038000,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 6,
+        "activity_name": "Logon",
+        "type_uid": 300206,
+        "type_name": "Authentication: Logon",
+        "severity_id": 3,
+        "severity": "Medium",
+        "status": "Failure",
+        "status_id": 2,
+        "status_detail": "",
+        "metadata": {
+          "version": "1.4.0",
+          "product": {
+            "name": "Google Workspace",
+            "vendor_name": "Google"
+          },
+          "log_name": "login",
+          "uid": "1029384756102938"
+        },
+        "src_endpoint": {
+          "ip": "98.176.43.211"
+        },
+        "unmapped_data": {
+          "event_name": "login_failure",
+          "event_type": "login"
+        },
+        "auth_protocol": "Other",
+        "auth_protocol_id": 99,
+        "is_mfa": false,
+        "sourcetype": "google_workspace"
+      }
+    ],
+    "sampleKeys": [
+      "kind",
+      "id",
+      "actor",
+      "events",
+      "ipAddress"
+    ],
+    "sampleRaw": [
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T00:03:22.000Z\",\"uniqueQualifier\":\"8471920384756123\",\"applicationName\":\"login\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"sarah.johnson@acmecorp.com\",\"profileId\":\"112938475612\"},\"events\":[{\"type\":\"login\",\"name\":\"login_success\",\"parameters\":[{\"name\":\"login_type\",\"value\":\"google_password\"},{\"name\":\"login_challenge_method\",\"value\":\"none\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T00:17:45.000Z\",\"uniqueQualifier\":\"9382716450293847\",\"applicationName\":\"login\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"unknown@external.net\",\"profileId\":\"\"},\"ipAddress\":\"203.45.178.92\",\"events\":[{\"type\":\"login\",\"name\":\"login_failure\",\"parameters\":[{\"name\":\"login_type\",\"value\":\"google_password\"},{\"name\":\"login_challenge_method\",\"value\":\"none\"},{\"name\":\"login_failure_type\",\"value\":\"ReusedPasswordError\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T00:42:11.000Z\",\"uniqueQualifier\":\"7261849302847561\",\"applicationName\":\"drive\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"mike.chen@acmecorp.com\",\"profileId\":\"998271634052\"},\"ipAddress\":\"10.0.1.45\",\"events\":[{\"type\":\"access\",\"name\":\"download\",\"parameters\":[{\"name\":\"doc_title\",\"value\":\"Q4_Financial_Report_2023.xlsx\"},{\"name\":\"owner\",\"value\":\"cfo@acmecorp.com\"},{\"name\":\"doc_type\",\"value\":\"spreadsheet\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T01:05:33.000Z\",\"uniqueQualifier\":\"3847561029384756\",\"applicationName\":\"admin\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"admin@acmecorp.com\",\"profileId\":\"102938475601\"},\"ipAddress\":\"192.168.1.100\",\"events\":[{\"type\":\"USER_SETTINGS\",\"name\":\"CREATE_USER\",\"parameters\":[{\"name\":\"USER_EMAIL\",\"value\":\"new.employee@acmecorp.com\"},{\"name\":\"ORG_UNIT_NAME\",\"value\":\"Engineering\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T01:28:09.000Z\",\"uniqueQualifier\":\"6192847503817264\",\"applicationName\":\"drive\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"contractor.bob@external.com\",\"profileId\":\"556271849302\"},\"ipAddress\":\"185.220.101.47\",\"events\":[{\"type\":\"acl_change\",\"name\":\"change_user_access\",\"parameters\":[{\"name\":\"doc_title\",\"value\":\"Internal_Salary_Data.xlsx\"},{\"name\":\"target_user\",\"value\":\"personal.email@gmail.com\"},{\"name\":\"old_value\",\"value\":\"none\"},{\"name\":\"new_value\",\"value\":\"can_view\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T01:55:47.000Z\",\"uniqueQualifier\":\"2938475610293847\",\"applicationName\":\"login\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"lisa.patel@acmecorp.com\",\"profileId\":\"774859302847\"},\"ipAddress\":\"172.16.5.23\",\"events\":[{\"type\":\"login\",\"name\":\"login_success\",\"parameters\":[{\"name\":\"login_type\",\"value\":\"saml\"},{\"name\":\"login_challenge_method\",\"value\":\"totp\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T02:14:22.000Z\",\"uniqueQualifier\":\"5847291038475610\",\"applicationName\":\"token\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"dev.team@acmecorp.com\",\"profileId\":\"334857291038\"},\"ipAddress\":\"10.0.2.78\",\"events\":[{\"type\":\"auth\",\"name\":\"authorize\",\"parameters\":[{\"name\":\"client_id\",\"value\":\"1234567890-abcdefgh.apps.googleusercontent.com\"},{\"name\":\"app_name\",\"value\":\"Salesforce CRM\"},{\"name\":\"scope\",\"value\":\"https://www.googleapis.com/auth/gmail.readonly\"}]}]}",
+      "{\"kind\":\"admin#reports#activity\",\"id\":{\"time\":\"2024-01-15T02:33:58.000Z\",\"uniqueQualifier\":\"1029384756102938\",\"applicationName\":\"login\",\"customerId\":\"C02abc123\"},\"actor\":{\"email\":\"james.wu@acmecorp.com\",\"profileId\":\"889203847561\"},\"ipAddress\":\"98.176.43.211\",\"events\":[{\"type\":\"login\",\"name\":\"login_failure\",\"parameters\":[{\"name\":\"login_type\",\"value\":\"google_password\"},{\"name\":\"login_failure_type\",\"value\":\"BadPasswordError\"},{\"name\":\"login_challenge_method\",\"value\":\"none\"}]}]}"
+    ],
+    "sourcetype": "google_workspace"
+  }
+}

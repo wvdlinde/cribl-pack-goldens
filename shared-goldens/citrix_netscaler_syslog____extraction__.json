@@ -1,0 +1,68 @@
+{
+  "key": "citrix_netscaler_syslog::__extraction__",
+  "sourcetype": "citrix_netscaler_syslog",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:11:36.874Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the Citrix NetScaler syslog header and event envelope",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+<(?<priority>\\d+)>\\s+(?<host>\\S+)\\s+(?<timestamp>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\\s+(?<timezone>\\S+)\\s+(?<process>[^:]+):\\s+(?<partition>\\S+)\\s+(?<module>\\S+)\\s+(?<event_type>\\S+)\\s+(?<event_id>\\d+)\\s+(?<event_counter>\\d+)\\s+:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract common NetScaler event attributes from the message payload",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?:(?=.*User \"(?<user>[^\"]+)\")|(?!.*User \"))(?:(?=.*(?:Client_ip|Source) (?<src_ip>\\[[^\\]]+\\]|[^:\\s-]+)(?::(?<src_port>\\d+))?(?= -|$))|(?!.*(?:Client_ip|Source) ))(?:(?=.*Nat_ip (?<nat_ip>\\[[^\\]]+\\]|[^\\s-]+))|(?!.*Nat_ip ))(?:(?=.*(?:(?:Destination|Vserver) |Service \"[^\"]+\" )(?<dst_ip>\\[[^\\]]+\\]|[^\":\\s-]+):(?<dst_port>\\d+))|(?!.*(?:(?:Destination|Vserver) |Service \"[^\"]+\" )(?:\\[[^\\]]+\\]|[^\":\\s-]+):\\d+))(?:(?=.*(?:Vserver|Service) \"(?<dst_host>[^\"]+)\")|(?!.*(?:Vserver|Service) \"))(?:(?=.*Status \"(?<status>[^\"]+)\")|(?!.*Status \"))(?:(?=.*Reason \"(?<reason>[^\"]+)\")|(?!.*Reason \"))(?:(?=.*Action \"(?<action>[^\"]+)\")|(?!.*Action \"))(?:(?=.*Severity \"(?<severity>[^\"]+)\")|(?!.*Severity \"))(?:(?=.*Auth_type (?<auth_type>\\S+)(?= -|$))|(?!.*Auth_type ))(?:(?=.*Session_id (?<session_id>\\S+)(?= -|$))|(?!.*Session_id ))(?:(?=.*Client_type \"(?<client_type>[^\"]+)\")|(?!.*Client_type \"))(?:(?=.*Profile \"(?<profile>[^\"]+)\")|(?!.*Profile \"))(?:(?=.*Sig_category \"(?<signature_category>[^\"]+)\")|(?!.*Sig_category \"))(?:(?=.*Request \"(?<request>[^\"]+)\")|(?!.*Request \"))(?:(?=.*Command \"(?<command>[^\"]+)\")|(?!.*Command \"))(?:(?=.*Cipher \"(?<cipher>[^\"]+)\")|(?!.*Cipher \"))(?:(?=.*Cert_name \"(?<certificate_name>[^\"]+)\")|(?!.*Cert_name \"))(?:(?=.*Days_remaining (?<days_remaining>\\d+)(?= -|$))|(?!.*Days_remaining ))(?:(?=.*Duration \"(?<duration>\\d+)\")|(?!.*Duration \"))(?:(?=.*Previous_state \"(?<previous_state>[^\"]+)\")|(?!.*Previous_state \"))(?:(?=.*New_state \"(?<new_state>[^\"]+)\")|(?!.*New_state \"))(?:(?=.*Node (?<node>\\d+)(?= -|$))|(?!.*Node ))(?:(?=.*Peer_node (?<peer_node>\\d+)(?= -|$))|(?!.*Peer_node ))(?:(?=.*Monitor \"(?<monitor>[^\"]+)\")|(?!.*Monitor \"))(?:(?=.*Site \"(?<site>[^\"]+)\")|(?!.*Site \"))(?:(?=.*Ip (?<site_ip>\\[[^\\]]+\\]|[^\\s-]+)(?= -|$))|(?!.*Ip )).*$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action, status, severity, protocol, and network direction",
+      "conf": {
+        "add": [
+          {
+            "name": "status",
+            "value": "status ? status.toLowerCase() : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : event_type === 'LOGIN_SUCCESS' ? 'allow' : event_type === 'LOGIN_FAIL' ? 'deny' : event_type === 'VPN_SESSION_ESTABLISHED' ? 'allow' : event_type === 'VPN_SESSION_TERMINATED' ? 'disconnect' : event_type === 'SSL_HANDSHAKE_FAILED' ? 'deny' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warn' : event_type === 'CMD_EXECUTED' ? 'execute' : event_type === 'LB_VSERVER_STATE_DOWN' || event_type === 'GSLB_SITE_DOWN' ? 'down' : event_type === 'LB_MONITOR_UP' ? 'up' : event_type === 'HA_STATE_CHANGE' ? 'change' : undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : priority === '131' ? 'error' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warning' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port ? 'tcp' : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && dst_ip ? 'inbound' : undefined"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

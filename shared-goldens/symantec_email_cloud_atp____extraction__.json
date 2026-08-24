@@ -1,0 +1,89 @@
+{
+  "key": "symantec_email_cloud_atp::__extraction__",
+  "sourcetype": "symantec_email_cloud_atp",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:24:23.443Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Split raw event into ISO timestamp and key=value body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the key=value pair body into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp_body",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize IP, user, message, action, severity fields and derive _time",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "source_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dest_ip"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : sender"
+          },
+          {
+            "name": "message",
+            "value": "subject ? subject : reason"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : null"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : null"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ],
+        "remove": [
+          "source_ip",
+          "dest_ip",
+          "kvp_body"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

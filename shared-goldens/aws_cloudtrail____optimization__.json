@@ -1,0 +1,68 @@
+{
+  "key": "aws_cloudtrail::__optimization__",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 302,
+  "updated_at": "2026-08-04T05:59:30.560Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "eventName && /^(Describe|List|Get)/.test(eventName)",
+      "disabled": true,
+      "final": true,
+      "description": "Drop read-only API calls (Describe*, List*, Get*) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "eventSource === 'sts.amazonaws.com' && eventName === 'AssumeRole' && userIdentity && userIdentity.type === 'AWSService'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop AWS internal service AssumeRole (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Remove original _raw and internal fields before CIM serialization",
+      "conf": {
+        "remove": [
+          "_raw",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__*"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

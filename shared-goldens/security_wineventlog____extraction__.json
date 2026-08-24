@@ -1,0 +1,128 @@
+{
+  "key": "security_wineventlog::__extraction__",
+  "sourcetype": "security_wineventlog",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:02:25.720Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp and core Windows event header fields (LogName, EventCode, EventType, TaskCategory, OpCode, RecordNumber, Keywords, Channel, ComputerName)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{2}\\/\\d{2}\\/\\d{4} \\d{2}:\\d{2}:\\d{2} [AP]M)\\s+LogName=(?<log_name>\\S+)\\s+EventCode=(?<event_code>\\d+)\\s+EventType=(?<event_type>\\d+)\\s+TaskCategory=(?<task_category>.*?)\\s+OpCode=(?<op_code>\\S+)\\s+RecordNumber=(?<record_number>\\d+)\\s+Keywords=(?<keywords>.*?)\\s+Channel=(?<channel>\\S+)\\s+ComputerName=(?<dst_host>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract subject/target user, IP, workstation, process, service and status detail fields from the KVP body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/SubjectUserName=(?<subject_user>\\S+)/",
+        "regexList": [
+          {
+            "regex": "/SubjectDomainName=(?<subject_domain>\\S+)/"
+          },
+          {
+            "regex": "/TargetUserName=(?<target_user>\\S+)/"
+          },
+          {
+            "regex": "/TargetDomainName=(?<target_domain>\\S+)/"
+          },
+          {
+            "regex": "/TargetSid=(?<target_sid>\\S+)/"
+          },
+          {
+            "regex": "/LogonType=(?<logon_type>\\d+)/"
+          },
+          {
+            "regex": "/IpAddress=(?<src_ip>[0-9a-fA-F:.]+)/"
+          },
+          {
+            "regex": "/IpPort=(?<src_port>\\d+)/"
+          },
+          {
+            "regex": "/WorkstationName=(?<workstation>\\S+)/"
+          },
+          {
+            "regex": "/SourceWorkstation=(?<source_workstation>\\S+)/"
+          },
+          {
+            "regex": "/ServiceName=(?<service_name>\\S+)/"
+          },
+          {
+            "regex": "/FailureReason=(?<failure_reason>\\S+)/"
+          },
+          {
+            "regex": "/(?<!Sub)Status=(?<status_code>0x[0-9A-Fa-f]+)/"
+          },
+          {
+            "regex": "/SubStatus=(?<sub_status>0x[0-9A-Fa-f]+)/"
+          },
+          {
+            "regex": "/Error=(?<error_code>0x[0-9A-Fa-f]+)/"
+          },
+          {
+            "regex": "/ShareName=(?<share_name>\\S+)/"
+          },
+          {
+            "regex": "/NewProcessName=(?<new_process_name>\\S+)/"
+          },
+          {
+            "regex": "/ParentProcessName=(?<parent_process_name>\\S+)/"
+          },
+          {
+            "regex": "/CommandLine=\"(?<command_line>[^\"]*)\"/"
+          },
+          {
+            "regex": "/TargetServerName=(?<target_server_name>\\S+)/"
+          },
+          {
+            "regex": "/CallerComputerName=(?<caller_computer>\\S+)/"
+          },
+          {
+            "regex": "/ServiceFileName=(?<service_file_name>\\S+)/"
+          },
+          {
+            "regex": "/PrivilegeList=(?<privilege_list>.*)$/"
+          }
+        ],
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized user, action classification, and severity from event_code/keywords",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "subject_user && subject_user!='-' ? subject_user : (target_user && target_user!='-' ? target_user : null)"
+          },
+          {
+            "name": "action",
+            "value": "event_code=='4624'?'logon_success':event_code=='4625'?'logon_failure':event_code=='4634'?'logoff':event_code=='4672'?'special_privileges_assigned':event_code=='4688'?'process_creation':event_code=='4720'?'account_created':event_code=='4726'?'account_deleted':event_code=='4740'?'account_locked':event_code=='4771'?'kerberos_preauth_failed':event_code=='4776'?'credential_validation':event_code=='5140'?'file_share_access':event_code=='4648'?'explicit_credential_logon':event_code=='4697'?'service_installed':event_code=='1102'?'audit_log_cleared':'other'"
+          },
+          {
+            "name": "severity",
+            "value": "keywords && keywords.match(/Failure/) ? 'high' : 'informational'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

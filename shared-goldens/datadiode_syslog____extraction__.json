@@ -1,0 +1,95 @@
+{
+  "key": "datadiode_syslog::__extraction__",
+  "sourcetype": "datadiode_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:34:31.634Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (priority, timestamp, host, process, pid) and isolate the KVP message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[A-Za-z0-9_-]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (severity, event, src, dst, filename, action, protocol, etc.) from the message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names (src/dst to src_ip/dst_ip), severity casing, and fallback action from status",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : (status ? status.toLowerCase() : null)"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : null"
+          }
+        ],
+        "remove": [
+          "src",
+          "dst",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive transfer direction from diode host naming convention (TX = outbound, RX = inbound)",
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "host && host.match(/TX/) ? 'outbound' : (host && host.match(/RX/) ? 'inbound' : 'unknown')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

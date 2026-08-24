@@ -1,0 +1,86 @@
+{
+  "key": "infoblox_dhcp::__extraction__",
+  "sourcetype": "infoblox_dhcp",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:36:34.602Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header: timestamp, host, process, pid, and remaining DHCP message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>[A-Za-z]{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract DHCP action/verb (DHCPREQUEST, DHCPACK, DHCPOFFER, DHCPDISCOVER, DHCPINFORM) from message",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<action>DHCP\\w+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "action == 'DHCPREQUEST'",
+      "disabled": false,
+      "description": "Parse DHCPREQUEST details: requested IP, client MAC, hostname, relay/via IP, lease state",
+      "conf": {
+        "source": "message",
+        "regex": "/^DHCPREQUEST for (?<dst_ip>\\S+) from (?<mac_address>\\S+)(?:\\s+\\((?<hostname>[^)]*)\\))?\\s+via\\s+(?<relay_ip>\\S+)(?:\\s+\\((?<lease_state>\\w+)\\))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "(action == 'DHCPACK' || action == 'DHCPOFFER') && message.indexOf(' on ') !== -1",
+      "disabled": false,
+      "description": "Parse DHCPACK/DHCPOFFER 'on...to...via...relay...lease-duration' pattern",
+      "conf": {
+        "source": "message",
+        "regex": "/^DHCP(?:ACK|OFFER) on (?<dst_ip>\\S+) to (?<mac_address>\\S+)(?:\\s+\\((?<hostname>[^)]*)\\))?\\s+via\\s+(?<interface>\\S+)(?:\\s+relay\\s+(?<relay_ip>\\S+))?(?:\\s+lease-duration\\s+(?<lease_duration>\\d+))?(?:\\s+\\((?<lease_state>\\w+)\\))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "action == 'DHCPACK' && message.indexOf(' on ') === -1",
+      "disabled": false,
+      "description": "Parse DHCPACK 'to IP (MAC) via IFACE' pattern (no relay/lease info, e.g. DHCPINFORM response)",
+      "conf": {
+        "source": "message",
+        "regex": "/^DHCPACK to (?<dst_ip>\\S+)(?:\\s+\\((?<mac_address>[^)]*)\\))?\\s+via\\s+(?<interface>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "action == 'DHCPDISCOVER' || action == 'DHCPINFORM'",
+      "disabled": false,
+      "description": "Parse DHCPDISCOVER (client MAC, relay IP, network, lease status) and DHCPINFORM (client IP, relay IP) patterns",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?:DHCPDISCOVER from (?<mac_address>\\S+) via (?<relay_ip>\\S+)(?::\\s*network\\s+(?<network>[^:]+))?(?::\\s*(?<dhcp_status>.*))?|DHCPINFORM from (?<src_ip>\\S+) via (?<relay_ip2>\\S+))$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,22 @@
+{
+  "key": "infoblox_port::__optimization__",
+  "sourcetype": "infoblox_port",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:23.453Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

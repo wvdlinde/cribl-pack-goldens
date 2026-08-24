@@ -1,0 +1,31 @@
+{
+  "key": "cloudflare_http::__extraction__",
+  "sourcetype": "cloudflare_http",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "pack-mining",
+  "build": 0,
+  "updated_at": "2026-07-15T18:49:07.881Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "fieldFilterExpr": "value!=='' && value!==null && value!==0 && value!='unknown'",
+        "keep": [],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Mined from cribl-cloudflare/cloudflare_http",
+    "scoreSource": "valueCoverage"
+  }
+}

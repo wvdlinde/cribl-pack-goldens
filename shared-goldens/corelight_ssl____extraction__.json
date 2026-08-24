@@ -1,0 +1,81 @@
+{
+  "key": "corelight_ssl::__extraction__",
+  "sourcetype": "corelight_ssl",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:19:49.824Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Strip RFC5424 syslog header to isolate JSON payload",
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.indexOf('{') > 0 ? _raw.slice(_raw.indexOf('{')) : _raw"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse Corelight/Zeek JSON log",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Normalize Zeek dotted fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__e['id.orig_h'] || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "__e['id.orig_p'] || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "__e['id.resp_h'] || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "__e['id.resp_p'] || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "ts || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Zeek'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ssl'"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

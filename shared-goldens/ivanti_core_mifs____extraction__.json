@@ -1,0 +1,89 @@
+{
+  "key": "ivanti_core_mifs::__extraction__",
+  "sourcetype": "ivanti_core_mifs",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:38:10.396Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the base log line into timestamp, severity, thread, logger, and message components",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3})\\s+(?<severity>\\S+)\\s+\\[(?<thread>[^\\]]+)\\]\\s+(?<logger>\\S+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message !== undefined",
+      "disabled": false,
+      "description": "Split message into a free-text event description and a trailing key=value pair block",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<event_desc>[A-Za-z][A-Za-z0-9 \\-\\/]*?)\\s+(?<kvp_tail>\\S+=\\S+(?:\\s+\\S+=\\S+)*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "kvp_tail !== undefined",
+      "disabled": false,
+      "description": "Extract the trailing key=value pairs (user, ip, deviceId, action, etc.) from the kvp_tail field into discrete fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp_tail",
+        "kvDelim": "=",
+        "pairDelim": " ",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names (src_ip, device_id, user), derive action when not explicit, and normalize severity",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "ip"
+          },
+          {
+            "name": "device_id",
+            "value": "device || deviceId"
+          },
+          {
+            "name": "user",
+            "value": "user || admin"
+          },
+          {
+            "name": "severity",
+            "value": "severity === 'ALERT' ? 'CRITICAL' : severity"
+          },
+          {
+            "name": "action",
+            "value": "action ? action : (event_desc.match(/success/i) ? 'SUCCESS' : (event_desc.match(/fail/i) ? 'FAILURE' : action))"
+          }
+        ],
+        "remove": [
+          "ip",
+          "device",
+          "deviceId",
+          "admin",
+          "kvp_tail"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

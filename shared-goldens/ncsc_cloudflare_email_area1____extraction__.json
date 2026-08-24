@@ -1,0 +1,23 @@
+{
+  "key": "ncsc_cloudflare_email_area1::__extraction__",
+  "sourcetype": "ncsc_cloudflare_email_area1",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:38:18.787Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

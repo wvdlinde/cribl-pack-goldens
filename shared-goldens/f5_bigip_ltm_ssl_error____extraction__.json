@@ -1,0 +1,99 @@
+{
+  "key": "f5_bigip_ltm_ssl_error::__extraction__",
+  "sourcetype": "f5_bigip_ltm_ssl_error",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:28.298Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse F5 BIG-IP LTM SSL syslog header and inner message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<severity>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<msg_id>[\\d:]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.match(/for TCP/) || message.match(/from peer/))",
+      "disabled": false,
+      "description": "Extract src/dst IP:port and error reason from TCP/peer SSL handshake or alert messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:for TCP|from peer)\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[0-9a-fA-F\\.:]+):(?<dst_port>\\d+)(?:[:\\s]+(?<ssl_error_reason>.+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/attack detected from/)",
+      "disabled": false,
+      "description": "Extract source and target virtual server details from SSL renegotiation attack messages",
+      "conf": {
+        "source": "message",
+        "regex": "/attack detected from\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s+to virtual server\\s+(?<dst_host>\\S+),\\s*(?<ssl_error_reason>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/Client certificate not provided/)",
+      "disabled": false,
+      "description": "Extract source and destination pool from missing client certificate messages",
+      "conf": {
+        "source": "message",
+        "regex": "/from\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s+to pool\\s+(?<dst_pool>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action and protocol fields based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/succeeded/) ? 'allowed' : (message.match(/failed|error|attack|not provided|dropped/) ? 'blocked' : 'unknown')"
+          },
+          {
+            "name": "protocol",
+            "value": "'tls'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event time from syslog timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "C.Time.parse(timestamp, 'MMM d HH:mm:ss')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

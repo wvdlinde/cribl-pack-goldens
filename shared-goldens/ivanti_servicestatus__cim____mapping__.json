@@ -1,0 +1,106 @@
+{
+  "key": "ivanti_servicestatus::cim::__mapping__",
+  "sourcetype": "ivanti_servicestatus",
+  "dest_format": "cim::__mapping__",
+  "score": 90,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:28:17.854Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "user",
+            "value": "user || ''"
+          },
+          {
+            "name": "action",
+            "value": "status == 'SUCCESS' ? 'allowed' : status == 'FAILED' ? 'blocked' : (status || '')"
+          },
+          {
+            "name": "session_id",
+            "value": "session_id || ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "auth_method || ''"
+          },
+          {
+            "name": "duration",
+            "value": "Number(String(duration || '0').replace(/[^0-9.]/g,''))"
+          },
+          {
+            "name": "object",
+            "value": "component || object || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "node || source || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "vendor_product || ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "severity",
+            "value": "priority || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(result_id || 0)"
+          },
+          {
+            "name": "rule_id",
+            "value": "object_id || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_servicestatus'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,72 @@
+{
+  "key": "http_fpc_metadata::__extraction__",
+  "sourcetype": "http_fpc_metadata",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:08:49.435Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse HTTP FPC metadata and support bracketed IPv6 addresses.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z) (?<event_type>http_fpc_metadata) src_ip=\\[?(?<src_ip>[^\\]\\s]+)\\]? dst_ip=\\[?(?<dst_ip>[^\\]\\s]+)\\]? src_port=(?<src_port>\\d+) dst_port=(?<dst_port>\\d+) proto=(?<protocol>\\S+) method=\"?(?<http_method>[^\"\\s]*)\"? uri=\"?(?<uri>[^\"\\s]*)\"? host=\"?(?<dst_host>[^\"\\s]*)\"? status=(?<http_status>\\d+) bytes_in=(?<bytes_in>\\d+) bytes_out=(?<bytes_out>\\d+) duration_ms=(?<duration_ms>\\d+) user_agent=\"(?<user_agent>[^\"]*)\" fpc_file=(?<fpc_file>\\S+) severity=(?<severity>\\S+) outcome=(?<outcome>\\S+)(?: reason=\"(?<reason>[^\"]*)\")?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamps, numeric fields, protocol, and network direction.",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp) / 1000"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          },
+          {
+            "name": "http_status",
+            "value": "Number(http_status)"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(bytes_in)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(bytes_out)"
+          },
+          {
+            "name": "duration_ms",
+            "value": "Number(duration_ms)"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol.toLowerCase()"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip.match(/^(?:10\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.|127\\.|169\\.254\\.|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:|::1$)/i) ? (dst_ip.match(/^(?:10\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.|127\\.|169\\.254\\.|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:|::1$)/i) ? 'lateral' : 'outbound') : (dst_ip.match(/^(?:10\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.|127\\.|169\\.254\\.|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:|::1$)/i) ? 'inbound' : 'external')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

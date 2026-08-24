@@ -1,0 +1,22 @@
+{
+  "key": "palo_alto_threat::__optimization__",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 261,
+  "updated_at": "2026-07-16T13:55:10.158Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,621 @@
+{
+  "key": "aws_cloudtrail::ocsf",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "ocsf",
+  "score": 95,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T06:49:52.881Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "aws_cloudtrail to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Extract CloudTrail JSON fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "api_operation",
+            "value": "eventName || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "eventName || undefined"
+          },
+          {
+            "name": "cloud_service",
+            "value": "eventSource || undefined"
+          },
+          {
+            "name": "cloud_region",
+            "value": "awsRegion || undefined"
+          },
+          {
+            "name": "cloud_account",
+            "value": "recipientAccountId || undefined"
+          },
+          {
+            "name": "request_id",
+            "value": "requestID || undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "sourceIPAddress && String(sourceIPAddress).match(/^(\\d{1,3}\\.){3}\\d{1,3}$|:/) ? sourceIPAddress : undefined"
+          },
+          {
+            "name": "src_host",
+            "value": "sourceIPAddress && !String(sourceIPAddress).match(/^(\\d{1,3}\\.){3}\\d{1,3}$|:/) ? sourceIPAddress : undefined"
+          },
+          {
+            "name": "user_agent",
+            "value": "userAgent || undefined"
+          },
+          {
+            "name": "user",
+            "value": "userIdentity && (userIdentity.userName || userIdentity.arn || userIdentity.principalId) || undefined"
+          },
+          {
+            "name": "user_type",
+            "value": "userIdentity && userIdentity.type || undefined"
+          },
+          {
+            "name": "user_uid",
+            "value": "userIdentity && userIdentity.principalId || undefined"
+          },
+          {
+            "name": "user_account",
+            "value": "userIdentity && userIdentity.accountId || undefined"
+          },
+          {
+            "name": "credential_uid",
+            "value": "userIdentity && userIdentity.accessKeyId || undefined"
+          },
+          {
+            "name": "mfa_used",
+            "value": "userIdentity && userIdentity.sessionContext && userIdentity.sessionContext.attributes && userIdentity.sessionContext.attributes.mfaAuthenticated === 'true' ? true : undefined"
+          },
+          {
+            "name": "event_uid",
+            "value": "eventID || undefined"
+          },
+          {
+            "name": "event_version",
+            "value": "eventVersion || undefined"
+          },
+          {
+            "name": "resource_name",
+            "value": "resources && resources[0] && resources[0]['ARN'] || undefined"
+          },
+          {
+            "name": "resource_type",
+            "value": "resources && resources[0] && resources[0]['type'] || undefined"
+          },
+          {
+            "name": "is_read_only",
+            "value": "readOnly === true ? true : readOnly === false ? false : undefined"
+          },
+          {
+            "name": "outcome",
+            "value": "errorCode || errorMessage || (responseElements && responseElements.ConsoleLogin === 'Failure') ? 'failure' : 'success'"
+          },
+          {
+            "name": "action",
+            "value": "errorCode || errorMessage ? 'failure' : 'success'"
+          },
+          {
+            "name": "message",
+            "value": "eventName ? String(eventName) + ' on ' + String(eventSource || '') : undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "eventTime || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "errorCode || errorMessage ? 3 : 6"
+          }
+        ]
+      },
+      "description": "Normalize CloudTrail fields to the canonical API/audit model"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "eventName && /^(Describe|List|Get)/.test(eventName)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop read-only API calls (Describe*, List*, Get*) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "eventSource === 'sts.amazonaws.com' && eventName === 'AssumeRole' && userIdentity && userIdentity.type === 'AWSService'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop AWS internal service AssumeRole (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'aws cloudtrail'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "api",
+            "value": "{}"
+          },
+          {
+            "name": "api.service",
+            "value": "{}"
+          },
+          {
+            "name": "api.request",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.account",
+            "value": "{}"
+          },
+          {
+            "name": "actor.session",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "http_request",
+            "value": "{}"
+          },
+          {
+            "name": "cloud",
+            "value": "{}"
+          },
+          {
+            "name": "cloud.account",
+            "value": "{}"
+          },
+          {
+            "name": "resource",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 API Activity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99)) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) != null && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) != 'undefined' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) != 'null' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) != '-' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) != '' ? Number((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(api_operation)) ? 1 : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(api_operation)) ? 4 : /^(Update|Modify|Set)/.test(String(api_operation)) ? 3 : /^(Describe|List|Get)/.test(String(api_operation)) ? 2 : 99))) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(outcome == 'failure' ? 3 : 1) != null && String(outcome == 'failure' ? 3 : 1) != 'undefined' && String(outcome == 'failure' ? 3 : 1) != 'null' && String(outcome == 'failure' ? 3 : 1) != '-' && String(outcome == 'failure' ? 3 : 1) != '' ? Number(outcome == 'failure' ? 3 : 1) : undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != null && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != 'undefined' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != 'null' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != '-' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != '' ? Number(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(outcome == 'failure' ? 'Failure' : 'Success') != null && String(outcome == 'failure' ? 'Failure' : 'Success') != 'undefined' && String(outcome == 'failure' ? 'Failure' : 'Success') != 'null' && String(outcome == 'failure' ? 'Failure' : 'Success') != '-' && String(outcome == 'failure' ? 'Failure' : 'Success') != '' ? (outcome == 'failure' ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "api.operation",
+            "value": "(api_operation) != null && String(api_operation) != 'undefined' && String(api_operation) != 'null' && String(api_operation) != '-' && String(api_operation) != '' ? (api_operation) : undefined"
+          },
+          {
+            "name": "api.service.name",
+            "value": "(cloud_service) != null && String(cloud_service) != 'undefined' && String(cloud_service) != 'null' && String(cloud_service) != '-' && String(cloud_service) != '' ? (cloud_service) : undefined"
+          },
+          {
+            "name": "api.request.uid",
+            "value": "(request_id) != null && String(request_id) != 'undefined' && String(request_id) != 'null' && String(request_id) != '-' && String(request_id) != '' ? (request_id) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '' ? (user) : undefined"
+          },
+          {
+            "name": "actor.user.type",
+            "value": "(user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '' ? (user_type) : undefined"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "(user_uid) != null && String(user_uid) != 'undefined' && String(user_uid) != 'null' && String(user_uid) != '-' && String(user_uid) != '' ? (user_uid) : undefined"
+          },
+          {
+            "name": "actor.user.account.uid",
+            "value": "(user_account) != null && String(user_account) != 'undefined' && String(user_account) != 'null' && String(user_account) != '-' && String(user_account) != '' ? (user_account) : undefined"
+          },
+          {
+            "name": "actor.user.credential_uid",
+            "value": "(credential_uid) != null && String(credential_uid) != 'undefined' && String(credential_uid) != 'null' && String(credential_uid) != '-' && String(credential_uid) != '' ? (credential_uid) : undefined"
+          },
+          {
+            "name": "actor.session.is_mfa",
+            "value": "(mfa_used) != null && String(mfa_used) != 'undefined' && String(mfa_used) != 'null' && String(mfa_used) != '-' && String(mfa_used) != '' ? (mfa_used) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.hostname",
+            "value": "(src_host) != null && String(src_host) != 'undefined' && String(src_host) != 'null' && String(src_host) != '-' && String(src_host) != '' ? (src_host) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '' ? (user_agent) : undefined"
+          },
+          {
+            "name": "cloud.region",
+            "value": "(cloud_region) != null && String(cloud_region) != 'undefined' && String(cloud_region) != 'null' && String(cloud_region) != '-' && String(cloud_region) != '' ? (cloud_region) : undefined"
+          },
+          {
+            "name": "cloud.account.uid",
+            "value": "(cloud_account) != null && String(cloud_account) != 'undefined' && String(cloud_account) != 'null' && String(cloud_account) != '-' && String(cloud_account) != '' ? (cloud_account) : undefined"
+          },
+          {
+            "name": "cloud.provider",
+            "value": "('AWS') != null && String('AWS') != 'undefined' && String('AWS') != 'null' && String('AWS') != '-' && String('AWS') != '' ? ('AWS') : undefined"
+          },
+          {
+            "name": "resource.name",
+            "value": "(resource_name) != null && String(resource_name) != 'undefined' && String(resource_name) != 'null' && String(resource_name) != '-' && String(resource_name) != '' ? (resource_name) : undefined"
+          },
+          {
+            "name": "resource.type",
+            "value": "(resource_type) != null && String(resource_type) != 'undefined' && String(resource_type) != 'null' && String(resource_type) != '-' && String(resource_type) != '' ? (resource_type) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '' ? (event_uid) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '' ? ('1.4.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "('CloudTrail') != null && String('CloudTrail') != 'undefined' && String('CloudTrail') != 'null' && String('CloudTrail') != '-' && String('CloudTrail') != '' ? ('CloudTrail') : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "('AWS') != null && String('AWS') != 'undefined' && String('AWS') != 'null' && String('AWS') != '-' && String('AWS') != '' ? ('AWS') : undefined"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "(event_version) != null && String(event_version) != 'undefined' && String(event_version) != 'null' && String(event_version) != '-' && String(event_version) != '' ? (event_version) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws_cloudtrail:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "status_id",
+          "status_id.*",
+          "status",
+          "status.*",
+          "api",
+          "api.*",
+          "actor",
+          "actor.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "http_request",
+          "http_request.*",
+          "cloud",
+          "cloud.*",
+          "resource",
+          "resource.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 API Activity fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "warn",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "actor.session.is_mfa",
+        "issue": "OCSF field \"actor.session.is_mfa\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "actor.user.arn",
+        "issue": "userIdentity.arn is present in every source event but never mapped to actor.user.uid_alt or actor.user.name (for IAMUser events, name should be userName not arn, but arn is dropped entirely)",
+        "example": "Source has arn:aws:iam::123456789012:user/Alice — not present anywhere in output actor.user",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "resources",
+        "issue": "Source events contain an array of resources but only the first resource (AWS::S3::Bucket) is mapped; the second resource (AWS::S3::Object) is silently dropped. OCSF expects resources as an array.",
+        "example": "Source: [{type:AWS::S3::Bucket,...},{type:AWS::S3::Object,ARN:arn:aws:s3:::my-example-bucket/test_file_1.txt}] — output resource:{name:arn:aws:s3:::my-example-bucket,type:AWS::S3::Bucket} only",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "resources",
+        "issue": "OCSF uses 'resources' as an array field; pipeline outputs a singular 'resource' object, which is structurally wrong for OCSF 1.4 API Activity class",
+        "example": "Output: resource:{name:...,type:...} instead of resources:[{uid:...,type:...}]",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "unmapped_output",
+        "issue": "Output event 5 (RunInstances) is truncated/incomplete in the provided output — the JSON is cut off mid-object, indicating a pipeline or serialization error",
+        "example": "Event 5 ends with 'provider': 'AWS' }, with no class_uid, time, or closing braces",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "actor.user.name",
+        "issue": "For AWSService identity type (event 4, PutLogEvents), actor.user.name is mapped to the arn field value rather than the invokedBy service name or a meaningful identifier",
+        "example": "Source: principalId=logs.us-east-1.amazonaws.com, arn=arn:aws:iam::123456789012:role/AWS-CloudTrail-Logs-Role — output name: arn:aws:iam::123456789012:role/AWS-CloudTrail-Logs-Role",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "class_uid / category_uid",
+        "issue": "ConsoleLogin (event 3) is mapped to class_uid 3002 (Account Change) but should be class_uid 3001 (Authentication) per OCSF. ConsoleLogin is an authentication event.",
+        "example": "eventType=AwsConsoleSignIn, eventName=ConsoleLogin mapped to class_uid:3002, type_uid:300201 — should be 3001 / 300101",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "api.response",
+        "issue": "responseElements is present in multiple source events but never mapped to api.response in any output event",
+        "example": "Event 3: responseElements:{ConsoleLogin:Success} — not in output. Event 4: responseElements:{nextSequenceToken:...} — not in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "additionalEventData",
+        "issue": "additionalEventData fields (SignatureVersion, CipherSuite, bytesTransferredIn/Out, AuthenticationMethod, MFAUsed) present in source but not mapped to any OCSF field (e.g., tls.cipher, network_traffic.bytes_in/out)",
+        "example": "Event 1: additionalEventData.bytesTransferredIn:1024, CipherSuite:ECDHE-RSA-AES128-GCM-SHA256 — absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "actor.session.mfa",
+        "issue": "sessionContext.attributes.mfaAuthenticated is present in event 3 (Bob/ConsoleLogin) but not mapped to actor.session.mfa_status or equivalent",
+        "example": "Source: sessionContext.attributes.mfaAuthenticated:false — actor.session:{} in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "actor.session.created_time",
+        "issue": "sessionContext.attributes.creationDate present in event 3 but not mapped to actor.session.created_time",
+        "example": "Source: creationDate:2025-07-10T14:55:00Z — not in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "api.request.data / unmapped requestParameters",
+        "issue": "requestParameters fields (bucketName, key, imageId, instanceType, userName, logGroupName, etc.) are present in all source events but not mapped to api.request.data or individual OCSF target fields",
+        "example": "Event 5: requestParameters:{imageId:ami-0abcdef1234567890,instanceType:t2.micro} — not in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "actor.user.type",
+        "issue": "OCSF actor.user.type_id is a numeric enum; pipeline outputs a raw string type value (IAMUser, Root, AWSService) without the required type_id numeric mapping",
+        "example": "Output: actor.user.type:IAMUser — OCSF requires type_id as integer alongside type string",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "activity_id",
+        "issue": "PutLogEvents (event 4) is a write operation (readOnly:false) but is mapped to activity_id:1 same as PutObject; the activity_id mapping logic may not correctly differentiate all operations",
+        "example": "Event 4 PutLogEvents: activity_id:1 (Create) — may be acceptable but warrants review",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "actor.session",
+        "issue": "actor.session is present but always empty ({}) even when no session data exists; should be omitted if empty per OCSF recommendations",
+        "example": "actor.session:{} across all events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "resource",
+        "issue": "resource is present but empty ({}) for events with no resources (events 3, 4); should be omitted if empty",
+        "example": "Event 3 ConsoleLogin: resource:{}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "api.request",
+        "issue": "ConsoleLogin event (event 3) has no requestID in source, so api.request:{} is empty; should be omitted",
+        "example": "Event 3: api.request:{}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "metadata.profiles / metadata.labels",
+        "issue": "eventType (AwsApiCall, AwsConsoleSignIn) from source is not captured in metadata.labels or profiles array",
+        "example": "Source eventType:AwsConsoleSignIn — not reflected in metadata",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "actor.session.is_mfa"
+    ],
+    "emptyFields": [],
+    "summary": "The pipeline produces a broadly recognizable OCSF skeleton with correct timestamps, cloud metadata, basic actor/api/src_endpoint fields, and appropriate class_uid differentiation for most event types. However, it has several high-severity issues: the resources array is flattened to a single object losing multi-resource events, ConsoleLogin is misclassified as Account Change (3002) instead of Authentication (3001), event 5 output is truncated/incomplete, and significant source fields (responseElements, requestParameters, additionalEventData, userIdentity.arn, session context) are entirely dropped. The actor.session object is always empty rather than omitted, and OCSF-required numeric type_id fields for user type are missing."
+  }
+}

@@ -1,0 +1,1743 @@
+{
+  "key": "crowdstrike_falcon::ocsf",
+  "sourcetype": "crowdstrike_falcon",
+  "dest_format": "ocsf",
+  "score": 82,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:03.423Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "crowdstrike_falcon to OCSF pipeline — full remediation pass."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Extract CrowdStrike Falcon JSON fields"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Flatten nested source objects into working fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_src_hostname",
+            "value": "host_info ? host_info.hostname : undefined"
+          },
+          {
+            "name": "_src_local_ip",
+            "value": "host_info ? host_info.local_ip : undefined"
+          },
+          {
+            "name": "_src_external_ip",
+            "value": "host_info ? host_info.external_ip : undefined"
+          },
+          {
+            "name": "_src_mac",
+            "value": "host_info ? host_info.mac_address : undefined"
+          },
+          {
+            "name": "_src_os_version",
+            "value": "host_info ? host_info.os_version : undefined"
+          },
+          {
+            "name": "_src_agent_version",
+            "value": "host_info ? host_info.agent_version : undefined"
+          },
+          {
+            "name": "_net_src_ip",
+            "value": "network ? network.src_ip : undefined"
+          },
+          {
+            "name": "_net_dst_ip",
+            "value": "network ? network.dst_ip : undefined"
+          },
+          {
+            "name": "_net_dst_port",
+            "value": "network ? network.dst_port : undefined"
+          },
+          {
+            "name": "_net_protocol",
+            "value": "network ? network.protocol : undefined"
+          },
+          {
+            "name": "_net_bytes_in",
+            "value": "network ? network.bytes_in : undefined"
+          },
+          {
+            "name": "_net_bytes_out",
+            "value": "network ? network.bytes_out : undefined"
+          },
+          {
+            "name": "_proc_name",
+            "value": "process ? process.name : undefined"
+          },
+          {
+            "name": "_proc_pid",
+            "value": "process ? process.pid : undefined"
+          },
+          {
+            "name": "_proc_cmd",
+            "value": "process ? process.command_line : undefined"
+          },
+          {
+            "name": "_proc_sha256",
+            "value": "process ? process.sha256 : undefined"
+          },
+          {
+            "name": "_proc_sha1",
+            "value": "process ? process.sha1 : undefined"
+          },
+          {
+            "name": "_proc_md5",
+            "value": "process ? process.md5 : undefined"
+          },
+          {
+            "name": "_proc_parent",
+            "value": "process ? process.parent_process : undefined"
+          },
+          {
+            "name": "_proc_parent_pid",
+            "value": "process ? process.parent_pid : undefined"
+          },
+          {
+            "name": "_proc_grandparent",
+            "value": "process ? process.grandparent_process : undefined"
+          },
+          {
+            "name": "_auth_attempt_number",
+            "value": "additional_info ? additional_info.attempt_number : undefined"
+          },
+          {
+            "name": "_auth_lockout_threshold",
+            "value": "additional_info ? additional_info.lockout_threshold : undefined"
+          },
+          {
+            "name": "_add_reason",
+            "value": "additional_info ? additional_info.reason : undefined"
+          },
+          {
+            "name": "_add_ticket",
+            "value": "additional_info ? additional_info.ticket_id : undefined"
+          },
+          {
+            "name": "_chg_field",
+            "value": "changes && changes[0] ? changes[0].field : undefined"
+          },
+          {
+            "name": "_chg_old",
+            "value": "changes && changes[0] ? changes[0].old_value : undefined"
+          },
+          {
+            "name": "_chg_new",
+            "value": "changes && changes[0] ? changes[0].new_value : undefined"
+          }
+        ]
+      },
+      "description": "Flatten nested source fields into working variables"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Compute OCSF class/category/activity/type UIDs per event_type ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "event_type == 'DetectionSummaryEvent' ? 2004 : event_type == 'AuthActivityAuditEvent' ? 3002 : event_type == 'UserActivityAuditEvent' ? 3005 : event_type == 'IncidentSummaryEvent' ? 2001 : 4001"
+          },
+          {
+            "name": "class_name",
+            "value": "event_type == 'DetectionSummaryEvent' ? 'Detection Finding' : event_type == 'AuthActivityAuditEvent' ? 'Authentication' : event_type == 'UserActivityAuditEvent' ? 'User Access Management' : event_type == 'IncidentSummaryEvent' ? 'Incident Finding' : 'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "event_type == 'DetectionSummaryEvent' ? 2 : event_type == 'AuthActivityAuditEvent' ? 3 : event_type == 'UserActivityAuditEvent' ? 3 : event_type == 'IncidentSummaryEvent' ? 2 : 4"
+          },
+          {
+            "name": "category_name",
+            "value": "event_type == 'DetectionSummaryEvent' ? 'Findings' : event_type == 'AuthActivityAuditEvent' ? 'Identity & Access Management' : event_type == 'UserActivityAuditEvent' ? 'Identity & Access Management' : event_type == 'IncidentSummaryEvent' ? 'Findings' : 'Network Activity'"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_type == 'AuthActivityAuditEvent' ? (result == 'success' ? 1 : result == 'failure' ? 2 : 1) : event_type == 'UserActivityAuditEvent' ? 3 : 1"
+          },
+          {
+            "name": "activity_name",
+            "value": "event_type == 'AuthActivityAuditEvent' ? (result == 'success' ? 'Logon' : result == 'failure' ? 'Logon Failed' : 'Logon') : event_type == 'UserActivityAuditEvent' ? 'Update' : 'Create'"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 90 ? 6 : severity == 70 ? 4 : severity == 50 ? 3 : severity == 30 ? 2 : severity == 10 ? 1 : event_type == 'AuthActivityAuditEvent' ? (result == 'failure' ? 3 : 1) : 0"
+          },
+          {
+            "name": "severity",
+            "value": "severity_id == 6 ? 'Critical' : severity_id == 5 ? 'Fatal' : severity_id == 4 ? 'High' : severity_id == 3 ? 'Medium' : severity_id == 2 ? 'Low' : severity_id == 1 ? 'Informational' : 'Unknown'"
+          }
+        ]
+      },
+      "description": "Route event_type to correct OCSF class and compute IDs"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "class_uid * 100 + activity_id"
+          },
+          {
+            "name": "type_name",
+            "value": "class_name + ': ' + activity_name"
+          }
+        ]
+      },
+      "description": "Compute type_uid = class_uid * 100 + activity_id"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Map time ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "timestamp ? new Date(String(timestamp)).getTime() : 0"
+          },
+          {
+            "name": "_time",
+            "value": "time > 0 ? time / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Map timestamp to OCSF time (epoch ms)"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 5: Map metadata object ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "composite_id || cid"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "cid"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "event_type"
+          },
+          {
+            "name": "metadata.logged_time",
+            "value": "time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Falcon'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'CrowdStrike'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "_src_agent_version || 'unknown'"
+          }
+        ]
+      },
+      "description": "Populate metadata object"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 6: Map device object ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.hostname",
+            "value": "_src_hostname"
+          },
+          {
+            "name": "device.ip",
+            "value": "_src_local_ip"
+          },
+          {
+            "name": "device.mac",
+            "value": "_src_mac"
+          },
+          {
+            "name": "device.os",
+            "value": "{}"
+          },
+          {
+            "name": "device.os.name",
+            "value": "_src_os_version"
+          },
+          {
+            "name": "device.os.type_id",
+            "value": "_src_os_version && /windows/i.test(String(_src_os_version)) ? 100 : _src_os_version && /linux/i.test(String(_src_os_version)) ? 200 : _src_os_version && /mac/i.test(String(_src_os_version)) ? 300 : 0"
+          },
+          {
+            "name": "device.os.type",
+            "value": "device.os.type_id == 100 ? 'Windows' : device.os.type_id == 200 ? 'Linux' : device.os.type_id == 300 ? 'macOS' : 'Unknown'"
+          }
+        ]
+      },
+      "description": "Populate device object from host_info"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 7: Map actor.user object ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user_name"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "user_id"
+          },
+          {
+            "name": "actor.user.ip",
+            "value": "user_ip"
+          }
+        ]
+      },
+      "description": "Populate actor.user from source user fields"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 8: Map network endpoint objects (all event types) ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "_net_src_ip || user_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "_net_src_ip ? 0 : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "_net_dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "_net_dst_port ? Number(_net_dst_port) : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "_net_protocol"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "0"
+          },
+          {
+            "name": "connection_info.direction",
+            "value": "'Unknown'"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "_net_bytes_in ? Number(_net_bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "_net_bytes_out ? Number(_net_bytes_out) : undefined"
+          }
+        ]
+      },
+      "description": "Populate network endpoint, connection_info, traffic objects"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 9: Map process object (DetectionSummaryEvent) ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_type == 'DetectionSummaryEvent'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "process",
+            "value": "{}"
+          },
+          {
+            "name": "process.name",
+            "value": "_proc_name"
+          },
+          {
+            "name": "process.pid",
+            "value": "_proc_pid ? Number(_proc_pid) : undefined"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "_proc_cmd"
+          },
+          {
+            "name": "process.file",
+            "value": "{}"
+          },
+          {
+            "name": "process.file.name",
+            "value": "_proc_name"
+          },
+          {
+            "name": "process.file.path",
+            "value": "file_path"
+          },
+          {
+            "name": "process.file.hashes",
+            "value": "[]"
+          },
+          {
+            "name": "process.file.hash",
+            "value": "{}"
+          },
+          {
+            "name": "process.file.hash.sha256",
+            "value": "_proc_sha256"
+          },
+          {
+            "name": "process.file.hash.sha1",
+            "value": "_proc_sha1"
+          },
+          {
+            "name": "process.file.hash.md5",
+            "value": "_proc_md5"
+          },
+          {
+            "name": "process.parent_process",
+            "value": "{}"
+          },
+          {
+            "name": "process.parent_process.name",
+            "value": "_proc_parent"
+          },
+          {
+            "name": "process.parent_process.pid",
+            "value": "_proc_parent_pid ? Number(_proc_parent_pid) : undefined"
+          }
+        ]
+      },
+      "description": "Populate process object for DetectionSummaryEvent"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 10: Map finding object (DetectionSummaryEvent) ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_type == 'DetectionSummaryEvent'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "finding",
+            "value": "{}"
+          },
+          {
+            "name": "finding.uid",
+            "value": "detection_id"
+          },
+          {
+            "name": "finding.title",
+            "value": "detection_name"
+          },
+          {
+            "name": "finding.desc",
+            "value": "detection_name"
+          },
+          {
+            "name": "finding.types",
+            "value": "[technique_name || 'Unknown']"
+          },
+          {
+            "name": "finding.created_time",
+            "value": "time"
+          },
+          {
+            "name": "finding.status",
+            "value": "status"
+          },
+          {
+            "name": "finding.status_id",
+            "value": "status == 'new' ? 1 : status == 'in_progress' ? 2 : status == 'closed' ? 3 : 0"
+          },
+          {
+            "name": "attacks",
+            "value": "[]"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.pattern_id",
+            "value": "pattern_id"
+          },
+          {
+            "name": "unmapped.composite_id",
+            "value": "composite_id"
+          },
+          {
+            "name": "unmapped.assigned_to_uid",
+            "value": "assigned_to_uid"
+          },
+          {
+            "name": "unmapped.sha256_file",
+            "value": "sha256_file"
+          }
+        ]
+      },
+      "description": "Populate finding object for DetectionSummaryEvent"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 11: Map AuthActivityAuditEvent fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_type == 'AuthActivityAuditEvent'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "auth_protocol",
+            "value": "service_name"
+          },
+          {
+            "name": "is_mfa",
+            "value": "two_factor == 'true' ? true : false"
+          },
+          {
+            "name": "service",
+            "value": "{}"
+          },
+          {
+            "name": "service.name",
+            "value": "service_name"
+          },
+          {
+            "name": "logon_type_id",
+            "value": "0"
+          },
+          {
+            "name": "status",
+            "value": "result == 'success' ? 'Success' : result == 'failure' ? 'Failure' : 'Unknown'"
+          },
+          {
+            "name": "status_id",
+            "value": "result == 'success' ? 1 : result == 'failure' ? 2 : 0"
+          },
+          {
+            "name": "status_detail",
+            "value": "failure_reason"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.audit_type",
+            "value": "audit_type"
+          },
+          {
+            "name": "unmapped.session_id",
+            "value": "session_id"
+          },
+          {
+            "name": "unmapped.api_client_id",
+            "value": "api_client_id"
+          },
+          {
+            "name": "unmapped.attempt_number",
+            "value": "_auth_attempt_number"
+          },
+          {
+            "name": "unmapped.lockout_threshold",
+            "value": "_auth_lockout_threshold"
+          }
+        ]
+      },
+      "description": "Map AuthActivityAuditEvent to OCSF Authentication class"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 12: Map UserActivityAuditEvent fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_type == 'UserActivityAuditEvent'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "status",
+            "value": "result == 'success' ? 'Success' : result == 'failure' ? 'Failure' : 'Unknown'"
+          },
+          {
+            "name": "status_id",
+            "value": "result == 'success' ? 1 : result == 'failure' ? 2 : 0"
+          },
+          {
+            "name": "user",
+            "value": "{}"
+          },
+          {
+            "name": "user.name",
+            "value": "user_name"
+          },
+          {
+            "name": "user.ip",
+            "value": "user_ip"
+          },
+          {
+            "name": "policy",
+            "value": "{}"
+          },
+          {
+            "name": "policy.name",
+            "value": "target_object"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.action",
+            "value": "action"
+          },
+          {
+            "name": "unmapped.target_object",
+            "value": "target_object"
+          },
+          {
+            "name": "unmapped.session_id",
+            "value": "session_id"
+          },
+          {
+            "name": "unmapped.api_client_id",
+            "value": "api_client_id"
+          },
+          {
+            "name": "unmapped.change_field",
+            "value": "_chg_field"
+          },
+          {
+            "name": "unmapped.change_old_value",
+            "value": "_chg_old"
+          },
+          {
+            "name": "unmapped.change_new_value",
+            "value": "_chg_new"
+          },
+          {
+            "name": "unmapped.reason",
+            "value": "_add_reason"
+          },
+          {
+            "name": "unmapped.ticket_id",
+            "value": "_add_ticket"
+          }
+        ]
+      },
+      "description": "Map UserActivityAuditEvent to OCSF User Access Management class"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 13: Map IncidentSummaryEvent fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_type == 'IncidentSummaryEvent'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "finding",
+            "value": "{}"
+          },
+          {
+            "name": "finding.uid",
+            "value": "incident_id"
+          },
+          {
+            "name": "finding.title",
+            "value": "name"
+          },
+          {
+            "name": "finding.desc",
+            "value": "description"
+          },
+          {
+            "name": "finding.created_time",
+            "value": "start_time ? new Date(String(start_time)).getTime() : time"
+          },
+          {
+            "name": "finding.status",
+            "value": "status"
+          },
+          {
+            "name": "finding.status_id",
+            "value": "status == 'open' ? 1 : status == 'closed' ? 3 : 0"
+          },
+          {
+            "name": "finding.score",
+            "value": "fine_score ? Number(fine_score) : undefined"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.incident_id",
+            "value": "incident_id"
+          },
+          {
+            "name": "unmapped.assigned_to",
+            "value": "assigned_to"
+          },
+          {
+            "name": "unmapped.hosts",
+            "value": "hosts"
+          },
+          {
+            "name": "unmapped.techniques",
+            "value": "techniques"
+          },
+          {
+            "name": "unmapped.detection_ids",
+            "value": "detection_ids"
+          },
+          {
+            "name": "unmapped.users_involved",
+            "value": "users_involved"
+          },
+          {
+            "name": "unmapped.end_time",
+            "value": "end_time"
+          }
+        ]
+      },
+      "description": "Map IncidentSummaryEvent to OCSF Incident Finding class"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 14: Finalize sourcetype ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'crowdstrike_falcon:ocsf'"
+          }
+        ]
+      },
+      "description": "Set sourcetype"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 15: Remove raw/intermediate fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "host_info",
+          "network",
+          "process",
+          "changes",
+          "additional_info",
+          "LocalAddressIP4",
+          "LocalAddressIP6",
+          "RemoteAddressIP4",
+          "RemoteAddressIP6",
+          "LocalPort",
+          "RemotePort",
+          "Protocol",
+          "ConnectionDirection",
+          "ConnectionFlags",
+          "aid",
+          "event_simpleName",
+          "ContextProcessId",
+          "ContextTimeStamp",
+          "event_platform",
+          "aip",
+          "id",
+          "timestamp",
+          "cid",
+          "event_type",
+          "user_name",
+          "user_id",
+          "user_ip",
+          "severity_name",
+          "technique",
+          "technique_name",
+          "tactic",
+          "file_path",
+          "detection_id",
+          "detection_name",
+          "pattern_id",
+          "status",
+          "assigned_to_uid",
+          "composite_id",
+          "sha256_file",
+          "result",
+          "failure_reason",
+          "service_name",
+          "audit_type",
+          "session_id",
+          "two_factor",
+          "api_client_id",
+          "action",
+          "target_object",
+          "incident_id",
+          "name",
+          "description",
+          "start_time",
+          "end_time",
+          "assigned_to",
+          "hosts",
+          "techniques",
+          "detection_ids",
+          "users_involved",
+          "fine_score",
+          "vendor",
+          "product",
+          "version",
+          "log_time",
+          "_src_hostname",
+          "_src_local_ip",
+          "_src_external_ip",
+          "_src_mac",
+          "_src_os_version",
+          "_src_agent_version",
+          "_net_src_ip",
+          "_net_dst_ip",
+          "_net_dst_port",
+          "_net_protocol",
+          "_net_bytes_in",
+          "_net_bytes_out",
+          "_proc_name",
+          "_proc_pid",
+          "_proc_cmd",
+          "_proc_sha256",
+          "_proc_sha1",
+          "_proc_md5",
+          "_proc_parent",
+          "_proc_parent_pid",
+          "_proc_grandparent",
+          "_auth_attempt_number",
+          "_auth_lockout_threshold",
+          "_add_reason",
+          "_add_ticket",
+          "_chg_field",
+          "_chg_old",
+          "_chg_new"
+        ]
+      },
+      "description": "Remove raw and intermediate working fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "crowdstrike_falcon_ocsf",
+    "destFormat": "ocsf",
+    "score": 62,
+    "band": "warn",
+    "sampleFormatOk": true,
+    "sampleFormatNote": "Authentic CrowdStrike Falcon event stream with realistic DetectionSummaryEvent, AuthActivityAuditEvent, UserActivityAuditEvent, and IncidentSummaryEvent structures including proper detection IDs, MITRE technique references, and host/process telemetry.",
+    "outputFormatOk": false,
+    "findings": [
+      {
+        "severity": "high",
+        "field": "process",
+        "issue": "Process information (name, pid, command_line, sha256, sha1, md5, parent_process, parent_pid) is entirely absent from Detection Finding outputs — OCSF requires process object under 'process' for Detection Finding class. All process fields from input are dropped.",
+        "example": "Input has process.name=powershell.exe, pid=4821, command_line with encoded payload — none appear in output event 1"
+      },
+      {
+        "severity": "high",
+        "field": "attacks",
+        "issue": "attacks array is always empty [] despite MITRE technique, technique_name, and tactic being present in every DetectionSummaryEvent. OCSF Detection Finding expects attacks[].technique.uid (e.g. T1059.001), attacks[].technique.name, and attacks[].tactic.name.",
+        "example": "Input: technique='T1059.001', tactic='Execution' → output: attacks:[]"
+      },
+      {
+        "severity": "high",
+        "field": "file",
+        "issue": "file_path is present in every DetectionSummaryEvent but no 'file' object is mapped in output. OCSF Detection Finding supports a file object; this value is silently dropped.",
+        "example": "Input file_path='C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' absent from output event 1"
+      },
+      {
+        "severity": "high",
+        "field": "finding.status_id",
+        "issue": "finding.status_id=2 is mapped for 'in_progress' but OCSF Detection Finding status enums are: 0=Unknown,1=New,2=In Progress,3=Suppressed,4=Resolved. 'true_positive' (event 7) has no valid OCSF status_id and is not mapped at all — the field would need unmapped handling or a custom extension declared.",
+        "example": "Event 7 status='true_positive' — no status_id or status in finding object visible in output snippet"
+      },
+      {
+        "severity": "high",
+        "field": "network_endpoint / src_endpoint",
+        "issue": "Detection event 3 (DLL injection) has no network block in source, yet src_endpoint and dst_endpoint are output as empty objects {}. OCSF expects these fields to be omitted or null when no data exists, not empty objects.",
+        "example": "output event 3: src_endpoint:{}, dst_endpoint:{}"
+      },
+      {
+        "severity": "high",
+        "field": "class_uid (UserActivityAuditEvent)",
+        "issue": "UserActivityAuditEvent for a policy_update action is mapped to class_uid=3005 (User Access Management). A policy configuration change is better represented by class_uid=3006 (Group Management) or more accurately class_uid=6003 (Config Change / OCSF). Using 3005 misrepresents the semantic of a prevention_policy update.",
+        "example": "Input: action='policy_update', target_object='prevention_policy:Windows_Strict' → class_uid=3005"
+      },
+      {
+        "severity": "medium",
+        "field": "metadata.uid (AuthActivityAuditEvent)",
+        "issue": "metadata.uid is set to cid ('a1b2c3d4e5f6789012345678') for auth and user activity events that have no dedicated event ID. This makes uid non-unique across events of the same cid. A derived unique ID (e.g. cid+timestamp+user) should be constructed.",
+        "example": "Events 2, 4, 8 all share metadata.uid='a1b2c3d4e5f6789012345678'"
+      },
+      {
+        "severity": "medium",
+        "field": "device.external_ip",
+        "issue": "external_ip is present in all DetectionSummaryEvent host_info blocks but is not mapped into the device object or any OCSF endpoint field.",
+        "example": "Input: host_info.external_ip='203.45.167.89' — absent from output device object"
+      },
+      {
+        "severity": "medium",
+        "field": "IncidentSummaryEvent",
+        "issue": "IncidentSummaryEvent (event 6 in input) output is not shown in the 8 pipeline output events, suggesting it may be dropped or the pipeline truncated. If dropped, incident data including fine_score=95.4, hosts list, detection_ids, users_involved, start_time are all lost.",
+        "example": "Input event 6 is IncidentSummaryEvent with incident_id='inc:a1b2c3d4e5f67890:400001' — not present in output"
+      },
+      {
+        "severity": "medium",
+        "field": "traffic",
+        "issue": "traffic object is always empty {} in all events. While many events lack byte/packet counts, this field should be omitted rather than emitted as an empty object, and where present (network block exists) basic fields should be populated.",
+        "example": "output event 1: traffic:{}"
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.direction_id",
+        "issue": "direction_id=0 (Unknown) is hardcoded for all events including those with clear outbound connections (src internal IP → dst external IP). Should be direction_id=2 (Outbound) for events with internal src and external dst.",
+        "example": "Event 1: src_ip=10.10.4.22 → dst_ip=185.220.101.47 port 443, yet direction_id=0"
+      },
+      {
+        "severity": "medium",
+        "field": "src_endpoint.port",
+        "issue": "src_endpoint.port is set to 0 for event 1 rather than being omitted. Source port is not known from the input; emitting 0 is misleading.",
+        "example": "output event 1: src_endpoint:{ip:'10.10.4.22', port:0}"
+      },
+      {
+        "severity": "medium",
+        "field": "severity_id (AuthActivityAuditEvent)",
+        "issue": "severity_id=3 (Medium) is assigned to auth failure events but CrowdStrike AuthActivityAuditEvents carry no severity field — pipeline is inferring/defaulting Medium which is undocumented behavior. Should be severity_id=0 (Unknown) or omitted.",
+        "example": "Input event 2 has no severity field → output severity_id=3, severity='Medium'"
+      },
+      {
+        "severity": "low",
+        "field": "finding.desc",
+        "issue": "finding.desc duplicates finding.title (both set to detection_name). The desc field should carry a human-readable description. Source doesn't provide a separate description, so this is acceptable but suboptimal.",
+        "example": "finding.title='MALWARE/PowerShell.Empire.C2', finding.desc='MALWARE/PowerShell.Empire.C2'"
+      },
+      {
+        "severity": "low",
+        "field": "actor.user.ip",
+        "issue": "In OCSF, user objects do not have an 'ip' field. The user_ip for auth events should be mapped to src_endpoint.ip, not actor.user.ip. It is correctly also in src_endpoint but the invalid actor.user.ip field should be removed.",
+        "example": "output event 2: actor.user.ip='192.168.1.55' — not a valid OCSF user field"
+      },
+      {
+        "severity": "low",
+        "field": "device.os.type_id",
+        "issue": "OCSF os.type_id for Windows is 100 which is correct, but all non-Windows events (auth audit) emit type_id=0 (Unknown) with no os.name even when the service context implies a known platform. Minor but creates noise.",
+        "example": "output event 2: device.os:{type_id:0, type:'Unknown'} — no platform context from source"
+      }
+    ],
+    "missingFields": [
+      "process.name / process.pid / process.command_line (present in DetectionSummaryEvent, not mapped to OCSF process object)",
+      "process.sha256 / process.sha1 / process.md5 (file hashes present in source, not mapped to OCSF file.hashes array)",
+      "process.parent_process / process.parent_pid (present in source, not mapped to actor.process.parent_process)",
+      "attacks[].technique.uid / attacks[].technique.name / attacks[].tactic.name (MITRE fields present in source, attacks always empty)",
+      "file_path (present in all DetectionSummaryEvents, not mapped to OCSF file object)",
+      "host_info.external_ip (present in all DetectionSummaryEvents, not mapped anywhere)",
+      "changes[] (field change array present in UserActivityAuditEvent event 4, not mapped to OCSF)",
+      "additional_info.mfa_method / additional_info.browser / additional_info.geo_location (present in auth success event 8, not mapped)",
+      "IncidentSummaryEvent fields: fine_score, hosts[], detection_ids[], users_involved[], start_time, end_time (event 6 either dropped or not in output)"
+    ],
+    "emptyFields": [
+      "attacks (always [])",
+      "traffic (always {})",
+      "dst_endpoint (empty {} for events without network data)",
+      "src_endpoint (empty {} for events without network data)",
+      "connection_info.direction (hardcoded Unknown/0 even when determinable)"
+    ],
+    "summary": "The pipeline correctly handles OCSF class routing for DetectionSummaryEvent (2004), AuthActivityAuditEvent (3002), and UserActivityAuditEvent (3005), and timestamps/metadata are well-formed. However, critical content fields present in the source — specifically MITRE attack mappings, process telemetry, file paths, and file hashes — are entirely dropped from output, representing significant information loss for detection-class events. The IncidentSummaryEvent appears to be missing from the output entirely, and structural issues (empty objects, invalid actor.user.ip, wrong direction_id) further reduce fidelity.",
+    "lessons": [
+      "For OCSF Detection Finding (class 2004), always map MITRE technique/tactic from CrowdStrike to attacks[].technique.uid + attacks[].tactic.name — leaving attacks:[] when the source provides T-codes is a critical data loss.",
+      "CrowdStrike DetectionSummaryEvent process block must be mapped to OCSF process object with name, pid, cmd_line, and file.hashes (sha256/sha1/md5); parent process maps to process.parent_process; these are the core forensic payload of the event.",
+      "Never emit empty objects ({}) for optional OCSF fields like src_endpoint, dst_endpoint, traffic — either populate them or omit entirely to avoid schema pollution.",
+      "When source has external_ip separate from local_ip, map external_ip to device.ip_addresses[] or a secondary endpoint field — dropping it loses network context.",
+      "metadata.uid must be unique per event; using only cid produces collisions for cid-level events (auth, audit); derive a unique ID by hashing cid+timestamp+action or concatenating available identifiers."
+    ],
+    "inputCount": 8,
+    "outputCount": 39,
+    "outputSample": [
+      {
+        "_time": 1705277002.441,
+        "severity": "Critical",
+        "class_uid": 2004,
+        "class_name": "Detection Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "severity_id": 6,
+        "type_uid": 200401,
+        "type_name": "Detection Finding: Create",
+        "time": 1705277002441,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678:ind:8a7b6c5d4e3f2a1b:100023",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "DetectionSummaryEvent",
+          "logged_time": 1705277002441,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "6.47.15801"
+          }
+        },
+        "device": {
+          "hostname": "WKSTN-FINANCE-04",
+          "ip": "10.10.4.22",
+          "mac": "00:1A:2B:3C:4D:5E",
+          "os": {
+            "name": "Windows 10 19044",
+            "type_id": 100,
+            "type": "Windows"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith",
+            "uid": "S-1-5-21-3847294719-1958404539-2892341044-1103"
+          }
+        },
+        "src_endpoint": {
+          "ip": "10.10.4.22",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "185.220.101.47",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "TCP",
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "finding": {
+          "uid": "ldt:8a7b6c5d4e3f2a1b:100023",
+          "title": "MALWARE/PowerShell.Empire.C2",
+          "desc": "MALWARE/PowerShell.Empire.C2",
+          "types": [
+            "PowerShell"
+          ],
+          "created_time": 1705277002441,
+          "status": "new",
+          "status_id": 1
+        },
+        "attacks": [],
+        "unmapped": {
+          "pattern_id": "10069",
+          "composite_id": "a1b2c3d4e5f6789012345678:ind:8a7b6c5d4e3f2a1b:100023",
+          "assigned_to_uid": ""
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705277865.112,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 2,
+        "activity_name": "Logon Failed",
+        "severity_id": 3,
+        "severity": "Medium",
+        "type_uid": 300202,
+        "type_name": "Authentication: Logon Failed",
+        "time": 1705277865112,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "AuthActivityAuditEvent",
+          "logged_time": 1705277865112,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "unknown"
+          }
+        },
+        "device": {
+          "os": {
+            "type_id": 0,
+            "type": "Unknown"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "admin@corpnet.local",
+            "ip": "192.168.1.55"
+          }
+        },
+        "src_endpoint": {
+          "ip": "192.168.1.55"
+        },
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "auth_protocol": "Falcon Console",
+        "is_mfa": false,
+        "service": {
+          "name": "Falcon Console"
+        },
+        "logon_type_id": 0,
+        "status_id": 2,
+        "status_detail": "invalid_password",
+        "unmapped": {
+          "audit_type": "authentication",
+          "session_id": "",
+          "api_client_id": "",
+          "attempt_number": 3,
+          "lockout_threshold": 5
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705278851.887,
+        "severity": "High",
+        "class_uid": 2004,
+        "class_name": "Detection Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "severity_id": 4,
+        "type_uid": 200401,
+        "type_name": "Detection Finding: Create",
+        "time": 1705278851887,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678:ind:9c8d7e6f5a4b3c2d:200045",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "DetectionSummaryEvent",
+          "logged_time": 1705278851887,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "6.47.15801"
+          }
+        },
+        "device": {
+          "hostname": "SRV-DC-01",
+          "ip": "10.0.1.5",
+          "mac": "00:50:56:AA:BB:CC",
+          "os": {
+            "name": "Windows Server 2019 17763",
+            "type_id": 100,
+            "type": "Windows"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "SYSTEM",
+            "uid": "S-1-5-18"
+          }
+        },
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "finding": {
+          "uid": "ldt:9c8d7e6f5a4b3c2d:200045",
+          "title": "SUSPICIOUS/DLL.Injection.Reflective",
+          "desc": "SUSPICIOUS/DLL.Injection.Reflective",
+          "types": [
+            "Dynamic-link Library Injection"
+          ],
+          "created_time": 1705278851887,
+          "status": "in_progress",
+          "status_id": 2
+        },
+        "attacks": [],
+        "unmapped": {
+          "pattern_id": "20033",
+          "composite_id": "a1b2c3d4e5f6789012345678:ind:9c8d7e6f5a4b3c2d:200045",
+          "assigned_to_uid": "analyst1@corpnet.local",
+          "sha256_file": "a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8"
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705279928.334,
+        "class_uid": 3005,
+        "class_name": "User Access Management",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 3,
+        "activity_name": "Update",
+        "severity_id": 0,
+        "severity": "Unknown",
+        "type_uid": 300503,
+        "type_name": "User Access Management: Update",
+        "time": 1705279928334,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "UserActivityAuditEvent",
+          "logged_time": 1705279928334,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "unknown"
+          }
+        },
+        "device": {
+          "os": {
+            "type_id": 0,
+            "type": "Unknown"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "ops_svc_acct",
+            "ip": "10.10.20.45"
+          }
+        },
+        "src_endpoint": {
+          "ip": "10.10.20.45"
+        },
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "status_id": 1,
+        "user": {
+          "name": "ops_svc_acct",
+          "ip": "10.10.20.45"
+        },
+        "policy": {
+          "name": "prevention_policy:Windows_Strict"
+        },
+        "unmapped": {
+          "action": "policy_update",
+          "target_object": "prevention_policy:Windows_Strict",
+          "session_id": "sess_7f8a9b0c1d2e3f4a",
+          "api_client_id": "cli_abc123def456",
+          "change_field": "sensor_tampering_protection",
+          "change_old_value": "enabled",
+          "change_new_value": "disabled",
+          "reason": "maintenance_window",
+          "ticket_id": ""
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705280913.209,
+        "severity": "Medium",
+        "class_uid": 2004,
+        "class_name": "Detection Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "severity_id": 3,
+        "type_uid": 200401,
+        "type_name": "Detection Finding: Create",
+        "time": 1705280913209,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678:ind:2e3f4a5b6c7d8e9f:300067",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "DetectionSummaryEvent",
+          "logged_time": 1705280913209,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "6.47.15801"
+          }
+        },
+        "device": {
+          "hostname": "LAPTOP-SALES-12",
+          "ip": "172.16.5.88",
+          "mac": "AC:DE:48:00:11:22",
+          "os": {
+            "name": "Windows 11 22621",
+            "type_id": 100,
+            "type": "Windows"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "mbrown",
+            "uid": "S-1-5-21-3847294719-1958404539-2892341044-1205"
+          }
+        },
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "finding": {
+          "uid": "ldt:2e3f4a5b6c7d8e9f:300067",
+          "title": "SUSPICIOUS/Registry.AutoRun.Persistence",
+          "desc": "SUSPICIOUS/Registry.AutoRun.Persistence",
+          "types": [
+            "Registry Run Keys / Startup Folder"
+          ],
+          "created_time": 1705280913209,
+          "status": "new",
+          "status_id": 1
+        },
+        "attacks": [],
+        "unmapped": {
+          "pattern_id": "30021",
+          "composite_id": "a1b2c3d4e5f6789012345678:ind:2e3f4a5b6c7d8e9f:300067",
+          "assigned_to_uid": ""
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705281835.667,
+        "severity": "Critical",
+        "class_uid": 2001,
+        "class_name": "Incident Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "severity_id": 6,
+        "type_uid": 200101,
+        "type_name": "Incident Finding: Create",
+        "time": 1705281835667,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "IncidentSummaryEvent",
+          "logged_time": 1705281835667,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "unknown"
+          }
+        },
+        "device": {
+          "os": {
+            "type_id": 0,
+            "type": "Unknown"
+          }
+        },
+        "actor": {
+          "user": {}
+        },
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "finding": {
+          "uid": "inc:a1b2c3d4e5f67890:400001",
+          "title": "Suspected Lateral Movement - Finance Segment",
+          "desc": "Multiple failed authentication attempts followed by successful logon and PowerShell execution detected across 3 hosts in finance subnet",
+          "created_time": 1705275900000,
+          "status": "open",
+          "status_id": 1,
+          "score": 95.4
+        },
+        "unmapped": {
+          "incident_id": "inc:a1b2c3d4e5f67890:400001",
+          "assigned_to": "soc_team@corpnet.local",
+          "hosts": [
+            "WKSTN-FINANCE-04",
+            "WKSTN-FINANCE-07",
+            "SRV-FILE-02"
+          ],
+          "techniques": [
+            "T1059.001",
+            "T1021.002",
+            "T1078"
+          ],
+          "detection_ids": [
+            "ldt:8a7b6c5d4e3f2a1b:100023",
+            "ldt:3b4c5d6e7f8a9b0c:100089",
+            "ldt:4c5d6e7f8a9b0c1d:100112"
+          ],
+          "users_involved": [
+            "jsmith",
+            "ANONYMOUS LOGON"
+          ],
+          "end_time": ""
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705282882.883,
+        "severity": "High",
+        "class_uid": 2004,
+        "class_name": "Detection Finding",
+        "category_uid": 2,
+        "category_name": "Findings",
+        "activity_id": 1,
+        "activity_name": "Create",
+        "severity_id": 4,
+        "type_uid": 200401,
+        "type_name": "Detection Finding: Create",
+        "time": 1705282882883,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678:ind:5d6e7f8a9b0c1d2e:500088",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "DetectionSummaryEvent",
+          "logged_time": 1705282882883,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "6.44.14912"
+          }
+        },
+        "device": {
+          "hostname": "SRV-FILE-02",
+          "ip": "10.0.2.15",
+          "mac": "00:50:56:BB:CC:DD",
+          "os": {
+            "name": "Windows Server 2016 14393",
+            "type_id": 100,
+            "type": "Windows"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup",
+            "uid": "S-1-5-21-3847294719-1958404539-2892341044-2001"
+          }
+        },
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "finding": {
+          "uid": "ldt:5d6e7f8a9b0c1d2e:500088",
+          "title": "CREDENTIAL/LSASS.Dump.MiniDump",
+          "desc": "CREDENTIAL/LSASS.Dump.MiniDump",
+          "types": [
+            "LSASS Memory"
+          ],
+          "created_time": 1705282882883,
+          "status": "true_positive",
+          "status_id": 0
+        },
+        "attacks": [],
+        "unmapped": {
+          "pattern_id": "40055",
+          "composite_id": "a1b2c3d4e5f6789012345678:ind:5d6e7f8a9b0c1d2e:500088",
+          "assigned_to_uid": "analyst2@corpnet.local"
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      },
+      {
+        "_time": 1705284314.001,
+        "class_uid": 3002,
+        "class_name": "Authentication",
+        "category_uid": 3,
+        "category_name": "Identity & Access Management",
+        "activity_id": 1,
+        "activity_name": "Logon",
+        "severity_id": 1,
+        "severity": "Informational",
+        "type_uid": 300201,
+        "type_name": "Authentication: Logon",
+        "time": 1705284314001,
+        "metadata": {
+          "version": "1.4.0",
+          "uid": "a1b2c3d4e5f6789012345678",
+          "tenant_uid": "a1b2c3d4e5f6789012345678",
+          "log_name": "AuthActivityAuditEvent",
+          "logged_time": 1705284314001,
+          "product": {
+            "name": "Falcon",
+            "vendor_name": "CrowdStrike",
+            "version": "unknown"
+          }
+        },
+        "device": {
+          "os": {
+            "type_id": 0,
+            "type": "Unknown"
+          }
+        },
+        "actor": {
+          "user": {
+            "name": "sysadmin@corpnet.local",
+            "ip": "10.0.0.10"
+          }
+        },
+        "src_endpoint": {
+          "ip": "10.0.0.10"
+        },
+        "dst_endpoint": {},
+        "connection_info": {
+          "direction_id": 0,
+          "direction": "Unknown"
+        },
+        "traffic": {},
+        "auth_protocol": "Falcon Console",
+        "is_mfa": true,
+        "service": {
+          "name": "Falcon Console"
+        },
+        "logon_type_id": 0,
+        "status_id": 1,
+        "status_detail": "",
+        "unmapped": {
+          "audit_type": "authentication",
+          "session_id": "sess_1a2b3c4d5e6f7a8b",
+          "api_client_id": ""
+        },
+        "sourcetype": "crowdstrike_falcon:ocsf"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "event_type",
+      "cid",
+      "detection_id",
+      "severity",
+      "severity_name",
+      "technique",
+      "technique_name",
+      "tactic",
+      "host_info",
+      "user_name",
+      "user_id",
+      "process",
+      "network",
+      "file_path",
+      "detection_name",
+      "pattern_id",
+      "status",
+      "assigned_to_uid",
+      "composite_id",
+      "user_ip",
+      "service_name",
+      "audit_type",
+      "action",
+      "result",
+      "failure_reason",
+      "session_id",
+      "two_factor",
+      "api_client_id",
+      "additional_info",
+      "sha256_file",
+      "target_object",
+      "changes",
+      "incident_id",
+      "name",
+      "description",
+      "start_time",
+      "end_time",
+      "assigned_to",
+      "hosts",
+      "techniques",
+      "detection_ids",
+      "users_involved",
+      "fine_score"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:22.441Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"detection_id\":\"ldt:8a7b6c5d4e3f2a1b:100023\",\"severity\":90,\"severity_name\":\"Critical\",\"technique\":\"T1059.001\",\"technique_name\":\"PowerShell\",\"tactic\":\"Execution\",\"host_info\":{\"hostname\":\"WKSTN-FINANCE-04\",\"local_ip\":\"10.10.4.22\",\"external_ip\":\"203.45.167.89\",\"mac_address\":\"00:1A:2B:3C:4D:5E\",\"os_version\":\"Windows 10 19044\",\"agent_version\":\"6.47.15801\"},\"user_name\":\"jsmith\",\"user_id\":\"S-1-5-21-3847294719-1958404539-2892341044-1103\",\"process\":{\"name\":\"powershell.exe\",\"pid\":4821,\"command_line\":\"powershell.exe -nop -w hidden -enc JABzAD0ATgBlAHcALQBPAGIAagBlAGMAdAAgAEkATwAuAE0AZQBtAG8AcgB5AFMAdAByAGUAYQBtACgALABbAEMAbwBuAHYAZQByAHQAXQA6ADoARgByAG8AbQBCAGEAcwBlADYANABTAHQAcgBpAG4AZwA=\",\"sha256\":\"4e2d8a3f7c1b5e9d0f6a2c8b4d7e3f1a9c5b2e8d0f4a6c3b7e1d5f9a2c4b8e6\",\"sha1\":\"a3f2e1d4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a9f0\",\"md5\":\"5f4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b\",\"parent_process\":\"explorer.exe\",\"parent_pid\":2344,\"grandparent_process\":\"userinit.exe\"},\"network\":{\"src_ip\":\"10.10.4.22\",\"dst_ip\":\"185.220.101.47\",\"dst_port\":443,\"protocol\":\"TCP\"},\"file_path\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\",\"detection_name\":\"MALWARE/PowerShell.Empire.C2\",\"pattern_id\":\"10069\",\"status\":\"new\",\"assigned_to_uid\":\"\",\"composite_id\":\"a1b2c3d4e5f6789012345678:ind:8a7b6c5d4e3f2a1b:100023\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:45.112Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"user_name\":\"admin@corpnet.local\",\"user_ip\":\"192.168.1.55\",\"service_name\":\"Falcon Console\",\"audit_type\":\"authentication\",\"action\":\"login_attempt\",\"result\":\"failure\",\"failure_reason\":\"invalid_password\",\"session_id\":\"\",\"two_factor\":\"false\",\"api_client_id\":\"\",\"additional_info\":{\"attempt_number\":3,\"lockout_threshold\":5}}",
+      "{\"timestamp\":\"2024-01-15T00:34:11.887Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"detection_id\":\"ldt:9c8d7e6f5a4b3c2d:200045\",\"severity\":70,\"severity_name\":\"High\",\"technique\":\"T1055.001\",\"technique_name\":\"Dynamic-link Library Injection\",\"tactic\":\"Defense Evasion\",\"host_info\":{\"hostname\":\"SRV-DC-01\",\"local_ip\":\"10.0.1.5\",\"external_ip\":\"72.14.205.33\",\"mac_address\":\"00:50:56:AA:BB:CC\",\"os_version\":\"Windows Server 2019 17763\",\"agent_version\":\"6.47.15801\"},\"user_name\":\"SYSTEM\",\"user_id\":\"S-1-5-18\",\"process\":{\"name\":\"svchost.exe\",\"pid\":1288,\"command_line\":\"C:\\\\Windows\\\\system32\\\\svchost.exe -k netsvcs -p -s Schedule\",\"sha256\":\"b94f2a3e8c1d5f7a9b2e4c6d8f0a2b4c6e8f0a2b4c6e8f0a2b4c6e8f0a2b4c6e\",\"sha1\":\"c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0\",\"md5\":\"d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6\",\"parent_process\":\"services.exe\",\"parent_pid\":692,\"grandparent_process\":\"wininit.exe\"},\"file_path\":\"C:\\\\Windows\\\\Temp\\\\injected.dll\",\"sha256_file\":\"a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8\",\"detection_name\":\"SUSPICIOUS/DLL.Injection.Reflective\",\"pattern_id\":\"20033\",\"status\":\"in_progress\",\"assigned_to_uid\":\"analyst1@corpnet.local\",\"composite_id\":\"a1b2c3d4e5f6789012345678:ind:9c8d7e6f5a4b3c2d:200045\"}",
+      "{\"timestamp\":\"2024-01-15T00:52:08.334Z\",\"event_type\":\"UserActivityAuditEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"user_name\":\"ops_svc_acct\",\"user_ip\":\"10.10.20.45\",\"action\":\"policy_update\",\"target_object\":\"prevention_policy:Windows_Strict\",\"result\":\"success\",\"changes\":[{\"field\":\"sensor_tampering_protection\",\"old_value\":\"enabled\",\"new_value\":\"disabled\"}],\"session_id\":\"sess_7f8a9b0c1d2e3f4a\",\"api_client_id\":\"cli_abc123def456\",\"additional_info\":{\"reason\":\"maintenance_window\",\"ticket_id\":\"\"}}",
+      "{\"timestamp\":\"2024-01-15T01:08:33.209Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"detection_id\":\"ldt:2e3f4a5b6c7d8e9f:300067\",\"severity\":50,\"severity_name\":\"Medium\",\"technique\":\"T1547.001\",\"technique_name\":\"Registry Run Keys / Startup Folder\",\"tactic\":\"Persistence\",\"host_info\":{\"hostname\":\"LAPTOP-SALES-12\",\"local_ip\":\"172.16.5.88\",\"external_ip\":\"98.22.143.71\",\"mac_address\":\"AC:DE:48:00:11:22\",\"os_version\":\"Windows 11 22621\",\"agent_version\":\"6.47.15801\"},\"user_name\":\"mbrown\",\"user_id\":\"S-1-5-21-3847294719-1958404539-2892341044-1205\",\"process\":{\"name\":\"reg.exe\",\"pid\":7744,\"command_line\":\"reg add HKCU\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run /v Updater /t REG_SZ /d C:\\\\Users\\\\mbrown\\\\AppData\\\\Roaming\\\\svcupd.exe /f\",\"sha256\":\"1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b\",\"sha1\":\"e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0\",\"md5\":\"f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6\",\"parent_process\":\"cmd.exe\",\"parent_pid\":9921,\"grandparent_process\":\"powershell.exe\"},\"file_path\":\"C:\\\\Windows\\\\System32\\\\reg.exe\",\"detection_name\":\"SUSPICIOUS/Registry.AutoRun.Persistence\",\"pattern_id\":\"30021\",\"status\":\"new\",\"assigned_to_uid\":\"\",\"composite_id\":\"a1b2c3d4e5f6789012345678:ind:2e3f4a5b6c7d8e9f:300067\"}",
+      "{\"timestamp\":\"2024-01-15T01:23:55.667Z\",\"event_type\":\"IncidentSummaryEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"incident_id\":\"inc:a1b2c3d4e5f67890:400001\",\"name\":\"Suspected Lateral Movement - Finance Segment\",\"description\":\"Multiple failed authentication attempts followed by successful logon and PowerShell execution detected across 3 hosts in finance subnet\",\"severity\":90,\"severity_name\":\"Critical\",\"status\":\"open\",\"start_time\":\"2024-01-14T23:45:00Z\",\"end_time\":\"\",\"assigned_to\":\"soc_team@corpnet.local\",\"hosts\":[\"WKSTN-FINANCE-04\",\"WKSTN-FINANCE-07\",\"SRV-FILE-02\"],\"techniques\":[\"T1059.001\",\"T1021.002\",\"T1078\"],\"detection_ids\":[\"ldt:8a7b6c5d4e3f2a1b:100023\",\"ldt:3b4c5d6e7f8a9b0c:100089\",\"ldt:4c5d6e7f8a9b0c1d:100112\"],\"users_involved\":[\"jsmith\",\"ANONYMOUS LOGON\"],\"fine_score\":95.4}",
+      "{\"timestamp\":\"2024-01-15T01:41:22.883Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"detection_id\":\"ldt:5d6e7f8a9b0c1d2e:500088\",\"severity\":70,\"severity_name\":\"High\",\"technique\":\"T1003.001\",\"technique_name\":\"LSASS Memory\",\"tactic\":\"Credential Access\",\"host_info\":{\"hostname\":\"SRV-FILE-02\",\"local_ip\":\"10.0.2.15\",\"external_ip\":\"72.14.205.33\",\"mac_address\":\"00:50:56:BB:CC:DD\",\"os_version\":\"Windows Server 2016 14393\",\"agent_version\":\"6.44.14912\"},\"user_name\":\"svc_backup\",\"user_id\":\"S-1-5-21-3847294719-1958404539-2892341044-2001\",\"process\":{\"name\":\"rundll32.exe\",\"pid\":5512,\"command_line\":\"rundll32.exe C:\\\\Windows\\\\Temp\\\\comsvcs.dll MiniDump 656 C:\\\\Users\\\\svc_backup\\\\AppData\\\\Local\\\\Temp\\\\lsass.dmp full\",\"sha256\":\"7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d\",\"sha1\":\"a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9\",\"md5\":\"b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6\",\"parent_process\":\"cmd.exe\",\"parent_pid\":3388,\"grandparent_process\":\"powershell.exe\"},\"file_path\":\"C:\\\\Windows\\\\System32\\\\rundll32.exe\",\"detection_name\":\"CREDENTIAL/LSASS.Dump.MiniDump\",\"pattern_id\":\"40055\",\"status\":\"true_positive\",\"assigned_to_uid\":\"analyst2@corpnet.local\",\"composite_id\":\"a1b2c3d4e5f6789012345678:ind:5d6e7f8a9b0c1d2e:500088\"}",
+      "{\"timestamp\":\"2024-01-15T02:05:14.001Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"a1b2c3d4e5f6789012345678\",\"user_name\":\"sysadmin@corpnet.local\",\"user_ip\":\"10.0.0.10\",\"service_name\":\"Falcon Console\",\"audit_type\":\"authentication\",\"action\":\"login_attempt\",\"result\":\"success\",\"failure_reason\":\"\",\"session_id\":\"sess_1a2b3c4d5e6f7a8b\",\"two_factor\":\"true\",\"api_client_id\":\"\",\"additional_info\":{\"mfa_method\":\"TOTP\",\"browser\":\"Chrome/120\",\"geo_location\":\"US-VA\"}}"
+    ],
+    "sourcetype": "crowdstrike_falcon"
+  }
+}

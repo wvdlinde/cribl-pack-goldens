@@ -1,0 +1,418 @@
+{
+  "key": "infoblox_dns::ocsf",
+  "sourcetype": "infoblox_dns",
+  "dest_format": "ocsf",
+  "score": 100,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T08:56:37.619Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "infoblox_dns to OCSF pipeline."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?:<(?<priority>\\d+)>)?(?<syslog_timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<hostname>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/"
+      },
+      "description": "parse_infoblox_syslog"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/client\\s+(?<client_ip>\\d{1,3}(?:\\.\\d{1,3}){3})#(?<client_port>\\d+):\\s+query:\\s+(?<query_name>\\S+)\\s+(?<query_class>\\S+)\\s+(?<query_type>\\S+)\\s+(?<query_flags>\\S+)\\s+\\((?<resolver_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\)(?:\\s+(?<rcode>\\S+))?/"
+      },
+      "description": "parse_dns_payload"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "syslog_timestamp || undefined"
+          }
+        ]
+      },
+      "description": "alias timestamp"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ref_year",
+            "value": "'2025'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4003"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "String(rcode).toUpperCase() == 'NXDOMAIN' || String(rcode).toUpperCase() == 'SERVFAIL' ? 6 : 2"
+          },
+          {
+            "name": "type_uid",
+            "value": "4003 * 100 + (String(rcode).toUpperCase() == 'NXDOMAIN' || String(rcode).toUpperCase() == 'SERVFAIL' ? 6 : 2)"
+          },
+          {
+            "name": "severity_id",
+            "value": "String(rcode).toUpperCase() == 'NXDOMAIN' || String(rcode).toUpperCase() == 'SERVFAIL' ? 3 : 1"
+          },
+          {
+            "name": "status_id",
+            "value": "rcode ? (String(rcode).toUpperCase() == 'NXDOMAIN' || String(rcode).toUpperCase() == 'SERVFAIL' ? 2 : 1) : 1"
+          },
+          {
+            "name": "status",
+            "value": "rcode ? (String(rcode).toUpperCase() == 'NXDOMAIN' || String(rcode).toUpperCase() == 'SERVFAIL' ? 'Failure' : 'Success') : 'Success'"
+          }
+        ]
+      },
+      "description": "OCSF core"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "client_ip || undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "client_port ? Number(client_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "resolver_ip || undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "53"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "'DNS'"
+          },
+          {
+            "name": "connection_info.dst_port",
+            "value": "53"
+          },
+          {
+            "name": "connection_info.src_port",
+            "value": "client_port ? Number(client_port) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "hostname || undefined"
+          },
+          {
+            "name": "device.name",
+            "value": "hostname || undefined"
+          }
+        ]
+      },
+      "description": "endpoints/device"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "query",
+            "value": "{}"
+          },
+          {
+            "name": "query.hostname",
+            "value": "query_name || undefined"
+          },
+          {
+            "name": "query.type",
+            "value": "query_type || undefined"
+          },
+          {
+            "name": "query.class",
+            "value": "query_class || undefined"
+          },
+          {
+            "name": "dns",
+            "value": "{}"
+          },
+          {
+            "name": "dns.hostname",
+            "value": "query_name || undefined"
+          },
+          {
+            "name": "dns.type",
+            "value": "query_type || undefined"
+          },
+          {
+            "name": "dns.class",
+            "value": "query_class || undefined"
+          },
+          {
+            "name": "dns.flags",
+            "value": "query_flags || undefined"
+          },
+          {
+            "name": "dns.rcode",
+            "value": "rcode ? String(rcode).toUpperCase() : 'NOERROR'"
+          }
+        ]
+      },
+      "description": "dns fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'NIOS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Infoblox'"
+          },
+          {
+            "name": "metadata.logged_time",
+            "value": "pid ? Number(pid) : undefined"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'infoblox_dns:ocsf'"
+          }
+        ]
+      },
+      "description": "metadata"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_epoch_ms",
+            "value": "log_time ? new Date(__ref_year + ' ' + String(log_time)).getTime() : undefined"
+          },
+          {
+            "name": "time",
+            "value": "_epoch_ms ? Number(_epoch_ms) : undefined"
+          },
+          {
+            "name": "_time",
+            "value": "_epoch_ms ? Number(_epoch_ms) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "timestamp anchor"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "category_uid",
+          "activity_id",
+          "type_uid",
+          "severity_id",
+          "status_id",
+          "status",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "device",
+          "device.*",
+          "query",
+          "query.*",
+          "dns",
+          "dns.*",
+          "metadata",
+          "metadata.*",
+          "time"
+        ]
+      },
+      "description": "Keep only OCSF fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "high",
+        "field": "src_endpoint / actor.session.ip",
+        "issue": "Client IP address (the querying client) is present in every raw event but is never mapped to any OCSF field. OCSF DNS Activity (4003) requires src_endpoint.ip for the client. E.g. '192.168.1.105' from event 1 is completely absent from the output.",
+        "example": "client 192.168.1.105#54321 → no src_endpoint.ip in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "src_endpoint.port",
+        "issue": "Client source port (e.g. 54321) is present in every raw event but is never mapped. OCSF src_endpoint.port should carry this value.",
+        "example": "client 192.168.1.105#54321 → no src_endpoint.port in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "dst_endpoint.ip / dns.resolver_ip",
+        "issue": "The resolver/server IP in parentheses at the end of each line (e.g. '192.168.1.1') is present in every raw event but is completely unmapped.",
+        "example": "(192.168.1.1) → no dst_endpoint.ip or equivalent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "query / dns (event 8)",
+        "issue": "IPv6 event (2001:db8::1) fails to parse: query.hostname, query.type, query.class, dns.hostname, dns.type, dns.class, dns.flags are all missing/empty. The raw data 'ipv6host.corp.local IN AAAA +' is fully present but not extracted.",
+        "example": "query: ipv6host.corp.local IN AAAA + → output query:{}, dns:{rcode:'NOERROR'}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "src_endpoint.ip (event 8)",
+        "issue": "IPv6 client address 2001:db8::1 is not mapped, same gap as IPv4 but additionally the entire event parsing fails.",
+        "example": "client 2001:db8::1#53210 → no src_endpoint in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "metadata.logged_time",
+        "issue": "metadata.logged_time is populated with the PID (12345/12346) from the named[] field instead of the actual log timestamp. This is a mis-mapping of a numeric field.",
+        "example": "named[12345] → logged_time: 12345 (should be epoch of Oct 15 08:23:14)",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "_time / time (year)",
+        "issue": "The syslog timestamp has no year; the pipeline injects __ref_year=2025 and computes _time as ~1760516594 (year ~2025-10). Oct 15 2025 epoch is ~1760516594 — this appears plausible, but the __ref_year field is an internal artifact left in the output event rather than stripped, and the computed year should be verified. If the environment is 2024, all timestamps are off by ~1 year.",
+        "example": "_time: 1760516594, __ref_year: '2025' exposed in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "observer.hostname / device.hostname",
+        "issue": "The syslog source hostname (infoblox-01, infoblox-02) is present in every raw event and should map to observer.hostname or metadata.product.host, but it is never captured.",
+        "example": "infoblox-01 named[12345] → no observer or device.hostname in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "severity_id (event 4 - badmalware.evil.ru)",
+        "issue": "Query for 'badmalware.evil.ru' is treated as severity_id:1 (Informational/Low). While threat classification requires external enrichment, no indication of elevated severity is applied even for clearly suspicious domains. This is an analysis gap though arguably not a parse defect.",
+        "example": "badmalware.evil.ru → severity_id: 1",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "__ref_year",
+        "issue": "Internal pipeline working field __ref_year is left in the output event, polluting the OCSF payload.",
+        "example": "\"__ref_year\": \"2025\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "message / raw_data",
+        "issue": "OCSF recommends preserving the original raw log in unmapped.data or raw_data. The original syslog line is entirely absent from output.",
+        "example": "No raw_data or unmapped field present",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "dns.query_type vs query object",
+        "issue": "OCSF 4003 DNS Activity uses a top-level 'query' object with 'hostname' and 'type' — the pipeline duplicates this into both 'query' and 'dns' sub-objects with identical data, which is redundant and non-standard. The canonical OCSF field is dns.query.",
+        "example": "Both query:{hostname,type,class} and dns:{hostname,type,class} present",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "category_uid",
+        "issue": "category_uid should be 4 for 'Network Activity' but OCSF DNS Activity class 4003 belongs to category 4003's parent — this is correct. However 'category_uid:4' maps to 'Network Activity' which is correct for DNS. No error but worth confirming.",
+        "example": "category_uid: 4 — acceptable",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [
+      "query.hostname (event 8 — IPv6 parse failure)",
+      "query.type (event 8)",
+      "query.class (event 8)",
+      "dns.hostname (event 8)",
+      "dns.type (event 8)",
+      "dns.class (event 8)",
+      "dns.flags (event 8)"
+    ],
+    "summary": "The pipeline correctly identifies OCSF class 4003 DNS Activity, extracts the queried hostname/type/class/flags, and handles the NXDOMAIN case with correct rcode/status/activity_id mapping. However it critically drops the client IP, client port, and resolver IP that are present in every single event — these are the most important network-layer fields for DNS activity analysis. The IPv6 client event (event 8) fails to parse entirely, and metadata.logged_time is mis-populated with the process PID rather than the log timestamp. With ~4 high-severity source values unmapped across all 8 events plus a full parse failure on event 8, the pipeline captures only a fraction of what the source provides."
+  }
+}

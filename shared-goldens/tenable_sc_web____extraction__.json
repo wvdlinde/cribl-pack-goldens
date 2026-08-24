@@ -1,0 +1,73 @@
+{
+  "key": "tenable_sc_web::__extraction__",
+  "sourcetype": "tenable_sc_web",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:31:39.170Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract common header fields (timestamp, severity, host, user, src_ip, action) and stash remaining key=value pairs into a scratch field for further KVP parsing",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+tenable_sc_web\\[(?<severity>\\w+)\\]\\s+host=(?<host>\\S+)\\s+user=(?<user>\\S+)\\s+src=(?<src_ip>\\S+)\\s+action=(?<action>\\S+)\\s+(?<__kv_rest>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "__kv_rest",
+      "disabled": false,
+      "description": "Parse remaining key=value pairs (status, reason, msg, sessionId, scanId, reportId, etc.) from the scratch field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kv_rest",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and derive a simple event_category classification from the action field",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "event_category",
+            "value": "action && action.match(/^login/) ? 'authentication' : action && action.match(/^scan_/) ? 'scan' : action && action.match(/^report_/) ? 'reporting' : action && action.match(/^(user_create|role_change)/) ? 'account_management' : action && action.match(/^plugin_update/) ? 'plugin_management' : action && action.match(/^(asset_group_create|policy_modify)/) ? 'configuration' : 'other'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set _time from the extracted ISO8601 timestamp and clean up scratch field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp) / 1000"
+          }
+        ],
+        "remove": [
+          "__kv_rest"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

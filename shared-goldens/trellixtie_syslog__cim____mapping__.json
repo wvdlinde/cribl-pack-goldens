@@ -1,0 +1,118 @@
+{
+  "key": "trellixtie_syslog::cim::__mapping__",
+  "sourcetype": "trellixtie_syslog",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:45:52.282Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst || ''"
+          },
+          {
+            "name": "user",
+            "value": "suser || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "suser || ''"
+          },
+          {
+            "name": "action",
+            "value": "act || ''"
+          },
+          {
+            "name": "object",
+            "value": "fname || ''"
+          },
+          {
+            "name": "process",
+            "value": "filePath || ''"
+          },
+          {
+            "name": "signature",
+            "value": "fileHash || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "String(signatureId || '')"
+          },
+          {
+            "name": "category",
+            "value": "name || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(severity || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "dvchost || dhost || ''"
+          },
+          {
+            "name": "dest_nt_domain",
+            "value": "dhost || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(deviceVendor || '') + ' ' + (deviceProduct || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-16)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "cs1 || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'trellixtie_syslog'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

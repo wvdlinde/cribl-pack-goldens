@@ -1,0 +1,231 @@
+{
+  "key": "aws_vpc_flow::ocsf::__mapping__",
+  "sourcetype": "aws_vpc_flow",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:08.085Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse JSON in _raw into top-level event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Populate target schema fields and remove non-target parsed fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "message != null ? message : (status_code ? 'VPC Flow Logs status ' + status_code : null)"
+          },
+          {
+            "name": "status_detail",
+            "value": "status_detail != null ? status_detail : status_code"
+          },
+          {
+            "name": "status_id",
+            "value": "status_id != null ? status_id : (status_code === 'OK' ? 1 : (status_code ? 99 : 0))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON in _raw into a temporary ocsf object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "ocsf",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map available OCSF network activity fields to the target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "status",
+            "value": "ocsf.status ? ocsf.status : (ocsf.status_code === 'OK' ? 'Success' : (ocsf.status_code ? ocsf.status_code : null))"
+          },
+          {
+            "name": "activity_id",
+            "value": "ocsf.activity_id"
+          },
+          {
+            "name": "observables",
+            "value": "ocsf.observables ? ocsf.observables : []"
+          },
+          {
+            "name": "class_uid",
+            "value": "ocsf.class_uid"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "ocsf.dst_endpoint ? ocsf.dst_endpoint : {}"
+          },
+          {
+            "name": "severity_id",
+            "value": "ocsf.severity_id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map URL details when present in the source OCSF event.",
+      "filter": "ocsf.url != null",
+      "conf": {
+        "add": [
+          {
+            "name": "url",
+            "value": "ocsf.url"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map timezone offset when present in the source OCSF event.",
+      "filter": "ocsf.timezone_offset != null",
+      "conf": {
+        "add": [
+          {
+            "name": "timezone_offset",
+            "value": "ocsf.timezone_offset"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Remove temporary parsing fields after schema mapping while preserving Cribl internal fields.",
+      "filter": "true",
+      "conf": {}
+    },
+    {
+      "id": "serde",
+      "description": "Parse the JSON event in _raw into top-level fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Populate target OCSF Network Activity fields and remove non-target parsed fields while preserving Cribl system fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "metadata ? metadata : {}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "metadata.product ? metadata.product : {}"
+          },
+          {
+            "name": "connection_info",
+            "value": "connection_info ? connection_info : {}"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "src_endpoint ? src_endpoint : {}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "source ? source : 'Amazon VPC Flowlogs'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "time ? C.Time.strftime(time/1000,'%Y-%m-%dT%H:%M:%S.%LZ') : null"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "cloud && cloud.account ? cloud.account.uid : null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "connection_info.protocol_num===6?'tcp':connection_info.protocol_num===17?'udp':connection_info.protocol_num===1?'icmp':null"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "connection_info.protocol_ver==='IPv4'?4:connection_info.protocol_ver==='IPv6'?6:0"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "src_endpoint.instance_uid && src_endpoint.instance_uid !== '-' ? 6 : 0"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "src_endpoint.interface_uid ? src_endpoint.interface_uid : null"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "cloud",
+          "dst_endpoint",
+          "traffic",
+          "time",
+          "time_dt",
+          "start_time_dt",
+          "end_time_dt",
+          "status_code",
+          "severity_id",
+          "severity",
+          "class_name",
+          "class_uid",
+          "category_name",
+          "category_uid",
+          "activity_name",
+          "activity_id",
+          "action",
+          "action_id",
+          "disposition",
+          "type_name",
+          "unmapped",
+          "observables",
+          "source",
+          "metadata.product.feature",
+          "metadata.profiles",
+          "connection_info.tcp_flags",
+          "connection_info.protocol_ver",
+          "connection_info.boundary",
+          "connection_info.direction",
+          "src_endpoint.vpc_uid",
+          "src_endpoint.subnet_uid"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

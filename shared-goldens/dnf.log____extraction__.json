@@ -1,0 +1,92 @@
+{
+  "key": "dnf.log::__extraction__",
+  "sourcetype": "dnf.log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:11:09.447Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, log level, and message from base dnf.log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<level>[A-Z]+)\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Installed|Removed|Upgraded|Erased):/)",
+      "disabled": false,
+      "description": "Extract package action and package name from Installed/Removed/Upgraded/Erased messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<pkg_action>Installed|Removed|Upgraded|Erased):\\s+(?<package>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('User ')",
+      "disabled": false,
+      "description": "Extract user, command, and source IP from user command execution messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^User (?<user>\\S+) running '(?<command>[^']+)' from (?<src_ip>[0-9.]+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes(\"repo '\")",
+      "disabled": false,
+      "description": "Extract repo name referenced in cache/signature/sync related messages",
+      "conf": {
+        "source": "message",
+        "regex": "/repo '(?<repo>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Transaction ID:')",
+      "disabled": false,
+      "description": "Extract transaction ID from transaction messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^Transaction ID:\\s+(?<transaction_id>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize dnf log level into a standard severity field",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level=='CRITICAL' ? 'critical' : level=='ERROR' ? 'error' : level=='WARNING' ? 'warning' : level=='INFO' ? 'info' : level=='DEBUG' ? 'debug' : level=='DDEBUG' ? 'debug' : level=='SUBDEBUG' ? 'debug' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "typeof pkg_action !== 'undefined' ? pkg_action.toLowerCase() : (typeof command !== 'undefined' ? 'execute' : undefined)"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

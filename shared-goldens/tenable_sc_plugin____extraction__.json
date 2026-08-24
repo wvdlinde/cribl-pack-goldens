@@ -1,0 +1,23 @@
+{
+  "key": "tenable_sc_plugin::__extraction__",
+  "sourcetype": "tenable_sc_plugin",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:00:53.368Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

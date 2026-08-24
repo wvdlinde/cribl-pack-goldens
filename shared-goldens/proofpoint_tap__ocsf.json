@@ -1,0 +1,549 @@
+{
+  "key": "proofpoint_tap::ocsf",
+  "sourcetype": "proofpoint_tap",
+  "dest_format": "ocsf",
+  "score": 100,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-10T08:10:15.799Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "proofpoint_tap to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse Proofpoint TAP JSON envelope into top-level fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "senderIP"
+          },
+          {
+            "name": "sender_email",
+            "value": "sender"
+          },
+          {
+            "name": "from_address",
+            "value": "(fromAddress && fromAddress.length > 0) ? fromAddress[0] : ''"
+          },
+          {
+            "name": "recipient_email",
+            "value": "(recipient && recipient.length > 0) ? recipient[0] : ''"
+          },
+          {
+            "name": "to_address",
+            "value": "(toAddresses && toAddresses.length > 0) ? toAddresses[0] : ''"
+          },
+          {
+            "name": "recipient_count",
+            "value": "(recipient && recipient.length > 0) ? recipient.length : 0"
+          },
+          {
+            "name": "cluster_id",
+            "value": "clusterId"
+          },
+          {
+            "name": "message_id",
+            "value": "messageId"
+          },
+          {
+            "name": "message_size",
+            "value": "messageSize"
+          },
+          {
+            "name": "timestamp",
+            "value": "messageTime"
+          }
+        ]
+      },
+      "description": "Normalize array fields to scalars and map core identity fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "threat_name",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threat : ''"
+          },
+          {
+            "name": "threat_id",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threatID : ''"
+          },
+          {
+            "name": "threat_type",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threatType : ''"
+          },
+          {
+            "name": "threat_status",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threatStatus : ''"
+          },
+          {
+            "name": "threat_time",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threatTime : ''"
+          },
+          {
+            "name": "threat_url",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap[0].threatUrl : ''"
+          },
+          {
+            "name": "threat_count",
+            "value": "(threatsInfoMap && threatsInfoMap.length > 0) ? threatsInfoMap.length : 0"
+          }
+        ]
+      },
+      "description": "Extract first threat details from threatsInfoMap array"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "(quarantineFolder && quarantineFolder !== '') ? 'quarantine' : 'allow'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "(quarantineRule && quarantineRule !== '') ? quarantineRule : 'none'"
+          },
+          {
+            "name": "direction",
+            "value": "(policyRoutes && policyRoutes.length > 0 && policyRoutes[0].match(/outbound/)) ? 'outbound' : 'inbound'"
+          },
+          {
+            "name": "url_rewritten",
+            "value": "completelyRewritten ? 'true' : 'false'"
+          },
+          {
+            "name": "quarantine_folder",
+            "value": "quarantineFolder"
+          }
+        ]
+      },
+      "description": "Derive action, direction, and vendor_action from quarantine and policy state"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "(malwareScore >= 90 || (impostorScore >= 9 && phishScore >= 80)) ? 'critical' : (phishScore >= 75 || malwareScore >= 50 || impostorScore >= 8) ? 'high' : (phishScore >= 30 || spamScore >= 50 || impostorScore >= 3) ? 'medium' : (spamScore >= 10 || phishScore > 0) ? 'low' : 'info'"
+          },
+          {
+            "name": "threat_category",
+            "value": "(quarantineFolder === 'Malware') ? 'malware' : (quarantineFolder === 'Phish' && impostorScore >= 8) ? 'bec' : (quarantineFolder === 'Phish') ? 'phishing' : (spamScore >= 50) ? 'spam' : 'clean'"
+          }
+        ]
+      },
+      "description": "Classify severity from malware/phish/impostor scores and quarantine folder"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp || threat_time || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (timestamp, threat_time) so _time reflects the source event, not pipeline processing time"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'proofpoint tap'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '' ? ('1.4.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'proofpoint_tap:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "schema-validated",
+    "findings": [
+      {
+        "severity": "high",
+        "field": "email/*",
+        "issue": "OCSF class_uid 4001 is Email Activity — the entire email object is missing. No from, to, subject, message_id, size, reply_to, or any email-specific fields mapped despite all being present in source.",
+        "example": "source has subject='URGENT: Outstanding Invoice #INV-2024-8821', recipient=['cfo@targetcorp.com'], sender='billing@fakeinvoice-domain.ru' — none appear in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "severity_id",
+        "issue": "severity_id is null across all events despite rich scoring data (phishScore, malwareScore, impostorScore, spamScore) available to derive a severity. OCSF requires a valid severity_id integer.",
+        "example": "event 1: phishScore=95, malwareScore=100 → should map to severity_id 5 (Critical) or similar; output has null",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "threats / threatsInfoMap",
+        "issue": "threatsInfoMap with threat details (threatID, threatType, threatStatus, threatUrl, threat value) is completely dropped. This is the primary threat intelligence payload of TAP events.",
+        "example": "source: threatsInfoMap=[{threat:'http://fakeinvoice-domain.ru/pay/8821', threatID:'abc123def456', threatType:'url', threatStatus:'active'}] — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "actor.user / src email identity",
+        "issue": "actor.user is an empty object. sender email address and fromAddress are present in source and should populate actor.user.email_addr at minimum.",
+        "example": "source sender='billing@fakeinvoice-domain.ru' → actor.user.email_addr missing",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "dst_endpoint / recipient",
+        "issue": "dst_endpoint is empty. recipient/toAddresses are present in source and should map to dst_endpoint or email.to fields.",
+        "example": "source recipient=['cfo@targetcorp.com'] → dst_endpoint={} in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "quarantineFolder / quarantineRule / disposition",
+        "issue": "Quarantine disposition data (quarantineFolder, quarantineRule) is entirely dropped. These map to OCSF disposition or action fields and are critical for email security events.",
+        "example": "source quarantineFolder='Phish', quarantineRule='phish_high_confidence' — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "id / uid",
+        "issue": "The Proofpoint event UUID (id field) is not mapped to any OCSF identifier field such as uid or metadata.uid.",
+        "example": "source id='4f9a1b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c' — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "clusterId",
+        "issue": "clusterId identifying the Proofpoint cluster is dropped, should map to metadata.product.uid or similar.",
+        "example": "source clusterId='proofpoint_hosted_us' — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "metadata.product.name",
+        "issue": "Product name is set to generic 'Security' instead of 'Targeted Attack Protection' or 'TAP' which accurately reflects Proofpoint TAP.",
+        "example": "output metadata.product.name='Security'",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "policyRoutes / modulesRun",
+        "issue": "policyRoutes and modulesRun arrays are present in all source events but not mapped to any OCSF field (e.g., policy or enrichment arrays).",
+        "example": "source policyRoutes=['default_inbound','executive_protection'], modulesRun=['pdr','sandbox','urldefense','spam'] — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "impostorScore / malwareScore / phishScore / spamScore",
+        "issue": "All four ML scoring fields from TAP are dropped. These are key risk indicators and should map to risk_score or enrichment data within OCSF.",
+        "example": "source impostorScore=9.2, phishScore=88 for BEC event — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "completelyRewritten",
+        "issue": "URL rewriting flag (completelyRewritten) dropped — relevant to action taken on the email.",
+        "example": "source completelyRewritten=true — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "xmailer / headerFrom / headerReplyTo",
+        "issue": "Email header fields (xmailer, headerFrom, headerReplyTo) present in source are not mapped.",
+        "example": "source xmailer='MailChimp', headerFrom='\"Retail News\" <newsletter@legitimate-retailer.com>' — absent in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "connection_info / traffic",
+        "issue": "connection_info and traffic are present as empty objects — these stubs add no value and should either be populated or omitted.",
+        "example": "output: connection_info={}, traffic={}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "device",
+        "issue": "device is an empty object with no mappable source data — should be omitted if nothing populates it.",
+        "example": "output: device={}",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "The pipeline extracts only the sender IP into src_endpoint and correctly sets timestamps and basic OCSF structural fields (class_uid 4001, category_uid 4). However, the vast majority of the rich Proofpoint TAP payload — email headers, recipients, subject, threat intelligence (threatsInfoMap), risk scores, quarantine disposition, event UUID, and policy routes — is entirely dropped. With OCSF class 4001 being Email Activity, the absence of any email object is a critical structural failure. Only approximately 3-4 fields out of ~30 available source fields are mapped, resulting in a very low score."
+  }
+}

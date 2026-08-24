@@ -1,0 +1,130 @@
+{
+  "key": "ncsc_cloudflare_firewall::__extraction__",
+  "sourcetype": "ncsc_cloudflare_firewall",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:05.997Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract JSON fields from Cloudflare firewall event",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from ISO8601 timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to standard schema (src_ip, dst_host, http_*, ray_id, rule_id, protocol)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "clientIP"
+          },
+          {
+            "name": "dst_host",
+            "value": "clientRequestHost"
+          },
+          {
+            "name": "http_method",
+            "value": "clientRequestMethod"
+          },
+          {
+            "name": "http_path",
+            "value": "clientRequestPath"
+          },
+          {
+            "name": "http_status",
+            "value": "edgeResponseStatus"
+          },
+          {
+            "name": "ray_id",
+            "value": "rayID"
+          },
+          {
+            "name": "rule_id",
+            "value": "ruleId"
+          },
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          }
+        ],
+        "remove": [
+          "clientIP",
+          "clientRequestHost",
+          "clientRequestMethod",
+          "clientRequestPath",
+          "edgeResponseStatus",
+          "rayID",
+          "ruleId"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action values and derive severity classification",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action.match(/block|drop/) ? 'blocked' : action.match(/allow/) ? 'allowed' : action.match(/challenge/) ? 'challenged' : action.match(/log/) ? 'logged' : action"
+          },
+          {
+            "name": "severity",
+            "value": "action.match(/block|drop/) ? 'high' : action.match(/challenge/) ? 'medium' : 'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "action",
+        "clientip",
+        "clientrequesthost",
+        "clientrequestmethod",
+        "clientrequestpath",
+        "country",
+        "edgeresponsestatus",
+        "rayid",
+        "ruleid",
+        "source",
+        "timestamp",
+        "useragent"
+      ]
+    }
+  },
+  "report": null
+}

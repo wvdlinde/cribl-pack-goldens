@@ -1,0 +1,65 @@
+{
+  "key": "sap_audit::__extraction__",
+  "sourcetype": "sap_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T04:19:43.025Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse SAP audit log key=value structure into named fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+host=(?<host>\\S+)\\s+sys=(?<sys>\\S+)\\s+client=(?<client>\\S+)\\s+event=(?<event_code>\\S+)\\s+user=(?<user>\\S+)\\s+term=(?<src_ip>\\S+)\\s+tcode=(?<tcode>\\S*)\\s+msg=\"(?<message>[^\"]*)\"\\s+severity=(?<severity>\\S+)\\s+result=(?<result>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action from result, derive IP version for src_ip (handles IPv4/IPv6 term values), and set protocol context for SAP AS ABAP audit logs",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result == 'SUCCESS' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "__ip_version",
+            "value": "src_ip.match(/:/) ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "protocol",
+            "value": "'sap'"
+          }
+        ],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "client",
+        "event",
+        "host",
+        "msg",
+        "result",
+        "severity",
+        "sys",
+        "tcode",
+        "term",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

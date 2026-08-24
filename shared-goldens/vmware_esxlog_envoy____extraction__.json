@@ -1,0 +1,96 @@
+{
+  "key": "vmware_esxlog_envoy::__extraction__",
+  "sourcetype": "vmware_esxlog_envoy",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:08:58.208Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base envoy log structure: timestamp, host, subsystem, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Envoy:\\s+\\[Originator@\\d+\\s+sub=(?<subsystem>\\S+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Info|Warning|Error):/)",
+      "disabled": false,
+      "description": "Split severity prefix (Info/Warning/Error) from message, leaving cleaned message text",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<severity>Info|Warning|Error):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/Accepted TCP connection/)",
+      "disabled": false,
+      "description": "Extract src/dst IP and port for accepted TCP connection events",
+      "conf": {
+        "source": "message",
+        "regex": "/Accepted TCP connection from (?<src_ip>\\[[0-9a-fA-F:]+\\]|[\\d\\.]+):(?<src_port>\\d+) to (?<dst_ip>\\[[0-9a-fA-F:]+\\]|[\\d\\.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^Request/)",
+      "disabled": false,
+      "description": "Extract HTTP method, path, client address, and status code from Envoy HTTP request logs",
+      "conf": {
+        "source": "message",
+        "regex": "/^Request (?<http_method>\\S+) (?<http_path>\\S+) from (?<src_ip>\\[[0-9a-fA-F:]+\\]|[\\d\\.]+):(?<src_port>\\d+) completed with status (?<status_code>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.match(/peer/) || message.match(/client/) || message.match(/user/) || message.match(/from/))",
+      "disabled": false,
+      "description": "Extract source IP/port and optional user from remaining message types (TLS failures, auth failures, rate limiting, idle connections, etc.)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:for user (?<user>\\S+) from|with peer|for client|from) (?<src_ip>\\[[0-9a-fA-F:]+\\]|[\\d\\.]+)(?::(?<src_port>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, action, and direction fields based on parsed message content and severity",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "message && message.match(/TCP/) ? 'tcp' : (http_method ? 'http' : (message && message.match(/TLS/) ? 'tls' : null))"
+          },
+          {
+            "name": "action",
+            "value": "message && message.match(/Accepted/) ? 'accepted' : (message && message.match(/failed/) ? 'failed' : (message && message.match(/completed/) ? 'completed' : (message && message.match(/Closed/) ? 'closed' : (message && message.match(/exceeded/) ? 'throttled' : (message && message.match(/reset/) ? 'reset' : 'info')))))"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && dst_ip ? 'inbound' : (src_ip ? 'inbound' : null)"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

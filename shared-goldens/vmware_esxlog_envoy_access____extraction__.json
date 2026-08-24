@@ -1,0 +1,60 @@
+{
+  "key": "vmware_esxlog_envoy_access::__extraction__",
+  "sourcetype": "vmware_esxlog_envoy_access",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:26:49.794Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Envoy access log line into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+\"(?<method>\\S+)\\s+(?<path>\\S+)\\s+HTTP\\/(?<http_version>[\\d.]+)\"\\s+(?<response_code>\\d+)\\s+(?<response_flags>\\S+)\\s+(?<bytes_received>\\d+)\\s+(?<bytes_sent>\\d+)\\s+(?<duration_ms>\\d+)\\s+(?<upstream_time_ms>\\d+)\\s+\"(?<src_ip>[^\"]+)\"\\s+\"(?<user_agent>[^\"]*)\"\\s+\"(?<request_id>[^\"]*)\"\\s+\"(?<route>[^\"]*)\"\\s+\"(?<upstream_host>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "upstream_host && upstream_host !== '-'",
+      "disabled": false,
+      "description": "Split upstream_host into dst_ip and dst_port when present",
+      "conf": {
+        "source": "upstream_host",
+        "regex": "/^(?<dst_ip>[^:]+):(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, severity, and protocol based on response code",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "action",
+            "value": "response_code>=500?'error':response_code>=400?'denied':'success'"
+          },
+          {
+            "name": "severity",
+            "value": "response_code>=500?'high':response_code>=400?'medium':'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

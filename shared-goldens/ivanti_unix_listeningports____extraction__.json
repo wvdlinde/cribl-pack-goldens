@@ -1,0 +1,72 @@
+{
+  "key": "ivanti_unix_listeningports::__extraction__",
+  "sourcetype": "ivanti_unix_listeningports",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:52:37.950Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host, process, pid)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+ivlistportd\\[(?<syslog_pid>\\d+)\\]:\\s+(?<kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key-value pairs from message body",
+      "conf": {
+        "source": "kvp_body",
+        "regex": "/severity=(?<severity>\\S+)\\s+proto=(?<protocol>\\S+)\\s+local_addr=(?<src_ip>\\S+)\\s+local_port=(?<src_port>\\d+)\\s+pid=(?<pid>\\d+)\\s+process=\"?(?<process>[^\"\\s]*)\"?\\s+user=\"?(?<user>[^\"\\s]*)\"?\\s+state=(?<state>\\S+)\\s+result=(?<action>\\S+)\\s+message=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, severity, and IPv6 detection",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : protocol"
+          },
+          {
+            "name": "is_ipv6",
+            "value": "src_ip && src_ip.indexOf(':') !== -1 ? true : false"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toUpperCase() : severity"
+          },
+          {
+            "name": "direction",
+            "value": "'listening'"
+          }
+        ],
+        "remove": [
+          "kvp_body",
+          "syslog_pid"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

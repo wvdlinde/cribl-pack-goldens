@@ -1,0 +1,106 @@
+{
+  "key": "tenable_sc_admin::__extraction__",
+  "sourcetype": "tenable_sc_admin",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:10.954Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse core Tenable SC admin log structure into named fields, capturing any trailing key=value pairs into a scratch field",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+tenable_sc_admin\\[(?<dst_host>[^\\]]+)\\]\\s+severity=(?<severity>\\S+)\\s+user=(?<user>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+action=(?<action>\\S+)\\s+status=(?<status>\\S+)\\s+message=\"(?<message>[^\"]*)\"\\s*(?<__kv_extra>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "__kv_extra && __kv_extra.length > 0",
+      "disabled": false,
+      "description": "Extract optional trailing key=value pairs (session_id, scan_id, target_user, report_id, attempts, token_id, repo_id, scanner_uuid) from scratch field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kv_extra",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from event timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and classify event outcome (success/failure) for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toUpperCase() : severity"
+          },
+          {
+            "name": "outcome",
+            "value": "status === 'success' ? 'success' : (status === 'failure' ? 'failure' : 'unknown')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Clean up scratch field used to hold unparsed trailing key-value pairs",
+      "conf": {
+        "add": [],
+        "remove": [
+          "__kv_extra"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "attempts",
+        "message",
+        "repo_id",
+        "report_id",
+        "scan_id",
+        "scanner_uuid",
+        "session_id",
+        "severity",
+        "src_ip",
+        "status",
+        "target_user",
+        "token_id",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

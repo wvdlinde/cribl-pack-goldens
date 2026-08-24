@@ -1,0 +1,76 @@
+{
+  "key": "vmware_esxlog_clusteragent::__extraction__",
+  "sourcetype": "vmware_esxlog_clusteragent",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:35:19.614Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base ClusterAgent log structure: timestamp, host, thread id, severity, component, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Clusteragent:\\s+\\[(?<thread_id>\\S+)\\s+(?<severity>\\w+)\\s+'(?<component>[^']+)'\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/[Uu]ser\\s+[\\w.@-]+/)",
+      "disabled": false,
+      "description": "Extract username referenced in authentication/configuration messages",
+      "conf": {
+        "source": "message",
+        "regex": "/[Uu]ser\\s+(?<user>[\\w.@-]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/vCenter|peer host|from\\s+\\d/)",
+      "disabled": false,
+      "description": "Extract source IPv4 address from vCenter/peer-host/auth-source references",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:vCenter|peer host|from)\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/master/)",
+      "disabled": false,
+      "description": "Extract destination master node IP/port (IPv4) or master IP (IPv6) references",
+      "conf": {
+        "source": "message",
+        "regex": "/master(?: node)?\\s+(?:(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3})(?::(?<dst_port>\\d+))?|IP\\s+(?<dst_ip6>[0-9a-fA-F:]+))/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify HA/FDM event action type based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/Authentication failure/) ? 'auth_failure' : message.match(/authenticated successfully/) ? 'auth_success' : message.match(/isolation|Network partition/) ? 'isolation' : message.match(/heartbeat/i) ? 'heartbeat' : message.match(/elected|election/i) ? 'election' : message.match(/Configuration change|configuration update/i) ? 'config_change' : message.match(/Failed to establish|Reconnected/i) ? 'connection' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,23 @@
+{
+  "key": "aws_waf::__extraction__",
+  "sourcetype": "aws_waf",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:30:19.437Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

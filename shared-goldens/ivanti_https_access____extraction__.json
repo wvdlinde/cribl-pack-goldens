@@ -1,0 +1,76 @@
+{
+  "key": "ivanti_https_access::__extraction__",
+  "sourcetype": "ivanti_https_access",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:52:25.482Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header and Ivanti key-value fields from _raw",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^\\w+\\s+\\d+\\s+[\\d:]+\\s+(?<host>\\S+)\\s+ivanti:\\s+id=(?<log_id>\\S+)\\s+time=\"(?<timestamp>[^\"]+)\"\\s+pri=(?<pri>\\d+)\\s+vpn=(?<vpn>\\S+)\\s+src=(?<src_ip>\\S+)\\s+dst=(?<dst_ip>\\S+)\\s+user=\"(?<user>[^\"]*)\"\\s+realm=\"(?<realm>[^\"]*)\"\\s+roles=\"(?<roles>[^\"]*)\"\\s+proto=(?<protocol>\\S+)\\s+op=(?<http_method>\\S+)\\s+arg=\"(?<uri_path>[^\"]*)\"\\s+result=(?<result_code>\\d+)\\s+sent=(?<bytes_sent>\\d+)\\s+rcvd=(?<bytes_received>\\d+)\\s+agent=\"(?<user_agent>[^\"]*)\"\\s+msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Detect IPv6 src_ip for correct address handling",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.match(/:/) ? 'ipv6' : 'ipv4'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action/severity based on result code and message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result_code=='200' ? 'allowed' : (result_code=='401' || result_code=='403' ? 'blocked' : (result_code=='500' ? 'error' : 'unknown'))"
+          },
+          {
+            "name": "severity",
+            "value": "pri=='2' || pri=='3' ? 'high' : (pri=='4' || pri=='5' ? 'medium' : 'low')"
+          },
+          {
+            "name": "event_category",
+            "value": "message && message.match(/authentication/i) ? 'authentication' : (message && message.match(/Suspicious|brute force|traversal/i) ? 'threat' : (message && message.match(/logged out/i) ? 'logout' : (message && message.match(/Session established/i) ? 'session' : 'general')))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive direction based on src_ip being internal or external",
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)/) ? 'inbound-internal' : 'inbound-external'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

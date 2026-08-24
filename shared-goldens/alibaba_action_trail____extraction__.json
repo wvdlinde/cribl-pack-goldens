@@ -1,0 +1,47 @@
+{
+  "key": "alibaba_action_trail::__extraction__",
+  "sourcetype": "alibaba_action_trail",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:40.274Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "acsregion",
+        "additionaleventdata",
+        "errorcode",
+        "errormessage",
+        "eventid",
+        "eventname",
+        "eventsource",
+        "eventtime",
+        "eventtype",
+        "eventversion",
+        "referencedresources",
+        "requestid",
+        "requestparameters",
+        "responseelements",
+        "servicename",
+        "sourceipaddress",
+        "useragent",
+        "useridentity"
+      ]
+    }
+  },
+  "report": null
+}

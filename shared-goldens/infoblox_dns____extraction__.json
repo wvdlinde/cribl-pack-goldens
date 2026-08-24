@@ -1,0 +1,104 @@
+{
+  "key": "infoblox_dns::__extraction__",
+  "sourcetype": "infoblox_dns",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 302,
+  "updated_at": "2026-08-04T06:01:51.860Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header: timestamp, host, process, pid, and raw message body",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>[^\\s]+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.+)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != null && message.indexOf('query:') !== -1",
+      "disabled": false,
+      "description": "Parse DNS query events: extract client IP, src_port, queried domain, query type, and resolver IP",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^client\\s+(?<src_ip>[\\d\\.a-fA-F:]+)#(?<src_port>\\d+):\\s+query:\\s+(?<query_name>[^\\s]+)\\s+IN\\s+(?<query_type>[^\\s]+)\\s+[+\\-]\\s+\\((?<resolver_ip>[^)]+)\\)/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != null && message.indexOf('DNS_RPZONE') !== -1",
+      "disabled": false,
+      "description": "Parse DNS RPZ policy block/redirect events: extract blocked domain, policy rule, and action",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/DNS_RPZONE:\\s+QNAME\\s+(?<query_name>[^\\s]+)\\s+matched policy rule\\s+(?<policy_rule>[^,]+),\\s+action\\s+(?<action>[^\\s]+)/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != null && message.indexOf('DHCP_LEASE') !== -1",
+      "disabled": false,
+      "description": "Parse DHCP lease events: extract leased IP, MAC address, and lease duration",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/DHCP_LEASE:\\s+address\\s+(?<leased_ip>[\\d\\.]+)\\s+leased to client\\s+(?<mac_address>[0-9A-Fa-f:]+)\\s+for\\s+(?<lease_seconds>\\d+)\\s+seconds/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != null && message.indexOf('AXFR') !== -1",
+      "disabled": false,
+      "description": "Parse AXFR zone transfer denial events: extract source IP and reason",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/AXFR transfer denied from\\s+(?<src_ip>[\\d\\.a-fA-F:]+):\\s+(?<reason>.+)/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify event_type, normalize action, set vendor_product, and derive severity",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "message && message.indexOf('DNS_RPZONE') !== -1 ? 'dns_rpz_policy' : message && message.indexOf('DHCP_LEASE') !== -1 ? 'dhcp_lease' : message && message.indexOf('AXFR') !== -1 ? 'axfr_denied' : message && message.indexOf('query:') !== -1 ? 'dns_query' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "action ? action : message && message.indexOf('AXFR') !== -1 ? 'denied' : message && message.indexOf('query:') !== -1 ? 'allowed' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "event_type === 'dns_rpz_policy' ? 'high' : event_type === 'axfr_denied' ? 'medium' : 'informational'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Infoblox DNS'"
+          },
+          {
+            "name": "protocol",
+            "value": "'dns'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

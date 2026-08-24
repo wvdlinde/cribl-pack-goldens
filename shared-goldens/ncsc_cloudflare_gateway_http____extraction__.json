@@ -1,0 +1,23 @@
+{
+  "key": "ncsc_cloudflare_gateway_http::__extraction__",
+  "sourcetype": "ncsc_cloudflare_gateway_http",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:26:24.333Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

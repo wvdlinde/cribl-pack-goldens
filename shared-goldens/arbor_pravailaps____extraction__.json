@@ -1,0 +1,119 @@
+{
+  "key": "arbor_pravailaps::__extraction__",
+  "sourcetype": "arbor_pravailaps",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:18:36.342Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, pid) and isolate the KVP payload for further extraction",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3} \\d{1,2} \\d{4} \\d{2}:\\d{2}:\\d{2}) (?<dst_host>\\S+) PRAVAIL_APS\\[(?<pid>\\d+)\\]:\\s*(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract SEVERITY=..., EVENT=..., SRC=..., DST=... style key-value pairs from the Pravail APS message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize extracted KVP fields into standard field names (severity, src_ip, dst_ip, ports, protocol, action, user, message)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "SEVERITY"
+          },
+          {
+            "name": "event_type",
+            "value": "EVENT"
+          },
+          {
+            "name": "src_ip",
+            "value": "SRC"
+          },
+          {
+            "name": "dst_ip",
+            "value": "DST"
+          },
+          {
+            "name": "src_port",
+            "value": "SPORT"
+          },
+          {
+            "name": "dst_port",
+            "value": "DPORT"
+          },
+          {
+            "name": "protocol",
+            "value": "PROTO ? PROTO.toUpperCase() : PROTO"
+          },
+          {
+            "name": "action",
+            "value": "ACTION ? ACTION.toUpperCase() : ACTION"
+          },
+          {
+            "name": "user",
+            "value": "USER"
+          },
+          {
+            "name": "result",
+            "value": "RESULT"
+          },
+          {
+            "name": "message",
+            "value": "EVENT + (PROTECTION ? ' on ' + PROTECTION : '') + (ATTACK_TYPE ? ' (' + ATTACK_TYPE + ')' : '')"
+          }
+        ],
+        "remove": [
+          "SEVERITY",
+          "EVENT",
+          "SRC",
+          "DST",
+          "SPORT",
+          "DPORT",
+          "PROTO",
+          "ACTION",
+          "USER",
+          "RESULT",
+          "__kvp"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive traffic direction based on whether source or destination is an internal (RFC1918/ULA) address",
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|fd[0-9a-f]{2}:)/) ? 'outbound' : (dst_ip && dst_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|fd[0-9a-f]{2}:)/) ? 'inbound' : 'unknown')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

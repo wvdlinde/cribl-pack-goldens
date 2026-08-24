@@ -1,0 +1,108 @@
+{
+  "key": "vsftpd::__extraction__",
+  "sourcetype": "vsftpd",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:57:56.828Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse vsftpd base log structure: timestamp, pid, user, status, operation, client IP",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})\\s+\\[pid\\s+(?<pid>\\d+)\\]\\s+(?:\\[(?<user>[^\\]]+)\\]\\s+)?(?:(?<status>OK|FAIL)\\s+)?(?<operation>[A-Z_]+):\\s+Client\\s+\"(?<src_ip>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "operation && (operation === 'UPLOAD' || operation === 'DOWNLOAD')",
+      "disabled": false,
+      "description": "Extract file transfer details (path, bytes, rate) for UPLOAD/DOWNLOAD events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/,\\s+\"(?<file_path>[^\"]+)\",\\s+(?<bytes_str>\\d+)\\s+bytes,\\s+(?<transfer_rate_kbps_str>[\\d.]+)Kbyte\\/sec/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, action, severity, protocol, direction and numeric fields",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? strptime(timestamp, '%a %b %d %H:%M:%S %Y') : _time"
+          },
+          {
+            "name": "event_type",
+            "value": "operation ? operation.toLowerCase() : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "status === 'OK' ? 'success' : (status === 'FAIL' ? 'failure' : (operation === 'CONNECT' ? 'connect' : 'info'))"
+          },
+          {
+            "name": "severity",
+            "value": "status === 'FAIL' ? 'warning' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'ftp'"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "dst_port",
+            "value": "21"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "direction",
+            "value": "operation === 'UPLOAD' ? 'inbound' : (operation === 'DOWNLOAD' ? 'outbound' : 'inbound')"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes_str ? Number(bytes_str) : null"
+          },
+          {
+            "name": "transfer_rate_kbps",
+            "value": "transfer_rate_kbps_str ? Number(transfer_rate_kbps_str) : null"
+          },
+          {
+            "name": "message",
+            "value": "_raw"
+          },
+          {
+            "name": "vendor",
+            "value": "'vsftpd'"
+          },
+          {
+            "name": "product",
+            "value": "'vsftpd'"
+          }
+        ],
+        "remove": [
+          "bytes_str",
+          "transfer_rate_kbps_str"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

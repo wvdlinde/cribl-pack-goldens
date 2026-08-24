@@ -1,0 +1,80 @@
+{
+  "key": "ivanti_audit_log::__extraction__",
+  "sourcetype": "ivanti_audit_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:24:18.324Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Ivanti audit log key=value structure into fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+IVANTI_AUDIT:\\s+severity=(?<severity>\\S+)\\s+event_id=(?<event_id>\\S+)\\s+category=(?<category>\\S+)\\s+user=(?<user>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+dst_ip=(?<dst_ip>\\S*)\\s+action=(?<action>\\S+)\\s+result=(?<result>\\S+)\\s+message=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from ISO8601 timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action/category into a protocol field and classify network direction",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "category=='Session' && action.match(/vpn/) ? 'ssl' : (category=='Authentication' ? 'auth' : 'n/a')"
+          },
+          {
+            "name": "direction",
+            "value": "action=='vpn_connect' || action=='login' || action=='mfa_challenge' ? 'inbound' : (action=='vpn_disconnect' ? 'outbound' : 'internal')"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to standard levels and flag security-relevant events",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_norm",
+            "value": "severity=='CRITICAL' ? 'critical' : (severity=='ERROR' ? 'error' : (severity=='WARN' ? 'warning' : 'info'))"
+          },
+          {
+            "name": "is_security_event",
+            "value": "category=='SecurityAlert' || category=='Certificate' || (category=='Authentication' && result=='failure') ? true : false"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,23 @@
+{
+  "key": "ncsc_cloudflare_ztna::__extraction__",
+  "sourcetype": "ncsc_cloudflare_ztna",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:18:46.903Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

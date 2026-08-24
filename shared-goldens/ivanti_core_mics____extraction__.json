@@ -1,0 +1,80 @@
+{
+  "key": "ivanti_core_mics::__extraction__",
+  "sourcetype": "ivanti_core_mics",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:27:03.197Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base MICS log structure: timestamp, host, severity, thread, class, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+MICS:\\s+\\[(?<severity>\\w+)\\]\\s+\\[(?<thread>[^\\]]+)\\]\\s+(?<class>\\S+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('user=')",
+      "disabled": false,
+      "description": "Extract user field from message",
+      "conf": {
+        "source": "message",
+        "regex": "/user=(?<user>[^\\s,]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('deviceId=')",
+      "disabled": false,
+      "description": "Extract deviceId field from message",
+      "conf": {
+        "source": "message",
+        "regex": "/deviceId=(?<device_id>[^\\s,]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.includes('source_ip=') || message.includes('ip='))",
+      "disabled": false,
+      "description": "Extract source IP from message (ip= or source_ip=)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:source_ip|ip)=(?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, derive _time, and classify action based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "severity",
+            "value": "severity === 'CRITICAL' ? 'critical' : severity === 'ERROR' ? 'error' : severity === 'WARN' ? 'warning' : severity === 'INFO' ? 'info' : severity"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

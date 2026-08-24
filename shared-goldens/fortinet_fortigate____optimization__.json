@@ -1,0 +1,30 @@
+{
+  "key": "fortinet_fortigate::__optimization__",
+  "sourcetype": "fortinet_fortigate",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "wlinde@cribl.io",
+  "build": 296,
+  "updated_at": "2026-08-03T11:37:54.757Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "src_ip && dest_ip && src_ip === dest_ip",
+      "disabled": true,
+      "final": true,
+      "description": "Drop local loopback traffic (src=dst) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'accept' && app === 'PING'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop health check / keepalive PING traffic (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

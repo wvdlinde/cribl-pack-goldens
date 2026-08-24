@@ -1,0 +1,78 @@
+{
+  "key": "delinea_reports::__extraction__",
+  "sourcetype": "delinea_reports",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:30:20.480Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Delinea Secret Server audit log line into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) DelineaSecretServer\\[Audit\\] EventID=(?<event_id>\\d+) User=(?<user>\\S*) Domain=(?<domain>\\S*) IPAddress=(?<src_ip>\\S+) Action=\"(?<action>[^\"]*)\" Result=(?<result>\\S+) SecretId=(?<secret_id>\\S*) SecretName=(?<secret_name>\"[^\"]*\"|) Details=\"(?<message>[^\"]*)\"$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Clean secret_name quoting and normalize action/result/severity fields",
+      "conf": {
+        "add": [
+          {
+            "name": "secret_name",
+            "value": "secret_name ? secret_name.replace(/\"/g,'') : ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase().replace(/ /g,'_') : action"
+          },
+          {
+            "name": "result",
+            "value": "result ? result.toLowerCase() : result"
+          },
+          {
+            "name": "severity",
+            "value": "result === 'failure' ? 'high' : 'info'"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.includes(':') ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : 'unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive high-level event category based on normalized action",
+      "conf": {
+        "add": [
+          {
+            "name": "category",
+            "value": "action === 'user_login' ? 'authentication' : (action === 'secret_checkout' || action === 'secret_access' ? 'secret_access' : (action === 'password_reset' || action === 'secret_password_change' ? 'credential_change' : (action === 'api_token_auth' ? 'api_auth' : (action === 'session_recording_playback' ? 'session_review' : 'other'))))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

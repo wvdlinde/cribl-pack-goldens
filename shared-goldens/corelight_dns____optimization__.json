@@ -1,0 +1,22 @@
+{
+  "key": "corelight_dns::__optimization__",
+  "sourcetype": "corelight_dns",
+  "dest_format": "__optimization__",
+  "score": 94,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:23:59.935Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

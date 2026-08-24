@@ -1,0 +1,132 @@
+{
+  "key": "ldap::__extraction__",
+  "sourcetype": "ldap",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:40:17.240Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (BSD or ISO timestamp) into timestamp, host, process, pid, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>(?:[A-Za-z]{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})|(?:\\d{4}-\\d{2}-\\d{2}T[\\d:.]+Z))\\s+(?<dst_host>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('ACCEPT')",
+      "disabled": false,
+      "description": "Extract connection accept details (conn id, fd, src/dst IP:port)",
+      "conf": {
+        "source": "message",
+        "regex": "/conn=(?<conn_id>\\d+)\\s+fd=(?<fd>\\d+)\\s+ACCEPT from IP=(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s+\\(IP=(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)\\)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('BIND') && !message.includes('RESULT') && !message.includes('LDAP')",
+      "disabled": false,
+      "description": "Extract slapd BIND request details (conn id, op, bind dn, method)",
+      "conf": {
+        "source": "message",
+        "regex": "/conn=(?<conn_id>\\d+)\\s+op=(?<op>\\d+)\\s+BIND dn=\"(?<dn>[^\"]*)\"\\s+method=(?<method>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('RESULT') && !message.includes('LDAP')",
+      "disabled": false,
+      "description": "Extract slapd RESULT details (conn id, op, tag, err code, nentries, result text)",
+      "conf": {
+        "source": "message",
+        "regex": "/conn=(?<conn_id>\\d+)\\s+op=(?<op>\\d+)\\s+(?:SEARCH )?RESULT(?:\\s+tag=(?<tag>\\d+))?(?:\\s+oid=\\S*)?\\s+err=(?<err_code>\\d+)(?:\\s+nentries=(?<nentries>\\d+))?\\s*text=(?<result_text>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('SRCH')",
+      "disabled": false,
+      "description": "Extract slapd SRCH search request details (base, scope, filter)",
+      "conf": {
+        "source": "message",
+        "regex": "/conn=(?<conn_id>\\d+)\\s+op=(?<op>\\d+)\\s+SRCH base=\"(?<search_base>[^\"]*)\"\\s+scope=(?<scope>\\d+)\\s+filter=\"(?<ldap_filter>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes(' EXT ')",
+      "disabled": false,
+      "description": "Extract slapd extended operation details (oid, extension name)",
+      "conf": {
+        "source": "message",
+        "regex": "/conn=(?<conn_id>\\d+)\\s+op=(?<op>\\d+)\\s+EXT oid=(?<oid>[\\d.]+)\\s+\\((?<ext_name>[^)]*)\\)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('LDAP Bind')",
+      "disabled": false,
+      "description": "Extract Windows AD DS LDAP bind event details (client IP, bind type, result)",
+      "conf": {
+        "source": "message",
+        "regex": "/LDAP Bind: Client (?<src_ip>[\\d.]+) attempted (?<bind_type>\\S+) bind - Result: (?<result_status>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('LDAP Search')",
+      "disabled": false,
+      "description": "Extract Windows AD DS LDAP search event details (base, filter, client IP, result)",
+      "conf": {
+        "source": "message",
+        "regex": "/LDAP Search Base=(?<search_base>\\S+) Filter=(?<ldap_filter>\\S+) Client=(?<src_ip>[\\d.]+) Result=(?<err_code>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify LDAP event action, protocol, and severity based on parsed message fields",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message && message.includes('ACCEPT') ? 'connect' : message && message.includes('SRCH') ? 'search' : message && message.includes('SEARCH RESULT') ? 'search_result' : message && message.includes(' EXT ') ? 'extended_operation' : message && message.includes('BIND') ? 'bind' : message && message.includes('RESULT') ? 'result' : message && message.includes('LDAP Bind') ? 'bind' : message && message.includes('LDAP Search') ? 'search' : 'other'"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port == '636' ? 'ldaps' : 'ldap'"
+          },
+          {
+            "name": "severity",
+            "value": "err_code == '0' ? 'info' : err_code ? 'warning' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

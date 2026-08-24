@@ -1,0 +1,30 @@
+{
+  "key": "palo_alto_traffic::__optimization__",
+  "sourcetype": "palo_alto_traffic",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 246,
+  "updated_at": "2026-07-16T06:34:46.745Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "src_ip && src_ip.startsWith('169.254.')",
+      "disabled": true,
+      "final": true,
+      "description": "Drop PA management/health check traffic (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "action == 'allow' && dest_port == '53'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop routine allowed DNS queries (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,84 @@
+{
+  "key": "windows_powershell::__extraction__",
+  "sourcetype": "windows_powershell",
+  "dest_format": "__extraction__",
+  "score": 80,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:24:22.770Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<log_time>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+[AP]M)\\s+LogName=(?<LogName>\\S+)\\s+SourceName=(?<SourceName>\\S+)\\s+EventCode=(?<EventCode>\\d+)\\s+EventType=(?<EventType>\\d+)\\s+Type=(?<Type>\\w+)\\s+ComputerName=(?<ComputerName>\\S+)\\s+User=(?<User>\\S+)/"
+      },
+      "description": "Extract timestamp and structured fields from PowerShell log"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/Sid=(?<Sid>\\S+).*?TaskCategory=(?<TaskCategory>[^\\s](?:[^\\n]*?))\\s+OpCode=.*?Message=(?<Message>[\\s\\S]*)/"
+      },
+      "description": "Extract Sid, TaskCategory and Message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "ComputerName || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "ComputerName || undefined"
+          },
+          {
+            "name": "user",
+            "value": "User || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventCode || undefined"
+          },
+          {
+            "name": "app",
+            "value": "'PowerShell'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Windows'"
+          },
+          {
+            "name": "severity",
+            "value": "EventType == '1' ? 2 : EventType == '2' ? 4 : EventType == '4' ? 6 : undefined"
+          },
+          {
+            "name": "action",
+            "value": "Type == 'Information' ? 'success' : Type == 'Warning' ? 'failure' : Type == 'Error' ? 'failure' : 'unknown'"
+          },
+          {
+            "name": "signature",
+            "value": "TaskCategory || undefined"
+          }
+        ]
+      },
+      "description": "Alias PowerShell fields to canonical names"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "warn",
+    "summary": "Extraction migrated from windows_powershell::ocsf: 12/15 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

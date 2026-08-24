@@ -1,0 +1,112 @@
+{
+  "key": "mi::__extraction__",
+  "sourcetype": "mi",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:26.612Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the JSON-formatted SentinelOne behavioral indicator event into structured fields.",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract the top-level epoch millisecond timestamp (field name '@timestamp' is not JS-safe to reference after JSON parsing).",
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"@timestamp\":(?<__epoch_ms>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized fields (timestamp, user, host, action, message, process, severity) from the parsed SentinelOne event structure.",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Number(__epoch_ms)/1000"
+          },
+          {
+            "name": "user",
+            "value": "event.source.executable.user.name"
+          },
+          {
+            "name": "host",
+            "value": "meta.computerName"
+          },
+          {
+            "name": "os_family",
+            "value": "meta.osFamily"
+          },
+          {
+            "name": "action",
+            "value": "event.friendlyName"
+          },
+          {
+            "name": "message",
+            "value": "event.description"
+          },
+          {
+            "name": "indicator",
+            "value": "event.indicator"
+          },
+          {
+            "name": "process",
+            "value": "event.source.executable.path"
+          },
+          {
+            "name": "command_line",
+            "value": "event.source.executable.commandLine"
+          },
+          {
+            "name": "category",
+            "value": "event.category"
+          },
+          {
+            "name": "severity",
+            "value": "event.category=='BI_EVASION' ? 'high' : event.category=='BI_RECONNAISSANCE' ? 'medium' : event.category=='BI_GENERAL' ? 'low' : 'unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Remove scratch field used only for timestamp derivation.",
+      "conf": {
+        "add": [],
+        "remove": [
+          "__epoch_ms"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "@timestamp",
+        "event",
+        "meta"
+      ]
+    }
+  },
+  "report": null
+}

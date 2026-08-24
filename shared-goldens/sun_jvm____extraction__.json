@@ -1,0 +1,92 @@
+{
+  "key": "sun_jvm::__extraction__",
+  "sourcetype": "sun_jvm",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:44:20.037Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, pid, severity, and message from base sun_jvm log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+sun_jvm\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('user=') !== -1",
+      "disabled": false,
+      "description": "Extract user field from message when present",
+      "conf": {
+        "source": "message",
+        "regex": "/user=(?<user>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('src=') !== -1",
+      "disabled": false,
+      "description": "Extract source IP from message when present",
+      "conf": {
+        "source": "message",
+        "regex": "/src=(?<src_ip>[0-9a-fA-F.:]+?)(?=\\s|$)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('dst=') !== -1",
+      "disabled": false,
+      "description": "Extract destination IP and port from message when present",
+      "conf": {
+        "source": "message",
+        "regex": "/dst=(?<dst_ip>[0-9a-fA-F.:]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('reason=') !== -1",
+      "disabled": false,
+      "description": "Extract failure reason from message when present",
+      "conf": {
+        "source": "message",
+        "regex": "/reason=(?<reason>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity level and derive an action classification from message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_norm",
+            "value": "severity === 'SEVERE' ? 'error' : severity === 'WARNING' ? 'warn' : severity === 'INFO' ? 'info' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "message.indexOf('access denied') !== -1 ? 'denied' : message.indexOf('login failed') !== -1 ? 'failed' : message.indexOf('login success') !== -1 ? 'success' : message.indexOf('Connection refused') !== -1 ? 'refused' : message.indexOf('Password verification failed') !== -1 ? 'failed' : message.indexOf('accepted socket connection') !== -1 ? 'accepted' : message.indexOf('Error') !== -1 || message.indexOf('Exception') !== -1 ? 'error' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

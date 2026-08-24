@@ -1,0 +1,106 @@
+{
+  "key": "cisco_ise::__extraction__",
+  "sourcetype": "cisco_ise",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:08:27.138Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse standard Cisco ISE syslog header, message metadata, and trailing key-value payload",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<syslog_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<message_type>CISE_\\S+)\\s+(?<seq1>\\d+)\\s+(?<seq2>\\d+)\\s+(?<seq3>\\d+)\\s+(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?)\\s+(?<tz>[+-]\\d{2}:\\d{2})\\s+(?<seq4>\\d+)\\s+(?<message_code>\\d+)\\s+(?<severity>\\w+)\\s+(?<message_name>[^:]+):\\s*(?<message>[^,]+),\\s*(?<kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!message_name && _raw.indexOf('CISE_Alarm')>-1",
+      "disabled": false,
+      "description": "Parse alternate CISE_Alarm format that lacks sequence numbers and structured timestamp",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<syslog_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<message_type>CISE_\\S+)\\s+(?<severity>\\w+):\\s+(?<message_name>[^:]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "kvp",
+      "disabled": false,
+      "description": "Extract key=value pairs from the trailing KVP payload into individual top-level fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize common identity, network, and protocol fields from the extracted KVP data",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "this['User_Name'] ? this['User_Name'] : (this['UserName'] ? this['UserName'] : (this['AdminName'] ? this['AdminName'] : (this['GuestUserName'] ? this['GuestUserName'] : (this['User'] ? this['User'] : null))))"
+          },
+          {
+            "name": "src_ip",
+            "value": "this['Device_IP_Address'] ? this['Device_IP_Address'] : (this['NAS_IP_Address'] ? this['NAS_IP_Address'] : (this['AdminIPAddress'] ? this['AdminIPAddress'] : (this['IpAddress'] ? this['IpAddress'] : null)))"
+          },
+          {
+            "name": "dst_ip",
+            "value": "this['DestinationIPAddress'] ? this['DestinationIPAddress'] : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "this['DestinationPort'] ? Number(this['DestinationPort']) : null"
+          },
+          {
+            "name": "protocol",
+            "value": "this['Protocol'] ? this['Protocol'] : null"
+          },
+          {
+            "name": "action",
+            "value": "message_name ? message_name : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity levels and derive event time from parsed timestamp and timezone offset",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='NOTICE' ? 'info' : severity=='WARN' ? 'warning' : severity=='DEBUG' ? 'debug' : severity=='INFO' ? 'info' : severity=='ERR' ? 'error' : 'unknown'"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? new Date(timestamp.replace(' ','T') + (tz ? tz : '')).getTime()/1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

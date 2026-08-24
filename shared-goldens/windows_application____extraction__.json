@@ -1,0 +1,119 @@
+{
+  "key": "windows_application::__extraction__",
+  "sourcetype": "windows_application",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:31:34.511Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Parse and compact Windows Application XML with the native Windows event parser",
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.replace(/[{}\\t]/gm,'').replace(/[\\n\\r]+/gm,',')"
+          },
+          {
+            "name": "_raw",
+            "value": "C.Text.parseWinEvent(_raw,['0x0','0','-'])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "flatten",
+      "description": "Flatten the parsed Windows event into top-level fields",
+      "conf": {
+        "fields": [
+          "_raw"
+        ],
+        "prefix": "",
+        "depth": 5,
+        "delimiter": "_"
+      }
+    },
+    {
+      "id": "rename",
+      "description": "Remove verbose Windows XML path prefixes from field names",
+      "conf": {
+        "baseFields": [],
+        "renameExpr": "name.replace(/_raw_Event_\\w+_/,'')",
+        "rename": []
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Alias Windows Application channel fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "SystemTime || TimeCreated_SystemTime || undefined"
+          },
+          {
+            "name": "host",
+            "value": "Computer || undefined"
+          },
+          {
+            "name": "hostname",
+            "value": "Computer || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventID || undefined"
+          },
+          {
+            "name": "app",
+            "value": "Provider_Name || Name || undefined"
+          },
+          {
+            "name": "message",
+            "value": "Data ? (Array.isArray(Data) ? Data.join(' | ') : String(Data)) : undefined"
+          },
+          {
+            "name": "process",
+            "value": "Data && Array.isArray(Data) ? Data[0] : undefined"
+          },
+          {
+            "name": "user_id",
+            "value": "UserID || Security_UserID || undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "ProcessID || Execution_ProcessID || undefined"
+          },
+          {
+            "name": "signature",
+            "value": "EventID == '1000' ? 'Application error' : EventID == '1001' ? 'Windows Error Reporting report' : EventID == '1026' ? '.NET Runtime unhandled exception' : EventID == '11707' ? 'Product installation completed' : EventID == '11708' ? 'Product installation failed' : undefined"
+          },
+          {
+            "name": "outcome",
+            "value": "Level == '1' || Level == '2' ? 'failure' : 'success'"
+          },
+          {
+            "name": "severity",
+            "value": "Level == '0' ? 6 : Level == '1' ? 2 : Level == '2' ? 3 : Level == '3' ? 4 : Level == '4' ? 6 : Level == '5' ? 7 : undefined"
+          },
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'Windows'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Windows'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

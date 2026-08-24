@@ -1,0 +1,84 @@
+{
+  "key": "cron_8::__extraction__",
+  "sourcetype": "cron_8",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:00:56.752Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header fields (timestamp, host, process, pid) and remaining message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+(?<host>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\(\\S+\\)\\s+CMD/.test(message)",
+      "disabled": false,
+      "description": "Extract user and command for standard CRON job executions",
+      "conf": {
+        "source": "message",
+        "regex": "/^\\((?<user>\\S+)\\)\\s+CMD\\s+\\((?<command>.*)\\)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('pam_unix') >= 0",
+      "disabled": false,
+      "description": "Extract session open/close events and associated user/uid from pam_unix cron session lines",
+      "conf": {
+        "source": "message",
+        "regex": "/pam_unix\\(cron:session\\):\\s+session\\s+(?<session_action>opened|closed)\\s+for\\s+user\\s+(?<user>\\S+)(?:\\s+by\\s+\\(?uid=(?<uid>\\d+)\\)?)?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('error') >= 0 && message.indexOf('grandchild') >= 0",
+      "disabled": false,
+      "description": "Extract failed grandchild process info from cron error messages",
+      "conf": {
+        "source": "message",
+        "regex": "/error\\s+\\(grandchild\\s+#(?<grandchild_pid>\\d+)\\s+failed\\s+with\\s+exit\\s+status\\s+(?<exit_status>\\d+)\\)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify event type, derive action, and flag suspicious command execution (e.g. curl piped to bash)",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "command ? 'cron_job' : (session_action ? 'pam_session' : (exit_status ? 'cron_error' : 'other'))"
+          },
+          {
+            "name": "action",
+            "value": "session_action ? session_action : (command ? 'executed' : (exit_status ? 'failed' : null))"
+          },
+          {
+            "name": "severity",
+            "value": "command && /curl.*\\|\\s*bash/.test(command) ? 'critical' : (exit_status ? 'high' : 'info')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

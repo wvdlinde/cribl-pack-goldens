@@ -1,0 +1,142 @@
+{
+  "key": "cisco_estreamer_data_firewall::cim::__mapping__",
+  "sourcetype": "cisco_estreamer_data_firewall",
+  "dest_format": "cim::__mapping__",
+  "score": 91,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:06:13.251Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src",
+            "value": "(_raw || '').match(/(?:^|,\\s*)SrcIP=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)SrcIP=([^,\\s]+)/)[1] : ''"
+          },
+          {
+            "name": "src_port",
+            "value": "(_raw || '').match(/(?:^|,\\s*)SrcPort=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)SrcPort=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "dest",
+            "value": "(_raw || '').match(/(?:^|,\\s*)DstIP=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)DstIP=([^,\\s]+)/)[1] : ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "(_raw || '').match(/(?:^|,\\s*)DstPort=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)DstPort=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "transport",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Protocol=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)Protocol=([^,\\s]+)/)[1].toLowerCase() : ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/)[1] : ''"
+          },
+          {
+            "name": "action",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/) ? (((_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/)[1].toLowerCase() == 'allow') ? 'allowed' : (((_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/)[1].toLowerCase() == 'block' || (_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/)[1].toLowerCase() == 'deny') ? 'blocked' : (_raw || '').match(/(?:^|,\\s*)Action=([^,\\s]+)/)[1].toLowerCase())) : ''"
+          },
+          {
+            "name": "app",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Application=([^,]*)/) ? (_raw || '').match(/(?:^|,\\s*)Application=([^,]*)/)[1].trim() : ((_raw || '').match(/(?:^|,\\s*)Service=([^,]*)/) ? (_raw || '').match(/(?:^|,\\s*)Service=([^,]*)/)[1].trim() : '')"
+          },
+          {
+            "name": "bytes_out",
+            "value": "(_raw || '').match(/(?:^|,\\s*)InitiatorBytes=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)InitiatorBytes=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "bytes_in",
+            "value": "(_raw || '').match(/(?:^|,\\s*)ResponderBytes=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)ResponderBytes=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "packets_out",
+            "value": "(_raw || '').match(/(?:^|,\\s*)InitiatorPackets=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)InitiatorPackets=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "packets_in",
+            "value": "(_raw || '').match(/(?:^|,\\s*)ResponderPackets=(\\d+)/) ? Number((_raw || '').match(/(?:^|,\\s*)ResponderPackets=(\\d+)/)[1]) : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-22)",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "(_raw || '').match(/(?:^|,\\s*)User=([^,]*)/) ? (_raw || '').match(/(?:^|,\\s*)User=([^,]*)/)[1].trim() : ''"
+          },
+          {
+            "name": "rule",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Policy=([^,]*)/) ? (_raw || '').match(/(?:^|,\\s*)Policy=([^,]*)/)[1].trim() : ''"
+          },
+          {
+            "name": "dvc",
+            "value": "(_raw || '').match(/(?:^|,\\s*)SensorID=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)SensorID=([^,\\s]+)/)[1] : String(host || '')"
+          },
+          {
+            "name": "signature_id",
+            "value": "(_raw || '').match(/(?:^|,\\s*)SignatureID=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)SignatureID=([^,\\s]+)/)[1] : ''"
+          },
+          {
+            "name": "category",
+            "value": "(_raw || '').match(/(?:^|,\\s*)Classification=([^,]*)/) ? (_raw || '').match(/(?:^|,\\s*)Classification=([^,]*)/)[1].trim() : ''"
+          },
+          {
+            "name": "severity",
+            "value": "(_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/) ? (_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/)[1].toLowerCase() : ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "(_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/) ? (((_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/)[1].toLowerCase() == 'critical') ? 10 : (((_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/)[1].toLowerCase() == 'high') ? 8 : (((_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/)[1].toLowerCase() == 'medium') ? 5 : (((_raw || '').match(/(?:^|,\\s*)(?:Priority|Severity)=([^,\\s]+)/)[1].toLowerCase() == 'low') ? 3 : 0)))) : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco:estreamer:data:firewall'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,106 @@
+{
+  "key": "ncsc_healthchecks::cim::__mapping__",
+  "sourcetype": "ncsc_healthchecks",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:40:21.539Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'N/A'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'N/A'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "source_ip"
+          },
+          {
+            "name": "dest",
+            "value": "target"
+          },
+          {
+            "name": "dvc",
+            "value": "host"
+          },
+          {
+            "name": "user",
+            "value": "user"
+          },
+          {
+            "name": "action",
+            "value": "outcome == 'PASS' ? 'allowed' : outcome == 'FAIL' ? 'blocked' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "(severity || '').toLowerCase()"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 9 : severity == 'HIGH' ? 7 : severity == 'MEDIUM' ? 5 : severity == 'LOW' ? 2 : 0"
+          },
+          {
+            "name": "signature",
+            "value": "check_type"
+          },
+          {
+            "name": "category",
+            "value": "check_type"
+          },
+          {
+            "name": "message_id",
+            "value": "event_id"
+          },
+          {
+            "name": "object",
+            "value": "details"
+          },
+          {
+            "name": "duration",
+            "value": "0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ncsc_healthchecks'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

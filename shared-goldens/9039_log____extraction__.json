@@ -1,0 +1,88 @@
+{
+  "key": "9039_log::__extraction__",
+  "sourcetype": "9039_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:15:54.707Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the timestamp, reporting host, severity, and message payload.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)\\s+(?<host>\\S+)\\s+(?<source_type>9039_log):\\s+\\[(?<severity>[A-Z]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('event_id=')",
+      "disabled": false,
+      "description": "Extract the network event fields and optional event-specific attributes.",
+      "conf": {
+        "source": "message",
+        "regex": "/^event_id=(?<event_id>\\S+)\\s+action=(?<action>\\S+)\\s+proto=(?<protocol>\\S+)\\s+user=(?<user>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+src_port=(?<src_port>\\d+|-)\\s+dst_ip=(?<dst_ip>\\S+)\\s+dst_port=(?<dst_port>\\d+|-)\\s+bytes=(?<bytes>\\d+)\\s+reason=(?<reason>\\S+)(?:\\s+zone_src=(?<zone_src>\\S+))?(?:\\s+zone_dst=(?<zone_dst>\\S+))?(?:\\s+attempt=(?<attempt>\\d+))?(?:\\s+count=(?<count>\\d+))?(?:\\s+uri=(?<uri>\\S+))?(?:\\s+category=(?<category>\\S+))?(?:\\s+msgid=(?<msgid>\\S+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "event_id && action",
+      "disabled": false,
+      "description": "Normalize fields, convert numeric values, set event time, and derive direction.",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp) / 1000"
+          },
+          {
+            "name": "action",
+            "value": "action.toUpperCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol === '-' ? null : protocol.toUpperCase()"
+          },
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip === '-' ? null : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip === '-' ? null : dst_ip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port === '-' ? null : Number(src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port === '-' ? null : Number(dst_port)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes)"
+          },
+          {
+            "name": "direction",
+            "value": "zone_src && zone_dst ? (zone_src === 'untrust' ? 'inbound' : (zone_dst === 'untrust' ? 'outbound' : 'internal')) : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

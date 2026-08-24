@@ -1,0 +1,22 @@
+{
+  "key": "aws_vpc_flow::__optimization__",
+  "sourcetype": "aws_vpc_flow",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:18:07.372Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "action === 'ACCEPT' && dstport === '443'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop routine HTTPS accept flows (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

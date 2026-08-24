@@ -1,0 +1,100 @@
+{
+  "key": "vmware_esxlog_hostdcgiserver::__extraction__",
+  "sourcetype": "vmware_esxlog_hostdcgiserver",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:03:04.116Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the hostd CGI log envelope.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[^\\[]+)\\[(?<process_id>\\d+)\\]:\\s+\\[(?<severity>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(?:from|client|peer)\\s+/i.test(message)",
+      "disabled": false,
+      "description": "Extract IPv4 or bracketed IPv6 client endpoints.",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\bfrom|\\bClient|\\bclient|\\bpeer)\\s+(?:\\[(?<__src_ip_v6>[0-9A-Fa-f:]+)\\]|(?<__src_ip_v4>(?:\\d{1,3}\\.){3}\\d{1,3})):(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /\\buser\\s+'/i.test(message)",
+      "disabled": false,
+      "description": "Extract the VMware user name.",
+      "conf": {
+        "source": "message",
+        "regex": "/\\buser\\s+'(?<user>[^']+)'/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /\\bsession(?:=|\\s+)/i.test(message)",
+      "disabled": false,
+      "description": "Extract the hostd session identifier.",
+      "conf": {
+        "source": "message",
+        "regex": "/\\bsession(?:=|\\s+)(?<session_id>[A-Fa-f0-9]+)/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(?:endpoint|completed successfully|payload received|authentication failures)/i.test(message)",
+      "disabled": false,
+      "description": "Extract request, payload, and authentication details.",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:for\\s+(?<endpoint>\\/\\S+)\\s+endpoint|SOAP request\\s+(?<soap_operation>\\S+)\\s+completed successfully in\\s+(?<duration_ms>\\d+)ms|payload received\\s+\\((?<payload_size_mb>\\d+)MB\\)|authentication failures\\s+\\((?<failure_count>\\d+)\\))/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize client address, direction, protocol, and action.",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "typeof __src_ip_v6 !== 'undefined' ? __src_ip_v6 : (typeof __src_ip_v4 !== 'undefined' ? __src_ip_v4 : undefined)"
+          },
+          {
+            "name": "direction",
+            "value": "typeof __src_ip_v6 !== 'undefined' || typeof __src_ip_v4 !== 'undefined' ? 'inbound' : 'unknown'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.match(/\\bTLS\\b/i) ? 'tls' : (message.match(/\\bSOAP\\b/i) ? 'soap' : undefined)"
+          }
+        ],
+        "remove": [
+          "__src_ip_v4",
+          "__src_ip_v6"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

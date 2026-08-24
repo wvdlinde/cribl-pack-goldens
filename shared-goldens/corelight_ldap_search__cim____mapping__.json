@@ -1,0 +1,138 @@
+{
+  "key": "corelight_ldap_search::cim::__mapping__",
+  "sourcetype": "corelight_ldap_search",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:01:30.771Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "event_type",
+            "value": "'ldap_search'"
+          },
+          {
+            "name": "src",
+            "value": "id.orig_h"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "id.resp_h"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toUpperCase()"
+          },
+          {
+            "name": "vendor_action",
+            "value": "opcode"
+          },
+          {
+            "name": "action",
+            "value": "result == 'success' ? 'success' : 'failure'"
+          },
+          {
+            "name": "signature",
+            "value": "result"
+          },
+          {
+            "name": "message_id",
+            "value": "diagnostic_message"
+          },
+          {
+            "name": "object",
+            "value": "filter"
+          },
+          {
+            "name": "dest_nt_domain",
+            "value": "base_object"
+          },
+          {
+            "name": "session_id",
+            "value": "String(message_id || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-21)",
+      "conf": {
+        "add": [
+          {
+            "name": "packets",
+            "value": "Number(result_count || 0)"
+          },
+          {
+            "name": "user",
+            "value": "sAMAccountName"
+          },
+          {
+            "name": "src_user",
+            "value": "sAMAccountName"
+          },
+          {
+            "name": "dest_user",
+            "value": "userPrincipalName"
+          },
+          {
+            "name": "subject",
+            "value": "dn"
+          },
+          {
+            "name": "category",
+            "value": "scope"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ldap_search'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

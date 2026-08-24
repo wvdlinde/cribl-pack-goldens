@@ -1,0 +1,192 @@
+{
+  "key": "cisco_asa::asim::__mapping__",
+  "sourcetype": "cisco_asa",
+  "dest_format": "asim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 349,
+  "updated_at": "2026-08-06T10:20:58.117Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "product",
+            "value": "'ASA'"
+          },
+          {
+            "name": "version",
+            "value": "'9.x'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Microsoft Sentinel ASIM",
+      "conf": {
+        "add": [
+          {
+            "name": "TimeGenerated",
+            "value": "((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != null && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'undefined' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'null' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '-' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '' ? ((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) : undefined"
+          },
+          {
+            "name": "EventType",
+            "value": "('NetworkConnection') != null && String('NetworkConnection') != 'undefined' && String('NetworkConnection') != 'null' && String('NetworkConnection') != '-' && String('NetworkConnection') != '' ? ('NetworkConnection') : undefined"
+          },
+          {
+            "name": "EventSchema",
+            "value": "('NetworkSession') != null && String('NetworkSession') != 'undefined' && String('NetworkSession') != 'null' && String('NetworkSession') != '-' && String('NetworkSession') != '' ? ('NetworkSession') : undefined"
+          },
+          {
+            "name": "EventSchemaVersion",
+            "value": "('0.2.6') != null && String('0.2.6') != 'undefined' && String('0.2.6') != 'null' && String('0.2.6') != '-' && String('0.2.6') != '' ? ('0.2.6') : undefined"
+          },
+          {
+            "name": "EventResult",
+            "value": "(/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') != null && String(/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') != 'undefined' && String(/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') != 'null' && String(/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') != '-' && String(/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') != '' ? (/deny|drop|block|fail|denied/i.test(String(action)) ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "EventSeverity",
+            "value": "(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != null && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != 'undefined' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != 'null' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != '-' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != '' ? (severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') : undefined"
+          },
+          {
+            "name": "DvcAction",
+            "value": "(action) != null && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' && String(action) != '' ? (action) : undefined"
+          },
+          {
+            "name": "SrcIpAddr",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "SrcPortNumber",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "DstIpAddr",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "DstPortNumber",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "NetworkProtocol",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "SrcBytes",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "DstBytes",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "SrcUsername",
+            "value": "(src_user || user) != null && String(src_user || user) != 'undefined' && String(src_user || user) != 'null' && String(src_user || user) != '-' && String(src_user || user) != '' ? (src_user || user) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "Dvc",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "EventProduct",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "EventVendor",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_asa'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Keep only Microsoft Sentinel ASIM fields + routing",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "TimeGenerated",
+          "TimeGenerated.*",
+          "EventType",
+          "EventType.*",
+          "EventSchema",
+          "EventSchema.*",
+          "EventSchemaVersion",
+          "EventSchemaVersion.*",
+          "EventResult",
+          "EventResult.*",
+          "EventSeverity",
+          "EventSeverity.*",
+          "DvcAction",
+          "DvcAction.*",
+          "SrcIpAddr",
+          "SrcIpAddr.*",
+          "SrcPortNumber",
+          "SrcPortNumber.*",
+          "DstIpAddr",
+          "DstIpAddr.*",
+          "DstPortNumber",
+          "DstPortNumber.*",
+          "NetworkProtocol",
+          "NetworkProtocol.*",
+          "SrcBytes",
+          "SrcBytes.*",
+          "DstBytes",
+          "DstBytes.*",
+          "SrcUsername",
+          "SrcUsername.*",
+          "Dvc",
+          "Dvc.*",
+          "EventProduct",
+          "EventProduct.*",
+          "EventVendor",
+          "EventVendor.*"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

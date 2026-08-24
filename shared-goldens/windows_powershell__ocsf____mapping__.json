@@ -1,0 +1,444 @@
+{
+  "key": "windows_powershell::ocsf::__mapping__",
+  "sourcetype": "windows_powershell",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "wlinde@cribl.io",
+  "build": 296,
+  "updated_at": "2026-08-03T11:37:59.713Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract PowerShell event fields needed for OCSF mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<raw_time>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+[AP]M)/gm",
+        "regexList": [
+          {
+            "regex": "/\\bLogName=(?<log_name>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bSourceName=(?<source_name>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bEventCode=(?<event_code>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bEventType=\\d+\\s+Type=(?<event_type>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bComputerName=(?<computer_name>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bComputerName=[^\\s]+\\s+User=(?<event_user>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bSid=(?<sid>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bRecordNumber=(?<record_number>\\d+)/gm"
+          },
+          {
+            "regex": "/Message=(?<ps_message>[\\s\\S]*?)\\r\\s*Context:/gm"
+          },
+          {
+            "regex": "/value=\\\"(?<embedded_time>\\d{4}-\\d{2}-\\d{2}T[^\\s\\\"]+)/gm"
+          },
+          {
+            "regex": "/\\r\\s*Severity = (?<severity>[^\\r]+)/gm"
+          },
+          {
+            "regex": "/\\r\\s*Host Application = (?<host_application>[^\\r]*)/gm"
+          },
+          {
+            "regex": "/\\r\\s*Script Name = (?<script_name>[^\\r]*)/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Set OCSF time from the timestamp embedded in the PowerShell message.",
+      "conf": {
+        "srcField": "embedded_time",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 80,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF script activity fields and preserve source-specific values in unmapped.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "message",
+            "value": "ps_message ? ps_message.trim() : _raw"
+          },
+          {
+            "name": "status_code",
+            "value": "event_code ? event_code : null"
+          },
+          {
+            "name": "status_detail",
+            "value": "event_type ? event_type : null"
+          },
+          {
+            "name": "status_id",
+            "value": "event_type==='Information'?1:(event_type==='Error'?2:0)"
+          },
+          {
+            "name": "script",
+            "value": "{}"
+          },
+          {
+            "name": "script.script_content",
+            "value": "{}"
+          },
+          {
+            "name": "script.script_content.value",
+            "value": "ps_message ? ps_message.trim() : _raw"
+          },
+          {
+            "name": "script.type_id",
+            "value": "((source_name && source_name.indexOf('PowerShell')>=0) || (log_name && log_name.indexOf('PowerShell')>=0)) ? 2 : 0"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.raw_time",
+            "value": "raw_time"
+          },
+          {
+            "name": "unmapped.log_name",
+            "value": "log_name"
+          },
+          {
+            "name": "unmapped.source_name",
+            "value": "source_name"
+          },
+          {
+            "name": "unmapped.event_type",
+            "value": "event_type"
+          },
+          {
+            "name": "unmapped.computer_name",
+            "value": "computer_name"
+          },
+          {
+            "name": "unmapped.event_user",
+            "value": "event_user"
+          },
+          {
+            "name": "unmapped.sid",
+            "value": "sid"
+          },
+          {
+            "name": "unmapped.record_number",
+            "value": "record_number"
+          },
+          {
+            "name": "unmapped.embedded_time",
+            "value": "embedded_time"
+          },
+          {
+            "name": "unmapped.severity",
+            "value": "severity"
+          },
+          {
+            "name": "unmapped.host_application",
+            "value": "host_application"
+          },
+          {
+            "name": "unmapped.script_name",
+            "value": "script_name"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract PowerShell event metadata and context fields from raw Windows PowerShell log text.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time_str>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+[AP]M)\\s/gm",
+        "regexList": [
+          {
+            "regex": "/\\bComputerName=(?<computer_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bComputerName=\\S+\\s+User=(?<event_user>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bSid=(?<user_sid>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bType=(?<event_type>\\S+)/gm"
+          },
+          {
+            "regex": "/Severity = (?<ps_severity>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/Host Application = (?<host_application>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/Command Name = (?<command_name>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/Script Name = (?<script_path>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/Runspace ID = (?<runspace_id>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/value=\\\"(?<script_timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?<script_tz>[+-]\\d{2}:\\d{2})/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF Script Activity fields from extracted Windows PowerShell fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.cmd_line",
+            "value": "host_application ? host_application : ''"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "command_name ? command_name : 'PowerShell'"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "runspace_id ? runspace_id : null"
+          },
+          {
+            "name": "actor.process.file",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.file.path",
+            "value": "script_path ? script_path : null"
+          },
+          {
+            "name": "actor.process.file.name",
+            "value": "script_path ? script_path.replace(/^.*[\\\\\\\\\\/]/,'') : null"
+          },
+          {
+            "name": "actor.process.file.ext",
+            "value": "script_path && script_path.indexOf('.') >= 0 ? script_path.replace(/^.*\\./,'') : null"
+          },
+          {
+            "name": "actor.process.file.type_id",
+            "value": "8"
+          },
+          {
+            "name": "actor.process.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.user.name",
+            "value": "event_user ? event_user : null"
+          },
+          {
+            "name": "actor.process.user.uid",
+            "value": "user_sid ? user_sid : null"
+          },
+          {
+            "name": "actor.process.user.type_id",
+            "value": "event_user==='SYSTEM'?3:1"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "event_user ? event_user : null"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "user_sid ? user_sid : null"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "event_user==='SYSTEM'?3:1"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "class_uid",
+            "value": "1009"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.hostname",
+            "value": "computer_name ? computer_name : null"
+          },
+          {
+            "name": "device.type_id",
+            "value": "0"
+          },
+          {
+            "name": "severity_id",
+            "value": "(ps_severity==='Informational' || event_type==='Information') ? 1 : 0"
+          },
+          {
+            "name": "status",
+            "value": "'Success'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "script_tz ? ((script_tz[0]==='-'?-1:1) * (script_tz.substr(1,2)*60 + script_tz.substr(4,2)*1)) : null"
+          },
+          {
+            "name": "observables",
+            "value": "[]"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<original_time>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+[AP]M)/gm",
+        "regexList": [
+          {
+            "regex": "/\\bLogName=(?<log_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bSourceName=(?<product_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bComputerName=(?<computer_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\r\\s+Host Version = (?<host_version>[^\\r\\n]+)/gm"
+          },
+          {
+            "regex": "/\\r\\s+Host ID = (?<host_id>[^\\r\\n]+)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract Windows PowerShell event fields needed for OCSF metadata mapping."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "100901"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "log_name"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product_name ? product_name : 'Microsoft-Windows-PowerShell'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "host_id ? host_id : null"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "host_version ? host_version : null"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "computer_name ? computer_name : null"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "host_id ? host_id : null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "type_uid",
+          "metadata.*",
+          "__*",
+          "cribl_*"
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "original_time",
+          "log_name",
+          "product_name",
+          "computer_name",
+          "host_version",
+          "host_id"
+        ]
+      },
+      "id": "eval",
+      "description": "Populate OCSF Script Activity type and metadata fields."
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

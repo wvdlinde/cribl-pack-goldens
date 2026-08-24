@@ -1,0 +1,59 @@
+{
+  "key": "hypori::__extraction__",
+  "sourcetype": "hypori",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:13:32.664Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, module, severity, and remaining key=value payload from raw Hypori log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<module>\\S+)\\s+\\[(?<severity>\\w+)\\]\\s+(?<__kvp_message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse remaining key=value pairs (event, user, device_id, src_ip, status, etc.) from the scratch field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action from status field and lowercase severity for consistent downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status === 'success' ? 'allowed' : status === 'failure' ? 'denied' : status === 'blocked' ? 'blocked' : status === 'flagged' ? 'flagged' : status"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          }
+        ],
+        "remove": [
+          "__kvp_message"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

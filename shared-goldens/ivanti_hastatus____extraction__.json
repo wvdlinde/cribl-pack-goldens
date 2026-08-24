@@ -1,0 +1,56 @@
+{
+  "key": "ivanti_hastatus::__extraction__",
+  "sourcetype": "ivanti_hastatus",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:08:48.041Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, pid, severity) and isolate the KVP message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+ivanti-hastatus\\[(?<pid>\\d+)\\]:\\s+\\[(?<severity>\\w+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs from the message body (event, node, peer, peer_ip, state, user, src_ip, vip, outcome, reason, etc.)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and derive a unified action field from outcome/status/event for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "outcome ? outcome : (status ? status : (event && event.match(/failover|heartbeat_lost|config_sync_failed/) ? 'alert' : 'info'))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

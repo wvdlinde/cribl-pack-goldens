@@ -1,0 +1,209 @@
+{
+  "key": "claroty::xsiam",
+  "sourcetype": "claroty",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:35.142Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "claroty → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'claroty'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'claroty:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "demo_claroty_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:03:12.441Z\",\"event_type\":\"asset_discovery\",\"severity\":\"info\",\"source_ip\":\"192.168.10.45\",\"destination_ip\":\"192.168.10.1\",\"protocol\":\"modbus\",\"port\":502,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-300\",\"zone\":\"OT_Floor1\",\"action\":\"discovered\",\"user\":null,\"message\":\"New asset discovered on OT network\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"event_type\":\"alert\",\"severity\":\"high\",\"source_ip\":\"10.0.5.23\",\"destination_ip\":\"192.168.20.15\",\"protocol\":\"TCP\",\"port\":4840,\"asset_type\":\"HMI\",\"vendor\":\"Rockwell\",\"model\":\"FactoryTalk\",\"zone\":\"Control_Network\",\"action\":\"blocked\",\"user\":\"ops_admin\",\"message\":\"Unauthorized OPC-UA connection attempt from IT network to HMI\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:42:31.109Z\",\"event_type\":\"baseline_deviation\",\"severity\":\"medium\",\"source_ip\":\"172.16.5.101\",\"destination_ip\":\"172.16.5.200\",\"protocol\":\"EtherNet/IP\",\"port\":44818,\"asset_type\":\"PLC\",\"vendor\":\"Allen-Bradley\",\"model\":\"ControlLogix\",\"zone\":\"Production_A\",\"action\":\"alert\",\"user\":null,\"message\":\"Communication deviation from established baseline detected\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:08:44.237Z\",\"event_type\":\"login\",\"severity\":\"info\",\"source_ip\":\"192.168.1.55\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"success\",\"user\":\"john.smith\",\"message\":\"User successfully logged into Claroty management console\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:29:18.773Z\",\"event_type\":\"login\",\"severity\":\"warning\",\"source_ip\":\"203.0.113.45\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"failed\",\"user\":\"admin\",\"message\":\"Failed login attempt from external IP address\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:45:02.560Z\",\"event_type\":\"firmware_change\",\"severity\":\"critical\",\"source_ip\":\"192.168.10.88\",\"destination_ip\":\"192.168.10.45\",\"protocol\":\"SRTP\",\"port\":102,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-400\",\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Firmware modification detected on critical PLC - unscheduled change\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:11:37.094Z\",\"event_type\":\"network_scan\",\"severity\":\"high\",\"source_ip\":\"10.0.1.200\",\"destination_ip\":\"192.168.10.0/24\",\"protocol\":\"TCP\",\"port\":null,\"asset_type\":\"unknown\",\"vendor\":null,\"model\":null,\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Port scan detected originating from IT network targeting OT subnet\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:33:59.621Z\",\"event_type\":\"policy_violation\",\"severity\":\"medium\",\"source_ip\":\"192.168.20.30\",\"destination_ip\":\"192.168.20.50\",\"protocol\":\"RDP\",\"port\":3389,\"asset_type\":\"Engineering_Workstation\",\"vendor\":\"Dell\",\"model\":\"Precision\",\"zone\":\"Control_Network\",\"action\":\"alert\",\"user\":\"engineer01\",\"message\":\"RDP lateral movement detected between engineering workstations\"}",
+        "_time": 1784104497.928,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "claroty",
+        "__product": "Security",
+        "sourcetype": "claroty:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "event_type",
+      "severity",
+      "source_ip",
+      "destination_ip",
+      "protocol",
+      "port",
+      "asset_type",
+      "vendor",
+      "model",
+      "zone",
+      "action",
+      "user",
+      "message"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:12.441Z\",\"event_type\":\"asset_discovery\",\"severity\":\"info\",\"source_ip\":\"192.168.10.45\",\"destination_ip\":\"192.168.10.1\",\"protocol\":\"modbus\",\"port\":502,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-300\",\"zone\":\"OT_Floor1\",\"action\":\"discovered\",\"user\":null,\"message\":\"New asset discovered on OT network\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"event_type\":\"alert\",\"severity\":\"high\",\"source_ip\":\"10.0.5.23\",\"destination_ip\":\"192.168.20.15\",\"protocol\":\"TCP\",\"port\":4840,\"asset_type\":\"HMI\",\"vendor\":\"Rockwell\",\"model\":\"FactoryTalk\",\"zone\":\"Control_Network\",\"action\":\"blocked\",\"user\":\"ops_admin\",\"message\":\"Unauthorized OPC-UA connection attempt from IT network to HMI\"}",
+      "{\"timestamp\":\"2024-01-15T00:42:31.109Z\",\"event_type\":\"baseline_deviation\",\"severity\":\"medium\",\"source_ip\":\"172.16.5.101\",\"destination_ip\":\"172.16.5.200\",\"protocol\":\"EtherNet/IP\",\"port\":44818,\"asset_type\":\"PLC\",\"vendor\":\"Allen-Bradley\",\"model\":\"ControlLogix\",\"zone\":\"Production_A\",\"action\":\"alert\",\"user\":null,\"message\":\"Communication deviation from established baseline detected\"}",
+      "{\"timestamp\":\"2024-01-15T01:08:44.237Z\",\"event_type\":\"login\",\"severity\":\"info\",\"source_ip\":\"192.168.1.55\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"success\",\"user\":\"john.smith\",\"message\":\"User successfully logged into Claroty management console\"}",
+      "{\"timestamp\":\"2024-01-15T01:29:18.773Z\",\"event_type\":\"login\",\"severity\":\"warning\",\"source_ip\":\"203.0.113.45\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"failed\",\"user\":\"admin\",\"message\":\"Failed login attempt from external IP address\"}",
+      "{\"timestamp\":\"2024-01-15T01:45:02.560Z\",\"event_type\":\"firmware_change\",\"severity\":\"critical\",\"source_ip\":\"192.168.10.88\",\"destination_ip\":\"192.168.10.45\",\"protocol\":\"SRTP\",\"port\":102,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-400\",\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Firmware modification detected on critical PLC - unscheduled change\"}",
+      "{\"timestamp\":\"2024-01-15T02:11:37.094Z\",\"event_type\":\"network_scan\",\"severity\":\"high\",\"source_ip\":\"10.0.1.200\",\"destination_ip\":\"192.168.10.0/24\",\"protocol\":\"TCP\",\"port\":null,\"asset_type\":\"unknown\",\"vendor\":null,\"model\":null,\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Port scan detected originating from IT network targeting OT subnet\"}",
+      "{\"timestamp\":\"2024-01-15T02:33:59.621Z\",\"event_type\":\"policy_violation\",\"severity\":\"medium\",\"source_ip\":\"192.168.20.30\",\"destination_ip\":\"192.168.20.50\",\"protocol\":\"RDP\",\"port\":3389,\"asset_type\":\"Engineering_Workstation\",\"vendor\":\"Dell\",\"model\":\"Precision\",\"zone\":\"Control_Network\",\"action\":\"alert\",\"user\":\"engineer01\",\"message\":\"RDP lateral movement detected between engineering workstations\"}"
+    ],
+    "sourcetype": "claroty"
+  }
+}

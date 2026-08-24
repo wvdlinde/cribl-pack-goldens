@@ -1,0 +1,40 @@
+{
+  "key": "mcafee_epo_threatevents_uncategorized::__extraction__",
+  "sourcetype": "mcafee_epo_threatevents_uncategorized",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:09:52.430Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"imperva_incapsula_waf\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_cef_header",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]+)\\|(?<product>[^|]+)\\|(?<product_version>[^|]+)\\|(?<signature_id>[^|]+)\\|(?<name>[^|]+)\\|(?<severity>[^|]+)\\|(?<__cef_payload>.*)$/"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "parse_cef_kvp",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__cef_payload",
+        "delimChar": " ",
+        "pairDelim": "=",
+        "cleanFields": true
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

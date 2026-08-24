@@ -1,0 +1,97 @@
+{
+  "key": "ivanti_splunk_metrics_log::__extraction__",
+  "sourcetype": "ivanti_splunk_metrics_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:31:30.420Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog envelope (timestamp, host, process, pid) and isolate the KVP message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<syslog_host>\\S+)\\s+(?<process>\\S+)\\[(?<pid>\\d+)\\]:\\s+(?<kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs from the Ivanti metrics KVP body into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp_body",
+        "kvDelim": "=",
+        "pairDelim": ", ",
+        "quoteChar": "\"",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rename raw KVP field names to standardized network/event field names and remove originals",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "protocol",
+            "value": "proto ? proto.toUpperCase() : proto"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "event_name",
+            "value": "name"
+          }
+        ],
+        "remove": [
+          "src",
+          "dst",
+          "proto",
+          "msg",
+          "name",
+          "kvp_body"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and derive a boolean auth-failure flag for downstream alerting",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toUpperCase() : severity"
+          },
+          {
+            "name": "is_auth_failure",
+            "value": "event_name === 'vpn_auth' && action === 'failure' ? true : false"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

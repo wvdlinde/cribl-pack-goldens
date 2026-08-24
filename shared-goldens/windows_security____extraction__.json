@@ -1,0 +1,140 @@
+{
+  "key": "windows_security::__extraction__",
+  "sourcetype": "windows_security",
+  "dest_format": "__extraction__",
+  "score": 99,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:24:10.975Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__parsed",
+            "value": "C.Text.parseXml(_raw)"
+          }
+        ]
+      },
+      "description": "Parse XML _raw into object"
+    },
+    {
+      "id": "code",
+      "filter": "__parsed != null",
+      "disabled": false,
+      "conf": {
+        "maxNumOfIterations": 5000,
+        "code": "const sys = __e.__parsed && __e.__parsed.Event && __e.__parsed.Event.System || {};\n__e.EventID = String(sys.EventID || '');\n__e.Level = String(sys.Level || '');\n__e.Computer = sys.Computer || '';\n__e.Channel = sys.Channel || '';\nif (sys.Execution) __e.ProcessID = sys.Execution.ProcessID;\nif (sys.Security) __e.UserID = sys.Security.UserID;\nif (sys.Correlation) __e.ActivityID = sys.Correlation.ActivityID;\nconst timeEl = sys.TimeCreated;\nif (timeEl && timeEl.SystemTime) __e._time = new Date(timeEl.SystemTime).getTime() / 1000;\nconst data = (__e.__parsed.Event.EventData || {}).Data || [];\nfor (let i = 0; i < data.length; i++) {\n  if (data[i].Name && data[i]._value !== undefined) {\n    __e[data[i].Name] = data[i]._value;\n  }\n}"
+      },
+      "description": "Extract System and EventData fields from parsed XML"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "TargetUserName || SubjectUserName || undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "SubjectUserName || undefined"
+          },
+          {
+            "name": "dest_user",
+            "value": "TargetUserName || undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "IpAddress && IpAddress != '-' ? IpAddress : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "IpPort && IpPort != '-' ? Number(IpPort) : undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "Computer || undefined"
+          },
+          {
+            "name": "host",
+            "value": "Computer || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventID || undefined"
+          },
+          {
+            "name": "app",
+            "value": "'Windows Security'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Windows'"
+          },
+          {
+            "name": "action",
+            "value": "EventID == '4624' || EventID == '4648' ? 'success' : EventID == '4625' || EventID == '4771' ? 'failure' : EventID == '4634' || EventID == '4647' ? 'success' : EventID == '4720' ? 'created' : EventID == '4726' ? 'deleted' : 'unknown'"
+          },
+          {
+            "name": "session_id",
+            "value": "TargetLogonId || LogonId || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "Level == '0' ? 6 : Level == '1' ? 2 : Level == '2' ? 3 : Level == '3' ? 4 : Level == '4' ? 6 : undefined"
+          },
+          {
+            "name": "logon_type",
+            "value": "LogonType || undefined"
+          },
+          {
+            "name": "process",
+            "value": "ProcessName || NewProcessName || undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "ProcessID || NewProcessId || undefined"
+          },
+          {
+            "name": "src_nt_domain",
+            "value": "SubjectDomainName || undefined"
+          },
+          {
+            "name": "dest_nt_domain",
+            "value": "TargetDomainName || undefined"
+          },
+          {
+            "name": "signature",
+            "value": "EventID == '4624' ? 'An account was successfully logged on' : EventID == '4625' ? 'An account failed to log on' : EventID == '4634' ? 'An account was logged off' : EventID == '4648' ? 'A logon was attempted using explicit credentials' : EventID == '4672' ? 'Special privileges assigned to new logon' : EventID == '4720' ? 'A user account was created' : EventID == '4726' ? 'A user account was deleted' : EventID == '4776' ? 'The computer attempted to validate the credentials for an account' : undefined"
+          },
+          {
+            "name": "authentication_method",
+            "value": "AuthenticationPackageName || undefined"
+          },
+          {
+            "name": "src",
+            "value": "WorkstationName || Workstation || undefined"
+          },
+          {
+            "name": "__parsed",
+            "value": "undefined"
+          }
+        ]
+      },
+      "description": "Alias Windows Security fields to canonical names"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from windows_security::cim: 92/93 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

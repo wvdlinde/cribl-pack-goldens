@@ -1,0 +1,157 @@
+{
+  "key": "okta_system::__extraction__",
+  "sourcetype": "okta_system",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:26:00.864Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Unpack Okta System Log JSON from _raw"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "published"
+          },
+          {
+            "name": "event_type",
+            "value": "eventType"
+          },
+          {
+            "name": "display_message",
+            "value": "displayMessage"
+          },
+          {
+            "name": "severity",
+            "value": "severity"
+          },
+          {
+            "name": "action",
+            "value": "(outcome && outcome.result) ? outcome.result : undefined"
+          },
+          {
+            "name": "outcome_reason",
+            "value": "(outcome && outcome.reason) ? outcome.reason : undefined"
+          },
+          {
+            "name": "actor_id",
+            "value": "(actor && actor.id) ? actor.id : undefined"
+          },
+          {
+            "name": "actor_type",
+            "value": "(actor && actor.type) ? actor.type : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(actor && actor.alternateId) ? actor.alternateId : undefined"
+          },
+          {
+            "name": "actor_display",
+            "value": "(actor && actor.displayName) ? actor.displayName : undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "(client && client.ipAddress) ? client.ipAddress : undefined"
+          },
+          {
+            "name": "user_agent",
+            "value": "(client && client.userAgent && client.userAgent.rawUserAgent) ? client.userAgent.rawUserAgent : undefined"
+          },
+          {
+            "name": "client_os",
+            "value": "(client && client.userAgent && client.userAgent.os) ? client.userAgent.os : undefined"
+          },
+          {
+            "name": "client_browser",
+            "value": "(client && client.userAgent && client.userAgent.browser) ? client.userAgent.browser : undefined"
+          },
+          {
+            "name": "client_device",
+            "value": "(client && client.device) ? client.device : undefined"
+          },
+          {
+            "name": "geo_city",
+            "value": "(client && client.geographicalContext && client.geographicalContext.city) ? client.geographicalContext.city : undefined"
+          },
+          {
+            "name": "geo_state",
+            "value": "(client && client.geographicalContext && client.geographicalContext.state) ? client.geographicalContext.state : undefined"
+          },
+          {
+            "name": "geo_country",
+            "value": "(client && client.geographicalContext && client.geographicalContext.country) ? client.geographicalContext.country : undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "(authenticationContext && authenticationContext.externalSessionId) ? authenticationContext.externalSessionId : undefined"
+          },
+          {
+            "name": "transaction_id",
+            "value": "(transaction && transaction.id) ? transaction.id : undefined"
+          },
+          {
+            "name": "transaction_type",
+            "value": "(transaction && transaction.type) ? transaction.type : undefined"
+          },
+          {
+            "name": "event_uuid",
+            "value": "uuid"
+          },
+          {
+            "name": "legacy_event_type",
+            "value": "legacyEventType"
+          },
+          {
+            "name": "as_org",
+            "value": "(securityContext && securityContext.asOrg) ? securityContext.asOrg : undefined"
+          },
+          {
+            "name": "isp",
+            "value": "(securityContext && securityContext.isp) ? securityContext.isp : undefined"
+          },
+          {
+            "name": "is_proxy",
+            "value": "(securityContext && securityContext.isProxy != undefined) ? String(securityContext.isProxy) : undefined"
+          }
+        ]
+      },
+      "description": "Promote key nested Okta fields to top-level for downstream use"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (timestamp) so _time reflects the source event, not pipeline processing time"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from okta_system::cim: 87/87 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

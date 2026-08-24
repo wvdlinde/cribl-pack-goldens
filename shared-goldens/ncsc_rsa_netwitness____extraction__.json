@@ -1,0 +1,148 @@
+{
+  "key": "ncsc_rsa_netwitness::__extraction__",
+  "sourcetype": "ncsc_rsa_netwitness",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:36:43.038Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract leading ISO8601 timestamp from start of raw event",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract dotted key=value pairs (KVP format) from raw event into nested fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Flatten nested KVP fields into clean top-level field names for mapping stage",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user.dst ? user.dst : (user.src ? user.src : null)"
+          },
+          {
+            "name": "src_ip",
+            "value": "ip.src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "ip.dst"
+          },
+          {
+            "name": "dst_port",
+            "value": "port.dst"
+          },
+          {
+            "name": "dst_host",
+            "value": "alias.host"
+          },
+          {
+            "name": "protocol",
+            "value": "proto"
+          },
+          {
+            "name": "message",
+            "value": "event.desc"
+          },
+          {
+            "name": "event_category",
+            "value": "event.cat.name"
+          },
+          {
+            "name": "device_ip",
+            "value": "device.ip"
+          },
+          {
+            "name": "device_type",
+            "value": "device.type"
+          },
+          {
+            "name": "action",
+            "value": "ec.activity"
+          },
+          {
+            "name": "theme",
+            "value": "ec.theme"
+          },
+          {
+            "name": "outcome",
+            "value": "ec.outcome"
+          },
+          {
+            "name": "threat_desc",
+            "value": "threat.desc"
+          },
+          {
+            "name": "sig_id",
+            "value": "sig.id"
+          }
+        ],
+        "remove": [
+          "device",
+          "event",
+          "ec",
+          "user",
+          "ip",
+          "port",
+          "alias",
+          "proto",
+          "threat",
+          "sig"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize outcome into standard action taxonomy (allow/deny/detect/unknown)",
+      "conf": {
+        "add": [
+          {
+            "name": "normalized_action",
+            "value": "outcome && outcome.match(/Success|Permit/) ? 'allow' : (outcome && outcome.match(/Failure|Block|Blocked/) ? 'deny' : (outcome && outcome.match(/Detected/) ? 'detect' : 'unknown'))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Determine IP version for device/source/destination IPs to handle IPv6 addresses",
+      "conf": {
+        "add": [
+          {
+            "name": "ip_version",
+            "value": "device_ip && device_ip.indexOf(':') >= 0 ? 6 : (src_ip && src_ip.indexOf(':') >= 0 ? 6 : 4)"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

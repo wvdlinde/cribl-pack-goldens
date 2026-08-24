@@ -1,0 +1,281 @@
+{
+  "key": "vmware_esxlog_healthdplugins::cim#network::__mapping__",
+  "sourcetype": "vmware_esxlog_healthdplugins",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:21:41.254Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "dvc",
+            "value": "dst_host"
+          },
+          {
+            "name": "vendor_product",
+            "value": "product"
+          },
+          {
+            "name": "app",
+            "value": "component_module"
+          },
+          {
+            "name": "process_id",
+            "value": "thread_id"
+          },
+          {
+            "name": "action",
+            "value": "status == 'DENIED' ? 'blocked' : (status == 'SUCCESS' || status == 'OK' ? 'allowed' : '')"
+          },
+          {
+            "name": "vendor_action",
+            "value": "status || ''"
+          },
+          {
+            "name": "user",
+            "value": "(message.match(/(?:user=|requestedBy=)(\\S+)/) || [])[1] || ''"
+          },
+          {
+            "name": "src",
+            "value": "(message.match(/(?:source=|from )(\\d{1,3}(?:\\.\\d{1,3}){3})/) || [])[1] || ''"
+          },
+          {
+            "name": "src_ip",
+            "value": "(message.match(/(?:source=|from )(\\d{1,3}(?:\\.\\d{1,3}){3})/) || [])[1] || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "message.match(/port=(\\d+)/) ? Number(message.match(/port=(\\d+)/)[1]) : null"
+          },
+          {
+            "name": "transport",
+            "value": "message.toLowerCase().indexOf('wsman') !== -1 ? 'tcp' : ''"
+          },
+          {
+            "name": "rule",
+            "value": "event_type || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-16)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_account",
+            "value": "vendor || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware_esxlog_healthdplugins'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "src_ip",
+          "dest_ip",
+          "src_port",
+          "dest_port",
+          "protocol",
+          "transport",
+          "action",
+          "application",
+          "bytes_in",
+          "bytes_out",
+          "duration",
+          "rule_name",
+          "src_zone",
+          "dest_zone",
+          "host",
+          "log_time",
+          "_time",
+          "class_uid",
+          "category_uid",
+          "event_type",
+          "dvc",
+          "vendor_product",
+          "app",
+          "process_id",
+          "vendor_action",
+          "user",
+          "src",
+          "rule",
+          "vendor_account",
+          "sourcetype",
+          "index",
+          "source",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_raw",
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

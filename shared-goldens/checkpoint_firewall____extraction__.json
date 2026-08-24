@@ -1,0 +1,146 @@
+{
+  "key": "checkpoint_firewall::__extraction__",
+  "sourcetype": "checkpoint_firewall",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T18:00:42.641Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog envelope fields and raw KVP payload from _raw",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^\\d+\\s+<(?<syslog_pri>\\d+)>\\d+\\s+(?<syslog_timestamp>[^\\s]+)\\s+(?<syslog_host>[^\\s]+)\\s+(?<_kvp_raw>.+)$/"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "_kvp_raw != undefined",
+      "disabled": false,
+      "description": "Parse pipe-delimited KVP fields from the payload (handles both | and space as separators)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_kvp_raw",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": [],
+        "delimChar": "|",
+        "quoteChar": "\"",
+        "escapeChar": "\\",
+        "nullValues": []
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_kvp_raw != undefined",
+      "disabled": false,
+      "description": "Extract trailing space-separated KVP fields (src, dst, proto, etc.) that appear after the pipe-delimited section",
+      "conf": {
+        "source": "_kvp_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/\\|\\s+(?:src=(?<src_ip>[\\d\\.]+))?\\s*(?:dst=(?<dst_ip>[\\d\\.]+))?\\s*(?:proto=(?<proto>\\d+))?\\s*(?:sport=(?<src_port>\\d+))?\\s*(?:dport=(?<dst_port>\\d+))?\\s*(?:user=(?<user>[^\\s]+))?/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize and map to standard field names; derive action, severity, direction",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "syslog_timestamp"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip != undefined ? src_ip : (origin != undefined ? origin : undefined)"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "dst_port"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port"
+          },
+          {
+            "name": "metadata.product",
+            "value": "product"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "loguid"
+          },
+          {
+            "name": "connection_info.direction",
+            "value": "conn_direction != undefined ? conn_direction : (ifdir != undefined ? ifdir : undefined)"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "ifdir == 'inbound' ? 1 : (ifdir == 'outbound' ? 2 : 0)"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "proto != undefined ? Number(proto) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action != undefined ? action.toLowerCase() : (rule_action != undefined ? rule_action.toLowerCase() : undefined)"
+          },
+          {
+            "name": "severity_id",
+            "value": "action == 'accept' ? 1 : (action == 'drop' ? 4 : (action == 'reject' ? 4 : 2))"
+          },
+          {
+            "name": "activity_id",
+            "value": "action == 'accept' ? 1 : (action == 'drop' ? 2 : (action == 'reject' ? 3 : 0))"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "type_uid",
+            "value": "4001"
+          },
+          {
+            "name": "raw_data",
+            "value": "_raw"
+          }
+        ],
+        "remove": [
+          "_kvp_raw",
+          "syslog_pri"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction (ai-improved) from checkpoint_firewall::cim: 9/9 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

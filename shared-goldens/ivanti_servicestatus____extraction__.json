@@ -1,0 +1,85 @@
+{
+  "key": "ivanti_servicestatus::__extraction__",
+  "sourcetype": "ivanti_servicestatus",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:27:46.571Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header: timestamp, host, process, pid, severity, event_type, and remaining key=value payload",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\S+)\\s+(?<event_type>\\S+)\\s+(?<kvp_data>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (component, status, user, src_ip, dst_ip, reason, etc.) from the KVP payload",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp_data",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": []
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to standard log levels",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity === 'CRIT' ? 'critical' : severity === 'ERR' ? 'error' : severity === 'WARN' ? 'warning' : severity === 'NOTICE' ? 'notice' : severity === 'INFO' ? 'info' : severity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized action field from status for auth/session/service events",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status === 'SUCCESS' ? 'allowed' : status === 'FAILED' ? 'blocked' : status === 'DOWN' ? 'down' : status === 'UP' ? 'up' : status === 'DEGRADED' ? 'degraded' : status === 'NEAR_LIMIT' ? 'warning' : status === 'RESTART_FAILED' ? 'failed' : status"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Ivanti Connect Secure'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Cleanup scratch fields no longer needed after extraction",
+      "conf": {
+        "remove": [
+          "kvp_data",
+          "process",
+          "pid"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

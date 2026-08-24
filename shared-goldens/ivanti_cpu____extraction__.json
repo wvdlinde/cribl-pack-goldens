@@ -1,0 +1,74 @@
+{
+  "key": "ivanti_cpu::__extraction__",
+  "sourcetype": "ivanti_cpu",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:40:40.157Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header and isolate the KVP message body for further extraction",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<__kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (severity, cpu_usage, mem_usage, load_avg, threshold, core_count, status, user, src_ip, action, msg) from the syslog message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_body",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize message field name and clean up scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "msg"
+          }
+        ],
+        "remove": [
+          "msg",
+          "__kvp_body"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and derive a default action when none was reported (routine CPU sampling events)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "action ? action : (status=='normal' || status=='recovered' ? 'cpu_sample' : (status=='error' ? 'cpu_query_error' : 'cpu_threshold_event'))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

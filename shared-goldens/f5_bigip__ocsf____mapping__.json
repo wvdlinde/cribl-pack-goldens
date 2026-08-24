@@ -1,0 +1,342 @@
+{
+  "key": "f5_bigip::ocsf::__mapping__",
+  "sourcetype": "f5_bigip",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:26.339Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract BIG-IP syslog header, event code, message, and source status values.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^<(?<priority>\\d+)>(?<timestamp_str>\\w+\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<device_hostname>\\S+)\\s+(?<syslog_severity>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+(?<event_code>[0-9a-fA-F]+):(?<event_level>\\d+):\\s+(?<message>.+)$/gm",
+        "regexList": [
+          {
+            "regex": "/monitor status (?<status_code>\\w+)\\.?$/gm"
+          },
+          {
+            "regex": "/^<\\d+>.*?:\\s+[0-9a-fA-F]+:\\d+:\\s+(?<status_code>Connection error)\\b/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Normalize the syslog timestamp in the raw event to OCSF time.",
+      "conf": {
+        "srcField": "_raw",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Populate OCSF target fields and place source-only attributes in unmapped.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "status_detail",
+            "value": "message"
+          },
+          {
+            "name": "status_id",
+            "value": "status_code==='down'||status_code==='Connection error'?2:(status_code==='up'?1:0)"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.priority",
+            "value": "priority"
+          },
+          {
+            "name": "unmapped.timestamp_str",
+            "value": "timestamp_str"
+          },
+          {
+            "name": "unmapped.device_hostname",
+            "value": "device_hostname"
+          },
+          {
+            "name": "unmapped.syslog_severity",
+            "value": "syslog_severity"
+          },
+          {
+            "name": "unmapped.process",
+            "value": "process"
+          },
+          {
+            "name": "unmapped.pid",
+            "value": "pid"
+          },
+          {
+            "name": "unmapped.event_code",
+            "value": "event_code"
+          },
+          {
+            "name": "unmapped.event_level",
+            "value": "event_level"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^<\\d+>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+(?<syslog_severity>\\S+)\\s+/gm",
+        "regexList": [
+          {
+            "regex": "/^<\\d+>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+\\S+\\s+\\w+\\[\\d+\\]:\\s+[0-9a-f]+:\\d+:\\s+(?<message>.*)$/gm"
+          },
+          {
+            "regex": "/member\\s+(?:\\/Common\\/)?(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):\\d+/gm"
+          },
+          {
+            "regex": "/member\\s+(?:\\/Common\\/)?\\d{1,3}(?:\\.\\d{1,3}){3}:(?<dst_port>\\d+)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract BIG-IP severity, message, and destination pool member endpoint details."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "activity_id",
+            "value": "message && message.toLowerCase().indexOf('connection error')>=0 ? 4 : message && message.toLowerCase().indexOf('status down')>=0 ? 4 : 6"
+          },
+          {
+            "name": "severity_id",
+            "value": "syslog_severity==='emerg'||syslog_severity==='alert'||syslog_severity==='crit'?5:syslog_severity==='err'?4:syslog_severity==='warning'?3:syslog_severity==='notice'?2:syslog_severity==='info'?1:0"
+          },
+          {
+            "name": "status",
+            "value": "message && (message.toLowerCase().indexOf('connection error')>=0 || message.toLowerCase().indexOf('status down')>=0) ? 'Failure' : 'Other'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "dst_port ? dst_port*1 : null"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dst_endpoint.uid",
+            "value": "dst_ip && dst_port ? dst_ip + ':' + dst_port : dst_ip"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11},{name:'dst_endpoint.uid',type_id:48}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF Network Activity target fields and remove non-target parsing fields."
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract syslog header, BIG-IP details, client, VIP, pool, and member fields.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^<\\d+>(?<original_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<reporter_name>\\S+)\\s+(?<syslog_severity>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+(?<event_code>[0-9a-f]+):(?<event_severity>\\d+):/gm",
+        "regexList": [
+          {
+            "regex": "/\\bclient\\s+(?<client_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<client_port>\\d+)\\b/gm"
+          },
+          {
+            "regex": "/\\bVIP\\s+\\/Common\\/(?<vip_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bPool\\s+\\/Common\\/(?<pool_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\b(?:pool\\s+)?member\\s+(?:\\/Common\\/)?(?<member_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<member_port>\\d+)\\b/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map extracted BIG-IP fields into target OCSF Network Activity attributes.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "400104"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "client_ip ? client_ip : member_ip ? member_ip : null"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "client_port ? client_port : member_port ? member_port : null"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "vip_name ? vip_name : pool_name ? pool_name : null"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "client_ip ? 0 : 1"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "client_ip ? 1 : 3"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "client_ip ? 3 : 2"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "'tcp'"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "6"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "4"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "client_ip ? true : false"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'F5 BIG-IP LTM'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'BIG-IP'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'F5'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "reporter_name"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert numeric OCSF fields and ports to numbers while preserving booleans and version strings.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [
+          "metadata.version",
+          "is_src_dst_assignment_known"
+        ],
+        "format": "none"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Remove temporary extracted fields after OCSF mapping.",
+      "filter": "true",
+      "conf": {
+        "remove": [
+          "original_time",
+          "reporter_name",
+          "syslog_severity",
+          "process",
+          "pid",
+          "event_code",
+          "event_severity",
+          "client_ip",
+          "client_port",
+          "vip_name",
+          "pool_name",
+          "member_ip",
+          "member_port"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

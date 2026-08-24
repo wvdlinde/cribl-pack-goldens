@@ -1,0 +1,84 @@
+{
+  "key": "vmware_esxlog_cmmdstimemachine::__extraction__",
+  "sourcetype": "vmware_esxlog_cmmdstimemachine",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:06:37.013Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, process PID, and message body from raw ESX Cmmdstimemachine log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Cmmdstimemachine\\[(?<pid>\\d+)\\]:\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('(')",
+      "disabled": false,
+      "description": "Extract witness/registered node IP address when present in message (e.g. witness node registration)",
+      "conf": {
+        "source": "message",
+        "regex": "/\\((?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive severity level from message keyword prefix",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.match(/^CRITICAL:/) ? 'critical' : message.match(/^ERROR:/) ? 'error' : message.match(/^SECURITY:/) ? 'security' : message.match(/^WARNING:/) ? 'warning' : 'info'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action field based on message content patterns",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/successfully persisted|completed successfully|checkpoint created|registered/) ? 'success' : message.match(/Failed to acquire|Checksum mismatch|Unauthorized write|denied/) ? 'failure' : message.match(/Rollback initiated|Quarantining|pruning/) ? 'remediation' : message.match(/latency exceeded|clock skew|Disk space check/) ? 'warning' : message.match(/transition detected|restarted/) ? 'state_change' : 'informational'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set static protocol/component identifiers for this ESX time machine log source",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'vsan-cmmds'"
+          },
+          {
+            "name": "process",
+            "value": "'Cmmdstimemachine'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,130 @@
+{
+  "key": "gcp_audit::cim::__mapping__",
+  "sourcetype": "gcp_audit",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:22:37.152Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Change'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Change'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Change'"
+          },
+          {
+            "name": "src",
+            "value": "protoPayload && protoPayload.requestMetadata && protoPayload.requestMetadata.callerIp || ''"
+          },
+          {
+            "name": "user",
+            "value": "protoPayload && protoPayload.authenticationInfo && protoPayload.authenticationInfo.principalEmail || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "protoPayload && protoPayload.authenticationInfo && protoPayload.authenticationInfo.principalEmail || ''"
+          },
+          {
+            "name": "app",
+            "value": "protoPayload && protoPayload.serviceName || ''"
+          },
+          {
+            "name": "action",
+            "value": "protoPayload && protoPayload.methodName || ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "protoPayload && protoPayload.methodName || ''"
+          },
+          {
+            "name": "object",
+            "value": "protoPayload && protoPayload.resourceName || ''"
+          },
+          {
+            "name": "rule",
+            "value": "protoPayload && protoPayload.authorizationInfo && protoPayload.authorizationInfo[0] && protoPayload.authorizationInfo[0].permission || ''"
+          },
+          {
+            "name": "category",
+            "value": "resource && resource.type || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "resource && resource.labels && resource.labels.project_id || ''"
+          },
+          {
+            "name": "severity",
+            "value": "severity || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'INFO' ? 2 : severity == 'WARNING' ? 4 : severity == 'ERROR' ? 6 : severity == 'CRITICAL' ? 9 : 0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-19)",
+      "conf": {
+        "add": [
+          {
+            "name": "message_id",
+            "value": "insertId || ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "protoPayload && protoPayload.authenticationInfo && protoPayload.authenticationInfo.principalSubject && protoPayload.authenticationInfo.principalSubject.indexOf('serviceAccount') === 0 ? 'service_account' : 'user'"
+          },
+          {
+            "name": "process",
+            "value": "logName || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Google Cloud Audit Log'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'gcp_audit'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

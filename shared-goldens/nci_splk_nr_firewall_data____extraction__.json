@@ -1,0 +1,78 @@
+{
+  "key": "nci_splk_nr_firewall_data::__extraction__",
+  "sourcetype": "nci_splk_nr_firewall_data",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:37:40.424Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, and all key-value firewall fields from raw log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host_name>\\S+)\\s+nci_splk_nr_firewall_data:\\s+action=(?<action>\\S+)\\s+proto=(?<protocol>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+src_port=(?<src_port>\\d+)\\s+dst_ip=(?<dst_ip>\\S+)\\s+dst_port=(?<dst_port>\\d+)\\s+zone_in=(?<zone_in>\\S+)\\s+zone_out=(?<zone_out>\\S+)\\s+rule=\"(?<rule>[^\"]*)\"\\s+user=\"(?<user>[^\"]*)\"\\s+bytes_sent=(?<bytes_sent>\\d+)\\s+bytes_recv=(?<bytes_recv>\\d+)\\s+session_id=(?<session_id>\\S+)\\s+severity=(?<severity>\\S+)\\s+msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set event time from extracted timestamp and cast byte counts to numbers",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "bytes_sent",
+            "value": "Number(bytes_sent)"
+          },
+          {
+            "name": "bytes_recv",
+            "value": "Number(bytes_recv)"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action outcome and derive traffic direction from zone_in/zone_out",
+      "conf": {
+        "add": [
+          {
+            "name": "action_outcome",
+            "value": "action=='ALLOW' ? 'allowed' : (action=='DENY' || action=='DROP') ? 'blocked' : action=='RESET' ? 'reset' : 'other'"
+          },
+          {
+            "name": "direction",
+            "value": "zone_in=='trust' && zone_out=='untrust' ? 'outbound' : zone_in=='untrust' && zone_out=='trust' ? 'inbound' : zone_in==zone_out ? 'internal' : 'lateral'"
+          },
+          {
+            "name": "is_ipv6",
+            "value": "src_ip.indexOf(':')>-1 || dst_ip.indexOf(':')>-1 ? true : false"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

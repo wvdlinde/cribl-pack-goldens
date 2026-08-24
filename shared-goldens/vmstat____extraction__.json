@@ -1,0 +1,59 @@
+{
+  "key": "vmstat::__extraction__",
+  "sourcetype": "vmstat",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:28:36.205Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host) and vmstat message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<host>\\S+)\\svmstat:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !message.startsWith('procs')",
+      "description": "Extract numeric vmstat columns from data rows",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<r>\\d+)\\s+(?<b>\\d+)\\s+(?<swpd>\\d+)\\s+(?<free>\\d+)\\s+(?<buff>\\d+)\\s+(?<cache>\\d+)\\s+(?<si>\\d+)\\s+(?<so>\\d+)\\s+(?<bi>\\d+)\\s+(?<bo>\\d+)\\s+(?<in>\\d+)\\s+(?<cs>\\d+)\\s+(?<us>\\d+)\\s+(?<sy>\\d+)\\s+(?<id>\\d+)\\s+(?<wa>\\d+)\\s+(?<st>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "description": "Classify row type and normalize host field name",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "row_type",
+            "value": "message && message.startsWith('procs') ? 'header' : 'data'"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          }
+        ],
+        "remove": [
+          "host"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

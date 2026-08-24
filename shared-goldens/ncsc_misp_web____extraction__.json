@@ -1,0 +1,39 @@
+{
+  "key": "ncsc_misp_web::__extraction__",
+  "sourcetype": "ncsc_misp_web",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:21:59.281Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "action",
+        "email",
+        "ip",
+        "log_id",
+        "model",
+        "org",
+        "result",
+        "timestamp",
+        "title",
+        "user_id"
+      ]
+    }
+  },
+  "report": null
+}

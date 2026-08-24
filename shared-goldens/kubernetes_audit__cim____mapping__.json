@@ -1,0 +1,130 @@
+{
+  "key": "kubernetes_audit::cim::__mapping__",
+  "sourcetype": "kubernetes_audit",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:53:49.138Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'3002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'3'"
+          },
+          {
+            "name": "event_type",
+            "value": "'API Activity: Kubernetes Audit Event'"
+          },
+          {
+            "name": "src",
+            "value": "sourceIPs && sourceIPs[0] ? sourceIPs[0] : ''"
+          },
+          {
+            "name": "user",
+            "value": "user && user.username ? user.username : ''"
+          },
+          {
+            "name": "src_user",
+            "value": "user && user.username ? user.username : ''"
+          },
+          {
+            "name": "action",
+            "value": "responseStatus && responseStatus.code ? (Number(responseStatus.code) < 400 ? 'success' : 'failure') : ''"
+          },
+          {
+            "name": "app",
+            "value": "userAgent || ''"
+          },
+          {
+            "name": "url",
+            "value": "requestURI || ''"
+          },
+          {
+            "name": "object",
+            "value": "objectRef && objectRef.name ? objectRef.name : ''"
+          },
+          {
+            "name": "category",
+            "value": "objectRef && objectRef.resource ? objectRef.resource : ''"
+          },
+          {
+            "name": "message_id",
+            "value": "auditID || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "auditID || ''"
+          },
+          {
+            "name": "severity",
+            "value": "responseStatus && responseStatus.code ? (Number(responseStatus.code) >= 500 ? 'critical' : Number(responseStatus.code) >= 400 ? 'high' : 'informational') : ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "responseStatus && responseStatus.code ? (Number(responseStatus.code) >= 500 ? 5 : Number(responseStatus.code) >= 400 ? 4 : 1) : 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-19)",
+      "conf": {
+        "add": [
+          {
+            "name": "dest",
+            "value": "objectRef && objectRef.namespace ? objectRef.namespace : ''"
+          },
+          {
+            "name": "signature",
+            "value": "objectRef && objectRef.subresource ? objectRef.subresource : ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "verb || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Kubernetes'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'kubernetes_audit'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

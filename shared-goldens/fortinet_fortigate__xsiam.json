@@ -1,0 +1,241 @@
+{
+  "key": "fortinet_fortigate::xsiam",
+  "sourcetype": "fortinet_fortigate",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:11.269Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "fortinet_fortigate → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "src_ip && dst_ip && src_ip === dst_ip",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop local loopback traffic (src=dst) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'accept' && application === 'PING'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop health check / keepalive PING traffic (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'Fortinet'"
+          },
+          {
+            "name": "__product",
+            "value": "'Fortigate'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'fortinet_fortigate:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "fortinet_fortigate_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 51,
+    "outputSample": [
+      {
+        "_raw": "date=2024-11-15 time=00:03:12 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=10.0.1.45 srcport=51234 dstip=8.8.8.8 dstport=53 proto=17 action=\"accept\" policyid=5 policyname=\"LAN-to-WAN\" srcintf=\"port3\" dstintf=\"wan1\" service=\"DNS\" sentbyte=128 rcvdbyte=256 duration=1 user=\"\" app=\"DNS\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=00:17:44 devname=\"FGT-BRANCH-02\" devid=\"FG100E1234567802\" logid=\"0001000014\" type=\"traffic\" subtype=\"local\" level=\"warning\" vd=\"root\" srcip=185.220.101.47 srcport=44221 dstip=203.0.113.5 dstport=22 proto=6 action=\"deny\" policyid=0 policyname=\"implicit-deny\" srcintf=\"wan1\" dstintf=\"local\" service=\"SSH\" sentbyte=0 rcvdbyte=0 duration=0 user=\"\" app=\"SSH\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=00:31:09 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100026001\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=172.16.50.22 srcport=49870 dstip=91.195.240.117 dstport=80 proto=6 action=\"dropped\" policyid=12 attack=\"MS.SMB.Server.Trans2.Request.Overflow\" attackid=9527 severity=\"critical\" srcintf=\"port5\" dstintf=\"wan1\" direction=\"outgoing\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=00:48:55 devname=\"FGT-DC-03\" devid=\"FG600D9876543003\" logid=\"0200000003\" type=\"event\" subtype=\"system\" level=\"information\" vd=\"root\" action=\"login\" status=\"success\" user=\"admin\" ui=\"GUI(192.168.1.10)\" msg=\"Administrator admin logged in successfully from 192.168.1.10\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=01:02:33 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100020002\" type=\"utm\" subtype=\"webfilter\" level=\"warning\" vd=\"root\" srcip=10.0.2.88 srcport=58234 dstip=104.26.10.211 dstport=443 proto=6 action=\"blocked\" policyid=8 srcintf=\"port2\" dstintf=\"wan1\" user=\"jsmith\" profile=\"corporate-webfilter\" url=\"https://www.gambling-site.com\" cat=62 catdesc=\"Gambling\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=01:19:22 devname=\"FGT-BRANCH-02\" devid=\"FG100E1234567802\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=192.168.10.15 srcport=55001 dstip=52.96.14.107 dstport=443 proto=6 action=\"accept\" policyid=3 policyname=\"CORP-EMAIL\" srcintf=\"port1\" dstintf=\"wan1\" service=\"HTTPS\" sentbyte=45230 rcvdbyte=312450 duration=182 user=\"mwilson\" app=\"Microsoft.Exchange.Online\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=01:35:47 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100022002\" type=\"utm\" subtype=\"appctrl\" level=\"warning\" vd=\"root\" srcip=10.0.3.201 srcport=62001 dstip=149.154.167.51 dstport=443 proto=6 action=\"blocked\" policyid=15 srcintf=\"port4\" dstintf=\"wan2\" app=\"Telegram\" appcat=\"VoIP.Messenger\" apprisk=\"medium\" user=\"rjones\" profile=\"strict-appctrl\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      },
+      {
+        "_raw": "date=2024-11-15 time=01:52:10 devname=\"FGT-DC-03\" devid=\"FG600D9876543003\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"dmz\" srcip=10.10.10.5 srcport=44322 dstip=10.20.20.100 dstport=8080 proto=6 action=\"accept\" policyid=22 policyname=\"DMZ-to-SERVER\" srcintf=\"port6\" dstintf=\"port8\" service=\"HTTP.8080\" sentbyte=1024 rcvdbyte=2048 duration=5 user=\"\" app=\"\"",
+        "_time": 1784047885.049,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Fortinet",
+        "__product": "Fortigate",
+        "sourcetype": "fortinet_fortigate:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "date",
+      "time",
+      "devname",
+      "devid",
+      "logid",
+      "type",
+      "subtype",
+      "level",
+      "vd",
+      "srcip",
+      "srcport",
+      "dstip",
+      "dstport",
+      "proto",
+      "action",
+      "policyid",
+      "policyname",
+      "srcintf",
+      "dstintf",
+      "service",
+      "sentbyte",
+      "rcvdbyte",
+      "duration",
+      "user",
+      "app",
+      "attack",
+      "attackid",
+      "severity",
+      "direction",
+      "status",
+      "ui",
+      "msg",
+      "profile",
+      "url",
+      "cat",
+      "catdesc",
+      "appcat",
+      "apprisk"
+    ],
+    "sampleRaw": [
+      "date=2024-11-15 time=00:03:12 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=10.0.1.45 srcport=51234 dstip=8.8.8.8 dstport=53 proto=17 action=\"accept\" policyid=5 policyname=\"LAN-to-WAN\" srcintf=\"port3\" dstintf=\"wan1\" service=\"DNS\" sentbyte=128 rcvdbyte=256 duration=1 user=\"\" app=\"DNS\"",
+      "date=2024-11-15 time=00:17:44 devname=\"FGT-BRANCH-02\" devid=\"FG100E1234567802\" logid=\"0001000014\" type=\"traffic\" subtype=\"local\" level=\"warning\" vd=\"root\" srcip=185.220.101.47 srcport=44221 dstip=203.0.113.5 dstport=22 proto=6 action=\"deny\" policyid=0 policyname=\"implicit-deny\" srcintf=\"wan1\" dstintf=\"local\" service=\"SSH\" sentbyte=0 rcvdbyte=0 duration=0 user=\"\" app=\"SSH\"",
+      "date=2024-11-15 time=00:31:09 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100026001\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=172.16.50.22 srcport=49870 dstip=91.195.240.117 dstport=80 proto=6 action=\"dropped\" policyid=12 attack=\"MS.SMB.Server.Trans2.Request.Overflow\" attackid=9527 severity=\"critical\" srcintf=\"port5\" dstintf=\"wan1\" direction=\"outgoing\"",
+      "date=2024-11-15 time=00:48:55 devname=\"FGT-DC-03\" devid=\"FG600D9876543003\" logid=\"0200000003\" type=\"event\" subtype=\"system\" level=\"information\" vd=\"root\" action=\"login\" status=\"success\" user=\"admin\" ui=\"GUI(192.168.1.10)\" msg=\"Administrator admin logged in successfully from 192.168.1.10\"",
+      "date=2024-11-15 time=01:02:33 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100020002\" type=\"utm\" subtype=\"webfilter\" level=\"warning\" vd=\"root\" srcip=10.0.2.88 srcport=58234 dstip=104.26.10.211 dstport=443 proto=6 action=\"blocked\" policyid=8 srcintf=\"port2\" dstintf=\"wan1\" user=\"jsmith\" profile=\"corporate-webfilter\" url=\"https://www.gambling-site.com\" cat=62 catdesc=\"Gambling\"",
+      "date=2024-11-15 time=01:19:22 devname=\"FGT-BRANCH-02\" devid=\"FG100E1234567802\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"root\" srcip=192.168.10.15 srcport=55001 dstip=52.96.14.107 dstport=443 proto=6 action=\"accept\" policyid=3 policyname=\"CORP-EMAIL\" srcintf=\"port1\" dstintf=\"wan1\" service=\"HTTPS\" sentbyte=45230 rcvdbyte=312450 duration=182 user=\"mwilson\" app=\"Microsoft.Exchange.Online\"",
+      "date=2024-11-15 time=01:35:47 devname=\"FGT-CORE-01\" devid=\"FG200E3912345001\" logid=\"0100022002\" type=\"utm\" subtype=\"appctrl\" level=\"warning\" vd=\"root\" srcip=10.0.3.201 srcport=62001 dstip=149.154.167.51 dstport=443 proto=6 action=\"blocked\" policyid=15 srcintf=\"port4\" dstintf=\"wan2\" app=\"Telegram\" appcat=\"VoIP.Messenger\" apprisk=\"medium\" user=\"rjones\" profile=\"strict-appctrl\"",
+      "date=2024-11-15 time=01:52:10 devname=\"FGT-DC-03\" devid=\"FG600D9876543003\" logid=\"0000000013\" type=\"traffic\" subtype=\"forward\" level=\"notice\" vd=\"dmz\" srcip=10.10.10.5 srcport=44322 dstip=10.20.20.100 dstport=8080 proto=6 action=\"accept\" policyid=22 policyname=\"DMZ-to-SERVER\" srcintf=\"port6\" dstintf=\"port8\" service=\"HTTP.8080\" sentbyte=1024 rcvdbyte=2048 duration=5 user=\"\" app=\"\""
+    ],
+    "sourcetype": "fortinet_fortigate"
+  }
+}

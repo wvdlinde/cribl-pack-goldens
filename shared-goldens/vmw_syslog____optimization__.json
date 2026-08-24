@@ -1,0 +1,99 @@
+{
+  "key": "vmw_syslog::__optimization__",
+  "sourcetype": "vmw_syslog",
+  "dest_format": "__optimization__",
+  "score": 92,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:13:51.295Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "class_uid",
+          "category_uid",
+          "event_type",
+          "dvc_ip",
+          "dvc",
+          "process",
+          "process_id",
+          "user",
+          "action",
+          "object",
+          "signature",
+          "vendor_product",
+          "app",
+          "category",
+          "_time",
+          "sourcetype",
+          "index",
+          "source",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

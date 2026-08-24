@@ -1,0 +1,90 @@
+{
+  "key": "ivanti_vpp::__extraction__",
+  "sourcetype": "ivanti_vpp",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:06:14.418Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, pid, severity, msg_id) and isolate the trailing key=value payload for KVP extraction",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Ivanti\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+)\\s+(?<msg_id>\\w+)\\s+(?<__kvp_rest>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract remaining key=value pairs (msg, user, realm, src, proto, session, outcome, admin, etc.) from the KVP tail of the message",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_rest",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names: unify user identity fields, rename msg/src to standard names, unify protocol, and derive action from outcome",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : (admin ? admin : (target_user ? target_user : null))"
+          },
+          {
+            "name": "protocol",
+            "value": "proto ? proto : protocol"
+          },
+          {
+            "name": "action",
+            "value": "outcome=='success' ? 'allowed' : (outcome=='blocked' ? 'blocked' : 'denied')"
+          }
+        ],
+        "remove": [
+          "msg",
+          "src",
+          "proto",
+          "admin",
+          "target_user",
+          "__kvp_rest"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Flag IPv6 source addresses for downstream handling per IPv6 normalization rule",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.match(/:/) ? 'ipv6' : 'ipv4'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

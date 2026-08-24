@@ -1,0 +1,420 @@
+{
+  "key": "sophos_xg::ocsf::__mapping__",
+  "sourcetype": "sophos_xg",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:23.507Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse firewall key-value pairs from _raw into top-level fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true,
+        "allowedKeyChars": [
+          "_"
+        ],
+        "allowedValueChars": [
+          ".",
+          ":",
+          "/",
+          "-"
+        ],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert numeric firewall counters and identifiers needed for calculations to numbers.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [
+          "device_name",
+          "device_id",
+          "log_id",
+          "log_type",
+          "log_component",
+          "log_subtype",
+          "status",
+          "date",
+          "time",
+          "timezone",
+          "user_name",
+          "user_gp",
+          "src_ip",
+          "src_country_code",
+          "dst_ip",
+          "dst_country_code",
+          "protocol",
+          "srczone",
+          "dstzone",
+          "message"
+        ],
+        "format": "none"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed firewall fields to target OCSF Network Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes",
+            "value": "sent_bytes + recv_bytes"
+          },
+          {
+            "name": "traffic.packets",
+            "value": "sent_pkts + recv_pkts"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "time",
+            "value": "new Date(date+'T'+time+'Z').getTime()/1000"
+          },
+          {
+            "name": "status_detail",
+            "value": "log_subtype"
+          },
+          {
+            "name": "status_code",
+            "value": "status"
+          },
+          {
+            "name": "status_id",
+            "value": "status==='Allow'?1:(status==='Deny'?2:99)"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.device_name",
+            "value": "device_name"
+          },
+          {
+            "name": "unmapped.timezone",
+            "value": "timezone"
+          },
+          {
+            "name": "unmapped.device_id",
+            "value": "device_id"
+          },
+          {
+            "name": "unmapped.log_id",
+            "value": "log_id"
+          },
+          {
+            "name": "unmapped.log_type",
+            "value": "log_type"
+          },
+          {
+            "name": "unmapped.log_component",
+            "value": "log_component"
+          },
+          {
+            "name": "unmapped.duration",
+            "value": "duration"
+          },
+          {
+            "name": "unmapped.fw_rule_id",
+            "value": "fw_rule_id"
+          },
+          {
+            "name": "unmapped.policy_type",
+            "value": "policy_type"
+          },
+          {
+            "name": "unmapped.user_name",
+            "value": "user_name"
+          },
+          {
+            "name": "unmapped.user_gp",
+            "value": "user_gp"
+          },
+          {
+            "name": "unmapped.iap",
+            "value": "iap"
+          },
+          {
+            "name": "unmapped.src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "unmapped.src_country_code",
+            "value": "src_country_code"
+          },
+          {
+            "name": "unmapped.dst_ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "unmapped.dst_country_code",
+            "value": "dst_country_code"
+          },
+          {
+            "name": "unmapped.protocol",
+            "value": "protocol"
+          },
+          {
+            "name": "unmapped.src_port",
+            "value": "src_port"
+          },
+          {
+            "name": "unmapped.dst_port",
+            "value": "dst_port"
+          },
+          {
+            "name": "unmapped.sent_pkts",
+            "value": "sent_pkts"
+          },
+          {
+            "name": "unmapped.recv_pkts",
+            "value": "recv_pkts"
+          },
+          {
+            "name": "unmapped.sent_bytes",
+            "value": "sent_bytes"
+          },
+          {
+            "name": "unmapped.recv_bytes",
+            "value": "recv_bytes"
+          },
+          {
+            "name": "unmapped.srczone",
+            "value": "srczone"
+          },
+          {
+            "name": "unmapped.dstzone",
+            "value": "dstzone"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse firewall key-value pairs from _raw into a parsed object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "cleanFields": true,
+        "allowedKeyChars": [
+          "_"
+        ],
+        "allowedValueChars": [
+          ".",
+          ":",
+          "-",
+          "/"
+        ],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed firewall fields to OCSF Network Activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "6"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "severity_id",
+            "value": "parsed.status==='Deny'?3:1"
+          },
+          {
+            "name": "status",
+            "value": "parsed.status==='Allow'?'Success':(parsed.status==='Deny'?'Failure':(parsed.status || 'Unknown'))"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "parsed.timezone==='UTC'?0:null"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "parsed.dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "parsed.dst_port * 1"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse key-value firewall fields from _raw.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "dstField": "",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": [
+          "."
+        ],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed firewall fields to OCSF Network Activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "400106"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port ? src_port*1 : null"
+          },
+          {
+            "name": "src_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "user_name"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "user_name ? 1 : 0"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "log_type"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "date + ' ' + time + (timezone ? ' ' + timezone : '')"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "log_type"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "device_id"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Sophos'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "device_name"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "device_id"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "srczone === 'WAN' && dstzone !== 'WAN' ? 1 : (srczone !== 'WAN' && dstzone === 'WAN' ? 2 : (srczone !== 'WAN' && dstzone !== 'WAN' ? 3 : 0))"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "srczone === 'WAN' || dstzone === 'WAN' ? 3 : 2"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol ? protocol.toLowerCase() : null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "protocol === 'TCP' ? 6 : (protocol === 'UDP' ? 17 : (protocol === 'ICMP' ? 1 : 0))"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "(src_ip && src_ip.indexOf(':') >= 0) || (dst_ip && dst_ip.indexOf(':') >= 0) ? 6 : 4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "log_id"
+          }
+        ],
+        "keep": [
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "is_src_dst_assignment_known",
+          "connection_info.*",
+          "__*",
+          "cribl_*"
+        ],
+        "remove": [
+          "*"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,30 @@
+{
+  "key": "cisco_asa::__optimization__",
+  "sourcetype": "cisco_asa",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 248,
+  "updated_at": "2026-07-16T07:40:30.651Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "asa_code == '302013' || asa_code == '302015' || event_code == '302013' || event_code == '302015'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop connection build/teardown events (302013/302015) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "(asa_code == '106100' || event_code == '106100') && action && String(action).toLowerCase().indexOf('permit') >= 0",
+      "disabled": true,
+      "final": true,
+      "description": "Drop routine ACL permit events (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

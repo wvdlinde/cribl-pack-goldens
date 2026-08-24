@@ -1,0 +1,94 @@
+{
+  "key": "corelight_ntp::cim::__mapping__",
+  "sourcetype": "corelight_ntp",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:21:53.782Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "id.orig_h"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p)"
+          },
+          {
+            "name": "dest",
+            "value": "id.resp_h"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toUpperCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "'ntp'"
+          },
+          {
+            "name": "session_id",
+            "value": "uid"
+          },
+          {
+            "name": "category",
+            "value": "'NTP Traffic'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "mode == 3 ? 'client' : mode == 4 ? 'server' : mode == 1 ? 'symmetric_active' : mode == 5 ? 'broadcast' : String(mode)"
+          },
+          {
+            "name": "protocol_version",
+            "value": "String(version)"
+          },
+          {
+            "name": "_time",
+            "value": "Number(ts)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ntp'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

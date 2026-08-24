@@ -1,0 +1,29 @@
+{
+  "key": "cisco_estreamer_data::__extraction__",
+  "sourcetype": "cisco_estreamer_data",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:15:21.501Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"cisco_estreamer\" (kvp)."
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse KVP",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

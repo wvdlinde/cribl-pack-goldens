@@ -1,0 +1,135 @@
+{
+  "key": "ivanti_openports::__extraction__",
+  "sourcetype": "ivanti_openports",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:15:17.268Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header: timestamp, host, process, pid",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "__kvp",
+      "disabled": false,
+      "description": "Extract key=value pairs from message body (quoted msg supported)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "fields": [],
+        "cleanFields": true,
+        "delimChar": " ",
+        "quoteChar": "\"",
+        "kvDelimChar": "="
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names, protocol/action, direction and IPv6 flag",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Math.floor(Date.parse(timestamp)/1000)"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "(dst && dst != 'self') ? dst : src"
+          },
+          {
+            "name": "dst_port",
+            "value": "dport"
+          },
+          {
+            "name": "protocol",
+            "value": "(proto && proto != 'n/a') ? proto.toLowerCase() : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "outcome=='success' ? 'allowed' : (outcome=='blocked' ? 'blocked' : (outcome=='failure' ? 'failure' : (outcome=='alert' ? 'alerted' : outcome)))"
+          },
+          {
+            "name": "user",
+            "value": "(user && user != 'n/a') ? user : null"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes ? Number(bytes) : null"
+          },
+          {
+            "name": "is_ipv6",
+            "value": "src && src.indexOf(':') > -1 ? true : false"
+          },
+          {
+            "name": "direction",
+            "value": "src && src.match(/^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|127\\.|fe80::)/) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "vendor",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "product",
+            "value": "'OpenPorts'"
+          }
+        ],
+        "remove": [
+          "__kvp",
+          "msg",
+          "src",
+          "dst",
+          "dport",
+          "proto",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify event type and normalized severity",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : 'info'"
+          },
+          {
+            "name": "event_type",
+            "value": "message && message.match(/port scan/i) ? 'port_scan' : (message && message.match(/unexpected open port|outside allowed policy/i) ? 'policy_violation' : (message && message.match(/Authentication failure/i) ? 'auth_failure' : (message && message.match(/exfiltration|Large payload/i) ? 'data_exfiltration' : (message && message.match(/audit|inventory|baseline|healthy/i) ? 'port_audit' : (message && message.match(/added|closed|reserved|policy/i) ? 'config_change' : 'port_status')))))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

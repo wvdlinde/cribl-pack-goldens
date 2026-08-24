@@ -1,0 +1,137 @@
+{
+  "key": "tenable_syslog::__extraction__",
+  "sourcetype": "tenable_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:07.011Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (priority, timestamp, host, process) and capture remaining key=value payload",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[^:]+):\\s*(?<__kvp_data>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (type, severity, user, src_ip, ip, dns_name, port, protocol, plugin_id, msg, etc.) from the payload field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_data",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize common fields: message, action, destination host/ip/port, and derive event time from syslog timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "action",
+            "value": "type"
+          },
+          {
+            "name": "dst_ip",
+            "value": "ip ? ip : dst_ip"
+          },
+          {
+            "name": "dst_host",
+            "value": "dns_name ? dns_name : (target_dc ? target_dc : dst_host)"
+          },
+          {
+            "name": "dst_port",
+            "value": "port ? port : dst_port"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : protocol"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : severity"
+          },
+          {
+            "name": "_time",
+            "value": "Math.floor(new Date(timestamp).getTime()/1000)"
+          }
+        ],
+        "remove": [
+          "__kvp_data",
+          "msg",
+          "type",
+          "ip",
+          "port"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "affected_accounts",
+        "attempts",
+        "auth_method",
+        "component",
+        "cpu_pct",
+        "disk_free_gb",
+        "dns_name",
+        "domain",
+        "error",
+        "feed_version",
+        "format",
+        "indicator",
+        "ip",
+        "low",
+        "mem_pct",
+        "msg",
+        "new_user",
+        "new_value",
+        "old_value",
+        "plugin_id",
+        "plugin_name",
+        "plugins_updated",
+        "policy",
+        "port",
+        "protocol",
+        "report_name",
+        "repository",
+        "role",
+        "scan_id",
+        "scan_name",
+        "session_id",
+        "setting",
+        "severity",
+        "size_kb",
+        "src_ip",
+        "target_dc",
+        "target_user",
+        "targets",
+        "type",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

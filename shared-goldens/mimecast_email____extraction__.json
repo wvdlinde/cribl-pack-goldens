@@ -1,0 +1,372 @@
+{
+  "key": "mimecast_email::__extraction__",
+  "sourcetype": "mimecast_email",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:46.768Z",
+  "functions": [
+    {
+      "filter": "true",
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into a parsed object for field mapping.",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "filter": "true",
+      "id": "eval",
+      "description": "Map parsed email fields to target OCSF schema fields and preserve source-only attributes under unmapped.",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "time",
+            "value": "parsed.timestamp ? Date.parse(parsed.timestamp)/1000 : _time"
+          },
+          {
+            "name": "message",
+            "value": "parsed.subject"
+          },
+          {
+            "name": "status_code",
+            "value": "parsed.result"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsed.processState + (parsed.detectionLevel ? ' detectionLevel=' + parsed.detectionLevel : '') + (parsed.actionTriggered ? ' actionTriggered=' + parsed.actionTriggered : '')"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.timestamp",
+            "value": "parsed.timestamp"
+          },
+          {
+            "name": "unmapped.eventType",
+            "value": "parsed.eventType"
+          },
+          {
+            "name": "unmapped.processState",
+            "value": "parsed.processState"
+          },
+          {
+            "name": "unmapped.messageId",
+            "value": "parsed.messageId"
+          },
+          {
+            "name": "unmapped.sender",
+            "value": "parsed.sender"
+          },
+          {
+            "name": "unmapped.recipients",
+            "value": "parsed.recipients"
+          },
+          {
+            "name": "unmapped.senderIP",
+            "value": "parsed.senderIP"
+          },
+          {
+            "name": "unmapped.route",
+            "value": "parsed.route"
+          },
+          {
+            "name": "unmapped.spamScore",
+            "value": "parsed.spamScore"
+          },
+          {
+            "name": "unmapped.detectionLevel",
+            "value": "parsed.detectionLevel"
+          },
+          {
+            "name": "unmapped.actionTriggered",
+            "value": "parsed.actionTriggered"
+          },
+          {
+            "name": "unmapped.size",
+            "value": "parsed.size"
+          },
+          {
+            "name": "unmapped.attachmentCount",
+            "value": "parsed.attachmentCount"
+          },
+          {
+            "name": "unmapped.result",
+            "value": "parsed.result"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed email event fields to OCSF email activity target schema.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "processState==='scanned'?3:eventType==='receipt'?2:99"
+          },
+          {
+            "name": "status_id",
+            "value": "result==='delivered'||result==='held'?1:result==='failed'||result==='rejected'?2:0"
+          },
+          {
+            "name": "status",
+            "value": "status_id===1?'Success':status_id===2?'Failure':'Unknown'"
+          },
+          {
+            "name": "protocol_name",
+            "value": "'SMTP'"
+          },
+          {
+            "name": "message_trace_uid",
+            "value": "messageId"
+          },
+          {
+            "name": "from",
+            "value": "{}"
+          },
+          {
+            "name": "from.email_addr",
+            "value": "sender"
+          },
+          {
+            "name": "to",
+            "value": "recipients"
+          },
+          {
+            "name": "email",
+            "value": "{}"
+          },
+          {
+            "name": "email.from",
+            "value": "{}"
+          },
+          {
+            "name": "email.from.email_addr",
+            "value": "sender"
+          },
+          {
+            "name": "email.message_uid",
+            "value": "messageId"
+          },
+          {
+            "name": "email.subject",
+            "value": "subject"
+          },
+          {
+            "name": "email.size",
+            "value": "{}"
+          },
+          {
+            "name": "email.size.value",
+            "value": "size"
+          },
+          {
+            "name": "email.to",
+            "value": "recipients"
+          },
+          {
+            "name": "email.uid",
+            "value": "messageId"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON email activity from _raw into event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed email fields to OCSF Email Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4009"
+          },
+          {
+            "name": "direction_id",
+            "value": "route==='inbound'?1:route==='outbound'?2:route==='internal'?3:route==='local'?4:0"
+          },
+          {
+            "name": "severity_id",
+            "value": "detectionLevel==='malicious'||spamScore>=90?4:detectionLevel==='suspicious'||spamScore>=50?3:detectionLevel==='none'?1:spamScore>0?2:0"
+          },
+          {
+            "name": "type_uid",
+            "value": "processState==='scanned'?400903:eventType==='receipt'?400902:400900"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "senderIP"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "sender && sender.indexOf('@')>=0 ? sender.split('@')[1] : null"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "recipients && recipients[0] && recipients[0].indexOf('@')>=0 ? recipients[0].split('@')[1] : null"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "0"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'src_endpoint.ip',type_id:2},{name:'src_endpoint.name',type_id:1},{name:'dst_endpoint.name',type_id:1}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON email activity payload from _raw.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF metadata fields for email activity events.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'email_activity'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "timestamp"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "metadata.*"
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "timestamp",
+          "eventType",
+          "processState",
+          "messageId",
+          "subject",
+          "sender",
+          "recipients",
+          "senderIP",
+          "route",
+          "spamScore",
+          "detectionLevel",
+          "actionTriggered",
+          "size",
+          "attachmentCount",
+          "result"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "actiontriggered",
+        "application",
+        "attachmentcount",
+        "attachmenttypes",
+        "attemptcount",
+        "detectionlevel",
+        "eventtype",
+        "messageid",
+        "mfaused",
+        "policyname",
+        "processstate",
+        "reason",
+        "recipients",
+        "result",
+        "retentionpolicy",
+        "route",
+        "sender",
+        "senderip",
+        "sessionid",
+        "size",
+        "sourceip",
+        "spamscore",
+        "subject",
+        "timestamp",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

@@ -1,0 +1,144 @@
+{
+  "key": "postfix_syslog::__extraction__",
+  "sourcetype": "postfix_syslog",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:13:50.830Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse common postfix syslog header: timestamp, host, process, pid, and remaining message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<dst_host>\\S+)\\spostfix\\/(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('connect from') === 0",
+      "disabled": false,
+      "description": "Extract source host/ip from smtpd connect events",
+      "conf": {
+        "source": "message",
+        "regex": "/^connect from (?<src_host>\\S+)\\[(?<src_ip>[0-9a-fA-F:.]+)\\]$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\w+:\\sclient=/.test(message)",
+      "disabled": false,
+      "description": "Extract queue id, client host/ip and optional SASL auth details",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<queue_id>\\w+):\\sclient=(?<src_host>\\S+)\\[(?<src_ip>[0-9a-fA-F:.]+)\\](?:,\\ssasl_method=(?<sasl_method>\\S+))?(?:,\\ssasl_username=(?<sasl_username>\\S+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\w+:\\smessage-id=/.test(message)",
+      "disabled": false,
+      "description": "Extract queue id and message-id from cleanup events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<queue_id>\\w+):\\smessage-id=<(?<message_id>[^>]+)>$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\w+:\\sfrom=/.test(message)",
+      "disabled": false,
+      "description": "Extract sender, size, recipient count and queue status from qmgr events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<queue_id>\\w+):\\sfrom=<(?<sender>[^>]*)>,\\ssize=(?<size>\\d+),\\snrcpt=(?<nrcpt>\\d+)\\s\\((?<queue_status>[^)]+)\\)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\w+:\\sto=/.test(message)",
+      "disabled": false,
+      "description": "Extract recipient, relay, delay metrics and delivery status from smtp delivery events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<queue_id>\\w+):\\sto=<(?<recipient>[^>]*)>,\\srelay=(?<relay>[^,]+),\\sdelay=(?<delay>[\\d.]+),\\sdelays=(?<delays>[\\d./]+),\\sdsn=(?<dsn>[\\d.]+),\\sstatus=(?<status>\\w+)\\s\\((?<status_detail>.*)\\)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "relay && relay !== 'none' && relay.indexOf('[') > -1",
+      "disabled": false,
+      "description": "Split relay field into destination host, ip and port",
+      "conf": {
+        "source": "relay",
+        "regex": "/^(?<dst_relay_host>[^\\[]+)\\[(?<dst_ip>[0-9a-fA-F:.]+)\\]:(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^NOQUEUE:\\sreject:/.test(message)",
+      "disabled": false,
+      "description": "Extract reject details including sender, recipient, helo and reject reason",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<queue_id>\\S+):\\sreject:\\s(?<reject_command>\\w+)\\sfrom\\s(?<src_host>\\S+)\\[(?<src_ip>[0-9a-fA-F:.]+)\\]:\\s(?<reject_code>\\d+)\\s(?<reject_enhanced_code>[\\d.]+)\\s(?<reject_reason>[^;]+);\\sfrom=<(?<sender>[^>]*)>\\sto=<(?<recipient>[^>]*)>\\sproto=(?<protocol>\\S+)\\shelo=<(?<helo>[^>]*)>$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('warning:') === 0",
+      "disabled": false,
+      "description": "Extract SASL authentication failure warnings",
+      "conf": {
+        "source": "message",
+        "regex": "/^warning:\\s(?<src_host>\\S+)\\[(?<src_ip>[0-9a-fA-F:.]+)\\]:\\sSASL\\s(?<sasl_method>\\S+)\\sauthentication\\sfailed:\\s(?<reason>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action and severity based on parsed message fields",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "reject_reason ? 'reject' : (reason ? 'auth_failure' : (status ? status : (message_id ? 'message-id' : (sender && nrcpt ? 'queue' : (sasl_username ? 'client_auth' : (src_ip && !queue_id ? 'connect' : (src_ip && queue_id ? 'client' : null)))))))"
+          },
+          {
+            "name": "severity",
+            "value": "(reason || reject_reason) ? 'warning' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol : 'smtp'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

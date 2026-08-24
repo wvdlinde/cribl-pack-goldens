@@ -1,0 +1,134 @@
+{
+  "key": "corelight_kerberos::cim::__mapping__",
+  "sourcetype": "corelight_kerberos",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:03:15.372Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Identity and Access Management'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "src",
+            "value": "id.orig_h || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "id.resp_h || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p || 0)"
+          },
+          {
+            "name": "user",
+            "value": "client || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "client || ''"
+          },
+          {
+            "name": "app",
+            "value": "service || ''"
+          },
+          {
+            "name": "dest_user",
+            "value": "service || ''"
+          },
+          {
+            "name": "action",
+            "value": "success ? 'success' : 'failure'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "success ? 'success' : 'failure'"
+          },
+          {
+            "name": "authentication_method",
+            "value": "'Kerberos'"
+          },
+          {
+            "name": "logon_type",
+            "value": "request_type || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-20)",
+      "conf": {
+        "add": [
+          {
+            "name": "signature",
+            "value": "error_msg || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "error_msg ? error_msg.replace(/[^A-Z0-9_]/g,'') : ''"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || ''"
+          },
+          {
+            "name": "category",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_kerberos'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

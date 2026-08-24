@@ -1,0 +1,122 @@
+{
+  "key": "tanium::cim::__mapping__",
+  "sourcetype": "tanium",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:54:46.370Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "IpAddress || ''"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "NatIpAddress || ''"
+          },
+          {
+            "name": "src_mac",
+            "value": "MacAddress || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "HostName || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "String(TaniumComputerId || '')"
+          },
+          {
+            "name": "os",
+            "value": "Os || ''"
+          },
+          {
+            "name": "os_version",
+            "value": "String(OsGeneration || '')"
+          },
+          {
+            "name": "app",
+            "value": "Profile || ''"
+          },
+          {
+            "name": "category",
+            "value": "Labels || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Ports ? Number(String(Ports).split(',')[0]) : null"
+          },
+          {
+            "name": "action",
+            "value": "Managed == 1 ? 'allowed' : 'unknown'"
+          },
+          {
+            "name": "user",
+            "value": "OwnerId || ''"
+          },
+          {
+            "name": "dvc_category",
+            "value": "Zone || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "Provider ? Provider : 'Tanium'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "object",
+            "value": "InstanceId || ''"
+          },
+          {
+            "name": "src_zone",
+            "value": "VirtualNetworkId || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'tanium'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

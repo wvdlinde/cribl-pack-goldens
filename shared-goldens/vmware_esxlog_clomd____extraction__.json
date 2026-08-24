@@ -1,0 +1,73 @@
+{
+  "key": "vmware_esxlog_clomd::__extraction__",
+  "sourcetype": "vmware_esxlog_clomd",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:15.508Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, pid, component, and message from raw ESXi clomd log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Clomd\\[(?<pid>\\d+)\\]:\\s+\\[(?<component>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)",
+      "disabled": false,
+      "description": "Extract vSAN object UUID referenced in message",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<object_uuid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/naa\\.[0-9a-f]+/i)",
+      "disabled": false,
+      "description": "Extract disk/disk group naa identifier referenced in message",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<disk_naa_id>naa\\.[0-9a-f]+)/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity based on keywords present in the message text",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.match(/CRITICAL/) ? 'critical' : message.match(/ERROR/) ? 'error' : message.match(/WARNING/) ? 'warning' : message.match(/INFO/) ? 'info' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/repair/i) ? 'repair' : message.match(/decommission|removal completed/i) ? 'decommission' : message.match(/compliant|passed|nominal/i) ? 'health_check' : message.match(/access denied|Unauthorized/i) ? 'access_denied' : message.match(/evacuation|degraded/i) ? 'disk_issue' : 'log'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

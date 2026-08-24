@@ -1,0 +1,123 @@
+{
+  "key": "crowdstrike_falcon::__extraction__",
+  "sourcetype": "crowdstrike_falcon",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:26:09.240Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Extract CrowdStrike Falcon JSON fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "LocalAddressIP4 || LocalAddressIP6 || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "RemoteAddressIP4 || RemoteAddressIP6 || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "LocalPort != null ? Number(LocalPort) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "RemotePort != null ? Number(RemotePort) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "Protocol == '6' ? 'tcp' : Protocol == '17' ? 'udp' : Protocol == '1' ? 'icmp' : Protocol ? String(Protocol) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "Protocol == '6' ? 'tcp' : Protocol == '17' ? 'udp' : Protocol == '1' ? 'icmp' : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "ConnectionDirection == '0' ? 'outbound' : ConnectionDirection == '1' ? 'inbound' : undefined"
+          },
+          {
+            "name": "action",
+            "value": "'allowed'"
+          },
+          {
+            "name": "dvc_id",
+            "value": "aid || undefined"
+          },
+          {
+            "name": "sensor_id",
+            "value": "aid || undefined"
+          },
+          {
+            "name": "customer_id",
+            "value": "cid || undefined"
+          },
+          {
+            "name": "src",
+            "value": "LocalAddressIP4 || LocalAddressIP6 || aid || undefined"
+          },
+          {
+            "name": "external_ip",
+            "value": "aip || undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "ContextProcessId != null ? Number(ContextProcessId) : undefined"
+          },
+          {
+            "name": "platform",
+            "value": "event_platform || undefined"
+          },
+          {
+            "name": "event_type",
+            "value": "event_simpleName || undefined"
+          },
+          {
+            "name": "event_id",
+            "value": "id || undefined"
+          },
+          {
+            "name": "signature",
+            "value": "event_simpleName || undefined"
+          },
+          {
+            "name": "app",
+            "value": "RemotePort == '443' ? 'https' : RemotePort == '80' ? 'http' : RemotePort == '53' ? 'dns' : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'CrowdStrike Falcon'"
+          },
+          {
+            "name": "log_time",
+            "value": "timestamp || ContextTimeStamp || undefined"
+          }
+        ]
+      },
+      "description": "Normalize CrowdStrike fields to the canonical model"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from crowdstrike_falcon::cim: 39/39 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

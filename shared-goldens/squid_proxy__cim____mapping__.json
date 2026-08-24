@@ -1,0 +1,30 @@
+{
+  "key": "squid_proxy::cim::__mapping__",
+  "sourcetype": "squid_proxy",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:38:20.384Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map to CIM base fields",
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "host || Computer || hostname || 'unknown'"
+          },
+          {
+            "name": "source",
+            "value": "'squid_proxy'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

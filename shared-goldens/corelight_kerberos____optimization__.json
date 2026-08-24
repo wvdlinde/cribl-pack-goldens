@@ -1,0 +1,105 @@
+{
+  "key": "corelight_kerberos::__optimization__",
+  "sourcetype": "corelight_kerberos",
+  "dest_format": "__optimization__",
+  "score": 90,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:03:21.330Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "class_uid",
+          "category_uid",
+          "event_type",
+          "src",
+          "src_port",
+          "dest",
+          "dest_port",
+          "user",
+          "src_user",
+          "app",
+          "dest_user",
+          "action",
+          "vendor_action",
+          "authentication_method",
+          "logon_type",
+          "signature",
+          "signature_id",
+          "session_id",
+          "category",
+          "protocol",
+          "_time",
+          "sourcetype",
+          "index",
+          "source",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

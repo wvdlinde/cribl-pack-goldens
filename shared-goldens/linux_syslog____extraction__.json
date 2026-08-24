@@ -1,0 +1,583 @@
+{
+  "key": "linux_syslog::__extraction__",
+  "sourcetype": "linux_syslog",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:02.593Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<syslog_ts>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<host>\\S+)/gm"
+          },
+          {
+            "regex": "/\\s(?<process_name>sshd)\\[(?<process_id>\\d+)\\]:/gm"
+          },
+          {
+            "regex": "/:\\s+(?<auth_action>Accepted|Failed)\\s+(?<auth_method>\\S+)/gm"
+          },
+          {
+            "regex": "/\\sfor\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\s+port\\s+(?<src_port>\\d+)\\s+(?<protocol>\\S+)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract SSH authentication syslog components from _raw."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "3"
+          },
+          {
+            "name": "message",
+            "value": "_raw"
+          },
+          {
+            "name": "is_remote",
+            "value": "src_ip ? true : false"
+          },
+          {
+            "name": "status_code",
+            "value": "auth_action"
+          },
+          {
+            "name": "status_detail",
+            "value": "auth_action ? auth_action + ' ' + (auth_method || '') : null"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.syslog_ts",
+            "value": "syslog_ts"
+          },
+          {
+            "name": "unmapped.host",
+            "value": "host"
+          },
+          {
+            "name": "unmapped.process_name",
+            "value": "process_name"
+          },
+          {
+            "name": "unmapped.process_id",
+            "value": "process_id"
+          },
+          {
+            "name": "unmapped.auth_method",
+            "value": "auth_method"
+          },
+          {
+            "name": "unmapped.user",
+            "value": "user"
+          },
+          {
+            "name": "unmapped.src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "unmapped.src_port",
+            "value": "src_port"
+          },
+          {
+            "name": "unmapped.protocol",
+            "value": "protocol"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map extracted SSH authentication fields to target OCSF authentication schema fields."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "srcField": "_raw",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [
+          {
+            "regex": "/^(\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})/",
+            "strptime": "%b %d %H:%M:%S"
+          }
+        ],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      },
+      "id": "auto_timestamp",
+      "description": "Extract syslog timestamp from SSH authentication event into OCSF time."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<syslog_ts>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<host>\\S+)/gm"
+          },
+          {
+            "regex": "/^\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+(?<process_name>[^\\[\\s]+)\\[\\d+\\]:/gm"
+          },
+          {
+            "regex": "/^\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+[^\\[\\s]+\\[(?<process_pid>\\d+)\\]:/gm"
+          },
+          {
+            "regex": "/:\\s+(?<auth_result>Accepted|Failed)\\s+/gm"
+          },
+          {
+            "regex": "/:\\s+(?:Accepted|Failed)\\s+\\S+\\s+for\\s+(?<user_name>\\S+)\\s+from\\s+/gm"
+          },
+          {
+            "regex": "/\\s+from\\s+(?<src_ip>\\S+)\\s+port\\s+\\d+/gm"
+          },
+          {
+            "regex": "/\\s+from\\s+\\S+\\s+port\\s+(?<src_port>\\d+)/gm"
+          },
+          {
+            "regex": "/:\\s+(?:Accepted|Failed)\\s+(?<auth_method>\\S+)\\s+for\\s+/gm"
+          },
+          {
+            "regex": "/\\s+port\\s+\\d+\\s+(?<protocol>\\S+)$/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract SSH authentication components for OCSF authentication mapping."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name==='process_pid' || name==='src_port'",
+        "format": "none",
+        "digits": 2
+      },
+      "id": "numerify",
+      "description": "Convert extracted process and source port identifiers to numbers."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "status_id",
+            "value": "auth_result==='Accepted'?1:(auth_result==='Failed'?2:0)"
+          },
+          {
+            "name": "status",
+            "value": "auth_result==='Accepted'?'Success':(auth_result==='Failed'?'Failure':'Unknown')"
+          },
+          {
+            "name": "logon_type",
+            "value": "'Remote'"
+          },
+          {
+            "name": "is_mfa",
+            "value": "false"
+          },
+          {
+            "name": "session",
+            "value": "{}"
+          },
+          {
+            "name": "session.created_time",
+            "value": "time"
+          },
+          {
+            "name": "session.is_remote",
+            "value": "true"
+          },
+          {
+            "name": "session.issuer",
+            "value": "process_name"
+          },
+          {
+            "name": "session.uid",
+            "value": "host + ':' + process_pid + ':' + user_name + ':' + src_ip"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user_name"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "user_name"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "user_name==='root'||user_name==='admin'?2:1"
+          },
+          {
+            "name": "actor.user.has_mfa",
+            "value": "false"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.cmd_line",
+            "value": "''"
+          },
+          {
+            "name": "actor.process.created_time",
+            "value": "time"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "process_name"
+          },
+          {
+            "name": "actor.process.pid",
+            "value": "process_pid"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "host + ':' + process_pid"
+          },
+          {
+            "name": "actor.process.file",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.file.name",
+            "value": "process_name"
+          },
+          {
+            "name": "actor.process.file.type_id",
+            "value": "8"
+          },
+          {
+            "name": "actor.process.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.user.name",
+            "value": "user_name"
+          },
+          {
+            "name": "actor.process.user.uid",
+            "value": "user_name"
+          },
+          {
+            "name": "actor.process.user.type_id",
+            "value": "user_name==='root'||user_name==='admin'?2:1"
+          },
+          {
+            "name": "actor.process.user.has_mfa",
+            "value": "false"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF authentication target schema fields from extracted SSH login data."
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract syslog timestamp from SSH authentication message.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})/gm"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract destination host from SSH authentication message.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<dst_host>\\S+)/gm"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract SSH service name and process id.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/\\s(?<service_name>sshd)\\[(?<service_uid>\\d+)\\]/gm"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract SSH authentication action and method.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/sshd\\[\\d+\\]:\\s+(?<auth_action>Accepted|Failed)\\s+(?<auth_method>\\S+)/gm"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract SSH username.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/sshd\\[\\d+\\]:\\s+(?:Accepted|Failed)\\s+\\S+\\s+for\\s+(?<username>\\S+)/gm"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract remote IP, remote port, and SSH protocol label for authentication context.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/\\sfrom\\s+(?<src_ip>\\S+)\\s+port\\s+(?<src_port>\\d+)\\s+(?<ssh_protocol>\\S+)$/gm"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map extracted SSH authentication values to target OCSF Authentication fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "3002"
+          },
+          {
+            "name": "logon_type_id",
+            "value": "3"
+          },
+          {
+            "name": "auth_protocol_id",
+            "value": "99"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "user",
+            "value": "{}"
+          },
+          {
+            "name": "user.name",
+            "value": "username"
+          },
+          {
+            "name": "user.type_id",
+            "value": "username==='root'||username==='admin'?2:1"
+          },
+          {
+            "name": "service",
+            "value": "{}"
+          },
+          {
+            "name": "service.name",
+            "value": "service_name"
+          },
+          {
+            "name": "service.uid",
+            "value": "service_uid"
+          },
+          {
+            "name": "service.version",
+            "value": "ssh_protocol"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "dst_host"
+          },
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "dst_host"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'user.name',type_id:4},{name:'dst_endpoint.name',type_id:1},{name:'service.name',type_id:9},{name:'service.uid',type_id:15}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract SSH authentication fields from syslog message.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<metadata_original_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<reporter_host>\\S+)/gm"
+          },
+          {
+            "regex": "/sshd\\[\\d+\\]:\\s+(?<auth_action>Accepted|Failed)\\s+/gm"
+          },
+          {
+            "regex": "/sshd\\[\\d+\\]:\\s+(?:Accepted|Failed)\\s+(?<auth_method>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/sshd\\[\\d+\\]:\\s+(?:Accepted|Failed)\\s+\\S+\\s+for\\s+(?:invalid user\\s+)?(?<account_name>\\S+)/gm"
+          },
+          {
+            "regex": "/\\sfrom\\s+(?<src_ip>\\S+)\\s+port\\s+\\d+\\s+/gm"
+          },
+          {
+            "regex": "/\\sfrom\\s+\\S+\\s+port\\s+(?<src_port>\\d+)\\s+/gm"
+          },
+          {
+            "regex": "/\\sport\\s+\\d+\\s+(?<auth_protocol_value>\\S+)$/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create selected OCSF Authentication schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "auth_action==='Accepted'?1:auth_action==='Failed'?3:0"
+          },
+          {
+            "name": "auth_protocol",
+            "value": "auth_protocol_value"
+          },
+          {
+            "name": "type_uid",
+            "value": "300201"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port"
+          },
+          {
+            "name": "src_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "account_name"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "account_name==='root'||account_name==='admin'?2:1"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "0"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'sshd'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "metadata_original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'OpenSSH sshd'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'OpenSSH'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "reporter_host"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "severity_id",
+          "auth_protocol",
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "__*",
+          "cribl_*"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

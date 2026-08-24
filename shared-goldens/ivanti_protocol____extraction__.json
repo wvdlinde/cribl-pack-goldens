@@ -1,0 +1,95 @@
+{
+  "key": "ivanti_protocol::__extraction__",
+  "sourcetype": "ivanti_protocol",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:36.693Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base Ivanti ICS 'ive' syslog structure into named fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) ive: id=(?<event_id>\\S+) severity=(?<severity>\\S+) vpn=\"(?<vpn>[^\"]*)\" sessionId=(?<session_id>\"[^\"]*\"|\\S+) user=\"(?<user>[^\"]*)\" realm=\"(?<realm>[^\"]*)\"(?: roles=\"(?<roles>[^\"]*)\")? src=(?<src_ip>\\S+) dst=(?<dst_ip>\\S+)(?: port=\\d+)? msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract dst_port when present, regardless of its position on the line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/port=(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Clean quoted session_id, coerce dst_port to number, flag IPv6 src addresses",
+      "conf": {
+        "add": [
+          {
+            "name": "session_id",
+            "value": "session_id ? session_id.replace(/\"/g, '') : session_id"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : null"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.match(/:/) ? 'ipv6' : 'ipv4'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify event category from event_id prefix and derive success/failure action from message content",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "event_id.match(/^AUT/) ? 'authentication' : event_id.match(/^NET/) ? 'network' : event_id.match(/^WEB/) ? 'web' : event_id.match(/^SSL/) ? 'tls' : event_id.match(/^SYS/) ? 'system' : event_id.match(/^ADM/) ? 'admin' : event_id.match(/^EAM/) ? 'endpoint' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/failed|violation|Brute force|exceeded|Repeated|invalid/i) ? 'failure' : 'success'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "dst",
+        "id",
+        "msg",
+        "port",
+        "realm",
+        "roles",
+        "sessionid",
+        "severity",
+        "src",
+        "user",
+        "vpn"
+      ]
+    }
+  },
+  "report": null
+}

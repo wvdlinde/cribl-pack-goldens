@@ -1,0 +1,80 @@
+{
+  "key": "infoblox_port::__extraction__",
+  "sourcetype": "infoblox_port",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:31:05.581Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header fields (timestamp, host, process, pid) and remaining message body from infoblox port logs",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[^:\\[\\s]+)(?:\\[(?<pid>\\d+)\\])?:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('status=') > -1",
+      "disabled": false,
+      "description": "Extract status code and optional peer IP address from the message body",
+      "conf": {
+        "source": "message",
+        "regex": "/status=(?<status>\\S+)(?:\\s+peer=(?<peer_ip>\\d{1,3}(?:\\.\\d{1,3}){3}))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/eth\\d+|LAG\\d+|LAN\\d+|MGMT/)",
+      "disabled": false,
+      "description": "Extract the network interface or port identifier referenced in the message",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<interface>eth\\d+|LAG\\d+|LAN\\d+|MGMT)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d{1,3}(\\.\\d{1,3}){3}/)",
+      "disabled": false,
+      "description": "Extract any source IP address mentioned in the message text (e.g. remote peer or offending host)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity based on status field and classify the port event action",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "status === 'SUCCESS' ? 'info' : status === 'INFO' ? 'info' : status === 'WARNING' ? 'warning' : status === 'FAILURE' ? 'error' : status === 'ERROR' ? 'error' : status === 'FAILOVER' ? 'error' : status === 'CRITICAL' ? 'critical' : status === 'ALERT' ? 'critical' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "message && message.indexOf('link up') > -1 ? 'link_up' : message && message.indexOf('link down') > -1 ? 'link_down' : message && message.indexOf('failover') > -1 ? 'failover' : message && message.indexOf('login attempt') > -1 ? 'login_attempt' : message && message.indexOf('unauthorized') > -1 ? 'unauthorized_access' : message && message.indexOf('reset') > -1 ? 'reset' : 'status_change'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,106 @@
+{
+  "key": "cron_8::cim::__mapping__",
+  "sourcetype": "cron_8",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:01:54.089Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'cron_process_event'"
+          },
+          {
+            "name": "dvc",
+            "value": "((_raw || '').match(/^[A-Z][a-z]{2}\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)/) || ['', ''])[1]"
+          },
+          {
+            "name": "process",
+            "value": "((_raw || '').match(/\\s+([A-Za-z]+)\\[\\d+\\]:/) || ['', ''])[1]"
+          },
+          {
+            "name": "process_id",
+            "value": "((_raw || '').match(/\\s+[A-Za-z]+\\[(\\d+)\\]:/) || ['', ''])[1]"
+          },
+          {
+            "name": "user",
+            "value": "((_raw || '').match(/:\\s+\\(([^)]+)\\)\\s+(?:CMD|error)\\s+\\(/) || ['', ''])[1]"
+          },
+          {
+            "name": "vendor_action",
+            "value": "(_raw || '').match(/\\)\\s+CMD\\s+\\(/) ? 'CMD' : ((_raw || '').match(/\\)\\s+error\\s+\\(/) ? 'error' : '')"
+          },
+          {
+            "name": "action",
+            "value": "(_raw || '').match(/\\)\\s+error\\s+\\(/) ? 'failure' : ((_raw || '').match(/\\)\\s+CMD\\s+\\(/) ? 'started' : '')"
+          },
+          {
+            "name": "object",
+            "value": "((_raw || '').match(/\\)\\s+(?:CMD|error)\\s+\\((.*)\\)$/) || ['', ''])[1]"
+          },
+          {
+            "name": "signature",
+            "value": "(_raw || '').match(/\\)\\s+error\\s+\\(/) ? 'Cron Error' : ((_raw || '').match(/\\)\\s+CMD\\s+\\(/) ? 'Cron Command' : '')"
+          },
+          {
+            "name": "severity",
+            "value": "(_raw || '').match(/\\)\\s+error\\s+\\(/) ? 'error' : 'informational'"
+          },
+          {
+            "name": "severity_id",
+            "value": "(_raw || '').match(/\\)\\s+error\\s+\\(/) ? 3 : 6"
+          },
+          {
+            "name": "category",
+            "value": "(_raw || '').match(/\\)\\s+error\\s+\\(/) ? 'scheduled_task_error' : 'scheduled_task_execution'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'cron'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cron_8'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

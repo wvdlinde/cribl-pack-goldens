@@ -1,0 +1,74 @@
+{
+  "key": "ivanti_portal_access::__extraction__",
+  "sourcetype": "ivanti_portal_access",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:09:48.074Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Ivanti Pulse/Connect Secure KVP access log into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^id=(?<log_id>\\S+)\\s+time=\"(?<timestamp>[^\"]+)\"\\s+pri=(?<severity>\\d+)\\s+fw=(?<fw_host>\\S+)\\s+vpn=\"(?<vpn>[^\"]*)\"\\s+user=(?:\"(?<__user_q>[^\"]*)\"|(?<__user_u>\\S+))\\s+realm=\"(?<realm>[^\"]*)\"\\s+roles=\"(?<roles>[^\"]*)\"\\s+proto=(?<protocol>\\S+)\\s+src=(?<src_ip>\\S+)\\s+dst=(?<dst_ip>\\S+)\\s+dstport=(?<dst_port>\\d+)\\s+op=(?<operation>\\S+)\\s+result=(?<result>\\S+)\\s+msg=\"(?<message>.*)\"$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Merge quoted/unquoted user capture, normalize action, cleanup scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "__user_q != null ? __user_q : __user_u"
+          },
+          {
+            "name": "action",
+            "value": "result === 'SUCCESS' ? 'allowed' : (result === 'DENIED' ? 'denied' : (result === 'FAILURE' ? 'blocked' : 'unknown'))"
+          }
+        ],
+        "remove": [
+          "__user_q",
+          "__user_u"
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract session id or session duration from message when present",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:sid=(?<session_id>\\w+)|duration=(?<session_duration>\\d+)s)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Convert extracted timestamp string into epoch _time",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp) / 1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

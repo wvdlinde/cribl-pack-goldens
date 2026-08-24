@@ -1,0 +1,247 @@
+{
+  "key": "zscaler_web::xsiam",
+  "sourcetype": "zscaler_web",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:17:48.672Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "zscaler_web → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'zscaler'"
+          },
+          {
+            "name": "__product",
+            "value": "'cloudnss'"
+          },
+          {
+            "disabled": true,
+            "name": "event",
+            "value": "JSON.parse(_raw)"
+          },
+          {
+            "name": "event",
+            "value": "_raw"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_*",
+          "!cribl_breaker",
+          "sourcetype",
+          "event"
+        ],
+        "cleanFields": false,
+        "keyValueDelimiter": "="
+      },
+      "description": "Wrap event JSON envelope for XSIAM"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'zscaler_web:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product",
+          "event"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "zscaler_web_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 53,
+    "outputSample": [
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T00:03:12Z\\\",\\\"user\\\":\\\"jsmith@corp.local\\\",\\\"department\\\":\\\"Finance\\\",\\\"src_ip\\\":\\\"10.1.4.22\\\",\\\"dst_ip\\\":\\\"185.220.101.45\\\",\\\"url\\\":\\\"http://malware-drop.ru/payload.exe\\\",\\\"action\\\":\\\"Blocked\\\",\\\"url_category\\\":\\\"Malware\\\",\\\"risk_score\\\":98,\\\"request_size\\\":342,\\\"response_size\\\":0,\\\"threat_name\\\":\\\"Trojan.GenericKD.47829\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTP\\\",\\\"dst_port\\\":80,\\\"user_agent\\\":\\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T00:03:12Z\",\"user\":\"jsmith@corp.local\",\"department\":\"Finance\",\"src_ip\":\"10.1.4.22\",\"dst_ip\":\"185.220.101.45\",\"url\":\"http://malware-drop.ru/payload.exe\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":98,\"request_size\":342,\"response_size\":0,\"threat_name\":\"Trojan.GenericKD.47829\",\"dlp_rule\":\"\",\"protocol\":\"HTTP\",\"dst_port\":80,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T00:17:44Z\\\",\\\"user\\\":\\\"agarcia@corp.local\\\",\\\"department\\\":\\\"HR\\\",\\\"src_ip\\\":\\\"10.2.1.88\\\",\\\"dst_ip\\\":\\\"52.84.125.201\\\",\\\"url\\\":\\\"https://drive.google.com/file/d/1BxSY8k9XcZ4P\\\",\\\"action\\\":\\\"Allowed\\\",\\\"url_category\\\":\\\"Cloud Storage\\\",\\\"risk_score\\\":15,\\\"request_size\\\":1024,\\\"response_size\\\":204800,\\\"threat_name\\\":\\\"\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T00:17:44Z\",\"user\":\"agarcia@corp.local\",\"department\":\"HR\",\"src_ip\":\"10.2.1.88\",\"dst_ip\":\"52.84.125.201\",\"url\":\"https://drive.google.com/file/d/1BxSY8k9XcZ4P\",\"action\":\"Allowed\",\"url_category\":\"Cloud Storage\",\"risk_score\":15,\"request_size\":1024,\"response_size\":204800,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T00:34:55Z\\\",\\\"user\\\":\\\"unknown\\\",\\\"department\\\":\\\"\\\",\\\"src_ip\\\":\\\"172.16.8.103\\\",\\\"dst_ip\\\":\\\"91.108.4.200\\\",\\\"url\\\":\\\"https://t.me/c/darkmarket_channel\\\",\\\"action\\\":\\\"Blocked\\\",\\\"url_category\\\":\\\"Malware\\\",\\\"risk_score\\\":87,\\\"request_size\\\":512,\\\"response_size\\\":0,\\\"threat_name\\\":\\\"C2.Telegram.Abuse\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"python-requests/2.28.0\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T00:34:55Z\",\"user\":\"unknown\",\"department\":\"\",\"src_ip\":\"172.16.8.103\",\"dst_ip\":\"91.108.4.200\",\"url\":\"https://t.me/c/darkmarket_channel\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":87,\"request_size\":512,\"response_size\":0,\"threat_name\":\"C2.Telegram.Abuse\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"python-requests/2.28.0\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T00:52:18Z\\\",\\\"user\\\":\\\"bwilliams@corp.local\\\",\\\"department\\\":\\\"Engineering\\\",\\\"src_ip\\\":\\\"10.5.3.14\\\",\\\"dst_ip\\\":\\\"104.18.25.152\\\",\\\"url\\\":\\\"https://github.com/torvalds/linux\\\",\\\"action\\\":\\\"Allowed\\\",\\\"url_category\\\":\\\"Business\\\",\\\"risk_score\\\":5,\\\"request_size\\\":856,\\\"response_size\\\":45312,\\\"threat_name\\\":\\\"\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Git/2.39.0\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T00:52:18Z\",\"user\":\"bwilliams@corp.local\",\"department\":\"Engineering\",\"src_ip\":\"10.5.3.14\",\"dst_ip\":\"104.18.25.152\",\"url\":\"https://github.com/torvalds/linux\",\"action\":\"Allowed\",\"url_category\":\"Business\",\"risk_score\":5,\"request_size\":856,\"response_size\":45312,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Git/2.39.0\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T01:08:33Z\\\",\\\"user\\\":\\\"mchen@corp.local\\\",\\\"department\\\":\\\"Legal\\\",\\\"src_ip\\\":\\\"192.168.10.45\\\",\\\"dst_ip\\\":\\\"216.58.213.110\\\",\\\"url\\\":\\\"https://www.google.com/search?q=confidential+merger+documents\\\",\\\"action\\\":\\\"Cautioned\\\",\\\"url_category\\\":\\\"Business\\\",\\\"risk_score\\\":42,\\\"request_size\\\":678,\\\"response_size\\\":32100,\\\"threat_name\\\":\\\"\\\",\\\"dlp_rule\\\":\\\"DLP-CONFIDENTIAL-SEARCH\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T01:08:33Z\",\"user\":\"mchen@corp.local\",\"department\":\"Legal\",\"src_ip\":\"192.168.10.45\",\"dst_ip\":\"216.58.213.110\",\"url\":\"https://www.google.com/search?q=confidential+merger+documents\",\"action\":\"Cautioned\",\"url_category\":\"Business\",\"risk_score\":42,\"request_size\":678,\"response_size\":32100,\"threat_name\":\"\",\"dlp_rule\":\"DLP-CONFIDENTIAL-SEARCH\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T01:23:07Z\\\",\\\"user\\\":\\\"ptaylor@corp.local\\\",\\\"department\\\":\\\"Sales\\\",\\\"src_ip\\\":\\\"10.3.7.201\\\",\\\"dst_ip\\\":\\\"157.240.229.35\\\",\\\"url\\\":\\\"https://www.facebook.com/groups/competitors\\\",\\\"action\\\":\\\"Cautioned\\\",\\\"url_category\\\":\\\"Social Networking\\\",\\\"risk_score\\\":28,\\\"request_size\\\":1240,\\\"response_size\\\":89600,\\\"threat_name\\\":\\\"\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T01:23:07Z\",\"user\":\"ptaylor@corp.local\",\"department\":\"Sales\",\"src_ip\":\"10.3.7.201\",\"dst_ip\":\"157.240.229.35\",\"url\":\"https://www.facebook.com/groups/competitors\",\"action\":\"Cautioned\",\"url_category\":\"Social Networking\",\"risk_score\":28,\"request_size\":1240,\"response_size\":89600,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T01:41:50Z\\\",\\\"user\\\":\\\"rjohnson@corp.local\\\",\\\"department\\\":\\\"IT\\\",\\\"src_ip\\\":\\\"10.0.0.15\\\",\\\"dst_ip\\\":\\\"45.33.32.156\\\",\\\"url\\\":\\\"https://phishing-site.net/office365-login\\\",\\\"action\\\":\\\"Blocked\\\",\\\"url_category\\\":\\\"Phishing\\\",\\\"risk_score\\\":96,\\\"request_size\\\":421,\\\"response_size\\\":0,\\\"threat_name\\\":\\\"Phish.Office365.Credential.Harvest\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T01:41:50Z\",\"user\":\"rjohnson@corp.local\",\"department\":\"IT\",\"src_ip\":\"10.0.0.15\",\"dst_ip\":\"45.33.32.156\",\"url\":\"https://phishing-site.net/office365-login\",\"action\":\"Blocked\",\"url_category\":\"Phishing\",\"risk_score\":96,\"request_size\":421,\"response_size\":0,\"threat_name\":\"Phish.Office365.Credential.Harvest\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      },
+      {
+        "_raw": "{\"event\":\"{\\\"timestamp\\\":\\\"2024-01-15T02:05:29Z\\\",\\\"user\\\":\\\"slee@corp.local\\\",\\\"department\\\":\\\"Marketing\\\",\\\"src_ip\\\":\\\"172.16.2.67\\\",\\\"dst_ip\\\":\\\"99.84.104.33\\\",\\\"url\\\":\\\"https://www.betmgm.com/sports\\\",\\\"action\\\":\\\"Blocked\\\",\\\"url_category\\\":\\\"Gambling\\\",\\\"risk_score\\\":55,\\\"request_size\\\":934,\\\"response_size\\\":0,\\\"threat_name\\\":\\\"\\\",\\\"dlp_rule\\\":\\\"\\\",\\\"protocol\\\":\\\"HTTPS\\\",\\\"dst_port\\\":443,\\\"user_agent\\\":\\\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\\\"}\"}",
+        "_time": 1784048450.451,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "zscaler",
+        "__product": "cloudnss",
+        "event": "{\"timestamp\":\"2024-01-15T02:05:29Z\",\"user\":\"slee@corp.local\",\"department\":\"Marketing\",\"src_ip\":\"172.16.2.67\",\"dst_ip\":\"99.84.104.33\",\"url\":\"https://www.betmgm.com/sports\",\"action\":\"Blocked\",\"url_category\":\"Gambling\",\"risk_score\":55,\"request_size\":934,\"response_size\":0,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}",
+        "sourcetype": "zscaler_web:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "user",
+      "department",
+      "src_ip",
+      "dst_ip",
+      "url",
+      "action",
+      "url_category",
+      "risk_score",
+      "request_size",
+      "response_size",
+      "threat_name",
+      "dlp_rule",
+      "protocol",
+      "dst_port",
+      "user_agent"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:12Z\",\"user\":\"jsmith@corp.local\",\"department\":\"Finance\",\"src_ip\":\"10.1.4.22\",\"dst_ip\":\"185.220.101.45\",\"url\":\"http://malware-drop.ru/payload.exe\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":98,\"request_size\":342,\"response_size\":0,\"threat_name\":\"Trojan.GenericKD.47829\",\"dlp_rule\":\"\",\"protocol\":\"HTTP\",\"dst_port\":80,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:44Z\",\"user\":\"agarcia@corp.local\",\"department\":\"HR\",\"src_ip\":\"10.2.1.88\",\"dst_ip\":\"52.84.125.201\",\"url\":\"https://drive.google.com/file/d/1BxSY8k9XcZ4P\",\"action\":\"Allowed\",\"url_category\":\"Cloud Storage\",\"risk_score\":15,\"request_size\":1024,\"response_size\":204800,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"}",
+      "{\"timestamp\":\"2024-01-15T00:34:55Z\",\"user\":\"unknown\",\"department\":\"\",\"src_ip\":\"172.16.8.103\",\"dst_ip\":\"91.108.4.200\",\"url\":\"https://t.me/c/darkmarket_channel\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":87,\"request_size\":512,\"response_size\":0,\"threat_name\":\"C2.Telegram.Abuse\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"python-requests/2.28.0\"}",
+      "{\"timestamp\":\"2024-01-15T00:52:18Z\",\"user\":\"bwilliams@corp.local\",\"department\":\"Engineering\",\"src_ip\":\"10.5.3.14\",\"dst_ip\":\"104.18.25.152\",\"url\":\"https://github.com/torvalds/linux\",\"action\":\"Allowed\",\"url_category\":\"Business\",\"risk_score\":5,\"request_size\":856,\"response_size\":45312,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Git/2.39.0\"}",
+      "{\"timestamp\":\"2024-01-15T01:08:33Z\",\"user\":\"mchen@corp.local\",\"department\":\"Legal\",\"src_ip\":\"192.168.10.45\",\"dst_ip\":\"216.58.213.110\",\"url\":\"https://www.google.com/search?q=confidential+merger+documents\",\"action\":\"Cautioned\",\"url_category\":\"Business\",\"risk_score\":42,\"request_size\":678,\"response_size\":32100,\"threat_name\":\"\",\"dlp_rule\":\"DLP-CONFIDENTIAL-SEARCH\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}",
+      "{\"timestamp\":\"2024-01-15T01:23:07Z\",\"user\":\"ptaylor@corp.local\",\"department\":\"Sales\",\"src_ip\":\"10.3.7.201\",\"dst_ip\":\"157.240.229.35\",\"url\":\"https://www.facebook.com/groups/competitors\",\"action\":\"Cautioned\",\"url_category\":\"Social Networking\",\"risk_score\":28,\"request_size\":1240,\"response_size\":89600,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)\"}",
+      "{\"timestamp\":\"2024-01-15T01:41:50Z\",\"user\":\"rjohnson@corp.local\",\"department\":\"IT\",\"src_ip\":\"10.0.0.15\",\"dst_ip\":\"45.33.32.156\",\"url\":\"https://phishing-site.net/office365-login\",\"action\":\"Blocked\",\"url_category\":\"Phishing\",\"risk_score\":96,\"request_size\":421,\"response_size\":0,\"threat_name\":\"Phish.Office365.Credential.Harvest\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+      "{\"timestamp\":\"2024-01-15T02:05:29Z\",\"user\":\"slee@corp.local\",\"department\":\"Marketing\",\"src_ip\":\"172.16.2.67\",\"dst_ip\":\"99.84.104.33\",\"url\":\"https://www.betmgm.com/sports\",\"action\":\"Blocked\",\"url_category\":\"Gambling\",\"risk_score\":55,\"request_size\":934,\"response_size\":0,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}"
+    ],
+    "sourcetype": "zscaler_web"
+  }
+}

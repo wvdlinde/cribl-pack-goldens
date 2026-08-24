@@ -1,0 +1,406 @@
+{
+  "key": "zscaler_web::__extraction__",
+  "sourcetype": "zscaler_web",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "wlinde@cribl.io",
+  "build": 338,
+  "updated_at": "2026-08-05T15:25:07.317Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse JSON payload in _raw into parsed object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Extract event occurrence time from parsed datetime.",
+      "conf": {
+        "srcField": "parsed.datetime",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [
+          {
+            "regex": "/(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z)/",
+            "strptime": "%Y-%m-%dT%H:%M:%S.%LZ"
+          }
+        ],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+52weeks"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed URL activity fields to target OCSF HTTP Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes",
+            "value": "parsed.requestsize != null && parsed.responsesize != null ? parsed.requestsize + parsed.responsesize : null"
+          },
+          {
+            "name": "message",
+            "value": "parsed.action + ' URL request to ' + parsed.url"
+          },
+          {
+            "name": "status_code",
+            "value": "parsed.action"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsed.urlcategory"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.user",
+            "value": "parsed.user"
+          },
+          {
+            "name": "unmapped.department",
+            "value": "parsed.department"
+          },
+          {
+            "name": "unmapped.url",
+            "value": "parsed.url"
+          },
+          {
+            "name": "unmapped.clientip",
+            "value": "parsed.clientip"
+          },
+          {
+            "name": "unmapped.serverip",
+            "value": "parsed.serverip"
+          },
+          {
+            "name": "unmapped.requestsize",
+            "value": "parsed.requestsize"
+          },
+          {
+            "name": "unmapped.responsesize",
+            "value": "parsed.responsesize"
+          },
+          {
+            "name": "unmapped.urlclass",
+            "value": "parsed.urlclass"
+          },
+          {
+            "name": "unmapped.deviceowner",
+            "value": "parsed.deviceowner"
+          },
+          {
+            "name": "unmapped.devicehostname",
+            "value": "parsed.devicehostname"
+          },
+          {
+            "name": "unmapped.riskscore",
+            "value": "parsed.riskscore"
+          },
+          {
+            "name": "unmapped.datetime",
+            "value": "parsed.datetime"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into a parsed object for OCSF field mapping.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed web activity fields to OCSF HTTP Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "activity_id",
+            "value": "0"
+          },
+          {
+            "name": "status_id",
+            "value": "parsed.action==='Allowed'?1:(parsed.action==='Blocked'?2:0)"
+          },
+          {
+            "name": "status",
+            "value": "parsed.action==='Allowed'?'Success':(parsed.action==='Blocked'?'Failure':'Unknown')"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "http_request",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.url",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.url.url_string",
+            "value": "parsed.url"
+          },
+          {
+            "name": "http_request.url.scheme",
+            "value": "parsed.url && parsed.url.match(/^([^:]+):\\/\\//) ? parsed.url.match(/^([^:]+):\\/\\//)[1] : null"
+          },
+          {
+            "name": "http_request.url.hostname",
+            "value": "parsed.url && parsed.url.match(/^[^:]+:\\/\\/([^\\/:\\?]+)(?::\\d+)?(?:[\\/\\?]|$)/) ? parsed.url.match(/^[^:]+:\\/\\/([^\\/:\\?]+)(?::\\d+)?(?:[\\/\\?]|$)/)[1] : null"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "parsed.url && parsed.url.match(/^[^:]+:\\/\\/[^\\/?#]+(\\/[^\\?#]*)/) ? parsed.url.match(/^[^:]+:\\/\\/[^\\/?#]+(\\/[^\\?#]*)/)[1] : null"
+          },
+          {
+            "name": "http_request.url.query_string",
+            "value": "parsed.url && parsed.url.match(/\\?([^#]+)$/) ? parsed.url.match(/\\?([^#]+)$/)[1] : null"
+          },
+          {
+            "name": "http_request.url.category_ids",
+            "value": "parsed.urlcategory==='Business'?[21]:(parsed.urlcategory==='Social Networking'?[55]:(parsed.urlcategory==='Technology/Internet'?[38]:(parsed.urlcategory==='Search Engines/Portals'?[40]:(parsed.urlcategory==='Uncategorized'?[90]:[99]))))"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "parsed.serverip"
+          },
+          {
+            "name": "dst_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.owner.name",
+            "value": "parsed.deviceowner"
+          },
+          {
+            "name": "dst_endpoint.owner.type_id",
+            "value": "parsed.deviceowner==='admin'?2:1"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "parsed.devicehostname"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "parsed.devicehostname && parsed.devicehostname.toLowerCase().indexOf('laptop')>=0 ? 3 : 0"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'http_request.url.url_string',type_id:6},{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.name',type_id:1},{name:'dst_endpoint.owner.name',type_id:4}]"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse JSON string in _raw into parsed object."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "parsed.riskscore >= 80 ? 4 : parsed.riskscore >= 50 ? 3 : parsed.riskscore >= 25 ? 2 : 1"
+          },
+          {
+            "name": "http_cookies",
+            "value": "[]"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "parsed.clientip"
+          },
+          {
+            "name": "src_endpoint.hostname",
+            "value": "parsed.devicehostname"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "parsed.devicehostname"
+          },
+          {
+            "name": "src_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "parsed.deviceowner"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "parsed.deviceowner === 'admin' ? 2 : parsed.deviceowner === 'deploy' ? 4 : 1"
+          },
+          {
+            "name": "src_endpoint.owner.uid",
+            "value": "parsed.user"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "parsed.devicehostname && parsed.devicehostname.toLowerCase().indexOf('laptop') >= 0 ? 3 : 0"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "parsed.devicehostname"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "parsed.clientip && parsed.clientip.match(/^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./) && parsed.serverip && parsed.serverip.match(/^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./) ? 2 : 3"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "parsed.clientip && parsed.clientip.match(/^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./) && parsed.serverip && parsed.serverip.match(/^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./) ? 3 : parsed.clientip && parsed.clientip.match(/^10\\.|^172\\.(1[6-9]|2[0-9]|3[0-1])\\.|^192\\.168\\./) ? 2 : 1"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "'tcp'"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "6"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "parsed.clientip + '|' + parsed.serverip + '|' + parsed.url"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'http_activity'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.datetime"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'URL Activity Logger'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Unknown'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "severity_id",
+          "http_cookies",
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "connection_info.*",
+          "cribl_*",
+          "__*"
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "parsed"
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed URL activity fields to OCSF HTTP Activity target schema fields."
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "action",
+        "clientip",
+        "datetime",
+        "department",
+        "devicehostname",
+        "deviceowner",
+        "requestsize",
+        "responsesize",
+        "riskscore",
+        "serverip",
+        "url",
+        "urlcategory",
+        "urlclass",
+        "user"
+      ]
+    }
+  },
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from zscaler_web::cim: 167/175 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

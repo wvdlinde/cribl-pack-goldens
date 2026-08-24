@@ -1,0 +1,122 @@
+{
+  "key": "dnf.librepo::cim::__mapping__",
+  "sourcetype": "dnf.librepo",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:29:52.001Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Traffic'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "_raw.match(/\\s(?:DEBUG|INFO|WARNING|ERROR)\\s+librepo:/) ? 'dnf.librepo' : ''"
+          },
+          {
+            "name": "process",
+            "value": "_raw.match(/\\s(?:DEBUG|INFO|WARNING|ERROR)\\s+([A-Za-z0-9_.-]+):/) ? _raw.match(/\\s(?:DEBUG|INFO|WARNING|ERROR)\\s+([A-Za-z0-9_.-]+):/)[1] : ''"
+          },
+          {
+            "name": "app",
+            "value": "_raw.match(/\\s(?:DEBUG|INFO|WARNING|ERROR)\\s+([A-Za-z0-9_.-]+):/) ? _raw.match(/\\s(?:DEBUG|INFO|WARNING|ERROR)\\s+([A-Za-z0-9_.-]+):/)[1] : ''"
+          },
+          {
+            "name": "url",
+            "value": "_raw.match(/https?:\\/\\/[^\\s]+/) ? _raw.match(/https?:\\/\\/[^\\s]+/)[0] : ''"
+          },
+          {
+            "name": "protocol",
+            "value": "_raw.match(/(https?):\\/\\//) ? _raw.match(/(https?):\\/\\//)[1].toLowerCase() : ''"
+          },
+          {
+            "name": "transport",
+            "value": "_raw.match(/https?:\\/\\//) ? 'tcp' : ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "_raw.match(/Downloading successful:/) ? 'download successful' : (_raw.match(/Cannot download/) ? 'download failed' : (_raw.match(/timed out/) ? 'mirror timeout' : (_raw.match(/Retry #/) ? 'retry' : '')))"
+          },
+          {
+            "name": "action",
+            "value": "_raw.match(/Downloading successful:/) ? 'allowed' : (_raw.match(/Cannot download|timed out|skipping/) ? 'blocked' : '')"
+          },
+          {
+            "name": "bytes",
+            "value": "_raw.match(/\\((\\d+)\\s+bytes\\)/) ? Number(_raw.match(/\\((\\d+)\\s+bytes\\)/)[1]) : null"
+          },
+          {
+            "name": "duration",
+            "value": "_raw.match(/timed out after\\s+(\\d+)ms/) ? Number(_raw.match(/timed out after\\s+(\\d+)ms/)[1]) / 1000 : null"
+          },
+          {
+            "name": "object",
+            "value": "_raw.match(/Downloading successful:\\s+(\\S+)/) ? _raw.match(/Downloading successful:\\s+(\\S+)/)[1] : (_raw.match(/Cannot download\\s+(\\S+):/) ? _raw.match(/Cannot download\\s+(\\S+):/)[1] : (_raw.match(/Local repo path:\\s+(\\S+)/) ? _raw.match(/Local repo path:\\s+(\\S+)/)[1] : ''))"
+          },
+          {
+            "name": "severity",
+            "value": "_raw.match(/\\s(DEBUG|INFO|WARNING|ERROR)\\s+/) ? _raw.match(/\\s(DEBUG|INFO|WARNING|ERROR)\\s+/)[1].toLowerCase() : ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "_raw.match(/\\sERROR\\s+/) ? 6 : (_raw.match(/\\sWARNING\\s+/) ? 4 : (_raw.match(/\\sINFO\\s+/) ? 3 : (_raw.match(/\\sDEBUG\\s+/) ? 2 : null)))"
+          },
+          {
+            "name": "signature",
+            "value": "_raw.match(/(Connection timed out|timed out)/i) ? _raw.match(/(Connection timed out|timed out)/i)[1] : ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'dnf.librepo'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

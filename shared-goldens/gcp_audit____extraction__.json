@@ -1,0 +1,170 @@
+{
+  "key": "gcp_audit::__extraction__",
+  "sourcetype": "gcp_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:26:18.330Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse GCP audit log JSON envelope"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "protoPayload"
+      },
+      "description": "Parse protoPayload nested JSON object"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "authenticationInfo"
+      },
+      "description": "Parse authenticationInfo nested JSON object"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "requestMetadata"
+      },
+      "description": "Parse requestMetadata nested JSON object"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "authorizationInfo",
+        "regex": "/\\{\"granted\":(?<__granted>[^,]+),\"permission\":\"(?<permission>[^\"]+)\",\"resource\":\"(?<authz_resource>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract first authorizationInfo entry fields (permission, granted, resource)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "logName",
+        "regex": "/projects\\/(?<project_id>[^\\/]+)\\/logs\\/(?<log_type>.+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract project_id and log type from logName"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "principalEmail"
+          },
+          {
+            "name": "src_ip",
+            "value": "callerIp"
+          },
+          {
+            "name": "action",
+            "value": "methodName"
+          },
+          {
+            "name": "service",
+            "value": "serviceName"
+          },
+          {
+            "name": "resource",
+            "value": "resourceName"
+          },
+          {
+            "name": "granted",
+            "value": "__granted == 'true' ? true : false"
+          },
+          {
+            "name": "outcome",
+            "value": "__granted == 'true' ? 'allow' : 'deny'"
+          },
+          {
+            "name": "user_agent",
+            "value": "callerSuppliedUserAgent"
+          },
+          {
+            "name": "log_type",
+            "value": "log_type ? decodeURIComponent(log_type) : log_type"
+          },
+          {
+            "name": "timestamp",
+            "value": "timestamp"
+          }
+        ],
+        "remove": [
+          "__granted",
+          "principalEmail",
+          "principalSubject",
+          "callerIp",
+          "methodName",
+          "serviceName",
+          "resourceName",
+          "callerSuppliedUserAgent",
+          "authenticationInfo",
+          "requestMetadata",
+          "authorizationInfo",
+          "protoPayload",
+          "requestAttributes",
+          "destinationAttributes",
+          "request",
+          "resource",
+          "_type",
+          "serviceAccountKeyName"
+        ]
+      },
+      "description": "Normalize fields to standard schema: user, src_ip, action, service, resource, severity, timestamp, granted, log_type"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (timestamp) so _time reflects the source event, not pipeline processing time"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from gcp_audit::cim: 24/24 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

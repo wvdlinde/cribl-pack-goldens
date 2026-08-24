@@ -1,0 +1,84 @@
+{
+  "key": "vmware_nsx::__extraction__",
+  "sourcetype": "vmware_nsx",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:13:59.405Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, and remaining message body from raw NSX syslog line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+(?<rest>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "rest && rest.indexOf('nsx@') > -1",
+      "disabled": false,
+      "description": "Parse structured NSX manager/controller syslog events (comp/subcomp/level/username/src)",
+      "conf": {
+        "source": "rest",
+        "regex": "/^NSX\\s+\\d+\\s+-\\s+\\[nsx@\\d+\\s+comp=\"(?<comp>[^\"]*)\"\\s+subcomp=\"(?<subcomp>[^\"]*)\"\\s+level=\"(?<severity>[^\"]*)\"(?:\\s+username=\"(?<user>[^\"]*)\")?(?:\\s+src=\"(?<src_ip>[^\"]*)\")?\\]\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "rest && /^NSX-(FIREWALL|DFW):/.test(rest)",
+      "disabled": false,
+      "description": "Parse NSX firewall/DFW connection log lines (protocol, src/dst ip:port including IPv6, action, rule_id)",
+      "conf": {
+        "source": "rest",
+        "regex": "/^NSX-(?<nsx_module>FIREWALL|DFW):\\s*\\[(?<subsystem>\\w+)\\]\\s+(?<protocol>\\w+)\\s+(?<src_ip>[0-9a-fA-F:.]+)\\/(?<src_port>\\d+)->(?<dst_ip>[0-9a-fA-F:.]+)\\/(?<dst_port>\\d+)\\s+(?<action>\\w+)\\s+rule_id=(?<rule_id>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "rest && /^NSX-(VPN|LB):/.test(rest)",
+      "disabled": false,
+      "description": "Parse NSX VPN/load-balancer status lines, capturing module, subsystem, and remaining key=value tail",
+      "conf": {
+        "source": "rest",
+        "regex": "/^NSX-(?<nsx_module>VPN|LB):\\s*\\[(?<subsystem>\\w+)\\]\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol case, map firewall action to allow/deny, and fill severity when absent based on action",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toLowerCase() : protocol"
+          },
+          {
+            "name": "action",
+            "value": "action == 'ACCEPT' ? 'allow' : action == 'DROP' ? 'deny' : action"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : (action == 'deny' ? 'WARN' : (action == 'allow' ? 'INFO' : severity))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,98 @@
+{
+  "key": "forcepoint_local_email_security::__extraction__",
+  "sourcetype": "forcepoint_local_email_security",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:05:29.922Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host, process, pid) and remaining key=value payload into a scratch field",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) (?<process>[^\\[]+)\\[(?<pid>\\d+)\\]: (?<__kvpairs>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value fields (action, direction, sender, recipient, subject, size, src_ip, dst_ip, virus, spam_score, policy, disposition, threat_name, attachment, error, note) from the scratch KVP field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvpairs",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, action, direction, and user/dst_user field names per Rule 13/14",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'SMTP'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action==='Permit' ? 'allow' : action==='Block' ? 'block' : action==='Quarantine' ? 'quarantine' : action==='Fail' ? 'fail' : action ? action.toLowerCase() : action"
+          },
+          {
+            "name": "direction",
+            "value": "direction ? direction.toLowerCase() : direction"
+          },
+          {
+            "name": "user",
+            "value": "sender"
+          },
+          {
+            "name": "dst_user",
+            "value": "recipient"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive severity based on virus/threat detection and spam score",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "(virus && virus!=='None') || threat_name ? 'high' : (Number(spam_score)>90 ? 'high' : (Number(spam_score)>50 ? 'medium' : 'low'))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Remove scratch/intermediate fields no longer needed after parsing",
+      "conf": {
+        "add": [],
+        "remove": [
+          "__kvpairs"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

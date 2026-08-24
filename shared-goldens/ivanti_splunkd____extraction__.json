@@ -1,0 +1,96 @@
+{
+  "key": "ivanti_splunkd::__extraction__",
+  "sourcetype": "ivanti_splunkd",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:30:02.475Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog-style header (timestamp, host, pid) and isolate the trailing KVP payload into a scratch field",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+splunkd\\[(?<pid>\\d+)\\]:\\s+(?<__kvp_data>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (including quoted values) from the scratch KVP payload",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_data",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity/protocol casing, rename msg to message, derive IP version, and clean up scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toLowerCase() : protocol"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') !== -1 ? 'ipv6' : (src_ip ? 'ipv4' : undefined)"
+          }
+        ],
+        "remove": [
+          "__kvp_data",
+          "msg"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive traffic direction based on RFC1918 private address ranges for src_ip",
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)/) ? 'inbound' : (src_ip ? 'outbound' : undefined)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify high-level event category based on event_id prefix for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "event_category",
+            "value": "event_id && event_id.startsWith('AUTH') ? 'authentication' : event_id && event_id.startsWith('VPN') ? 'vpn' : event_id && event_id.startsWith('HC') ? 'host_checker' : event_id && event_id.startsWith('SYS') ? 'system' : event_id && event_id.startsWith('CERT') ? 'certificate' : event_id && event_id.startsWith('ADMIN') ? 'administration' : event_id && event_id.startsWith('SEC') ? 'security' : event_id && event_id.startsWith('SESSION') ? 'session' : 'other'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

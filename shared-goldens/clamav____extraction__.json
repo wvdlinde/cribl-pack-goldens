@@ -1,0 +1,29 @@
+{
+  "key": "clamav::__extraction__",
+  "sourcetype": "clamav",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "pack-mining",
+  "build": 0,
+  "updated_at": "2026-07-15T18:49:42.486Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": false,
+        "regex": "/\\n(?<_NAME_0>.*?):\\s+(?<_VALUE_0>.*)/g",
+        "fieldNameExpression": "name.replace(/ +/g,'_').replace(/[\\/\\\\]/g,'SLASH_').replace(/^/,\"my__\")"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Mined from cribl-clamav/clamav_log",
+    "scoreSource": "valueCoverage"
+  }
+}

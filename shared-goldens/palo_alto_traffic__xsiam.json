@@ -1,0 +1,202 @@
+{
+  "key": "palo_alto_traffic::xsiam",
+  "sourcetype": "palo_alto_traffic",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:13.805Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "palo_alto_traffic → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "src_ip && src_ip.startsWith('169.254.')",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop PA management/health check traffic (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action == 'allow' && dst_port == '53'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine allowed DNS queries (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "__product",
+            "value": "'PAN-OS'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'palo_alto_traffic:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "palo_alto_traffic_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "1,2026/06/25 00:03:17,001801234567,TRAFFIC,end,2816,2026/06/25 00:03:17,10.10.1.45,8.8.8.8,10.10.1.45,8.8.8.8,Allow-DNS-Out,jsmith,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:03:17,12345,1,54321,53,0,0,0x0,udp,allow,128,64,64,1,2026/06/25 00:03:17,0,any,0,1234567890,0x8000000000000000,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0001,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 00:17:42,001801234567,TRAFFIC,end,2816,2026/06/25 00:17:42,192.168.5.22,151.101.1.69,192.168.5.22,151.101.1.69,Allow-Web,bwilliams,web-browsing,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:17:42,23456,1,56789,80,0,0,0x0,tcp,allow,5400,2700,2700,12,2026/06/25 00:17:30,12,any,0,1234567891,0x8000000000000000,United States,0,8,4,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0002,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 00:31:05,001801234567,TRAFFIC,deny,2816,2026/06/25 00:31:05,203.0.113.45,10.10.0.1,203.0.113.45,10.10.0.1,Block-Inbound,unknown,not-applicable,vsys1,untrust,trust,ethernet1/3,ethernet1/1,Log-All,2026/06/25 00:31:05,0,0,44821,22,0,0,0x0,tcp,deny,0,0,0,0,2026/06/25 00:31:05,0,any,0,1234567892,0x8000000000000000,China,0,0,0,policy-deny,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0003,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 00:44:58,001801234567,TRAFFIC,end,2816,2026/06/25 00:44:58,10.10.2.100,172.217.14.238,10.10.2.100,172.217.14.238,Allow-SSL,agarcia,ssl,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:44:58,34567,1,49123,443,0,0,0x0,tcp,allow,98765,45000,53765,87,2026/06/25 00:43:31,87,any,0,1234567893,0x8000000000000000,United States,0,52,35,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0004,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 01:05:33,001801234567,TRAFFIC,drop,2816,2026/06/25 01:05:33,198.51.100.77,10.10.0.5,198.51.100.77,10.10.0.5,Default-Deny,unknown,not-applicable,vsys1,untrust,trust,ethernet1/3,ethernet1/1,Log-All,2026/06/25 01:05:33,0,0,53219,3389,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 01:05:33,0,any,0,1234567894,0x8000000000000000,Netherlands,0,0,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0005,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 01:22:11,001801234567,TRAFFIC,end,2816,2026/06/25 01:22:11,10.10.3.77,13.107.42.14,10.10.3.77,13.107.42.14,Allow-O365,tjones,ms-office365,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 01:22:11,45678,1,50234,443,0,0,0x400,tcp,allow,245678,120000,125678,203,2026/06/25 01:18:28,223,any,0,1234567895,0x8000000000000000,United States,0,145,58,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0006,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 01:38:47,001801234567,TRAFFIC,end,2816,2026/06/25 01:38:47,172.16.10.55,208.67.222.222,172.16.10.55,208.67.222.222,Allow-DNS-Out,sysadmin,dns,vsys1,dmz,untrust,ethernet1/2,ethernet1/3,Log-All,2026/06/25 01:38:47,56789,1,34567,53,0,0,0x0,udp,allow,200,100,100,2,2026/06/25 01:38:47,0,any,0,1234567896,0x8000000000000000,United States,0,2,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0007,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      },
+      {
+        "_raw": "1,2026/06/25 01:55:02,001801234567,TRAFFIC,end,2816,2026/06/25 01:55:02,10.10.4.31,172.16.0.10,10.10.4.31,172.16.0.10,Allow-Internal,klee,smb,vsys1,trust,dmz,ethernet1/1,ethernet1/2,Log-Internal,2026/06/25 01:55:02,67890,1,49876,445,0,0,0x0,tcp,allow,18900,9450,9450,42,2026/06/25 01:54:20,42,any,0,1234567897,0x8000000000000000,10.0.0.0-10.255.255.255,0,25,17,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0008,0,0,,,,,,",
+        "_time": 1784047899.766,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_traffic:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "1,2026/06/25 00:03:17,001801234567,TRAFFIC,end,2816,2026/06/25 00:03:17,10.10.1.45,8.8.8.8,10.10.1.45,8.8.8.8,Allow-DNS-Out,jsmith,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:03:17,12345,1,54321,53,0,0,0x0,udp,allow,128,64,64,1,2026/06/25 00:03:17,0,any,0,1234567890,0x8000000000000000,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0001,0,0,,,,,,",
+      "1,2026/06/25 00:17:42,001801234567,TRAFFIC,end,2816,2026/06/25 00:17:42,192.168.5.22,151.101.1.69,192.168.5.22,151.101.1.69,Allow-Web,bwilliams,web-browsing,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:17:42,23456,1,56789,80,0,0,0x0,tcp,allow,5400,2700,2700,12,2026/06/25 00:17:30,12,any,0,1234567891,0x8000000000000000,United States,0,8,4,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0002,0,0,,,,,,",
+      "1,2026/06/25 00:31:05,001801234567,TRAFFIC,deny,2816,2026/06/25 00:31:05,203.0.113.45,10.10.0.1,203.0.113.45,10.10.0.1,Block-Inbound,unknown,not-applicable,vsys1,untrust,trust,ethernet1/3,ethernet1/1,Log-All,2026/06/25 00:31:05,0,0,44821,22,0,0,0x0,tcp,deny,0,0,0,0,2026/06/25 00:31:05,0,any,0,1234567892,0x8000000000000000,China,0,0,0,policy-deny,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0003,0,0,,,,,,",
+      "1,2026/06/25 00:44:58,001801234567,TRAFFIC,end,2816,2026/06/25 00:44:58,10.10.2.100,172.217.14.238,10.10.2.100,172.217.14.238,Allow-SSL,agarcia,ssl,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 00:44:58,34567,1,49123,443,0,0,0x0,tcp,allow,98765,45000,53765,87,2026/06/25 00:43:31,87,any,0,1234567893,0x8000000000000000,United States,0,52,35,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0004,0,0,,,,,,",
+      "1,2026/06/25 01:05:33,001801234567,TRAFFIC,drop,2816,2026/06/25 01:05:33,198.51.100.77,10.10.0.5,198.51.100.77,10.10.0.5,Default-Deny,unknown,not-applicable,vsys1,untrust,trust,ethernet1/3,ethernet1/1,Log-All,2026/06/25 01:05:33,0,0,53219,3389,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 01:05:33,0,any,0,1234567894,0x8000000000000000,Netherlands,0,0,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0005,0,0,,,,,,",
+      "1,2026/06/25 01:22:11,001801234567,TRAFFIC,end,2816,2026/06/25 01:22:11,10.10.3.77,13.107.42.14,10.10.3.77,13.107.42.14,Allow-O365,tjones,ms-office365,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Log-All,2026/06/25 01:22:11,45678,1,50234,443,0,0,0x400,tcp,allow,245678,120000,125678,203,2026/06/25 01:18:28,223,any,0,1234567895,0x8000000000000000,United States,0,145,58,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0006,0,0,,,,,,",
+      "1,2026/06/25 01:38:47,001801234567,TRAFFIC,end,2816,2026/06/25 01:38:47,172.16.10.55,208.67.222.222,172.16.10.55,208.67.222.222,Allow-DNS-Out,sysadmin,dns,vsys1,dmz,untrust,ethernet1/2,ethernet1/3,Log-All,2026/06/25 01:38:47,56789,1,34567,53,0,0,0x0,udp,allow,200,100,100,2,2026/06/25 01:38:47,0,any,0,1234567896,0x8000000000000000,United States,0,2,0,aged-out,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0007,0,0,,,,,,",
+      "1,2026/06/25 01:55:02,001801234567,TRAFFIC,end,2816,2026/06/25 01:55:02,10.10.4.31,172.16.0.10,10.10.4.31,172.16.0.10,Allow-Internal,klee,smb,vsys1,trust,dmz,ethernet1/1,ethernet1/2,Log-Internal,2026/06/25 01:55:02,67890,1,49876,445,0,0,0x0,tcp,allow,18900,9450,9450,42,2026/06/25 01:54:20,42,any,0,1234567897,0x8000000000000000,10.0.0.0-10.255.255.255,0,25,17,tcp-fin,0,0,0,0,,PA-3220,from,,,0,,0,,N/A,0,0,0,0,1a2b3c4d-0008,0,0,,,,,,"
+    ],
+    "sourcetype": "palo_alto_traffic"
+  }
+}

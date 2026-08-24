@@ -1,0 +1,80 @@
+{
+  "key": "sophos_xg::__extraction__",
+  "sourcetype": "sophos_xg",
+  "dest_format": "__extraction__",
+  "score": 99,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:34:56.623Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Sophos XG key=value formatted log into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Build unified _time from date/time fields and normalize user field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Math.floor(new Date(date + 'T' + time + 'Z').getTime()/1000)"
+          },
+          {
+            "name": "user",
+            "value": "user_name && user_name !== '' ? user_name : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action and severity fields across firewall, IPS, VPN, AV, ATP and auth log subtypes",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status === 'Allow' ? 'allow' : status === 'Deny' ? 'deny' : action ? action.toLowerCase() : (log_subtype === 'Login' ? (status === 'Success' ? 'login_success' : 'login_failure') : null)"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : (log_type === 'Firewall' ? 'Info' : 'Info')"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive traffic direction from source/destination zone for firewall events",
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "srczone === 'LAN' && dstzone === 'WAN' ? 'outbound' : srczone === 'WAN' && dstzone === 'LAN' ? 'inbound' : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

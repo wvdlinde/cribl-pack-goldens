@@ -1,0 +1,23 @@
+{
+  "key": "corelight_ocsp::__extraction__",
+  "sourcetype": "corelight_ocsp",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:31:04.117Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

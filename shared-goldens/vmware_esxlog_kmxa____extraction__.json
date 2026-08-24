@@ -1,0 +1,96 @@
+{
+  "key": "vmware_esxlog_kmxa::__extraction__",
+  "sourcetype": "vmware_esxlog_kmxa",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:29:09.922Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the ESXi kmxa syslog envelope and message category.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z)\\s+(?<host>\\S+)\\s+kmxa\\[(?<kmxa_pid>\\d+)\\]:\\s+(?<severity>[A-Za-z]+)\\s+(?<service>[A-Za-z0-9_.-]+)\\[(?<process_id>\\d+)\\]:\\s+\\[(?<category>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes(\"user '\") || message && message.startsWith(\"User '\")",
+      "disabled": false,
+      "description": "Extract the user associated with authentication, VM, and configuration activity.",
+      "conf": {
+        "source": "message",
+        "regex": "/\\b(?:User|user) '(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (category === 'Auth' || category === 'Firewall')",
+      "disabled": false,
+      "description": "Extract source addresses and destination ports from authentication and firewall events.",
+      "conf": {
+        "source": "message",
+        "regex": "/\\bfrom\\s+\\[?(?<src_ip>(?:(?:\\d{1,3}\\.){3}\\d{1,3}|[A-Fa-f0-9]*:[A-Fa-f0-9:]+))\\]?(?:\\s+via\\s+[A-Za-z][A-Za-z0-9_-]*)?(?:\\s+on\\s+port\\s+(?<dst_port>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && category === 'Storage'",
+      "disabled": false,
+      "description": "Extract datastore and remote storage endpoint details.",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:datastore\\s+'(?<datastore>[^']+)'\\s+from|target)\\s+\\[?(?<dst_ip>(?:(?:\\d{1,3}\\.){3}\\d{1,3}|[A-Fa-f0-9:]+?))\\]?:(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (category === 'VM' || category === 'VMotion' || category === 'Resource')",
+      "disabled": false,
+      "description": "Extract VM names and migration destination hosts.",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:Migration of VM|Snapshot created for VM|Powered on VM|VM)\\s+'(?<vm_name>[^']+)'(?:\\s+to host\\s+(?<dst_host>\\S+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize event action, application protocol, and traffic direction.",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.includes('authenticated successfully') ? 'login_success' : message.includes('logged in via') ? 'login_success' : message.includes('Repeated failed login attempts') ? 'account_lockout' : message.includes('Password change failed') ? 'password_change_failure' : message.includes('Migration of VM') ? 'migration_timeout' : message.includes('Failed to mount') ? 'mount_failure' : message.includes('link state changed') ? 'link_state_change' : message.includes('Snapshot created') ? 'snapshot_create' : message.includes('Blocked inbound connection') ? 'block' : message.includes('Successfully reconnected') ? 'reconnect' : message.includes('unreachable') ? 'connection_failure' : message.includes('Unrecoverable hardware error') ? 'hardware_failure' : message.includes('updated by user') ? 'update' : message.includes('usage exceeded') ? 'threshold_exceeded' : message.includes('Powered on VM') ? 'power_on' : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "message.includes('via SSH') ? 'ssh' : message.includes('via vSphere Client') ? 'vsphere' : message.includes('NFS datastore') ? 'nfs' : message.includes('iSCSI target') ? 'iscsi' : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "category === 'Firewall' && message.includes('inbound connection') ? 'inbound' : category === 'Auth' && src_ip ? 'inbound' : category === 'Storage' && dst_ip ? 'outbound' : undefined"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

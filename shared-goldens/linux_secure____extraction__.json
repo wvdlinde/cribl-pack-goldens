@@ -1,0 +1,77 @@
+{
+  "key": "linux_secure::__extraction__",
+  "sourcetype": "linux_secure",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:43:39.460Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse standard syslog header (timestamp, host, process, pid) and isolate the sshd message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<dst_host>\\S+)\\s(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.startsWith('Accepted') || message.startsWith('Failed'))",
+      "disabled": false,
+      "description": "Extract auth outcome, method, user, source IP/port and protocol from Accepted/Failed password events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<auth_result>Accepted|Failed)\\s(?<auth_method>\\S+)\\sfor\\s(?<user>\\S+)\\sfrom\\s(?<src_ip>\\S+)\\sport\\s(?<src_port>\\d+)\\s(?<protocol>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action based on parsed auth_result and set dst_port default for ssh",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "auth_result === 'Accepted' ? 'success' : (auth_result === 'Failed' ? 'failure' : 'unknown')"
+          },
+          {
+            "name": "dst_port",
+            "value": "22"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toLowerCase() : 'ssh'"
+          }
+        ],
+        "remove": [
+          "auth_result"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event time from syslog timestamp (current year assumed)",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "strptime(timestamp + ' ' + strftime(_time, '%Y'), '%b %d %H:%M:%S %Y')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,22 @@
+{
+  "key": "linux_audit::__optimization__",
+  "sourcetype": "linux_audit",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 302,
+  "updated_at": "2026-08-04T06:00:42.031Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "audit_type === 'CWD' || audit_type === 'PATH'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop CWD/PATH context events (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

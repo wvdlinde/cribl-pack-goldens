@@ -1,0 +1,68 @@
+{
+  "key": "cron_too_small::__extraction__",
+  "sourcetype": "cron_too_small",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:39:41.100Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, process, pid, user, and action type from syslog cron message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<dst_host>\\S+)\\s(?<process>crond)\\[(?<pid>\\d+)\\]:\\s\\((?<user>[^)]+)\\)\\s(?<event_type>CRON_TOO_SMALL|CMD)\\s\\((?<message>.*)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "event_type === 'CMD'",
+      "disabled": false,
+      "description": "Extract command run for CMD events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<command>.*?)\\)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "event_type === 'CRON_TOO_SMALL' && message && message.indexOf('SECURITY_ALERT') !== -1",
+      "disabled": false,
+      "description": "Extract security alert detail appended to CRON_TOO_SMALL events",
+      "conf": {
+        "source": "message",
+        "regex": "/SECURITY_ALERT:\\s(?<security_alert>.*)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action and severity based on event type and security alert presence",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "event_type === 'CMD' ? 'executed' : 'skipped'"
+          },
+          {
+            "name": "severity",
+            "value": "security_alert ? 'high' : (event_type === 'CRON_TOO_SMALL' ? 'medium' : 'info')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

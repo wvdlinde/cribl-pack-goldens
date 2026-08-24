@@ -1,0 +1,68 @@
+{
+  "key": "mscs_azure_eventhub::__extraction__",
+  "sourcetype": "mscs_azure_eventhub",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:02.779Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "blobname",
+        "calleripaddress",
+        "category",
+        "conditionalaccessstatus",
+        "containername",
+        "correlationid",
+        "cputime",
+        "database_name",
+        "destinationip",
+        "destport",
+        "duration",
+        "extensionname",
+        "failedattemptcount",
+        "fqdn",
+        "httpstatuscode",
+        "identity",
+        "instancecount",
+        "level",
+        "mfadetail",
+        "operationname",
+        "properties",
+        "protocol",
+        "queryname",
+        "querytype",
+        "reason",
+        "requestbodysize",
+        "resourceid",
+        "responsecode",
+        "resultdescription",
+        "resulttype",
+        "rowcount",
+        "rulename",
+        "secretname",
+        "sessionduration",
+        "sourceport",
+        "statement",
+        "targetresources",
+        "time",
+        "useragent"
+      ]
+    }
+  },
+  "report": null
+}

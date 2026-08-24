@@ -1,0 +1,194 @@
+{
+  "key": "pan_config_syslog::xsiam",
+  "sourcetype": "pan_config_syslog",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:18.063Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "pan_config_syslog → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'pan config syslog'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'pan_config_syslog:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "pan_config_syslog_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 63,
+    "outputSample": [
+      {
+        "_raw": "<14>Mar 15 00:03:12 PA-5260-EDGE : 1,2024/03/15 00:03:12,009101234567,CONFIG,0,2024/03/15 00:03:12,10.10.0.15,vsys1,set,admin,Web,Submitted,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/address/entry[@name='DMZ-WebServer-01'],,,4839201,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<14>Mar 15 00:17:44 PA-3260-CORE : 1,2024/03/15 00:17:44,007701987654,CONFIG,0,2024/03/15 00:17:44,192.168.1.50,vsys1,delete,jsmith,Web,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/security/rules/entry[@name='Allow-Old-VPN'],,,4839202,0x0,0,0,0,0,vsys1,PA-3260-CORE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<11>Mar 15 00:31:05 PA-5260-EDGE : 1,2024/03/15 00:31:05,009101234567,CONFIG,0,2024/03/15 00:31:05,203.0.113.45,vsys1,set,unknown,Web,Unauthorized,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/address-group/entry[@name='Critical-Servers'],,,4839203,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<14>Mar 15 01:02:33 PA-820-BRANCH1 : 1,2024/03/15 01:02:33,011200445566,CONFIG,0,2024/03/15 01:02:33,172.16.5.22,vsys1,edit,panorama,Panorama,Submitted,devices/entry[@name='localhost.localdomain']/network/interface/ethernet/entry[@name='ethernet1/1']/layer3,,,4839204,0x0,0,0,0,0,vsys1,PA-820-BRANCH1",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<14>Mar 15 01:15:58 PA-5260-EDGE : 1,2024/03/15 01:15:58,009101234567,CONFIG,0,2024/03/15 01:15:58,10.10.0.15,vsys1,set,svc-panorama,Panorama,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/profiles/security-profiles/vulnerability/entry[@name='Strict-VP'],,,4839205,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<14>Mar 15 01:44:20 PA-3260-CORE : 1,2024/03/15 01:44:20,007701987654,CONFIG,0,2024/03/15 01:44:20,10.10.0.20,vsys1,rename,mwilson,CLI,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/security/rules/entry[@name='Legacy-Rule-07'],,,4839206,0x0,0,0,0,0,vsys1,PA-3260-CORE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<12>Mar 15 02:08:14 PA-5260-EDGE : 1,2024/03/15 02:08:14,009101234567,CONFIG,0,2024/03/15 02:08:14,10.99.1.5,vsys2,delete,temp_admin,Web,Failed,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys2']/nat/rules/entry[@name='Corp-Outbound-NAT'],,,4839207,0x0,0,0,0,0,vsys2,PA-5260-EDGE",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      },
+      {
+        "_raw": "<14>Mar 15 02:22:47 PA-820-BRANCH2 : 1,2024/03/15 02:22:47,013300556677,CONFIG,0,2024/03/15 02:22:47,192.168.2.100,vsys1,set,admin,CLI,Submitted,devices/entry[@name='localhost.localdomain']/network/routing-table/ip/static-route/entry[@name='Route-10.50.0.0'],,,4839208,0x0,0,0,0,0,vsys1,PA-820-BRANCH2",
+        "_time": 1784049704.6,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan config syslog",
+        "__product": "Security",
+        "sourcetype": "pan_config_syslog:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "<14>Mar 15 00:03:12 PA-5260-EDGE : 1,2024/03/15 00:03:12,009101234567,CONFIG,0,2024/03/15 00:03:12,10.10.0.15,vsys1,set,admin,Web,Submitted,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/address/entry[@name='DMZ-WebServer-01'],,,4839201,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+      "<14>Mar 15 00:17:44 PA-3260-CORE : 1,2024/03/15 00:17:44,007701987654,CONFIG,0,2024/03/15 00:17:44,192.168.1.50,vsys1,delete,jsmith,Web,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/security/rules/entry[@name='Allow-Old-VPN'],,,4839202,0x0,0,0,0,0,vsys1,PA-3260-CORE",
+      "<11>Mar 15 00:31:05 PA-5260-EDGE : 1,2024/03/15 00:31:05,009101234567,CONFIG,0,2024/03/15 00:31:05,203.0.113.45,vsys1,set,unknown,Web,Unauthorized,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/address-group/entry[@name='Critical-Servers'],,,4839203,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+      "<14>Mar 15 01:02:33 PA-820-BRANCH1 : 1,2024/03/15 01:02:33,011200445566,CONFIG,0,2024/03/15 01:02:33,172.16.5.22,vsys1,edit,panorama,Panorama,Submitted,devices/entry[@name='localhost.localdomain']/network/interface/ethernet/entry[@name='ethernet1/1']/layer3,,,4839204,0x0,0,0,0,0,vsys1,PA-820-BRANCH1",
+      "<14>Mar 15 01:15:58 PA-5260-EDGE : 1,2024/03/15 01:15:58,009101234567,CONFIG,0,2024/03/15 01:15:58,10.10.0.15,vsys1,set,svc-panorama,Panorama,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/profiles/security-profiles/vulnerability/entry[@name='Strict-VP'],,,4839205,0x0,0,0,0,0,vsys1,PA-5260-EDGE",
+      "<14>Mar 15 01:44:20 PA-3260-CORE : 1,2024/03/15 01:44:20,007701987654,CONFIG,0,2024/03/15 01:44:20,10.10.0.20,vsys1,rename,mwilson,CLI,Succeeded,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys1']/security/rules/entry[@name='Legacy-Rule-07'],,,4839206,0x0,0,0,0,0,vsys1,PA-3260-CORE",
+      "<12>Mar 15 02:08:14 PA-5260-EDGE : 1,2024/03/15 02:08:14,009101234567,CONFIG,0,2024/03/15 02:08:14,10.99.1.5,vsys2,delete,temp_admin,Web,Failed,devices/entry[@name='localhost.localdomain']/vsys/entry[@name='vsys2']/nat/rules/entry[@name='Corp-Outbound-NAT'],,,4839207,0x0,0,0,0,0,vsys2,PA-5260-EDGE",
+      "<14>Mar 15 02:22:47 PA-820-BRANCH2 : 1,2024/03/15 02:22:47,013300556677,CONFIG,0,2024/03/15 02:22:47,192.168.2.100,vsys1,set,admin,CLI,Submitted,devices/entry[@name='localhost.localdomain']/network/routing-table/ip/static-route/entry[@name='Route-10.50.0.0'],,,4839208,0x0,0,0,0,0,vsys1,PA-820-BRANCH2"
+    ],
+    "sourcetype": "pan_config_syslog"
+  }
+}

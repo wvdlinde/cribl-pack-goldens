@@ -1,0 +1,22 @@
+{
+  "key": "checkpoint_firewall::__optimization__",
+  "sourcetype": "checkpoint_firewall",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 290,
+  "updated_at": "2026-07-29T12:34:05.854Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "action === 'Log'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop log-only events (no security action) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

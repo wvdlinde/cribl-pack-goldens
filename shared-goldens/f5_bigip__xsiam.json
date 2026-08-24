@@ -1,0 +1,203 @@
+{
+  "key": "f5_bigip::xsiam",
+  "sourcetype": "f5_bigip",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:17:55.419Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "f5_bigip → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'f5 bigip'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'f5_bigip:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "f5_bigip_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 49,
+    "outputSample": [
+      {
+        "_raw": "Jan 15 00:03:17 bigip-prod01.corp.local mcpd[4821]: 01070396:5: Pool /Common/web_pool member /Common/10.10.1.55:80 monitor status down. [ /Common/http_monitor: down; last error: No successful responses received before deadline. ] was: up for 3days 5hrs:22mins:11secs",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 00:11:42 bigip-prod01.corp.local tmm[10234]: 01260013:4: SSL Handshake failed for TCP 203.0.113.47:51234 -> 198.51.100.10:443",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 00:23:55 bigip-prod02.corp.local sod[3901]: 010c0083:5: Failover status: ACTIVE",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 00:37:08 bigip-prod01.corp.local httpd[9102]: pam_audit[9102]: 01070417:4: AUDIT - user admin - RAW: httpd(mod_auth_pam): user=admin(admin) partition=[All] level=Administrator tty=(httpd) host=192.168.10.25 attempts=1 start=01/15/2024 00:37:08 end=01/15/2024 00:37:08",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 00:51:29 bigip-prod01.corp.local tmm1[10235]: 01010028:3: No members available for pool /Common/app_pool",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 01:04:11 bigip-prod01.corp.local mcpd[4821]: 01070638:5: Pool /Common/db_pool member /Common/10.10.2.30:3306 monitor status up. [ /Common/tcp_monitor: up ] was: down for 0hrs:14mins:08secs",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 01:18:33 bigip-prod02.corp.local tmm[10244]: 01230140:4: SYN flood attack detected on virtual server /Common/vs_http 198.18.0.0:80, source 185.220.101.47",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      },
+      {
+        "_raw": "Jan 15 01:29:47 bigip-prod01.corp.local mcpd[4821]: 01070417:4: AUDIT - user svc_monitor - RAW: mcpd: user=svc_monitor(svc_monitor) partition=[All] level=Operator tty=console host=localhost attempts=1 start=01/15/2024 01:29:47 end=01/15/2024 01:29:47",
+        "_time": 1784048679.859,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "f5 bigip",
+        "__product": "Security",
+        "sourcetype": "f5_bigip:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "user",
+      "partition",
+      "level",
+      "tty",
+      "host",
+      "attempts",
+      "start",
+      "end"
+    ],
+    "sampleRaw": [
+      "Jan 15 00:03:17 bigip-prod01.corp.local mcpd[4821]: 01070396:5: Pool /Common/web_pool member /Common/10.10.1.55:80 monitor status down. [ /Common/http_monitor: down; last error: No successful responses received before deadline. ] was: up for 3days 5hrs:22mins:11secs",
+      "Jan 15 00:11:42 bigip-prod01.corp.local tmm[10234]: 01260013:4: SSL Handshake failed for TCP 203.0.113.47:51234 -> 198.51.100.10:443",
+      "Jan 15 00:23:55 bigip-prod02.corp.local sod[3901]: 010c0083:5: Failover status: ACTIVE",
+      "Jan 15 00:37:08 bigip-prod01.corp.local httpd[9102]: pam_audit[9102]: 01070417:4: AUDIT - user admin - RAW: httpd(mod_auth_pam): user=admin(admin) partition=[All] level=Administrator tty=(httpd) host=192.168.10.25 attempts=1 start=01/15/2024 00:37:08 end=01/15/2024 00:37:08",
+      "Jan 15 00:51:29 bigip-prod01.corp.local tmm1[10235]: 01010028:3: No members available for pool /Common/app_pool",
+      "Jan 15 01:04:11 bigip-prod01.corp.local mcpd[4821]: 01070638:5: Pool /Common/db_pool member /Common/10.10.2.30:3306 monitor status up. [ /Common/tcp_monitor: up ] was: down for 0hrs:14mins:08secs",
+      "Jan 15 01:18:33 bigip-prod02.corp.local tmm[10244]: 01230140:4: SYN flood attack detected on virtual server /Common/vs_http 198.18.0.0:80, source 185.220.101.47",
+      "Jan 15 01:29:47 bigip-prod01.corp.local mcpd[4821]: 01070417:4: AUDIT - user svc_monitor - RAW: mcpd: user=svc_monitor(svc_monitor) partition=[All] level=Operator tty=console host=localhost attempts=1 start=01/15/2024 01:29:47 end=01/15/2024 01:29:47"
+    ],
+    "sourcetype": "f5_bigip"
+  }
+}

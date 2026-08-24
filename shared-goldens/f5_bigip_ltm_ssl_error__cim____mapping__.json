@@ -1,0 +1,126 @@
+{
+  "key": "f5_bigip_ltm_ssl_error::cim::__mapping__",
+  "sourcetype": "f5_bigip_ltm_ssl_error",
+  "dest_format": "cim::__mapping__",
+  "score": 93,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:25:50.155Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "event_type",
+            "value": "'ssl_error'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "dest_ip"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dest_port || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "host"
+          },
+          {
+            "name": "process",
+            "value": "process"
+          },
+          {
+            "name": "process_id",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "signature_id",
+            "value": "msg_id"
+          },
+          {
+            "name": "signature",
+            "value": "message"
+          },
+          {
+            "name": "severity",
+            "value": "severity"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(log_level || 0)"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'F5 BIG-IP LTM'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "app",
+            "value": "'ssl'"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "category",
+            "value": "'SSL Error'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'f5_bigip_ltm_ssl_error'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

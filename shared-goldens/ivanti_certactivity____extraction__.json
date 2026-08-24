@@ -1,0 +1,104 @@
+{
+  "key": "ivanti_certactivity::__extraction__",
+  "sourcetype": "ivanti_certactivity",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:08:44.621Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, and raw KVP payload from the ivanti_certactivity syslog line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) ivanti_certactivity:\\s*(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the KVP-formatted body into discrete fields (id, severity, vpn, realm, msg, user, cert_subject, src_ip, dst_ip, dst_port, result, etc.)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive standardized fields: message, action, protocol, event_type, and epoch _time; drop scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "action",
+            "value": "result == 'success' ? 'allowed' : (result == 'failure' ? 'blocked' : (result == 'degraded' ? 'degraded' : 'unknown'))"
+          },
+          {
+            "name": "protocol",
+            "value": "'tls'"
+          },
+          {
+            "name": "event_type",
+            "value": "id && id.match(/^AUT/) ? 'authentication' : (id && id.match(/^CRT/) ? 'certificate_management' : 'other')"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ],
+        "remove": [
+          "msg",
+          "__kvp"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "src_ip && src_ip.indexOf(':') !== -1",
+      "disabled": false,
+      "description": "Flag IPv6 source addresses (e.g. fe80::1ff:fe23:4567:890a)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip_version",
+            "value": "'ipv6'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "src_ip && src_ip.indexOf(':') === -1",
+      "disabled": false,
+      "description": "Flag IPv4 source addresses",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip_version",
+            "value": "'ipv4'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

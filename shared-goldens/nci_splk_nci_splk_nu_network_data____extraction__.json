@@ -1,0 +1,90 @@
+{
+  "key": "nci_splk_nci_splk_nu_network_data::__extraction__",
+  "sourcetype": "nci_splk_nci_splk_nu_network_data",
+  "dest_format": "__extraction__",
+  "score": 99,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:17:10.238Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract raw timestamp string from start of event (scratch field for later _time conversion)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<__ts>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse key=value pairs (src_ip, dst_ip, ports, protocol, action, bytes, duration, zones, user, app, status, reason, sev/severity, threat_id, threat_name, category, attempt_count) from the KVP-style network log",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Convert extracted timestamp string to epoch _time and remove scratch field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(__ts).getTime()/1000"
+          }
+        ],
+        "remove": [
+          "__ts"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity field (some events use 'sev', others use 'severity'), default to 'info' when absent",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "sev ? sev : (severity ? severity : 'info')"
+          }
+        ],
+        "remove": [
+          "sev"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action values and derive traffic direction from zone_src/zone_dst",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action=='allow' ? 'allowed' : (action=='deny' ? 'blocked' : action)"
+          },
+          {
+            "name": "direction",
+            "value": "(zone_src=='trust' && zone_dst=='untrust') ? 'outbound' : (zone_src=='untrust' && zone_dst=='trust') ? 'inbound' : (zone_src==zone_dst ? 'internal' : 'lateral')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,103 @@
+{
+  "key": "ivanti_linux_audit::__optimization__",
+  "sourcetype": "ivanti_linux_audit",
+  "dest_format": "__optimization__",
+  "score": 90,
+  "part": "optimization",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:37:53.835Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "class_uid",
+          "category_uid",
+          "event_type",
+          "src",
+          "dest",
+          "dest_port",
+          "transport",
+          "user",
+          "src_user",
+          "action",
+          "vendor_action",
+          "category",
+          "process",
+          "object",
+          "session_id",
+          "dvc",
+          "user_type",
+          "signature",
+          "_time",
+          "sourcetype",
+          "index",
+          "source",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

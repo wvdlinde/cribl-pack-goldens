@@ -1,0 +1,70 @@
+{
+  "key": "ivanti_linux_audit::__extraction__",
+  "sourcetype": "ivanti_linux_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:15:46.796Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog envelope and core audit header fields (priority, timestamp, host, pid, id, sn, event time, firewall name, syslog severity level)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<syslog_pri>\\d+)>(?<syslog_time>\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+(?<host>\\S+)\\s+audit\\[(?<pid>\\d+)\\]:\\s+id=(?<id>\\S+)\\s+sn=(?<sn>\\d+)\\s+time=\"(?<event_time>[^\"]+)\"\\s+fw=(?<fw>\\S+)\\s+pri=(?<severity_num>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract optional VPN/network/auth fields, message code, and human-readable details message that may or may not be present depending on event type",
+      "conf": {
+        "source": "_raw",
+        "regex": "/(?:vpn=(?<vpn>\\S+)\\s+)?(?:realm=\"(?<realm>[^\"]*)\"\\s+)?(?:roles=\"(?<roles>[^\"]*)\"\\s+)?msg=\"(?<msg_code>[^\"]+)\"\\s+(?:user=\"(?<user>[^\"]+)\"\\s+)?(?:src=(?<src_ip>[0-9a-fA-F:.]+)\\s+)?(?:dst=(?<dst_ip>[0-9a-fA-F:.]+)\\s+)?(?:dstport=(?<dst_port>\\d+)\\s+)?(?:proto=(?<protocol>\\w+)\\s+)?(?:auth_server=\"(?<auth_server>[^\"]+)\"\\s+)?details=\"(?<message>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, map syslog severity level to text, classify action based on message/msg_code content, and derive network direction from src_ip",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "event_time"
+          },
+          {
+            "name": "severity",
+            "value": "severity_num=='0'?'emergency':severity_num=='1'?'alert':severity_num=='2'?'critical':severity_num=='3'?'error':severity_num=='4'?'warning':severity_num=='5'?'notice':severity_num=='6'?'info':severity_num=='7'?'debug':'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "message && message.startsWith('Login succeeded') ? 'login_success' : message && message.startsWith('Login failed') ? 'login_failure' : message && message.startsWith('Account locked') ? 'account_locked' : message && message.startsWith('Access denied') ? 'access_denied' : message && message.startsWith('Access granted') ? 'access_granted' : message && message.startsWith('Session ended') ? 'session_end' : message && message.startsWith('Suspicious login') ? 'suspicious_login' : message && message.startsWith('Admin') ? 'admin_change' : message && message.startsWith('Configuration') ? 'config_change' : message && message.startsWith('Scheduled') ? 'system_task' : message && message.startsWith('Certificate') ? 'cert_warning' : 'other'"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? (src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)/) ? 'internal' : 'external') : undefined"
+          }
+        ],
+        "remove": [
+          "event_time",
+          "severity_num",
+          "syslog_time",
+          "fw"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

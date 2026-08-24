@@ -1,0 +1,122 @@
+{
+  "key": "ncsc_fidelis_endpoint::cim::__mapping__",
+  "sourcetype": "ncsc_fidelis_endpoint",
+  "dest_format": "cim::__mapping__",
+  "score": 92,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:28:23.149Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Endpoint'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "action",
+            "value": "(outcome=='Blocked'||outcome=='Failed') ? 'blocked' : (outcome=='Allowed'||outcome=='Success') ? 'allowed' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "severity || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity=='Critical'?10:severity=='High'?8:severity=='Medium'?5:severity=='Low'?3:severity=='Info'?1:0"
+          },
+          {
+            "name": "category",
+            "value": "category || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "user",
+            "value": "user || ''"
+          },
+          {
+            "name": "process",
+            "value": "process || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "event_id || ''"
+          },
+          {
+            "name": "object",
+            "value": "file_path || registry_key || cmdline || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "dvc_id",
+            "value": "device_id || ''"
+          },
+          {
+            "name": "process_id",
+            "value": "parent_process || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ncsc_fidelis_endpoint'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

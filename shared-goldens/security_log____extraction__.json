@@ -1,0 +1,119 @@
+{
+  "key": "security_log::__extraction__",
+  "sourcetype": "security_log",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:05:42.646Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Split raw event into leading ISO timestamp and remaining message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "message && message.indexOf('=') > -1 && !message.match(/^(sshd|sudo|vpn-gw\\d+|WinEventLog)/)",
+      "disabled": false,
+      "description": "Extract key=value pairs from KVP-style events (firewall, auth server, IDS, DLP, AV, proxy, generic firewall)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": []
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(sshd|sudo|vpn-gw\\d+|WinEventLog)/)",
+      "disabled": false,
+      "description": "Extract fields from non-KVP formatted sshd, sudo, VPN, and Windows event log lines",
+      "conf": {
+        "source": "message",
+        "regex": "/^sshd\\[\\d+\\]:\\s+(?<action>Failed|Accepted)\\s+\\S+\\s+for\\s+(invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\da-fA-F:.]+)\\s+port\\s+(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false,
+        "regexList": [
+          {
+            "regex": "/^sudo:\\s+FAILED su for (?<target_user>\\S+) by (?<user>\\S+) from (?<src_ip>[\\da-fA-F:.]+)/"
+          },
+          {
+            "regex": "/^sudo:\\s+(?<user>\\S+)\\s+:\\s+TTY=(?<tty>\\S+)\\s+;\\s+PWD=(?<pwd>\\S+)\\s+;\\s+USER=(?<target_user>\\S+)\\s+;\\s+COMMAND=(?<command>.*)$/"
+          },
+          {
+            "regex": "/openvpn\\[\\d+\\]:\\s+user\\s+'(?<user>[^']+)'\\s+authenticated successfully from\\s+(?<src_ip>[\\da-fA-F:.]+)/"
+          },
+          {
+            "regex": "/^WinEventLog:\\s+\\S+\\s+EventID=(?<event_id>\\d+)\\s+Account Name=(?<user>\\S+)\\s+Workstation=(?<dst_host>\\S+)\\s+Source Network Address=(?<src_ip>[\\da-fA-F:.]+)\\s+Failure Reason=\"(?<message_detail>[^\"]+)\"/"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize src/dst IP, port, protocol, action, severity fields to consistent lowercase naming and derive traffic direction; clean up duplicate uppercase KVP fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "SRC ? SRC : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "DST ? DST : dst"
+          },
+          {
+            "name": "src_port",
+            "value": "SPT ? SPT : (sport ? sport : src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "DPT ? DPT : (dport ? dport : dst_port)"
+          },
+          {
+            "name": "protocol",
+            "value": "PROTO ? PROTO.toUpperCase() : (proto ? proto.toUpperCase() : undefined)"
+          },
+          {
+            "name": "action",
+            "value": "ACTION ? ACTION.toUpperCase() : (action ? action.toUpperCase() : (message && message.match(/authenticated successfully/) ? 'SUCCESS' : (message && message.match(/Failed password/) ? 'FAILURE' : undefined)))"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toUpperCase() : (action=='DENY' || action=='BLOCKED' || action=='FAILURE' ? 'MEDIUM' : 'INFO')"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)/) ? 'outbound' : 'inbound'"
+          }
+        ],
+        "remove": [
+          "SRC",
+          "DST",
+          "SPT",
+          "DPT",
+          "PROTO",
+          "ACTION",
+          "sport",
+          "dport",
+          "proto"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

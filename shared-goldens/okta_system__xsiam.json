@@ -1,0 +1,184 @@
+{
+  "key": "okta_system::xsiam",
+  "sourcetype": "okta_system",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:17:50.922Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "okta_system → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'5faf4c1fdb8443d9920d6a54815432c1'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'okta_system:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "okta_system_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 52,
+    "outputSample": [
+      {
+        "_raw": "{\"eventId\":\"00u1a2b3c4d5e6f7g8h9\",\"published\":\"2024-01-15T00:03:42.000Z\",\"eventType\":\"user.session.start\",\"version\":\"0\",\"severity\":\"INFO\",\"legacyEventType\":\"core.user_auth.login_success\",\"displayMessage\":\"User login to Okta\",\"actor\":{\"id\":\"00u1abc123def456\",\"type\":\"User\",\"alternateId\":\"john.doe@company.com\",\"displayName\":\"John Doe\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Windows\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"203.0.113.45\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"California\",\"city\":\"San Francisco\",\"postalCode\":\"94105\",\"geolocation\":{\"lat\":37.7749,\"lon\":-122.4194}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u1abc123def456\",\"type\":\"User\",\"alternateId\":\"john.doe@company.com\",\"displayName\":\"John Doe\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx1234abcd\"},\"authenticationContext\":{\"authenticationStep\":0,\"externalSessionId\":\"trs1234abcdef\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u2b3c4d5e6f7g8h9i0\",\"published\":\"2024-01-15T00:17:11.000Z\",\"eventType\":\"user.authentication.sso\",\"version\":\"0\",\"severity\":\"INFO\",\"legacyEventType\":\"core.user_auth.sso\",\"displayMessage\":\"User single sign on to app\",\"actor\":{\"id\":\"00u2bcd234efg567\",\"type\":\"User\",\"alternateId\":\"alice.smith@company.com\",\"displayName\":\"Alice Smith\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15\",\"os\":\"Mac OS X\",\"browser\":\"SAFARI\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"198.51.100.22\",\"geographicalContext\":{\"country\":\"United Kingdom\",\"state\":\"England\",\"city\":\"London\",\"geolocation\":{\"lat\":51.5074,\"lon\":-0.1278}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"0oa3def456ghi789\",\"type\":\"AppInstance\",\"alternateId\":\"salesforce\",\"displayName\":\"Salesforce\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx5678efgh\"},\"authenticationContext\":{\"authenticationStep\":0,\"externalSessionId\":\"trs5678efghij\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u3c4d5e6f7g8h9i0j1\",\"published\":\"2024-01-15T00:34:58.000Z\",\"eventType\":\"user.session.start\",\"version\":\"0\",\"severity\":\"WARN\",\"legacyEventType\":\"core.user_auth.login_failed\",\"displayMessage\":\"User login to Okta failed\",\"actor\":{\"id\":\"00u3cde345fgh678\",\"type\":\"User\",\"alternateId\":\"bob.jones@company.com\",\"displayName\":\"Bob Jones\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148\",\"os\":\"iOS\",\"browser\":\"SAFARI\"},\"zone\":\"DefaultZone\",\"device\":\"Mobile\",\"ipAddress\":\"45.33.32.156\",\"geographicalContext\":{\"country\":\"Germany\",\"state\":\"Bavaria\",\"city\":\"Munich\",\"geolocation\":{\"lat\":48.1351,\"lon\":11.582}}},\"outcome\":{\"result\":\"FAILURE\",\"reason\":\"INVALID_CREDENTIALS\"},\"target\":[{\"id\":\"00u3cde345fgh678\",\"type\":\"User\",\"alternateId\":\"bob.jones@company.com\",\"displayName\":\"Bob Jones\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx9012ijkl\"},\"authenticationContext\":{\"authenticationStep\":0}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u4d5e6f7g8h9i0j1k2\",\"published\":\"2024-01-15T01:02:33.000Z\",\"eventType\":\"user.mfa.factor.activate\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"User activated MFA factor\",\"actor\":{\"id\":\"00u4def456ghi789\",\"type\":\"User\",\"alternateId\":\"carol.white@company.com\",\"displayName\":\"Carol White\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Windows\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"10.0.0.45\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Texas\",\"city\":\"Austin\",\"geolocation\":{\"lat\":30.2672,\"lon\":-97.7431}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u4def456ghi789\",\"type\":\"User\",\"alternateId\":\"carol.white@company.com\",\"displayName\":\"Carol White\"},{\"id\":\"opf1abc123xyz\",\"type\":\"UserFactor\",\"displayName\":\"Google Authenticator (TOTP)\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx3456mnop\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u5e6f7g8h9i0j1k2l3\",\"published\":\"2024-01-15T01:19:07.000Z\",\"eventType\":\"policy.evaluate_sign_on\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Evaluate sign-on policy\",\"actor\":{\"id\":\"00u5efg567hij890\",\"type\":\"User\",\"alternateId\":\"david.brown@company.com\",\"displayName\":\"David Brown\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"okta-sdk-golang/2.15.0 golang/go1.21.0\",\"os\":\"Unknown\",\"browser\":\"UNKNOWN\"},\"zone\":\"DefaultZone\",\"device\":\"Unknown\",\"ipAddress\":\"172.16.0.100\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"New York\",\"city\":\"New York\",\"geolocation\":{\"lat\":40.7128,\"lon\":-74.006}}},\"outcome\":{\"result\":\"ALLOW\"},\"target\":[{\"id\":\"0oa5efg567hij890\",\"type\":\"AppInstance\",\"displayName\":\"AWS Console\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx7890qrst\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u6f7g8h9i0j1k2l3m4\",\"published\":\"2024-01-15T01:47:22.000Z\",\"eventType\":\"user.account.lock\",\"version\":\"0\",\"severity\":\"WARN\",\"displayMessage\":\"User account locked out\",\"actor\":{\"id\":\"system\",\"type\":\"System\",\"alternateId\":\"system\",\"displayName\":\"Okta System\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Linux\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"91.108.4.200\",\"geographicalContext\":{\"country\":\"Russia\",\"state\":\"Moscow\",\"city\":\"Moscow\",\"geolocation\":{\"lat\":55.7558,\"lon\":37.6173}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u6fgh678ijk901\",\"type\":\"User\",\"alternateId\":\"emma.wilson@company.com\",\"displayName\":\"Emma Wilson\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx1234uvwx\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u7g8h9i0j1k2l3m4n5\",\"published\":\"2024-01-15T02:05:44.000Z\",\"eventType\":\"application.user_membership.add\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Add user to application\",\"actor\":{\"id\":\"00u7admin001xyz\",\"type\":\"User\",\"alternateId\":\"admin@company.com\",\"displayName\":\"Okta Admin\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/120.0.0.0\",\"os\":\"Mac OS X\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"10.0.1.5\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Washington\",\"city\":\"Seattle\",\"geolocation\":{\"lat\":47.6062,\"lon\":-122.3321}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u8hij890klm123\",\"type\":\"User\",\"alternateId\":\"frank.garcia@company.com\",\"displayName\":\"Frank Garcia\"},{\"id\":\"0oa9ijk901lmn234\",\"type\":\"AppInstance\",\"displayName\":\"GitHub Enterprise\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx5678yzab\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"00u8h9i0j1k2l3m4n5o6\",\"published\":\"2024-01-15T02:31:09.000Z\",\"eventType\":\"system.api_token.create\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Create API token\",\"actor\":{\"id\":\"00u7admin001xyz\",\"type\":\"User\",\"alternateId\":\"admin@company.com\",\"displayName\":\"Okta Admin\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"okta-sdk-python/2.9.0 python/3.11.0\",\"os\":\"Unknown\",\"browser\":\"UNKNOWN\"},\"zone\":\"DefaultZone\",\"device\":\"Unknown\",\"ipAddress\":\"10.0.1.5\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Washington\",\"city\":\"Seattle\",\"geolocation\":{\"lat\":47.6062,\"lon\":-122.3321}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"api_token_abc123xyz\",\"type\":\"Token\",\"displayName\":\"CI-CD-Pipeline-Token\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx9012cdef\"}}",
+        "_time": 1784048509.696,
+        "__sourceIdentifier": "5faf4c1fdb8443d9920d6a54815432c1",
+        "sourcetype": "okta_system:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "eventId",
+      "published",
+      "eventType",
+      "version",
+      "severity",
+      "legacyEventType",
+      "displayMessage",
+      "actor",
+      "client",
+      "outcome",
+      "target",
+      "transaction",
+      "authenticationContext"
+    ],
+    "sampleRaw": [
+      "{\"eventId\":\"00u1a2b3c4d5e6f7g8h9\",\"published\":\"2024-01-15T00:03:42.000Z\",\"eventType\":\"user.session.start\",\"version\":\"0\",\"severity\":\"INFO\",\"legacyEventType\":\"core.user_auth.login_success\",\"displayMessage\":\"User login to Okta\",\"actor\":{\"id\":\"00u1abc123def456\",\"type\":\"User\",\"alternateId\":\"john.doe@company.com\",\"displayName\":\"John Doe\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Windows\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"203.0.113.45\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"California\",\"city\":\"San Francisco\",\"postalCode\":\"94105\",\"geolocation\":{\"lat\":37.7749,\"lon\":-122.4194}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u1abc123def456\",\"type\":\"User\",\"alternateId\":\"john.doe@company.com\",\"displayName\":\"John Doe\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx1234abcd\"},\"authenticationContext\":{\"authenticationStep\":0,\"externalSessionId\":\"trs1234abcdef\"}}",
+      "{\"eventId\":\"00u2b3c4d5e6f7g8h9i0\",\"published\":\"2024-01-15T00:17:11.000Z\",\"eventType\":\"user.authentication.sso\",\"version\":\"0\",\"severity\":\"INFO\",\"legacyEventType\":\"core.user_auth.sso\",\"displayMessage\":\"User single sign on to app\",\"actor\":{\"id\":\"00u2bcd234efg567\",\"type\":\"User\",\"alternateId\":\"alice.smith@company.com\",\"displayName\":\"Alice Smith\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15\",\"os\":\"Mac OS X\",\"browser\":\"SAFARI\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"198.51.100.22\",\"geographicalContext\":{\"country\":\"United Kingdom\",\"state\":\"England\",\"city\":\"London\",\"geolocation\":{\"lat\":51.5074,\"lon\":-0.1278}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"0oa3def456ghi789\",\"type\":\"AppInstance\",\"alternateId\":\"salesforce\",\"displayName\":\"Salesforce\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx5678efgh\"},\"authenticationContext\":{\"authenticationStep\":0,\"externalSessionId\":\"trs5678efghij\"}}",
+      "{\"eventId\":\"00u3c4d5e6f7g8h9i0j1\",\"published\":\"2024-01-15T00:34:58.000Z\",\"eventType\":\"user.session.start\",\"version\":\"0\",\"severity\":\"WARN\",\"legacyEventType\":\"core.user_auth.login_failed\",\"displayMessage\":\"User login to Okta failed\",\"actor\":{\"id\":\"00u3cde345fgh678\",\"type\":\"User\",\"alternateId\":\"bob.jones@company.com\",\"displayName\":\"Bob Jones\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148\",\"os\":\"iOS\",\"browser\":\"SAFARI\"},\"zone\":\"DefaultZone\",\"device\":\"Mobile\",\"ipAddress\":\"45.33.32.156\",\"geographicalContext\":{\"country\":\"Germany\",\"state\":\"Bavaria\",\"city\":\"Munich\",\"geolocation\":{\"lat\":48.1351,\"lon\":11.582}}},\"outcome\":{\"result\":\"FAILURE\",\"reason\":\"INVALID_CREDENTIALS\"},\"target\":[{\"id\":\"00u3cde345fgh678\",\"type\":\"User\",\"alternateId\":\"bob.jones@company.com\",\"displayName\":\"Bob Jones\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx9012ijkl\"},\"authenticationContext\":{\"authenticationStep\":0}}",
+      "{\"eventId\":\"00u4d5e6f7g8h9i0j1k2\",\"published\":\"2024-01-15T01:02:33.000Z\",\"eventType\":\"user.mfa.factor.activate\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"User activated MFA factor\",\"actor\":{\"id\":\"00u4def456ghi789\",\"type\":\"User\",\"alternateId\":\"carol.white@company.com\",\"displayName\":\"Carol White\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Windows\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"10.0.0.45\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Texas\",\"city\":\"Austin\",\"geolocation\":{\"lat\":30.2672,\"lon\":-97.7431}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u4def456ghi789\",\"type\":\"User\",\"alternateId\":\"carol.white@company.com\",\"displayName\":\"Carol White\"},{\"id\":\"opf1abc123xyz\",\"type\":\"UserFactor\",\"displayName\":\"Google Authenticator (TOTP)\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx3456mnop\"}}",
+      "{\"eventId\":\"00u5e6f7g8h9i0j1k2l3\",\"published\":\"2024-01-15T01:19:07.000Z\",\"eventType\":\"policy.evaluate_sign_on\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Evaluate sign-on policy\",\"actor\":{\"id\":\"00u5efg567hij890\",\"type\":\"User\",\"alternateId\":\"david.brown@company.com\",\"displayName\":\"David Brown\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"okta-sdk-golang/2.15.0 golang/go1.21.0\",\"os\":\"Unknown\",\"browser\":\"UNKNOWN\"},\"zone\":\"DefaultZone\",\"device\":\"Unknown\",\"ipAddress\":\"172.16.0.100\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"New York\",\"city\":\"New York\",\"geolocation\":{\"lat\":40.7128,\"lon\":-74.006}}},\"outcome\":{\"result\":\"ALLOW\"},\"target\":[{\"id\":\"0oa5efg567hij890\",\"type\":\"AppInstance\",\"displayName\":\"AWS Console\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx7890qrst\"}}",
+      "{\"eventId\":\"00u6f7g8h9i0j1k2l3m4\",\"published\":\"2024-01-15T01:47:22.000Z\",\"eventType\":\"user.account.lock\",\"version\":\"0\",\"severity\":\"WARN\",\"displayMessage\":\"User account locked out\",\"actor\":{\"id\":\"system\",\"type\":\"System\",\"alternateId\":\"system\",\"displayName\":\"Okta System\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0\",\"os\":\"Linux\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"91.108.4.200\",\"geographicalContext\":{\"country\":\"Russia\",\"state\":\"Moscow\",\"city\":\"Moscow\",\"geolocation\":{\"lat\":55.7558,\"lon\":37.6173}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u6fgh678ijk901\",\"type\":\"User\",\"alternateId\":\"emma.wilson@company.com\",\"displayName\":\"Emma Wilson\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx1234uvwx\"}}",
+      "{\"eventId\":\"00u7g8h9i0j1k2l3m4n5\",\"published\":\"2024-01-15T02:05:44.000Z\",\"eventType\":\"application.user_membership.add\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Add user to application\",\"actor\":{\"id\":\"00u7admin001xyz\",\"type\":\"User\",\"alternateId\":\"admin@company.com\",\"displayName\":\"Okta Admin\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/120.0.0.0\",\"os\":\"Mac OS X\",\"browser\":\"CHROME\"},\"zone\":\"DefaultZone\",\"device\":\"Computer\",\"ipAddress\":\"10.0.1.5\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Washington\",\"city\":\"Seattle\",\"geolocation\":{\"lat\":47.6062,\"lon\":-122.3321}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"00u8hij890klm123\",\"type\":\"User\",\"alternateId\":\"frank.garcia@company.com\",\"displayName\":\"Frank Garcia\"},{\"id\":\"0oa9ijk901lmn234\",\"type\":\"AppInstance\",\"displayName\":\"GitHub Enterprise\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx5678yzab\"}}",
+      "{\"eventId\":\"00u8h9i0j1k2l3m4n5o6\",\"published\":\"2024-01-15T02:31:09.000Z\",\"eventType\":\"system.api_token.create\",\"version\":\"0\",\"severity\":\"INFO\",\"displayMessage\":\"Create API token\",\"actor\":{\"id\":\"00u7admin001xyz\",\"type\":\"User\",\"alternateId\":\"admin@company.com\",\"displayName\":\"Okta Admin\"},\"client\":{\"userAgent\":{\"rawUserAgent\":\"okta-sdk-python/2.9.0 python/3.11.0\",\"os\":\"Unknown\",\"browser\":\"UNKNOWN\"},\"zone\":\"DefaultZone\",\"device\":\"Unknown\",\"ipAddress\":\"10.0.1.5\",\"geographicalContext\":{\"country\":\"United States\",\"state\":\"Washington\",\"city\":\"Seattle\",\"geolocation\":{\"lat\":47.6062,\"lon\":-122.3321}}},\"outcome\":{\"result\":\"SUCCESS\"},\"target\":[{\"id\":\"api_token_abc123xyz\",\"type\":\"Token\",\"displayName\":\"CI-CD-Pipeline-Token\"}],\"transaction\":{\"type\":\"WEB\",\"id\":\"Wq2Tx9012cdef\"}}"
+    ],
+    "sourcetype": "okta_system"
+  }
+}

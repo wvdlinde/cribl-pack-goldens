@@ -1,0 +1,122 @@
+{
+  "key": "corelight_notice::cim::__mapping__",
+  "sourcetype": "corelight_notice",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:57:58.236Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Notice'"
+          },
+          {
+            "name": "src",
+            "value": "src || id.orig_h || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "dst || id.resp_h || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p || p || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toUpperCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "proto || ''"
+          },
+          {
+            "name": "signature",
+            "value": "note || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "peer_descr || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(severity && severity.level || 0)"
+          },
+          {
+            "name": "severity",
+            "value": "severity && severity.name || ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "Array.isArray(actions) ? actions.join(',') : String(actions || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "duration",
+            "value": "Number(suppress_for || 0)"
+          },
+          {
+            "name": "object",
+            "value": "msg || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_notice'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

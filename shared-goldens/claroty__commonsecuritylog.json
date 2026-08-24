@@ -1,0 +1,558 @@
+{
+  "key": "claroty::commonsecuritylog",
+  "sourcetype": "claroty",
+  "dest_format": "commonsecuritylog",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:37.808Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "claroty to CommonSecurityLog pipeline.\nParses events, drops noise, maps to CommonSecurityLog schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse Claroty JSON event into structured fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "source_ip || ''"
+          },
+          {
+            "name": "dst_ip",
+            "value": "destination_ip || ''"
+          },
+          {
+            "name": "dst_port",
+            "value": "port ? Number(port) : undefined"
+          },
+          {
+            "name": "norm_user",
+            "value": "user || ''"
+          },
+          {
+            "name": "norm_protocol",
+            "value": "protocol ? protocol.toUpperCase() : ''"
+          },
+          {
+            "name": "norm_action",
+            "value": "action ? action.toLowerCase() : ''"
+          },
+          {
+            "name": "norm_severity",
+            "value": "severity ? severity.toLowerCase() : ''"
+          },
+          {
+            "name": "norm_vendor",
+            "value": "vendor || ''"
+          },
+          {
+            "name": "norm_model",
+            "value": "model || ''"
+          },
+          {
+            "name": "norm_zone",
+            "value": "zone || ''"
+          },
+          {
+            "name": "norm_message",
+            "value": "message || ''"
+          },
+          {
+            "name": "norm_asset_type",
+            "value": "asset_type ? asset_type.toLowerCase() : ''"
+          },
+          {
+            "name": "norm_event_type",
+            "value": "event_type || ''"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? Math.floor(new Date(timestamp).getTime() / 1000) : _time"
+          },
+          {
+            "name": "severity_id",
+            "value": "norm_severity == 'critical' ? 5 : norm_severity == 'high' ? 4 : norm_severity == 'medium' ? 3 : norm_severity == 'warning' ? 2 : norm_severity == 'info' ? 1 : 0"
+          },
+          {
+            "name": "category",
+            "value": "norm_event_type == 'alert' ? 'threat' : norm_event_type == 'malware_detection' ? 'threat' : norm_event_type == 'network_scan' ? 'threat' : norm_event_type == 'protocol_anomaly' ? 'threat' : norm_event_type == 'firmware_change' ? 'change' : norm_event_type == 'config_change' ? 'change' : norm_event_type == 'baseline_deviation' ? 'anomaly' : norm_event_type == 'policy_violation' ? 'policy' : norm_event_type == 'login' ? 'authentication' : norm_event_type == 'asset_discovery' ? 'discovery' : norm_event_type == 'vulnerability' ? 'vulnerability' : norm_event_type == 'new_connection' ? 'network' : 'other'"
+          },
+          {
+            "name": "outcome",
+            "value": "norm_action == 'success' || norm_action == 'logged' || norm_action == 'discovered' ? 'success' : norm_action == 'blocked' ? 'blocked' : norm_action == 'failed' ? 'failure' : norm_action == 'alert' || norm_action == 'detected' ? 'detected' : 'unknown'"
+          }
+        ],
+        "remove": [
+          "source_ip",
+          "destination_ip",
+          "port",
+          "timestamp",
+          "event_type",
+          "severity",
+          "protocol",
+          "action",
+          "user",
+          "vendor",
+          "model",
+          "zone",
+          "message",
+          "asset_type"
+        ]
+      },
+      "description": "Normalize and map extracted fields to standard schema"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to CommonSecurityLog schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "DeviceVendor",
+            "value": "'Claroty'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'Claroty CTD'"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "norm_model || ''"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "norm_event_type || 'unknown'"
+          },
+          {
+            "name": "Activity",
+            "value": "norm_event_type || ''"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "norm_severity == 'critical' ? 10 : norm_severity == 'high' ? 8 : norm_severity == 'medium' ? 5 : norm_severity == 'warning' ? 3 : norm_severity == 'info' ? 1 : 0"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "Protocol",
+            "value": "norm_protocol || ''"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "norm_protocol || ''"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "norm_action || ''"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "norm_user || ''"
+          },
+          {
+            "name": "DeviceName",
+            "value": "norm_zone || ''"
+          },
+          {
+            "name": "RequestURL",
+            "value": "norm_message || ''"
+          },
+          {
+            "name": "Message",
+            "value": "norm_message || ''"
+          },
+          {
+            "name": "DeviceCustomString1",
+            "value": "norm_asset_type || ''"
+          },
+          {
+            "name": "DeviceCustomString1Label",
+            "value": "norm_asset_type ? 'AssetType' : ''"
+          },
+          {
+            "name": "DeviceCustomString2",
+            "value": "norm_vendor || ''"
+          },
+          {
+            "name": "DeviceCustomString2Label",
+            "value": "norm_vendor ? 'Vendor' : ''"
+          },
+          {
+            "name": "EventOutcome",
+            "value": "outcome || ''"
+          }
+        ]
+      },
+      "description": "Map fields to CommonSecurityLog schema"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Build compact output ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "src_ip",
+          "dst_ip",
+          "dst_port",
+          "norm_user",
+          "norm_protocol",
+          "norm_action",
+          "norm_severity",
+          "norm_vendor",
+          "norm_model",
+          "norm_zone",
+          "norm_message",
+          "norm_asset_type",
+          "norm_event_type",
+          "severity_id",
+          "category",
+          "outcome",
+          "__*"
+        ]
+      },
+      "description": "Remove intermediate normalized fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'claroty'"
+          }
+        ],
+        "remove": [
+          "__parsed",
+          "__*"
+        ]
+      },
+      "description": "Final cleanup - set sourcetype"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "demo_claroty_commonsecuritylog",
+    "destFormat": "commonsecuritylog",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:03:12.441Z\",\"event_type\":\"asset_discovery\",\"severity\":\"info\",\"source_ip\":\"192.168.10.45\",\"destination_ip\":\"192.168.10.1\",\"protocol\":\"modbus\",\"port\":502,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-300\",\"zone\":\"OT_Floor1\",\"action\":\"discovered\",\"user\":null,\"message\":\"New asset discovered on OT network\"}",
+        "_time": 1705276992,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "S7-300",
+        "DeviceEventClassID": "asset_discovery",
+        "Activity": "asset_discovery",
+        "LogSeverity": 1,
+        "SourceIP": "192.168.10.45",
+        "DestinationIP": "192.168.10.1",
+        "DestinationPort": 502,
+        "Protocol": "MODBUS",
+        "ApplicationProtocol": "MODBUS",
+        "DeviceAction": "discovered",
+        "SourceUserName": "",
+        "DeviceName": "OT_Floor1",
+        "RequestURL": "New asset discovered on OT network",
+        "Message": "New asset discovered on OT network",
+        "DeviceCustomString1": "plc",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Siemens",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "success",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"event_type\":\"alert\",\"severity\":\"high\",\"source_ip\":\"10.0.5.23\",\"destination_ip\":\"192.168.20.15\",\"protocol\":\"TCP\",\"port\":4840,\"asset_type\":\"HMI\",\"vendor\":\"Rockwell\",\"model\":\"FactoryTalk\",\"zone\":\"Control_Network\",\"action\":\"blocked\",\"user\":\"ops_admin\",\"message\":\"Unauthorized OPC-UA connection attempt from IT network to HMI\"}",
+        "_time": 1705277875,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "FactoryTalk",
+        "DeviceEventClassID": "alert",
+        "Activity": "alert",
+        "LogSeverity": 8,
+        "SourceIP": "10.0.5.23",
+        "DestinationIP": "192.168.20.15",
+        "DestinationPort": 4840,
+        "Protocol": "TCP",
+        "ApplicationProtocol": "TCP",
+        "DeviceAction": "blocked",
+        "SourceUserName": "ops_admin",
+        "DeviceName": "Control_Network",
+        "RequestURL": "Unauthorized OPC-UA connection attempt from IT network to HMI",
+        "Message": "Unauthorized OPC-UA connection attempt from IT network to HMI",
+        "DeviceCustomString1": "hmi",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Rockwell",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "blocked",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:42:31.109Z\",\"event_type\":\"baseline_deviation\",\"severity\":\"medium\",\"source_ip\":\"172.16.5.101\",\"destination_ip\":\"172.16.5.200\",\"protocol\":\"EtherNet/IP\",\"port\":44818,\"asset_type\":\"PLC\",\"vendor\":\"Allen-Bradley\",\"model\":\"ControlLogix\",\"zone\":\"Production_A\",\"action\":\"alert\",\"user\":null,\"message\":\"Communication deviation from established baseline detected\"}",
+        "_time": 1705279351,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "ControlLogix",
+        "DeviceEventClassID": "baseline_deviation",
+        "Activity": "baseline_deviation",
+        "LogSeverity": 5,
+        "SourceIP": "172.16.5.101",
+        "DestinationIP": "172.16.5.200",
+        "DestinationPort": 44818,
+        "Protocol": "ETHERNET/IP",
+        "ApplicationProtocol": "ETHERNET/IP",
+        "DeviceAction": "alert",
+        "SourceUserName": "",
+        "DeviceName": "Production_A",
+        "RequestURL": "Communication deviation from established baseline detected",
+        "Message": "Communication deviation from established baseline detected",
+        "DeviceCustomString1": "plc",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Allen-Bradley",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "detected",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:08:44.237Z\",\"event_type\":\"login\",\"severity\":\"info\",\"source_ip\":\"192.168.1.55\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"success\",\"user\":\"john.smith\",\"message\":\"User successfully logged into Claroty management console\"}",
+        "_time": 1705280924,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "CTD",
+        "DeviceEventClassID": "login",
+        "Activity": "login",
+        "LogSeverity": 1,
+        "SourceIP": "192.168.1.55",
+        "DestinationIP": "192.168.1.10",
+        "DestinationPort": 443,
+        "Protocol": "HTTPS",
+        "ApplicationProtocol": "HTTPS",
+        "DeviceAction": "success",
+        "SourceUserName": "john.smith",
+        "DeviceName": "Management",
+        "RequestURL": "User successfully logged into Claroty management console",
+        "Message": "User successfully logged into Claroty management console",
+        "DeviceCustomString1": "claroty_platform",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Claroty",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "success",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:29:18.773Z\",\"event_type\":\"login\",\"severity\":\"warning\",\"source_ip\":\"203.0.113.45\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"failed\",\"user\":\"admin\",\"message\":\"Failed login attempt from external IP address\"}",
+        "_time": 1705282158,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "CTD",
+        "DeviceEventClassID": "login",
+        "Activity": "login",
+        "LogSeverity": 3,
+        "SourceIP": "203.0.113.45",
+        "DestinationIP": "192.168.1.10",
+        "DestinationPort": 443,
+        "Protocol": "HTTPS",
+        "ApplicationProtocol": "HTTPS",
+        "DeviceAction": "failed",
+        "SourceUserName": "admin",
+        "DeviceName": "Management",
+        "RequestURL": "Failed login attempt from external IP address",
+        "Message": "Failed login attempt from external IP address",
+        "DeviceCustomString1": "claroty_platform",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Claroty",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "failure",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:45:02.560Z\",\"event_type\":\"firmware_change\",\"severity\":\"critical\",\"source_ip\":\"192.168.10.88\",\"destination_ip\":\"192.168.10.45\",\"protocol\":\"SRTP\",\"port\":102,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-400\",\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Firmware modification detected on critical PLC - unscheduled change\"}",
+        "_time": 1705283102,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "S7-400",
+        "DeviceEventClassID": "firmware_change",
+        "Activity": "firmware_change",
+        "LogSeverity": 10,
+        "SourceIP": "192.168.10.88",
+        "DestinationIP": "192.168.10.45",
+        "DestinationPort": 102,
+        "Protocol": "SRTP",
+        "ApplicationProtocol": "SRTP",
+        "DeviceAction": "detected",
+        "SourceUserName": "",
+        "DeviceName": "OT_Floor1",
+        "RequestURL": "Firmware modification detected on critical PLC - unscheduled change",
+        "Message": "Firmware modification detected on critical PLC - unscheduled change",
+        "DeviceCustomString1": "plc",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Siemens",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "detected",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:11:37.094Z\",\"event_type\":\"network_scan\",\"severity\":\"high\",\"source_ip\":\"10.0.1.200\",\"destination_ip\":\"192.168.10.0/24\",\"protocol\":\"TCP\",\"port\":null,\"asset_type\":\"unknown\",\"vendor\":null,\"model\":null,\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Port scan detected originating from IT network targeting OT subnet\"}",
+        "_time": 1705284697,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "",
+        "DeviceEventClassID": "network_scan",
+        "Activity": "network_scan",
+        "LogSeverity": 8,
+        "SourceIP": "10.0.1.200",
+        "DestinationIP": "192.168.10.0/24",
+        "Protocol": "TCP",
+        "ApplicationProtocol": "TCP",
+        "DeviceAction": "detected",
+        "SourceUserName": "",
+        "DeviceName": "OT_Floor1",
+        "RequestURL": "Port scan detected originating from IT network targeting OT subnet",
+        "Message": "Port scan detected originating from IT network targeting OT subnet",
+        "DeviceCustomString1": "unknown",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "",
+        "DeviceCustomString2Label": "",
+        "EventOutcome": "detected",
+        "sourcetype": "claroty"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:33:59.621Z\",\"event_type\":\"policy_violation\",\"severity\":\"medium\",\"source_ip\":\"192.168.20.30\",\"destination_ip\":\"192.168.20.50\",\"protocol\":\"RDP\",\"port\":3389,\"asset_type\":\"Engineering_Workstation\",\"vendor\":\"Dell\",\"model\":\"Precision\",\"zone\":\"Control_Network\",\"action\":\"alert\",\"user\":\"engineer01\",\"message\":\"RDP lateral movement detected between engineering workstations\"}",
+        "_time": 1705286039,
+        "DeviceVendor": "Claroty",
+        "DeviceProduct": "Claroty CTD",
+        "DeviceVersion": "Precision",
+        "DeviceEventClassID": "policy_violation",
+        "Activity": "policy_violation",
+        "LogSeverity": 5,
+        "SourceIP": "192.168.20.30",
+        "DestinationIP": "192.168.20.50",
+        "DestinationPort": 3389,
+        "Protocol": "RDP",
+        "ApplicationProtocol": "RDP",
+        "DeviceAction": "alert",
+        "SourceUserName": "engineer01",
+        "DeviceName": "Control_Network",
+        "RequestURL": "RDP lateral movement detected between engineering workstations",
+        "Message": "RDP lateral movement detected between engineering workstations",
+        "DeviceCustomString1": "engineering_workstation",
+        "DeviceCustomString1Label": "AssetType",
+        "DeviceCustomString2": "Dell",
+        "DeviceCustomString2Label": "Vendor",
+        "EventOutcome": "detected",
+        "sourcetype": "claroty"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "event_type",
+      "severity",
+      "source_ip",
+      "destination_ip",
+      "protocol",
+      "port",
+      "asset_type",
+      "vendor",
+      "model",
+      "zone",
+      "action",
+      "user",
+      "message"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:12.441Z\",\"event_type\":\"asset_discovery\",\"severity\":\"info\",\"source_ip\":\"192.168.10.45\",\"destination_ip\":\"192.168.10.1\",\"protocol\":\"modbus\",\"port\":502,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-300\",\"zone\":\"OT_Floor1\",\"action\":\"discovered\",\"user\":null,\"message\":\"New asset discovered on OT network\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"event_type\":\"alert\",\"severity\":\"high\",\"source_ip\":\"10.0.5.23\",\"destination_ip\":\"192.168.20.15\",\"protocol\":\"TCP\",\"port\":4840,\"asset_type\":\"HMI\",\"vendor\":\"Rockwell\",\"model\":\"FactoryTalk\",\"zone\":\"Control_Network\",\"action\":\"blocked\",\"user\":\"ops_admin\",\"message\":\"Unauthorized OPC-UA connection attempt from IT network to HMI\"}",
+      "{\"timestamp\":\"2024-01-15T00:42:31.109Z\",\"event_type\":\"baseline_deviation\",\"severity\":\"medium\",\"source_ip\":\"172.16.5.101\",\"destination_ip\":\"172.16.5.200\",\"protocol\":\"EtherNet/IP\",\"port\":44818,\"asset_type\":\"PLC\",\"vendor\":\"Allen-Bradley\",\"model\":\"ControlLogix\",\"zone\":\"Production_A\",\"action\":\"alert\",\"user\":null,\"message\":\"Communication deviation from established baseline detected\"}",
+      "{\"timestamp\":\"2024-01-15T01:08:44.237Z\",\"event_type\":\"login\",\"severity\":\"info\",\"source_ip\":\"192.168.1.55\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"success\",\"user\":\"john.smith\",\"message\":\"User successfully logged into Claroty management console\"}",
+      "{\"timestamp\":\"2024-01-15T01:29:18.773Z\",\"event_type\":\"login\",\"severity\":\"warning\",\"source_ip\":\"203.0.113.45\",\"destination_ip\":\"192.168.1.10\",\"protocol\":\"HTTPS\",\"port\":443,\"asset_type\":\"Claroty_Platform\",\"vendor\":\"Claroty\",\"model\":\"CTD\",\"zone\":\"Management\",\"action\":\"failed\",\"user\":\"admin\",\"message\":\"Failed login attempt from external IP address\"}",
+      "{\"timestamp\":\"2024-01-15T01:45:02.560Z\",\"event_type\":\"firmware_change\",\"severity\":\"critical\",\"source_ip\":\"192.168.10.88\",\"destination_ip\":\"192.168.10.45\",\"protocol\":\"SRTP\",\"port\":102,\"asset_type\":\"PLC\",\"vendor\":\"Siemens\",\"model\":\"S7-400\",\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Firmware modification detected on critical PLC - unscheduled change\"}",
+      "{\"timestamp\":\"2024-01-15T02:11:37.094Z\",\"event_type\":\"network_scan\",\"severity\":\"high\",\"source_ip\":\"10.0.1.200\",\"destination_ip\":\"192.168.10.0/24\",\"protocol\":\"TCP\",\"port\":null,\"asset_type\":\"unknown\",\"vendor\":null,\"model\":null,\"zone\":\"OT_Floor1\",\"action\":\"detected\",\"user\":null,\"message\":\"Port scan detected originating from IT network targeting OT subnet\"}",
+      "{\"timestamp\":\"2024-01-15T02:33:59.621Z\",\"event_type\":\"policy_violation\",\"severity\":\"medium\",\"source_ip\":\"192.168.20.30\",\"destination_ip\":\"192.168.20.50\",\"protocol\":\"RDP\",\"port\":3389,\"asset_type\":\"Engineering_Workstation\",\"vendor\":\"Dell\",\"model\":\"Precision\",\"zone\":\"Control_Network\",\"action\":\"alert\",\"user\":\"engineer01\",\"message\":\"RDP lateral movement detected between engineering workstations\"}"
+    ],
+    "sourcetype": "claroty"
+  }
+}

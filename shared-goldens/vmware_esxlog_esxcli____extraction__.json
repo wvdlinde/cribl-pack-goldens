@@ -1,0 +1,72 @@
+{
+  "key": "vmware_esxlog_esxcli::__extraction__",
+  "sourcetype": "vmware_esxlog_esxcli",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:37:57.041Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse ESXi esxcli log line into timestamp, host, user, src_ip, severity, command, exitcode, result and optional reason",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<host>\\S+) esxcli: \\[user=(?<user>[^@]+)@(?<src_ip>[^\\]]+)\\] (?<severity>\\w+) command='(?<command>[^']+)' exitcode=(?<exitcode>\\d+) result=(?<result>\\w+)(?: reason=\"(?<reason>[^\"]+)\")?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action from result field and set message from command",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result=='success' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "message",
+            "value": "command"
+          },
+          {
+            "name": "protocol",
+            "value": "'esxcli'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Cast exitcode to number for downstream numeric handling",
+      "conf": {
+        "add": [
+          {
+            "name": "exitcode",
+            "value": "Number(exitcode)"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "command",
+        "exitcode",
+        "reason",
+        "result"
+      ]
+    }
+  },
+  "report": null
+}

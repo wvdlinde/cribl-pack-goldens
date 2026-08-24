@@ -1,0 +1,214 @@
+{
+  "key": "netskope_web::xsiam",
+  "sourcetype": "netskope_web",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:27.969Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "netskope_web → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'netskope web'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'netskope_web:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "netskope_web_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 62,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:03:22Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"jsmith@corp.com\",\"src_ip\":\"10.1.45.23\",\"dst_ip\":\"203.0.113.45\",\"dst_host\":\"malware-cdn.ru\",\"url\":\"http://malware-cdn.ru/payload/dropper.exe\",\"category\":\"Malware Sites\",\"policy\":\"Block Malicious Sites\",\"app\":\"HTTP\",\"bytes_up\":342,\"bytes_down\":0,\"severity\":\"critical\",\"device\":\"WINDOWS-WS-0123\",\"os\":\"Windows 10\",\"browser\":\"Chrome 120\",\"site\":\"malware-cdn.ru\",\"appcategory\":\"General Browsing\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:17:44Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"mlopez@corp.com\",\"src_ip\":\"192.168.10.55\",\"dst_ip\":\"142.250.80.46\",\"dst_host\":\"drive.google.com\",\"url\":\"https://drive.google.com/file/d/1xK9mNpQ/view\",\"category\":\"Cloud Storage\",\"policy\":\"Allow Google Workspace\",\"app\":\"Google Drive\",\"bytes_up\":1024,\"bytes_down\":458920,\"severity\":\"low\",\"device\":\"MAC-WS-0456\",\"os\":\"macOS 14.2\",\"browser\":\"Safari 17\",\"site\":\"drive.google.com\",\"appcategory\":\"Cloud Storage\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:41:09Z\",\"type\":\"nspolicy\",\"action\":\"alert\",\"user\":\"akowalski@corp.com\",\"src_ip\":\"172.16.22.88\",\"dst_ip\":\"52.94.236.100\",\"dst_host\":\"s3.amazonaws.com\",\"url\":\"https://s3.amazonaws.com/exfil-bucket-test/sensitive_data.zip\",\"category\":\"Cloud Storage\",\"policy\":\"DLP Alert Large Upload\",\"app\":\"Amazon S3\",\"bytes_up\":104857600,\"bytes_down\":512,\"severity\":\"high\",\"device\":\"LINUX-SRV-0789\",\"os\":\"Ubuntu 22.04\",\"browser\":\"curl/7.88\",\"site\":\"s3.amazonaws.com\",\"appcategory\":\"Cloud Storage\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:05:33Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"tchen@corp.com\",\"src_ip\":\"10.2.30.101\",\"dst_ip\":\"17.253.144.10\",\"dst_host\":\"appleid.apple.com\",\"url\":\"https://appleid.apple.com/auth/oauth2/v2/token\",\"category\":\"IT Services\",\"policy\":\"Default Allow\",\"app\":\"Apple Services\",\"bytes_up\":780,\"bytes_down\":2340,\"severity\":\"low\",\"device\":\"MAC-WS-0112\",\"os\":\"macOS 13.6\",\"browser\":\"Safari 16\",\"site\":\"appleid.apple.com\",\"appcategory\":\"IT Services\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:28:57Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"unknown\",\"src_ip\":\"198.51.100.77\",\"dst_ip\":\"10.100.5.20\",\"dst_host\":\"internal-vpn.corp.com\",\"url\":\"https://internal-vpn.corp.com/admin/config\",\"category\":\"Unauthorized Access\",\"policy\":\"Block Unauthenticated External Access\",\"app\":\"HTTPS\",\"bytes_up\":1200,\"bytes_down\":0,\"severity\":\"critical\",\"device\":\"\",\"os\":\"\",\"browser\":\"Python-urllib/3.9\",\"site\":\"internal-vpn.corp.com\",\"appcategory\":\"Enterprise Applications\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:52:14Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"rsingh@corp.com\",\"src_ip\":\"10.3.44.67\",\"dst_ip\":\"104.16.24.5\",\"dst_host\":\"github.com\",\"url\":\"https://github.com/corp-org/private-repo/archive/refs/heads/main.zip\",\"category\":\"Software Development\",\"policy\":\"Allow Dev Tools\",\"app\":\"GitHub\",\"bytes_up\":2048,\"bytes_down\":34521088,\"severity\":\"low\",\"device\":\"LINUX-WS-0334\",\"os\":\"Ubuntu 20.04\",\"browser\":\"git/2.39\",\"site\":\"github.com\",\"appcategory\":\"Software Development\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:11:38Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"bwilliams@corp.com\",\"src_ip\":\"192.168.5.201\",\"dst_ip\":\"185.220.101.45\",\"dst_host\":\"tor-exit-node-45.anonymize.net\",\"url\":\"http://tor-exit-node-45.anonymize.net/\",\"category\":\"Proxy/Anonymizer\",\"policy\":\"Block Anonymizers\",\"app\":\"HTTP\",\"bytes_up\":456,\"bytes_down\":0,\"severity\":\"high\",\"device\":\"WINDOWS-WS-0567\",\"os\":\"Windows 11\",\"browser\":\"Firefox 121\",\"site\":\"anonymize.net\",\"appcategory\":\"Anonymizer\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:34:22Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"hnguyen@corp.com\",\"src_ip\":\"10.5.12.34\",\"dst_ip\":\"157.240.22.35\",\"dst_host\":\"facebook.com\",\"url\":\"https://www.facebook.com/business/ads\",\"category\":\"Social Media\",\"policy\":\"Allow Social Media\",\"app\":\"Facebook\",\"bytes_up\":3456,\"bytes_down\":892340,\"severity\":\"low\",\"device\":\"WINDOWS-WS-0891\",\"os\":\"Windows 10\",\"browser\":\"Edge 120\",\"site\":\"facebook.com\",\"appcategory\":\"Social Networking\"}",
+        "_time": 1784049836.261,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope web",
+        "__product": "Security",
+        "sourcetype": "netskope_web:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "type",
+      "action",
+      "user",
+      "src_ip",
+      "dst_ip",
+      "dst_host",
+      "url",
+      "category",
+      "policy",
+      "app",
+      "bytes_up",
+      "bytes_down",
+      "severity",
+      "device",
+      "os",
+      "browser",
+      "site",
+      "appcategory"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:22Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"jsmith@corp.com\",\"src_ip\":\"10.1.45.23\",\"dst_ip\":\"203.0.113.45\",\"dst_host\":\"malware-cdn.ru\",\"url\":\"http://malware-cdn.ru/payload/dropper.exe\",\"category\":\"Malware Sites\",\"policy\":\"Block Malicious Sites\",\"app\":\"HTTP\",\"bytes_up\":342,\"bytes_down\":0,\"severity\":\"critical\",\"device\":\"WINDOWS-WS-0123\",\"os\":\"Windows 10\",\"browser\":\"Chrome 120\",\"site\":\"malware-cdn.ru\",\"appcategory\":\"General Browsing\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:44Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"mlopez@corp.com\",\"src_ip\":\"192.168.10.55\",\"dst_ip\":\"142.250.80.46\",\"dst_host\":\"drive.google.com\",\"url\":\"https://drive.google.com/file/d/1xK9mNpQ/view\",\"category\":\"Cloud Storage\",\"policy\":\"Allow Google Workspace\",\"app\":\"Google Drive\",\"bytes_up\":1024,\"bytes_down\":458920,\"severity\":\"low\",\"device\":\"MAC-WS-0456\",\"os\":\"macOS 14.2\",\"browser\":\"Safari 17\",\"site\":\"drive.google.com\",\"appcategory\":\"Cloud Storage\"}",
+      "{\"timestamp\":\"2024-01-15T00:41:09Z\",\"type\":\"nspolicy\",\"action\":\"alert\",\"user\":\"akowalski@corp.com\",\"src_ip\":\"172.16.22.88\",\"dst_ip\":\"52.94.236.100\",\"dst_host\":\"s3.amazonaws.com\",\"url\":\"https://s3.amazonaws.com/exfil-bucket-test/sensitive_data.zip\",\"category\":\"Cloud Storage\",\"policy\":\"DLP Alert Large Upload\",\"app\":\"Amazon S3\",\"bytes_up\":104857600,\"bytes_down\":512,\"severity\":\"high\",\"device\":\"LINUX-SRV-0789\",\"os\":\"Ubuntu 22.04\",\"browser\":\"curl/7.88\",\"site\":\"s3.amazonaws.com\",\"appcategory\":\"Cloud Storage\"}",
+      "{\"timestamp\":\"2024-01-15T01:05:33Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"tchen@corp.com\",\"src_ip\":\"10.2.30.101\",\"dst_ip\":\"17.253.144.10\",\"dst_host\":\"appleid.apple.com\",\"url\":\"https://appleid.apple.com/auth/oauth2/v2/token\",\"category\":\"IT Services\",\"policy\":\"Default Allow\",\"app\":\"Apple Services\",\"bytes_up\":780,\"bytes_down\":2340,\"severity\":\"low\",\"device\":\"MAC-WS-0112\",\"os\":\"macOS 13.6\",\"browser\":\"Safari 16\",\"site\":\"appleid.apple.com\",\"appcategory\":\"IT Services\"}",
+      "{\"timestamp\":\"2024-01-15T01:28:57Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"unknown\",\"src_ip\":\"198.51.100.77\",\"dst_ip\":\"10.100.5.20\",\"dst_host\":\"internal-vpn.corp.com\",\"url\":\"https://internal-vpn.corp.com/admin/config\",\"category\":\"Unauthorized Access\",\"policy\":\"Block Unauthenticated External Access\",\"app\":\"HTTPS\",\"bytes_up\":1200,\"bytes_down\":0,\"severity\":\"critical\",\"device\":\"\",\"os\":\"\",\"browser\":\"Python-urllib/3.9\",\"site\":\"internal-vpn.corp.com\",\"appcategory\":\"Enterprise Applications\"}",
+      "{\"timestamp\":\"2024-01-15T01:52:14Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"rsingh@corp.com\",\"src_ip\":\"10.3.44.67\",\"dst_ip\":\"104.16.24.5\",\"dst_host\":\"github.com\",\"url\":\"https://github.com/corp-org/private-repo/archive/refs/heads/main.zip\",\"category\":\"Software Development\",\"policy\":\"Allow Dev Tools\",\"app\":\"GitHub\",\"bytes_up\":2048,\"bytes_down\":34521088,\"severity\":\"low\",\"device\":\"LINUX-WS-0334\",\"os\":\"Ubuntu 20.04\",\"browser\":\"git/2.39\",\"site\":\"github.com\",\"appcategory\":\"Software Development\"}",
+      "{\"timestamp\":\"2024-01-15T02:11:38Z\",\"type\":\"nspolicy\",\"action\":\"block\",\"user\":\"bwilliams@corp.com\",\"src_ip\":\"192.168.5.201\",\"dst_ip\":\"185.220.101.45\",\"dst_host\":\"tor-exit-node-45.anonymize.net\",\"url\":\"http://tor-exit-node-45.anonymize.net/\",\"category\":\"Proxy/Anonymizer\",\"policy\":\"Block Anonymizers\",\"app\":\"HTTP\",\"bytes_up\":456,\"bytes_down\":0,\"severity\":\"high\",\"device\":\"WINDOWS-WS-0567\",\"os\":\"Windows 11\",\"browser\":\"Firefox 121\",\"site\":\"anonymize.net\",\"appcategory\":\"Anonymizer\"}",
+      "{\"timestamp\":\"2024-01-15T02:34:22Z\",\"type\":\"application\",\"action\":\"allow\",\"user\":\"hnguyen@corp.com\",\"src_ip\":\"10.5.12.34\",\"dst_ip\":\"157.240.22.35\",\"dst_host\":\"facebook.com\",\"url\":\"https://www.facebook.com/business/ads\",\"category\":\"Social Media\",\"policy\":\"Allow Social Media\",\"app\":\"Facebook\",\"bytes_up\":3456,\"bytes_down\":892340,\"severity\":\"low\",\"device\":\"WINDOWS-WS-0891\",\"os\":\"Windows 10\",\"browser\":\"Edge 120\",\"site\":\"facebook.com\",\"appcategory\":\"Social Networking\"}"
+    ],
+    "sourcetype": "netskope_web"
+  }
+}

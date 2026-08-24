@@ -1,0 +1,462 @@
+{
+  "key": "proofpoint_tap::__extraction__",
+  "sourcetype": "proofpoint_tap",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:51.789Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse the JSON payload in _raw into event fields."
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Normalize messageTime into OCSF time.",
+      "conf": {
+        "srcField": "messageTime",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "defaultTime": "now"
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "email_auth.spf",
+            "value": "modulesRun && modulesRun.indexOf('spf') >= 0 ? 'run' : null"
+          },
+          {
+            "name": "email_auth.dkim",
+            "value": "modulesRun && modulesRun.indexOf('dkimv') >= 0 ? 'run' : null"
+          },
+          {
+            "name": "email_auth.dmarc",
+            "value": "modulesRun && modulesRun.indexOf('dmarc') >= 0 ? 'run' : null"
+          },
+          {
+            "name": "message",
+            "value": "subject"
+          },
+          {
+            "name": "status_code",
+            "value": "action ? action : (threatsInfoMap && threatsInfoMap[0] ? threatsInfoMap[0].threatStatus : null)"
+          },
+          {
+            "name": "status_detail",
+            "value": "quarantineRule ? quarantineRule : (quarantineFolder ? quarantineFolder : (threatsInfoMap && threatsInfoMap[0] ? threatsInfoMap[0].classification : null))"
+          },
+          {
+            "name": "unmapped.raw",
+            "value": "_raw"
+          },
+          {
+            "name": "unmapped.spamScore",
+            "value": "spamScore"
+          },
+          {
+            "name": "unmapped.phishScore",
+            "value": "phishScore"
+          },
+          {
+            "name": "unmapped.threatsInfoMap",
+            "value": "threatsInfoMap"
+          },
+          {
+            "name": "unmapped.messageTime",
+            "value": "messageTime"
+          },
+          {
+            "name": "unmapped.impostorScore",
+            "value": "impostorScore"
+          },
+          {
+            "name": "unmapped.malwareScore",
+            "value": "malwareScore"
+          },
+          {
+            "name": "unmapped.cluster",
+            "value": "cluster"
+          },
+          {
+            "name": "unmapped.quarantineFolder",
+            "value": "quarantineFolder"
+          },
+          {
+            "name": "unmapped.quarantineRule",
+            "value": "quarantineRule"
+          },
+          {
+            "name": "unmapped.policyRoutes",
+            "value": "policyRoutes"
+          },
+          {
+            "name": "unmapped.modulesRun",
+            "value": "modulesRun"
+          },
+          {
+            "name": "unmapped.messageSize",
+            "value": "messageSize"
+          },
+          {
+            "name": "unmapped.headerFrom",
+            "value": "headerFrom"
+          },
+          {
+            "name": "unmapped.headerReplyTo",
+            "value": "headerReplyTo"
+          },
+          {
+            "name": "unmapped.fromAddress",
+            "value": "fromAddress"
+          },
+          {
+            "name": "unmapped.ccAddresses",
+            "value": "ccAddresses"
+          },
+          {
+            "name": "unmapped.replyToAddress",
+            "value": "replyToAddress"
+          },
+          {
+            "name": "unmapped.toAddresses",
+            "value": "toAddresses"
+          },
+          {
+            "name": "unmapped.xmailer",
+            "value": "xmailer"
+          },
+          {
+            "name": "unmapped.messageParts",
+            "value": "messageParts"
+          },
+          {
+            "name": "unmapped.completelyRewritten",
+            "value": "completelyRewritten"
+          },
+          {
+            "name": "unmapped.id",
+            "value": "id"
+          },
+          {
+            "name": "unmapped.QID",
+            "value": "QID"
+          },
+          {
+            "name": "unmapped.GUID",
+            "value": "GUID"
+          },
+          {
+            "name": "unmapped.sender",
+            "value": "sender"
+          },
+          {
+            "name": "unmapped.recipient",
+            "value": "recipient"
+          },
+          {
+            "name": "unmapped.senderIP",
+            "value": "senderIP"
+          },
+          {
+            "name": "unmapped.messageID",
+            "value": "messageID"
+          },
+          {
+            "name": "unmapped.headerCC",
+            "value": "headerCC"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Set OCSF target fields and preserve source-specific attributes under unmapped."
+    },
+    {
+      "id": "serde",
+      "description": "Parse the Proofpoint JSON payload from _raw into a working object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "pp",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed Proofpoint fields to the requested OCSF email_activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "pp.action==='messagesDelivered'?2:3"
+          },
+          {
+            "name": "status_id",
+            "value": "pp.action==='messagesDelivered'?1:0"
+          },
+          {
+            "name": "status",
+            "value": "pp.action==='messagesDelivered'?'Success':'Unknown'"
+          },
+          {
+            "name": "protocol_name",
+            "value": "'SMTP'"
+          },
+          {
+            "name": "message_trace_uid",
+            "value": "pp.GUID ? pp.GUID : pp.QID"
+          },
+          {
+            "name": "from",
+            "value": "pp.sender ? {email_addr: pp.sender} : (pp.fromAddress && pp.fromAddress[0] ? {email_addr: pp.fromAddress[0]} : {})"
+          },
+          {
+            "name": "to",
+            "value": "pp.recipient ? pp.recipient : (pp.toAddresses ? pp.toAddresses : [])"
+          },
+          {
+            "name": "email.from",
+            "value": "pp.fromAddress && pp.fromAddress[0] ? {email_addr: pp.fromAddress[0]} : (pp.sender ? {email_addr: pp.sender} : {})"
+          },
+          {
+            "name": "email.message_uid",
+            "value": "pp.messageID"
+          },
+          {
+            "name": "email.size.bytes",
+            "value": "pp.messageSize"
+          },
+          {
+            "name": "email.subject",
+            "value": "pp.subject"
+          },
+          {
+            "name": "email.to",
+            "value": "pp.toAddresses ? pp.toAddresses : (pp.recipient ? pp.recipient : [])"
+          },
+          {
+            "name": "email.uid",
+            "value": "pp.GUID ? pp.GUID : pp.id"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "proofpoint",
+        "remove": [],
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse Proofpoint JSON event from _raw into proofpoint object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4009"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "direction_id",
+            "value": "proofpoint.policyRoutes && proofpoint.policyRoutes.toString().toLowerCase().indexOf('inbound') >= 0 ? 1 : (proofpoint.policyRoutes && proofpoint.policyRoutes.toString().toLowerCase().indexOf('outbound') >= 0 ? 2 : 0)"
+          },
+          {
+            "name": "severity_id",
+            "value": "proofpoint.threatsInfoMap && proofpoint.threatsInfoMap[0] && proofpoint.threatsInfoMap[0].classification && proofpoint.threatsInfoMap[0].classification.toLowerCase()==='malware' ? 4 : (proofpoint.threatsInfoMap && proofpoint.threatsInfoMap[0] ? 3 : 1)"
+          },
+          {
+            "name": "type_uid",
+            "value": "400903"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "proofpoint.senderIP ? proofpoint.senderIP : null"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "proofpoint.sender ? proofpoint.sender : null"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "proofpoint.sender ? proofpoint.sender : null"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "proofpoint.cluster ? proofpoint.cluster : null"
+          },
+          {
+            "name": "dst_endpoint.svc_name",
+            "value": "'Proofpoint Email Protection'"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map selected OCSF Email Activity target fields from parsed Proofpoint data"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse outer JSON payload into parsed object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'Proofpoint Targeted Attack Protection'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Proofpoint'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "parsed.cluster || null"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "parsed.xmailer || null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "parsed.action || parsed.cribl_breaker || 'email_activity'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.messageTime || C.Time.strftime(_time * 1000, '%Y-%m-%dT%H:%M:%S.%LZ')"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "parsed.cluster || null"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "parsed.cluster || null"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "parsed.GUID || parsed.QID || null"
+          },
+          {
+            "name": "metadata.reporter.ip.address",
+            "value": "parsed.senderIP || null"
+          }
+        ],
+        "keep": [
+          "metadata.*",
+          "cribl_*",
+          "__*"
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "parsed"
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF metadata fields from Proofpoint event values"
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "_raw",
+        "_time",
+        "action",
+        "campaignid",
+        "ccaddresses",
+        "classification",
+        "clickip",
+        "clicktime",
+        "cluster",
+        "completelyrewritten",
+        "cribl_breaker",
+        "fromaddress",
+        "guid",
+        "headercc",
+        "headerfrom",
+        "headerreplyto",
+        "id",
+        "impostorscore",
+        "malwarescore",
+        "messageid",
+        "messageparts",
+        "messagesize",
+        "messagetime",
+        "modulesrun",
+        "phishscore",
+        "policyroutes",
+        "qid",
+        "quarantinefolder",
+        "quarantinerule",
+        "recipient",
+        "replytoaddress",
+        "sender",
+        "senderip",
+        "spamscore",
+        "subject",
+        "threatid",
+        "threatsinfomap",
+        "threatstatus",
+        "threattime",
+        "threaturl",
+        "threaturl",
+        "toaddresses",
+        "url",
+        "useragent",
+        "xmailer"
+      ]
+    }
+  },
+  "report": null
+}

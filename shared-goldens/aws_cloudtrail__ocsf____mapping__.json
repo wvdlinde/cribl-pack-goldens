@@ -1,0 +1,336 @@
+{
+  "key": "aws_cloudtrail::ocsf::__mapping__",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:49.234Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse CloudTrail JSON from _raw into parsed object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed CloudTrail fields to OCSF API Activity target schema.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "Date.parse(parsed.eventTime)/1000"
+          },
+          {
+            "name": "category_uid",
+            "value": "6"
+          },
+          {
+            "name": "api.operation",
+            "value": "parsed.eventName"
+          },
+          {
+            "name": "api.request.uid",
+            "value": "parsed.requestID"
+          },
+          {
+            "name": "api.response.error",
+            "value": "parsed.errorCode ? parsed.errorCode : null"
+          },
+          {
+            "name": "api.response.error_message",
+            "value": "parsed.errorMessage ? parsed.errorMessage : null"
+          },
+          {
+            "name": "api.response.message",
+            "value": "parsed.errorMessage ? parsed.errorMessage : parsed.eventName"
+          },
+          {
+            "name": "message",
+            "value": "parsed.eventSource + ' ' + parsed.eventName"
+          },
+          {
+            "name": "status_code",
+            "value": "parsed.errorCode ? parsed.errorCode : 'Success'"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsed.errorMessage ? parsed.errorMessage : (parsed.readOnly ? 'ReadOnly API call' : 'Write API call')"
+          },
+          {
+            "name": "unmapped.eventVersion",
+            "value": "parsed.eventVersion"
+          },
+          {
+            "name": "unmapped.userIdentity",
+            "value": "parsed.userIdentity"
+          },
+          {
+            "name": "unmapped.eventSource",
+            "value": "parsed.eventSource"
+          },
+          {
+            "name": "unmapped.awsRegion",
+            "value": "parsed.awsRegion"
+          },
+          {
+            "name": "unmapped.sourceIPAddress",
+            "value": "parsed.sourceIPAddress"
+          },
+          {
+            "name": "unmapped.userAgent",
+            "value": "parsed.userAgent"
+          },
+          {
+            "name": "unmapped.requestParameters",
+            "value": "parsed.requestParameters"
+          },
+          {
+            "name": "unmapped.responseElements",
+            "value": "parsed.responseElements"
+          },
+          {
+            "name": "unmapped.additionalEventData",
+            "value": "parsed.additionalEventData"
+          },
+          {
+            "name": "unmapped.eventID",
+            "value": "parsed.eventID"
+          },
+          {
+            "name": "unmapped.readOnly",
+            "value": "parsed.readOnly"
+          },
+          {
+            "name": "unmapped.resources",
+            "value": "parsed.resources"
+          },
+          {
+            "name": "unmapped.eventType",
+            "value": "parsed.eventType"
+          },
+          {
+            "name": "unmapped.recipientAccountId",
+            "value": "parsed.recipientAccountId"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "cloudtrail",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse CloudTrail JSON from _raw into cloudtrail object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "6003"
+          },
+          {
+            "name": "activity_id",
+            "value": "cloudtrail.eventName==='PutObject'?1:cloudtrail.eventName==='GetObject'?2:cloudtrail.eventName.indexOf('Delete')>=0?4:cloudtrail.readOnly===true?2:99"
+          },
+          {
+            "name": "status_id",
+            "value": "cloudtrail.errorCode?2:1"
+          },
+          {
+            "name": "status",
+            "value": "cloudtrail.errorCode?'Failure':'Success'"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "cloudtrail.userIdentity && cloudtrail.userIdentity.userName ? cloudtrail.userIdentity.userName : null"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "cloudtrail.userIdentity && cloudtrail.userIdentity.arn ? cloudtrail.userIdentity.arn : cloudtrail.userIdentity && cloudtrail.userIdentity.principalId ? cloudtrail.userIdentity.principalId : null"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "cloudtrail.userIdentity && cloudtrail.userIdentity.type==='IAMUser'?1:cloudtrail.userIdentity && cloudtrail.userIdentity.type==='AssumedRole'?99:0"
+          },
+          {
+            "name": "actor.process.cmd_line",
+            "value": "cloudtrail.userAgent || ''"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "cloudtrail.userAgent && cloudtrail.userAgent.indexOf('aws-cli')>=0 ? 'aws-cli' : cloudtrail.userAgent"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "cloudtrail.userAgent"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "cloudtrail.eventName==='PutObject'?'PUT':cloudtrail.eventName==='GetObject'?'GET':cloudtrail.eventName.indexOf('Delete')>=0?'DELETE':null"
+          },
+          {
+            "name": "http_request.url.scheme",
+            "value": "'https'"
+          },
+          {
+            "name": "http_request.url.hostname",
+            "value": "cloudtrail.requestParameters && cloudtrail.requestParameters.bucketName ? cloudtrail.requestParameters.bucketName + '.s3.' + cloudtrail.awsRegion + '.amazonaws.com' : cloudtrail.eventSource"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "cloudtrail.requestParameters && cloudtrail.requestParameters.key ? '/' + cloudtrail.requestParameters.key : null"
+          },
+          {
+            "name": "http_request.url.url_string",
+            "value": "cloudtrail.requestParameters && cloudtrail.requestParameters.bucketName && cloudtrail.requestParameters.key ? 'https://' + cloudtrail.requestParameters.bucketName + '.s3.' + cloudtrail.awsRegion + '.amazonaws.com/' + cloudtrail.requestParameters.key : null"
+          },
+          {
+            "name": "resources",
+            "value": "cloudtrail.resources && cloudtrail.resources[1] ? [{name: cloudtrail.resources[0].ARN, uid: cloudtrail.resources[0].ARN, role_id: 1, owner: {uid: cloudtrail.resources[0].accountId, type_id: 99}}, {name: cloudtrail.resources[1].ARN, uid: cloudtrail.resources[1].ARN, role_id: 3, owner: {uid: cloudtrail.resources[1].accountId, type_id: 99}}] : cloudtrail.resources && cloudtrail.resources[0] ? [{name: cloudtrail.resources[0].ARN, uid: cloudtrail.resources[0].ARN, role_id: 1, owner: {uid: cloudtrail.resources[0].accountId, type_id: 99}}] : []"
+          },
+          {
+            "name": "observables",
+            "value": "cloudtrail.sourceIPAddress ? [{name:'actor.user.name', type_id:4},{name:'actor.user.uid', type_id:31},{name:'http_request.user_agent', type_id:16},{name:'resources[0].uid', type_id:10},{name:'resources[1].uid', type_id:10},{name:'cloudtrail.sourceIPAddress', type_id:2}] : [{name:'actor.user.name', type_id:4},{name:'actor.user.uid', type_id:31},{name:'http_request.user_agent', type_id:16},{name:'resources[0].uid', type_id:10},{name:'resources[1].uid', type_id:10}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed CloudTrail fields to OCSF API Activity target schema fields and remove non-target source fields"
+    },
+    {
+      "id": "eval",
+      "description": "Parse CloudTrail JSON from _raw into an ephemeral object.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "__parsed",
+            "value": "JSON.parse(_raw)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map CloudTrail fields to OCSF API Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "__parsed.eventName && (__parsed.eventName.startsWith('Get') || __parsed.eventName.startsWith('List') || __parsed.eventName.startsWith('Describe')) ? 600302 : (__parsed.eventName && (__parsed.eventName.startsWith('Put') || __parsed.eventName.startsWith('Create')) ? 600301 : (__parsed.eventName && (__parsed.eventName.startsWith('Delete') || __parsed.eventName.startsWith('Remove')) ? 600304 : (__parsed.eventName && (__parsed.eventName.startsWith('Update') || __parsed.eventName.startsWith('Modify')) ? 600303 : 600399)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "__parsed.sourceIPAddress"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "__parsed.userIdentity ? __parsed.userIdentity.userName : null"
+          },
+          {
+            "name": "src_endpoint.owner.uid",
+            "value": "__parsed.userIdentity ? __parsed.userIdentity.arn : null"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "__parsed.userIdentity && __parsed.userIdentity.type==='IAMUser' ? 1 : (__parsed.userIdentity && __parsed.userIdentity.type==='Root' ? 2 : (__parsed.userIdentity && (__parsed.userIdentity.type==='AWSService' || __parsed.userIdentity.type==='AssumedRole') ? 4 : 0))"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "__parsed.userIdentity ? __parsed.userIdentity.principalId : null"
+          },
+          {
+            "name": "dst_endpoint.svc_name",
+            "value": "__parsed.eventSource"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "__parsed.requestParameters ? __parsed.requestParameters.bucketName : null"
+          },
+          {
+            "name": "dst_endpoint.uid",
+            "value": "__parsed.requestParameters ? __parsed.requestParameters.bucketName : null"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "__parsed.eventSource"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "__parsed.eventTime"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'AWS CloudTrail'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "__parsed.eventSource"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Amazon Web Services'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "__parsed.eventVersion"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "__parsed.awsRegion"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "__parsed.recipientAccountId || (__parsed.userIdentity ? __parsed.userIdentity.accountId : null)"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "timezone_offset",
+          "severity_id",
+          "type_uid",
+          "src_endpoint.*",
+          "dst_endpoint.*",
+          "metadata.*",
+          "cribl_*",
+          "__*"
+        ],
+        "remove": [
+          "_raw",
+          "_time"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

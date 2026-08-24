@@ -1,0 +1,176 @@
+{
+  "key": "gcp_audit::xsiam",
+  "sourcetype": "gcp_audit",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:17:43.523Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "gcp_audit → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'00a8322c85e14beabfa7ad5f3d62db73'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'gcp_audit:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "gcp_audit_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 58,
+    "outputSample": [
+      {
+        "_raw": "{\"logName\":\"projects/prod-webapp-8821/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"prod-webapp-8821\",\"zone\":\"us-central1-a\",\"instance_id\":\"4521987654321\"}},\"timestamp\":\"2024-11-15T00:03:12.441Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.insert\",\"authenticationInfo\":{\"principalEmail\":\"deploy-svc@prod-webapp-8821.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"34.72.15.88\",\"callerSuppliedUserAgent\":\"google-cloud-sdk/455.0.0 Terraform/1.6.2\"},\"request\":{\"name\":\"web-frontend-prod-001\",\"machineType\":\"n2-standard-4\",\"zone\":\"us-central1-a\"},\"response\":{\"status\":\"RUNNING\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/analytics-hub-3301/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"bigquery_dataset\",\"labels\":{\"project_id\":\"analytics-hub-3301\",\"dataset_id\":\"customer_events_2023\"}},\"timestamp\":\"2024-11-15T00:17:44.882Z\",\"severity\":\"WARNING\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"bigquery.googleapis.com\",\"methodName\":\"google.cloud.bigquery.v2.DatasetService.DeleteDataset\",\"authenticationInfo\":{\"principalEmail\":\"rogue-user@analytics-hub-3301.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"203.0.113.47\",\"callerSuppliedUserAgent\":\"python-requests/2.31.0\"},\"request\":{\"datasetId\":\"customer_events_2023\",\"deleteContents\":true},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/iam-central-5509/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"service_account\",\"labels\":{\"project_id\":\"iam-central-5509\",\"email\":\"new-automation@iam-central-5509.iam.gserviceaccount.com\"}},\"timestamp\":\"2024-11-15T00:31:58.113Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"iam.googleapis.com\",\"methodName\":\"google.iam.admin.v1.CreateServiceAccount\",\"authenticationInfo\":{\"principalEmail\":\"admin@corp.example.com\"},\"requestMetadata\":{\"callerIp\":\"10.128.0.45\",\"callerSuppliedUserAgent\":\"google-cloud-sdk/455.0.0\"},\"request\":{\"accountId\":\"new-automation\",\"serviceAccount\":{\"displayName\":\"New Automation SA\"}},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/storage-archive-7762/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gcs_bucket\",\"labels\":{\"project_id\":\"storage-archive-7762\",\"bucket_name\":\"archive-data-2024-q4\"}},\"timestamp\":\"2024-11-15T00:48:23.667Z\",\"severity\":\"ERROR\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"storage.googleapis.com\",\"methodName\":\"storage.buckets.create\",\"authenticationInfo\":{\"principalEmail\":\"storage-admin@storage-archive-7762.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"192.168.1.102\",\"callerSuppliedUserAgent\":\"google-api-python-client/2.104.0\"},\"request\":{\"bucket\":\"archive-data-2024-q4\",\"location\":\"US-EAST1\"},\"status\":{\"code\":3,\"message\":\"INVALID_ARGUMENT: Bucket name already exists in another project\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/prod-webapp-8821/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"prod-webapp-8821\",\"zone\":\"europe-west1-b\",\"instance_id\":\"9876543210123\"}},\"timestamp\":\"2024-11-15T01:05:37.229Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.delete\",\"authenticationInfo\":{\"principalEmail\":\"ci-pipeline@prod-webapp-8821.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"35.190.60.14\",\"callerSuppliedUserAgent\":\"Jenkins/2.414.1 gcloud/455.0.0\"},\"request\":{\"instance\":\"web-frontend-old-003\",\"zone\":\"europe-west1-b\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/security-ops-1144/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"project\",\"labels\":{\"project_id\":\"security-ops-1144\"}},\"timestamp\":\"2024-11-15T01:22:09.554Z\",\"severity\":\"WARNING\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"cloudresourcemanager.googleapis.com\",\"methodName\":\"SetIamPolicy\",\"authenticationInfo\":{\"principalEmail\":\"unknown-actor@external-domain.org\"},\"requestMetadata\":{\"callerIp\":\"198.51.100.22\",\"callerSuppliedUserAgent\":\"curl/7.88.1\"},\"request\":{\"policy\":{\"bindings\":[{\"role\":\"roles/owner\",\"members\":[\"user:unknown-actor@external-domain.org\"]}]}},\"status\":{\"code\":7,\"message\":\"PERMISSION_DENIED: Caller does not have required permissions\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/data-pipeline-6630/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gcs_bucket\",\"labels\":{\"project_id\":\"data-pipeline-6630\",\"bucket_name\":\"raw-ingest-bucket-prod\"}},\"timestamp\":\"2024-11-15T01:39:51.001Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"storage.googleapis.com\",\"methodName\":\"storage.buckets.delete\",\"authenticationInfo\":{\"principalEmail\":\"pipeline-cleaner@data-pipeline-6630.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"10.10.0.88\",\"callerSuppliedUserAgent\":\"google-cloud-go/1.34.0 grpc-go/1.59.0\"},\"request\":{\"bucket\":\"raw-ingest-bucket-prod\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      },
+      {
+        "_raw": "{\"logName\":\"projects/ml-training-9905/logs/cloudaudit.googleapis.com%2Faktivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"ml-training-9905\",\"zone\":\"us-west1-b\",\"instance_id\":\"1122334455667\"}},\"timestamp\":\"2024-11-15T02:07:18.763Z\",\"severity\":\"ERROR\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.insert\",\"authenticationInfo\":{\"principalEmail\":\"ml-trainer@ml-training-9905.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"172.16.5.33\",\"callerSuppliedUserAgent\":\"Terraform/1.7.0 (+https://www.terraform.io)\"},\"request\":{\"name\":\"gpu-trainer-node-07\",\"machineType\":\"a2-highgpu-8g\",\"zone\":\"us-west1-b\"},\"status\":{\"code\":7,\"message\":\"PERMISSION_DENIED: Required GPU quota not available in zone us-west1-b\"}}}",
+        "_time": 1784048363.117,
+        "__sourceIdentifier": "00a8322c85e14beabfa7ad5f3d62db73",
+        "sourcetype": "gcp_audit:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "logName",
+      "resource",
+      "timestamp",
+      "severity",
+      "protoPayload"
+    ],
+    "sampleRaw": [
+      "{\"logName\":\"projects/prod-webapp-8821/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"prod-webapp-8821\",\"zone\":\"us-central1-a\",\"instance_id\":\"4521987654321\"}},\"timestamp\":\"2024-11-15T00:03:12.441Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.insert\",\"authenticationInfo\":{\"principalEmail\":\"deploy-svc@prod-webapp-8821.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"34.72.15.88\",\"callerSuppliedUserAgent\":\"google-cloud-sdk/455.0.0 Terraform/1.6.2\"},\"request\":{\"name\":\"web-frontend-prod-001\",\"machineType\":\"n2-standard-4\",\"zone\":\"us-central1-a\"},\"response\":{\"status\":\"RUNNING\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+      "{\"logName\":\"projects/analytics-hub-3301/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"bigquery_dataset\",\"labels\":{\"project_id\":\"analytics-hub-3301\",\"dataset_id\":\"customer_events_2023\"}},\"timestamp\":\"2024-11-15T00:17:44.882Z\",\"severity\":\"WARNING\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"bigquery.googleapis.com\",\"methodName\":\"google.cloud.bigquery.v2.DatasetService.DeleteDataset\",\"authenticationInfo\":{\"principalEmail\":\"rogue-user@analytics-hub-3301.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"203.0.113.47\",\"callerSuppliedUserAgent\":\"python-requests/2.31.0\"},\"request\":{\"datasetId\":\"customer_events_2023\",\"deleteContents\":true},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+      "{\"logName\":\"projects/iam-central-5509/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"service_account\",\"labels\":{\"project_id\":\"iam-central-5509\",\"email\":\"new-automation@iam-central-5509.iam.gserviceaccount.com\"}},\"timestamp\":\"2024-11-15T00:31:58.113Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"iam.googleapis.com\",\"methodName\":\"google.iam.admin.v1.CreateServiceAccount\",\"authenticationInfo\":{\"principalEmail\":\"admin@corp.example.com\"},\"requestMetadata\":{\"callerIp\":\"10.128.0.45\",\"callerSuppliedUserAgent\":\"google-cloud-sdk/455.0.0\"},\"request\":{\"accountId\":\"new-automation\",\"serviceAccount\":{\"displayName\":\"New Automation SA\"}},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+      "{\"logName\":\"projects/storage-archive-7762/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gcs_bucket\",\"labels\":{\"project_id\":\"storage-archive-7762\",\"bucket_name\":\"archive-data-2024-q4\"}},\"timestamp\":\"2024-11-15T00:48:23.667Z\",\"severity\":\"ERROR\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"storage.googleapis.com\",\"methodName\":\"storage.buckets.create\",\"authenticationInfo\":{\"principalEmail\":\"storage-admin@storage-archive-7762.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"192.168.1.102\",\"callerSuppliedUserAgent\":\"google-api-python-client/2.104.0\"},\"request\":{\"bucket\":\"archive-data-2024-q4\",\"location\":\"US-EAST1\"},\"status\":{\"code\":3,\"message\":\"INVALID_ARGUMENT: Bucket name already exists in another project\"}}}",
+      "{\"logName\":\"projects/prod-webapp-8821/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"prod-webapp-8821\",\"zone\":\"europe-west1-b\",\"instance_id\":\"9876543210123\"}},\"timestamp\":\"2024-11-15T01:05:37.229Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.delete\",\"authenticationInfo\":{\"principalEmail\":\"ci-pipeline@prod-webapp-8821.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"35.190.60.14\",\"callerSuppliedUserAgent\":\"Jenkins/2.414.1 gcloud/455.0.0\"},\"request\":{\"instance\":\"web-frontend-old-003\",\"zone\":\"europe-west1-b\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+      "{\"logName\":\"projects/security-ops-1144/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"project\",\"labels\":{\"project_id\":\"security-ops-1144\"}},\"timestamp\":\"2024-11-15T01:22:09.554Z\",\"severity\":\"WARNING\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"cloudresourcemanager.googleapis.com\",\"methodName\":\"SetIamPolicy\",\"authenticationInfo\":{\"principalEmail\":\"unknown-actor@external-domain.org\"},\"requestMetadata\":{\"callerIp\":\"198.51.100.22\",\"callerSuppliedUserAgent\":\"curl/7.88.1\"},\"request\":{\"policy\":{\"bindings\":[{\"role\":\"roles/owner\",\"members\":[\"user:unknown-actor@external-domain.org\"]}]}},\"status\":{\"code\":7,\"message\":\"PERMISSION_DENIED: Caller does not have required permissions\"}}}",
+      "{\"logName\":\"projects/data-pipeline-6630/logs/cloudaudit.googleapis.com%2Factivity\",\"resource\":{\"type\":\"gcs_bucket\",\"labels\":{\"project_id\":\"data-pipeline-6630\",\"bucket_name\":\"raw-ingest-bucket-prod\"}},\"timestamp\":\"2024-11-15T01:39:51.001Z\",\"severity\":\"INFO\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"storage.googleapis.com\",\"methodName\":\"storage.buckets.delete\",\"authenticationInfo\":{\"principalEmail\":\"pipeline-cleaner@data-pipeline-6630.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"10.10.0.88\",\"callerSuppliedUserAgent\":\"google-cloud-go/1.34.0 grpc-go/1.59.0\"},\"request\":{\"bucket\":\"raw-ingest-bucket-prod\"},\"status\":{\"code\":0,\"message\":\"OK\"}}}",
+      "{\"logName\":\"projects/ml-training-9905/logs/cloudaudit.googleapis.com%2Faktivity\",\"resource\":{\"type\":\"gce_instance\",\"labels\":{\"project_id\":\"ml-training-9905\",\"zone\":\"us-west1-b\",\"instance_id\":\"1122334455667\"}},\"timestamp\":\"2024-11-15T02:07:18.763Z\",\"severity\":\"ERROR\",\"protoPayload\":{\"@type\":\"type.googleapis.com/google.cloud.audit.AuditLog\",\"serviceName\":\"compute.googleapis.com\",\"methodName\":\"v1.compute.instances.insert\",\"authenticationInfo\":{\"principalEmail\":\"ml-trainer@ml-training-9905.iam.gserviceaccount.com\"},\"requestMetadata\":{\"callerIp\":\"172.16.5.33\",\"callerSuppliedUserAgent\":\"Terraform/1.7.0 (+https://www.terraform.io)\"},\"request\":{\"name\":\"gpu-trainer-node-07\",\"machineType\":\"a2-highgpu-8g\",\"zone\":\"us-west1-b\"},\"status\":{\"code\":7,\"message\":\"PERMISSION_DENIED: Required GPU quota not available in zone us-west1-b\"}}}"
+    ],
+    "sourcetype": "gcp_audit"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "key": "citrix_netscaler_appfw::__extraction__",
+  "sourcetype": "citrix_netscaler_appfw",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:12:17.295Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header, event type, event id, client ip and message body from AppFW log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s\\d{2}:\\d{2}:\\d{2}) (?<hostname>\\S+) \\S+ GMT \\S+ PPE-\\d+ : APPFW \\S+ (?<event_id>\\d+) \\d+ : (?<client_ip>\\S+) \\S+ (?<event_type>\\S+) (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse description, profile, policy, session id, source/dest ip:port, url, action and severity from the message field",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<description>.*?), profile=\"(?<profile>[^\"]+)\"(?:, policy=\"(?<policy>[^\"]+)\")?, session_id=\"(?<session_id>[^\"]+)\", source=(?<__src_ip_raw>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<src_port>\\d+)->(?<__dst_ip_raw>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<dst_port>\\d+), url=\"(?<url>[^\"]+)\", action=(?<action>\\S+), severity=(?<severity>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize IPv6 bracketed addresses, set protocol, normalize action values, and drop scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__src_ip_raw ? __src_ip_raw.replace(/[\\[\\]]/g, '') : client_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "__dst_ip_raw ? __dst_ip_raw.replace(/[\\[\\]]/g, '') : null"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "action",
+            "value": "action === 'BLOCKED' || action === 'DROPPED' ? 'blocked' : action === 'NOT_BLOCKED' ? 'allowed' : action === 'LOGGED' ? 'logged' : action === 'TRANSFORMED' ? 'transformed' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          }
+        ],
+        "remove": [
+          "__src_ip_raw",
+          "__dst_ip_raw",
+          "client_ip"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

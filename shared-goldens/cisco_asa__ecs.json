@@ -1,0 +1,452 @@
+{
+  "key": "cisco_asa::ecs",
+  "sourcetype": "cisco_asa",
+  "dest_format": "ecs",
+  "score": 88,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-15T12:25:45.341Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "cisco_asa to ECS pipeline.\nParses events, drops noise, maps to ECS schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "_raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/) ? _raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/)[1] : undefined"
+          },
+          {
+            "name": "asa_code",
+            "value": "_raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/) ? _raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/)[1] : undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "_raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/) ? _raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/)[1] : undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/) ? Date.parse(_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/)[1]) / 1000 : undefined"
+          },
+          {
+            "name": "host",
+            "value": "_raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/) ? _raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/)[1] : undefined"
+          }
+        ]
+      },
+      "description": "Extract severity, message code, timestamp, and device host from the syslog header (%ASA-/%FTD-)"
+    },
+    {
+      "id": "lookup",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "matchMode": "exact",
+        "reloadPeriodSec": 60,
+        "addToEvent": false,
+        "ignoreCase": false,
+        "inFields": [
+          {
+            "eventField": "asa_code",
+            "lookupField": "asa_code"
+          }
+        ],
+        "outFields": [
+          {
+            "lookupField": "regex",
+            "eventField": "__regex"
+          }
+        ],
+        "file": "cisco_asa_parsing.csv"
+      },
+      "description": "Fetch the per-code extraction regex for this code (184 codes)"
+    },
+    {
+      "id": "eval",
+      "filter": "__regex && _raw.match(__regex)",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__groups",
+            "value": "_raw.match(__regex).groups || {}"
+          },
+          {
+            "name": "__merged",
+            "value": "Object.assign(__e, __groups)"
+          }
+        ],
+        "remove": [
+          "__groups",
+          "__merged",
+          "__regex"
+        ]
+      },
+      "description": "Apply the code-specific regex and spread its named groups onto the event"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "transport",
+            "value": "transport ? transport.toLowerCase() : ((icmp_type != null || icmp_code != null) ? 'icmp' : undefined)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || (_raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i) ? _raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i)[1] : undefined)"
+          },
+          {
+            "name": "user",
+            "value": "src_nt_domain ? (src_nt_domain + '\\\\' + (src_user || '')) : (src_user || src_sg_info || user || undefined)"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_interface || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_interface || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration_hour != null ? (Number(duration_hour) * 3600 + Number(duration_minute) * 60 + Number(duration_second)) : undefined"
+          },
+          {
+            "name": "icmp_type",
+            "value": "/icmp/i.test(String(transport)) ? icmp_type : undefined"
+          },
+          {
+            "name": "icmp_code",
+            "value": "/icmp/i.test(String(transport)) ? icmp_code : undefined"
+          }
+        ]
+      },
+      "description": "Alias per-code fields to CIM canonical names + fallback action verb"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "event_code == '302013' || event_code == '302015'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop connection build/teardown events (302013/302015) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "event_code == '106100' && action == 'Permitted'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine ACL permit events (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to ECS schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "product",
+            "value": "'ASA'"
+          },
+          {
+            "name": "version",
+            "value": "'9.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "event",
+            "value": "{}"
+          },
+          {
+            "name": "source",
+            "value": "{}"
+          },
+          {
+            "name": "destination",
+            "value": "{}"
+          },
+          {
+            "name": "network",
+            "value": "{}"
+          },
+          {
+            "name": "observer",
+            "value": "{}"
+          },
+          {
+            "name": "rule",
+            "value": "{}"
+          },
+          {
+            "name": "event.kind",
+            "value": "'event'"
+          },
+          {
+            "name": "event.category",
+            "value": "'network'"
+          },
+          {
+            "name": "event.action",
+            "value": "(action != null && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' && String(action) != '') ? action : undefined"
+          },
+          {
+            "name": "event.code",
+            "value": "(event_code != null && String(event_code) != 'undefined' && String(event_code) != 'null' && String(event_code) != '-' && String(event_code) != '') ? event_code : undefined"
+          },
+          {
+            "name": "event.severity",
+            "value": "(severity != null && String(severity) != 'undefined' && String(severity) != 'null' && String(severity) != '-' && String(severity) != '') ? Number(severity) : undefined"
+          },
+          {
+            "name": "event.duration",
+            "value": "(duration != null && String(duration) != 'undefined' && String(duration) != 'null' && String(duration) != '-' && String(duration) != '') ? Number(duration) : undefined"
+          },
+          {
+            "name": "event.outcome",
+            "value": "action ? (/deny|drop|block|fail|denied|reset/i.test(String(action)) ? 'failure' : 'success') : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → Elastic ECS event.*"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "source.ip",
+            "value": "(src_ip != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') ? src_ip : undefined"
+          },
+          {
+            "name": "source.port",
+            "value": "(src_port != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '') ? Number(src_port) : undefined"
+          },
+          {
+            "name": "source.bytes",
+            "value": "(bytes_out != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '') ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "destination.ip",
+            "value": "(dest_ip != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') ? dest_ip : undefined"
+          },
+          {
+            "name": "destination.port",
+            "value": "(dest_port != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '') ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "destination.bytes",
+            "value": "(bytes_in != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '') ? Number(bytes_in) : undefined"
+          }
+        ]
+      },
+      "description": "Map source/destination"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "source.user",
+            "value": "{}"
+          },
+          {
+            "name": "source.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "network.transport",
+            "value": "(transport != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '') ? transport : undefined"
+          },
+          {
+            "name": "network.protocol",
+            "value": "(protocol || app) != null && String(protocol || app) != 'undefined' && String(protocol || app) != 'null' && String(protocol || app) != '-' && String(protocol || app) != '' ? (protocol || app) : undefined"
+          },
+          {
+            "name": "host.name",
+            "value": "(host != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '') ? host : undefined"
+          },
+          {
+            "name": "observer.vendor",
+            "value": "vendor"
+          },
+          {
+            "name": "observer.product",
+            "value": "product"
+          },
+          {
+            "name": "observer.version",
+            "value": "version"
+          },
+          {
+            "name": "rule.name",
+            "value": "(rule_id || access_group || acl_name || acl_id) != null && String(rule_id || access_group || acl_name || acl_id) != 'undefined' && String(rule_id || access_group || acl_name || acl_id) != 'null' && String(rule_id || access_group || acl_name || acl_id) != '-' && String(rule_id || access_group || acl_name || acl_id) != '' ? (rule_id || access_group || acl_name || acl_id) : undefined"
+          }
+        ]
+      },
+      "description": "Map user/network/host/observer/rule"
+    },
+    {
+      "id": "eval",
+      "filter": "log_time != null",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "log_time"
+          }
+        ]
+      },
+      "description": "Set _time from parsed log timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "event_time",
+            "value": "log_time != null ? new Date(log_time * 1000).toISOString() : undefined"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'cisco_asa:ecs'"
+          }
+        ]
+      },
+      "description": "Set ECS timestamp + sourcetype"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "_raw"
+          }
+        ]
+      },
+      "description": "Preserve original log in message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "event",
+          "event.*",
+          "source",
+          "source.*",
+          "destination",
+          "destination.*",
+          "network",
+          "network.*",
+          "host",
+          "host.*",
+          "observer",
+          "observer.*",
+          "rule",
+          "rule.*",
+          "message",
+          "event_time"
+        ]
+      },
+      "description": "Keep only Elastic ECS fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "destination.bytes",
+        "issue": "OCSF field \"destination.bytes\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "network.protocol",
+        "issue": "OCSF field \"network.protocol\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "destination.bytes",
+      "network.protocol"
+    ],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}

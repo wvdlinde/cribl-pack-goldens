@@ -1,0 +1,235 @@
+{
+  "key": "netskope_alerts::xsiam",
+  "sourcetype": "netskope_alerts",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:30.193Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "netskope_alerts → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'netskope alerts'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'netskope_alerts:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "netskope_alerts_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 58,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:03:22.441Z\",\"alert_name\":\"Malware Detected\",\"alert_type\":\"malware\",\"app\":\"Google Drive\",\"appcat\":\"Cloud Storage\",\"user\":\"jsmith@acme.com\",\"src_ip\":\"10.20.5.44\",\"dst_ip\":\"172.217.14.196\",\"policy\":\"Malware Prevention\",\"action\":\"block\",\"severity\":\"critical\",\"object\":\"invoice_Q4.exe\",\"object_type\":\"File\",\"file_size\":245760,\"md5\":\"a3f1c2d4e5b6a7c8d9e0f1a2b3c4d5e6\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"dlp_profile\":\"\",\"url\":\"https://drive.google.com/file/d/1xKzP\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 10\",\"device\":\"CORP-LAPTOP-0044\",\"site\":\"Google\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\"}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"alert_name\":\"DLP Violation - SSN Detected\",\"alert_type\":\"dlp\",\"app\":\"Slack\",\"appcat\":\"Collaboration\",\"user\":\"mwilliams@acme.com\",\"src_ip\":\"192.168.1.102\",\"dst_ip\":\"54.192.18.45\",\"policy\":\"DLP - PII Protection\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"general_channel_message\",\"object_type\":\"Message\",\"file_size\":0,\"dlp_profile\":\"PII Detection\",\"dlp_rule\":\"SSN Pattern Match\",\"dlp_match_count\":3,\"url\":\"https://slack.com/api/chat.postMessage\",\"browser\":\"Firefox\",\"browser_version\":\"121.0\",\"os\":\"macOS 14.2\",\"device\":\"CORP-MAC-0112\",\"site\":\"Slack\",\"category\":\"Collaboration\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-NYC1\",\"org\":\"ACME Corp\"}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:42:11.003Z\",\"alert_name\":\"Anomalous Download Volume\",\"alert_type\":\"anomaly\",\"app\":\"SharePoint\",\"appcat\":\"Cloud Storage\",\"user\":\"rjones@acme.com\",\"src_ip\":\"10.10.2.88\",\"dst_ip\":\"13.107.136.9\",\"policy\":\"Anomaly Detection\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"\",\"object_type\":\"\",\"file_size\":524288000,\"url\":\"https://acmecorp.sharepoint.com/sites/finance\",\"browser\":\"Edge\",\"browser_version\":\"120.0.2210.91\",\"os\":\"Windows 11\",\"device\":\"CORP-LAPTOP-0231\",\"site\":\"SharePoint\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-IAD1\",\"org\":\"ACME Corp\",\"bytes_downloaded\":524288000,\"normal_bytes_downloaded\":2048000}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:08:34.567Z\",\"alert_name\":\"Unauthorized App Access\",\"alert_type\":\"policy\",\"app\":\"Dropbox\",\"appcat\":\"Cloud Storage\",\"user\":\"unknown\",\"src_ip\":\"203.0.113.45\",\"dst_ip\":\"162.125.7.5\",\"policy\":\"Unsanctioned App Block\",\"action\":\"block\",\"severity\":\"medium\",\"object\":\"\",\"object_type\":\"\",\"file_size\":0,\"url\":\"https://www.dropbox.com/login\",\"browser\":\"Chrome\",\"browser_version\":\"119.0.6045.199\",\"os\":\"Windows 10\",\"device\":\"UNMANAGED-DEVICE\",\"site\":\"Dropbox\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-LAX1\",\"org\":\"ACME Corp\",\"managed_app\":false}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:25:09.114Z\",\"alert_name\":\"Credential Compromise Suspected\",\"alert_type\":\"compromised_credential\",\"app\":\"Office 365\",\"appcat\":\"Productivity\",\"user\":\"agarcia@acme.com\",\"src_ip\":\"198.51.100.77\",\"dst_ip\":\"40.97.154.50\",\"policy\":\"Compromised Credential Detection\",\"action\":\"alert\",\"severity\":\"critical\",\"object\":\"\",\"object_type\":\"\",\"url\":\"https://login.microsoftonline.com\",\"browser\":\"Safari\",\"browser_version\":\"17.2\",\"os\":\"iOS 17.2\",\"device\":\"MOBILE-AG-001\",\"site\":\"Office 365\",\"category\":\"Productivity\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"login_type\":\"oauth\",\"location_anomaly\":true,\"prev_location\":\"New York\",\"curr_location\":\"Lagos\"}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:51:44.229Z\",\"alert_name\":\"Sensitive File Upload to Personal Cloud\",\"alert_type\":\"dlp\",\"app\":\"Google Drive Personal\",\"appcat\":\"Cloud Storage\",\"user\":\"tbrown@acme.com\",\"src_ip\":\"10.30.4.15\",\"dst_ip\":\"142.250.80.46\",\"policy\":\"Personal Cloud Upload Prevention\",\"action\":\"block\",\"severity\":\"high\",\"object\":\"Q4_FinancialReport_CONFIDENTIAL.xlsx\",\"object_type\":\"File\",\"file_size\":1048576,\"dlp_profile\":\"Financial Data\",\"dlp_rule\":\"CONFIDENTIAL Label\",\"url\":\"https://drive.google.com/upload\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 11\",\"device\":\"CORP-LAPTOP-0089\",\"site\":\"Google Drive Personal\",\"category\":\"Personal Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\"}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:14:22.778Z\",\"alert_name\":\"Phishing URL Detected\",\"alert_type\":\"malware\",\"app\":\"Gmail\",\"appcat\":\"Email\",\"user\":\"ljohnson@acme.com\",\"src_ip\":\"172.16.8.201\",\"dst_ip\":\"74.125.197.17\",\"policy\":\"Phishing Prevention\",\"action\":\"block\",\"severity\":\"critical\",\"object\":\"http://acme-secure-login.xyz/verify\",\"object_type\":\"URL\",\"file_size\":0,\"url\":\"http://acme-secure-login.xyz/verify\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 10\",\"device\":\"CORP-LAPTOP-0167\",\"site\":\"Gmail\",\"category\":\"Webmail\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"threat_type\":\"Phishing\",\"threat_confidence\":\"high\"}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:38:55.001Z\",\"alert_name\":\"Bulk File Delete\",\"alert_type\":\"anomaly\",\"app\":\"Box\",\"appcat\":\"Cloud Storage\",\"user\":\"dlee@acme.com\",\"src_ip\":\"10.10.5.33\",\"dst_ip\":\"107.152.24.200\",\"policy\":\"Anomaly Detection - Bulk Delete\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"\",\"object_type\":\"\",\"file_size\":0,\"url\":\"https://app.box.com\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"macOS 13.6\",\"device\":\"CORP-MAC-0055\",\"site\":\"Box\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"files_deleted\":347,\"normal_delete_count\":2}",
+        "_time": 1784049891.196,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "netskope alerts",
+        "__product": "Security",
+        "sourcetype": "netskope_alerts:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "alert_name",
+      "alert_type",
+      "app",
+      "appcat",
+      "user",
+      "src_ip",
+      "dst_ip",
+      "policy",
+      "action",
+      "severity",
+      "object",
+      "object_type",
+      "file_size",
+      "md5",
+      "sha256",
+      "dlp_profile",
+      "url",
+      "browser",
+      "browser_version",
+      "os",
+      "device",
+      "site",
+      "category",
+      "traffic_type",
+      "netskope_pop",
+      "org",
+      "dlp_rule",
+      "dlp_match_count",
+      "bytes_downloaded",
+      "normal_bytes_downloaded",
+      "managed_app",
+      "login_type",
+      "location_anomaly",
+      "prev_location",
+      "curr_location",
+      "threat_type",
+      "threat_confidence",
+      "files_deleted",
+      "normal_delete_count"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:22.441Z\",\"alert_name\":\"Malware Detected\",\"alert_type\":\"malware\",\"app\":\"Google Drive\",\"appcat\":\"Cloud Storage\",\"user\":\"jsmith@acme.com\",\"src_ip\":\"10.20.5.44\",\"dst_ip\":\"172.217.14.196\",\"policy\":\"Malware Prevention\",\"action\":\"block\",\"severity\":\"critical\",\"object\":\"invoice_Q4.exe\",\"object_type\":\"File\",\"file_size\":245760,\"md5\":\"a3f1c2d4e5b6a7c8d9e0f1a2b3c4d5e6\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"dlp_profile\":\"\",\"url\":\"https://drive.google.com/file/d/1xKzP\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 10\",\"device\":\"CORP-LAPTOP-0044\",\"site\":\"Google\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:55.882Z\",\"alert_name\":\"DLP Violation - SSN Detected\",\"alert_type\":\"dlp\",\"app\":\"Slack\",\"appcat\":\"Collaboration\",\"user\":\"mwilliams@acme.com\",\"src_ip\":\"192.168.1.102\",\"dst_ip\":\"54.192.18.45\",\"policy\":\"DLP - PII Protection\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"general_channel_message\",\"object_type\":\"Message\",\"file_size\":0,\"dlp_profile\":\"PII Detection\",\"dlp_rule\":\"SSN Pattern Match\",\"dlp_match_count\":3,\"url\":\"https://slack.com/api/chat.postMessage\",\"browser\":\"Firefox\",\"browser_version\":\"121.0\",\"os\":\"macOS 14.2\",\"device\":\"CORP-MAC-0112\",\"site\":\"Slack\",\"category\":\"Collaboration\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-NYC1\",\"org\":\"ACME Corp\"}",
+      "{\"timestamp\":\"2024-01-15T00:42:11.003Z\",\"alert_name\":\"Anomalous Download Volume\",\"alert_type\":\"anomaly\",\"app\":\"SharePoint\",\"appcat\":\"Cloud Storage\",\"user\":\"rjones@acme.com\",\"src_ip\":\"10.10.2.88\",\"dst_ip\":\"13.107.136.9\",\"policy\":\"Anomaly Detection\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"\",\"object_type\":\"\",\"file_size\":524288000,\"url\":\"https://acmecorp.sharepoint.com/sites/finance\",\"browser\":\"Edge\",\"browser_version\":\"120.0.2210.91\",\"os\":\"Windows 11\",\"device\":\"CORP-LAPTOP-0231\",\"site\":\"SharePoint\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-IAD1\",\"org\":\"ACME Corp\",\"bytes_downloaded\":524288000,\"normal_bytes_downloaded\":2048000}",
+      "{\"timestamp\":\"2024-01-15T01:08:34.567Z\",\"alert_name\":\"Unauthorized App Access\",\"alert_type\":\"policy\",\"app\":\"Dropbox\",\"appcat\":\"Cloud Storage\",\"user\":\"unknown\",\"src_ip\":\"203.0.113.45\",\"dst_ip\":\"162.125.7.5\",\"policy\":\"Unsanctioned App Block\",\"action\":\"block\",\"severity\":\"medium\",\"object\":\"\",\"object_type\":\"\",\"file_size\":0,\"url\":\"https://www.dropbox.com/login\",\"browser\":\"Chrome\",\"browser_version\":\"119.0.6045.199\",\"os\":\"Windows 10\",\"device\":\"UNMANAGED-DEVICE\",\"site\":\"Dropbox\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-LAX1\",\"org\":\"ACME Corp\",\"managed_app\":false}",
+      "{\"timestamp\":\"2024-01-15T01:25:09.114Z\",\"alert_name\":\"Credential Compromise Suspected\",\"alert_type\":\"compromised_credential\",\"app\":\"Office 365\",\"appcat\":\"Productivity\",\"user\":\"agarcia@acme.com\",\"src_ip\":\"198.51.100.77\",\"dst_ip\":\"40.97.154.50\",\"policy\":\"Compromised Credential Detection\",\"action\":\"alert\",\"severity\":\"critical\",\"object\":\"\",\"object_type\":\"\",\"url\":\"https://login.microsoftonline.com\",\"browser\":\"Safari\",\"browser_version\":\"17.2\",\"os\":\"iOS 17.2\",\"device\":\"MOBILE-AG-001\",\"site\":\"Office 365\",\"category\":\"Productivity\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"login_type\":\"oauth\",\"location_anomaly\":true,\"prev_location\":\"New York\",\"curr_location\":\"Lagos\"}",
+      "{\"timestamp\":\"2024-01-15T01:51:44.229Z\",\"alert_name\":\"Sensitive File Upload to Personal Cloud\",\"alert_type\":\"dlp\",\"app\":\"Google Drive Personal\",\"appcat\":\"Cloud Storage\",\"user\":\"tbrown@acme.com\",\"src_ip\":\"10.30.4.15\",\"dst_ip\":\"142.250.80.46\",\"policy\":\"Personal Cloud Upload Prevention\",\"action\":\"block\",\"severity\":\"high\",\"object\":\"Q4_FinancialReport_CONFIDENTIAL.xlsx\",\"object_type\":\"File\",\"file_size\":1048576,\"dlp_profile\":\"Financial Data\",\"dlp_rule\":\"CONFIDENTIAL Label\",\"url\":\"https://drive.google.com/upload\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 11\",\"device\":\"CORP-LAPTOP-0089\",\"site\":\"Google Drive Personal\",\"category\":\"Personal Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\"}",
+      "{\"timestamp\":\"2024-01-15T02:14:22.778Z\",\"alert_name\":\"Phishing URL Detected\",\"alert_type\":\"malware\",\"app\":\"Gmail\",\"appcat\":\"Email\",\"user\":\"ljohnson@acme.com\",\"src_ip\":\"172.16.8.201\",\"dst_ip\":\"74.125.197.17\",\"policy\":\"Phishing Prevention\",\"action\":\"block\",\"severity\":\"critical\",\"object\":\"http://acme-secure-login.xyz/verify\",\"object_type\":\"URL\",\"file_size\":0,\"url\":\"http://acme-secure-login.xyz/verify\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"Windows 10\",\"device\":\"CORP-LAPTOP-0167\",\"site\":\"Gmail\",\"category\":\"Webmail\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"threat_type\":\"Phishing\",\"threat_confidence\":\"high\"}",
+      "{\"timestamp\":\"2024-01-15T02:38:55.001Z\",\"alert_name\":\"Bulk File Delete\",\"alert_type\":\"anomaly\",\"app\":\"Box\",\"appcat\":\"Cloud Storage\",\"user\":\"dlee@acme.com\",\"src_ip\":\"10.10.5.33\",\"dst_ip\":\"107.152.24.200\",\"policy\":\"Anomaly Detection - Bulk Delete\",\"action\":\"alert\",\"severity\":\"high\",\"object\":\"\",\"object_type\":\"\",\"file_size\":0,\"url\":\"https://app.box.com\",\"browser\":\"Chrome\",\"browser_version\":\"120.0.6099.130\",\"os\":\"macOS 13.6\",\"device\":\"CORP-MAC-0055\",\"site\":\"Box\",\"category\":\"Cloud Storage\",\"traffic_type\":\"CloudApp\",\"netskope_pop\":\"US-SJC1\",\"org\":\"ACME Corp\",\"files_deleted\":347,\"normal_delete_count\":2}"
+    ],
+    "sourcetype": "netskope_alerts"
+  }
+}

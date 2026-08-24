@@ -1,0 +1,74 @@
+{
+  "key": "ps::__extraction__",
+  "sourcetype": "ps",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:55:34.276Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract JSON fields from raw Zscaler ZPN tunnel log event",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "fields": []
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive standardized timestamp, IP, and status fields from parsed JSON",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "TimestampAuthentication || LogTimestamp"
+          },
+          {
+            "name": "src_ip",
+            "value": "PrivateIP || PublicIP"
+          },
+          {
+            "name": "dst_ip",
+            "value": "PublicIP"
+          },
+          {
+            "name": "action",
+            "value": "SessionStatus"
+          },
+          {
+            "name": "protocol",
+            "value": "'tunnel'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action based on SessionStatus and classify session type",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "SessionStatus && SessionStatus.match(/AUTHENTICATED/) ? 'allowed' : (SessionStatus && SessionStatus.match(/UNAUTHENTICATED/) ? 'denied' : 'unknown')"
+          },
+          {
+            "name": "event_type",
+            "value": "SessionType"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

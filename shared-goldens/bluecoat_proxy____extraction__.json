@@ -1,0 +1,467 @@
+{
+  "key": "bluecoat_proxy::__extraction__",
+  "sourcetype": "bluecoat_proxy",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:36.876Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract proxy HTTP access log fields from raw text.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<date>\\d{4}-\\d{2}-\\d{2})\\s+(?<event_time>\\d{2}:\\d{2}:\\d{2})\\s+(?<duration_ms>\\d+)\\s+(?<client_ip>\\S+)\\s+(?<user>\\S+)\\s+(?<group>\\S+)\\s+(?<auth_method>\\S+)\\s+(?<disposition>\\S+)\\s+\"(?<category>[^\"]*)\"\\s+(?<policy>\\S+)\\s+(?<http_status>\\d+)\\s+(?<cache_result>\\S+)\\s+(?<method>\\S+)\\s+(?<content_type>\\S+)\\s+(?<scheme>\\S+)\\s+(?<host>\\S+)\\s+(?<port>\\d+)\\s+(?<path>\\S+)\\s+(?<query>\\S+)\\s+(?<referrer>\\S+)\\s+\"(?<user_agent>[^\"]*)\"\\s+(?<proxy_ip>\\S+)\\s+(?<bytes_in>\\d+)\\s+(?<bytes_out>\\d+)\\s+(?<exception>\\S+)$/gm"
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert extracted numeric fields used by the target mapping to numbers.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name==='http_status' || name==='bytes_in' || name==='bytes_out' || name==='duration_ms' || name==='port'",
+        "format": "none"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF HTTP Activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "time",
+            "value": "Date.parse(date + 'T' + event_time + 'Z')/1000"
+          },
+          {
+            "name": "http_response",
+            "value": "{}"
+          },
+          {
+            "name": "http_response.code",
+            "value": "http_status"
+          },
+          {
+            "name": "http_response.http_headers",
+            "value": "[{name:'Content-Type', value:content_type}, {name:'User-Agent', value:user_agent}]"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes",
+            "value": "bytes_in!=null && bytes_out!=null ? bytes_in + bytes_out : null"
+          },
+          {
+            "name": "message",
+            "value": "method + ' ' + scheme + '://' + host + ':' + port + path + (query && query !== '-' ? '?' + query : '')"
+          },
+          {
+            "name": "status_code",
+            "value": "cache_result"
+          },
+          {
+            "name": "status_detail",
+            "value": "disposition + ' ' + cache_result"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.date",
+            "value": "date"
+          },
+          {
+            "name": "unmapped.event_time",
+            "value": "event_time"
+          },
+          {
+            "name": "unmapped.duration_ms",
+            "value": "duration_ms"
+          },
+          {
+            "name": "unmapped.client_ip",
+            "value": "client_ip"
+          },
+          {
+            "name": "unmapped.user",
+            "value": "user"
+          },
+          {
+            "name": "unmapped.group",
+            "value": "group"
+          },
+          {
+            "name": "unmapped.auth_method",
+            "value": "auth_method"
+          },
+          {
+            "name": "unmapped.disposition",
+            "value": "disposition"
+          },
+          {
+            "name": "unmapped.category",
+            "value": "category"
+          },
+          {
+            "name": "unmapped.policy",
+            "value": "policy"
+          },
+          {
+            "name": "unmapped.cache_result",
+            "value": "cache_result"
+          },
+          {
+            "name": "unmapped.method",
+            "value": "method"
+          },
+          {
+            "name": "unmapped.content_type",
+            "value": "content_type"
+          },
+          {
+            "name": "unmapped.scheme",
+            "value": "scheme"
+          },
+          {
+            "name": "unmapped.host",
+            "value": "host"
+          },
+          {
+            "name": "unmapped.port",
+            "value": "port"
+          },
+          {
+            "name": "unmapped.path",
+            "value": "path"
+          },
+          {
+            "name": "unmapped.query",
+            "value": "query"
+          },
+          {
+            "name": "unmapped.referrer",
+            "value": "referrer"
+          },
+          {
+            "name": "unmapped.user_agent",
+            "value": "user_agent"
+          },
+          {
+            "name": "unmapped.proxy_ip",
+            "value": "proxy_ip"
+          },
+          {
+            "name": "unmapped.bytes_in",
+            "value": "bytes_in"
+          },
+          {
+            "name": "unmapped.bytes_out",
+            "value": "bytes_out"
+          },
+          {
+            "name": "unmapped.exception",
+            "value": "exception"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract proxy HTTP log fields needed for OCSF HTTP Activity mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_date>\\d{4}-\\d{2}-\\d{2})\\s+/gm",
+        "regexList": [
+          {
+            "regex": "/^\\d{4}-\\d{2}-\\d{2}\\s+(?<event_time>\\d{2}:\\d{2}:\\d{2})\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"(?<url_category>[^\\\"]+)\\\"\\s+-\\s+\\d{3}\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+(?<http_status>\\d{3})\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+(?<http_method>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+\\S+\\s+\\S+\\s+(?<scheme>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+(?<host>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+(?<url_port>\\d+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\d+\\s+(?<url_path>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"[^\\\"]+\\\"\\s+-\\s+\\d{3}\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\d+\\s+\\S+\\s+(?<query_string>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/\\s\\\"(?<user_agent>[^\\\"]+)\\\"\\s+\\S+\\s+\\d+\\s+\\d+\\s+\\S+$/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert extracted numeric HTTP fields to numbers.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name==='http_status' || name==='url_port'",
+        "format": "none"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF HTTP Activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "activity_id",
+            "value": "http_method==='GET'?3:http_method==='POST'?6:http_method==='PUT'?7:http_method==='DELETE'?2:http_method==='HEAD'?4:http_method==='OPTIONS'?5:http_method==='PATCH'?9:http_method==='CONNECT'?1:http_method==='TRACE'?8:99"
+          },
+          {
+            "name": "status_id",
+            "value": "http_status && http_status >= 200 && http_status < 400 ? 1 : (http_status && http_status >= 400 ? 2 : 0)"
+          },
+          {
+            "name": "status",
+            "value": "status_id===1?'Success':status_id===2?'Failure':'Unknown'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "http_request",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "http_method"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "user_agent"
+          },
+          {
+            "name": "http_request.http_headers",
+            "value": "[{name:'User-Agent',value:user_agent}]"
+          },
+          {
+            "name": "http_request.url",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.url.scheme",
+            "value": "scheme"
+          },
+          {
+            "name": "http_request.url.hostname",
+            "value": "host"
+          },
+          {
+            "name": "http_request.url.port",
+            "value": "url_port"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "url_path"
+          },
+          {
+            "name": "http_request.url.query_string",
+            "value": "query_string && query_string !== '-' ? query_string : null"
+          },
+          {
+            "name": "http_request.url.url_string",
+            "value": "query_string && query_string !== '-' ? scheme+'://'+host+':'+url_port+url_path+'?'+query_string : scheme+'://'+host+':'+url_port+url_path"
+          },
+          {
+            "name": "http_request.url.category_ids",
+            "value": "url_category==='Search Engines/Portals'?[40]:url_category==='Business/Economy'?[21]:[0]"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "host"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "url_port"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'dst_endpoint.hostname',type_id:1},{name:'dst_endpoint.port',type_id:11},{name:'http_request.url.url_string',type_id:6},{name:'http_request.user_agent',type_id:16}]"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_date>\\d{4}-\\d{2}-\\d{2})\\s+(?<event_clock>\\d{2}:\\d{2}:\\d{2})\\s+\\d+\\s+(?<client_ip>\\S+)\\s+(?<user_name>\\S+)\\s+\\S+\\s+\\S+\\s+\\S+\\s+\"[^\"]*\"\\s+\\S+\\s+(?<status_code>\\d{3})\\s+(?<cache_result>\\S+)\\s+(?<http_method>\\S+)\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\d+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\"[^\"]*\"\\s+(?<reporter_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\s+/gm"
+      },
+      "id": "regex_extract",
+      "description": "Extract timestamp, client, user, status, method, and reporter fields from proxy access log."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name==='status_code'",
+        "format": "none"
+      },
+      "id": "numerify",
+      "description": "Convert extracted HTTP status code to number for OCSF severity mapping."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "status_code>=500?3:status_code>=400?2:1"
+          },
+          {
+            "name": "type_uid",
+            "value": "http_method==='GET'?400203:http_method==='CONNECT'?400201:http_method==='DELETE'?400202:http_method==='HEAD'?400204:http_method==='OPTIONS'?400205:http_method==='POST'?400206:http_method==='PUT'?400207:http_method==='TRACE'?400208:http_method==='PATCH'?400209:http_method?400299:400200"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "client_ip"
+          },
+          {
+            "name": "src_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "user_name"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "1"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'proxy_http_access'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "event_date+' '+event_clock"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'ProxySG'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Broadcom Symantec'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.ip",
+            "value": "reporter_ip"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "2"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "3"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "cache_result && cache_result.indexOf('TCP')===0 ? 'tcp' : null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "cache_result && cache_result.indexOf('TCP')===0 ? 6 : null"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "client_ip && client_ip.indexOf(':')>=0 ? 6 : 4"
+          }
+        ],
+        "keep": [
+          "severity_id",
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "connection_info.*"
+        ]
+      },
+      "id": "eval",
+      "description": "Create selected OCSF HTTP Activity target schema fields from parsed proxy log values."
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

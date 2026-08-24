@@ -1,0 +1,194 @@
+{
+  "key": "cisco_umbrella::xsiam",
+  "sourcetype": "cisco_umbrella",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:25.568Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "cisco_umbrella → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'cisco umbrella'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_umbrella:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "cisco_umbrella_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "\"2024-01-15 00:03:12\",\"dnssec\",\"blocked\",\"A\",\"malware-c2.badactor.net\",\"198.51.100.42\",\"10.1.5.23\",\"MALWARE\",\"high\",\"Trojan.GenericKD\",\"win10-finance-01\",\"jdoe\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 00:17:45\",\"dns\",\"allowed\",\"A\",\"updates.microsoft.com\",\"20.112.52.29\",\"192.168.1.45\",\"\",\"\",\"\",\"laptop-mkt-07\",\"sarah.johnson\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 00:42:18\",\"proxy\",\"blocked\",\"\",\"http://phishing-bank-secure.xyz/login\",\"203.0.113.88\",\"10.0.2.14\",\"PHISHING\",\"critical\",\"\",\"desktop-hr-03\",\"m.chen\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 01:05:33\",\"dns\",\"allowed\",\"AAAA\",\"ipv6.google.com\",\"2607:f8b0:4004:c07::8b\",\"2001:db8:1::50\",\"\",\"\",\"\",\"macbook-dev-12\",\"r.patel\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 01:28:57\",\"dns\",\"blocked\",\"A\",\"ransomware-payload.darkweb.ru\",\"185.220.101.5\",\"172.16.10.8\",\"RANSOMWARE\",\"critical\",\"Ransom.WannaCry\",\"srv-app-02\",\"svc_backup\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 01:54:22\",\"proxy\",\"allowed\",\"\",\"https://salesforce.com/api/v2/data\",\"13.110.64.153\",\"10.5.1.200\",\"\",\"\",\"\",\"crm-workstation-04\",\"t.williams\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 02:11:09\",\"dns\",\"blocked\",\"A\",\"cryptominer-pool.monero.to\",\"94.102.49.190\",\"10.3.7.15\",\"CRYPTOMINING\",\"high\",\"CoinMiner.Generic\",\"dev-workstation-22\",\"b.nguyen\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      },
+      {
+        "_raw": "\"2024-01-15 02:33:44\",\"dns\",\"allowed\",\"MX\",\"mail.company.com\",\"192.0.2.25\",\"192.168.0.5\",\"\",\"\",\"\",\"mail-server-01\",\"SYSTEM\"",
+        "_time": 1784049721.203,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "cisco umbrella",
+        "__product": "Security",
+        "sourcetype": "cisco_umbrella:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "\"2024-01-15 00:03:12\",\"dnssec\",\"blocked\",\"A\",\"malware-c2.badactor.net\",\"198.51.100.42\",\"10.1.5.23\",\"MALWARE\",\"high\",\"Trojan.GenericKD\",\"win10-finance-01\",\"jdoe\"",
+      "\"2024-01-15 00:17:45\",\"dns\",\"allowed\",\"A\",\"updates.microsoft.com\",\"20.112.52.29\",\"192.168.1.45\",\"\",\"\",\"\",\"laptop-mkt-07\",\"sarah.johnson\"",
+      "\"2024-01-15 00:42:18\",\"proxy\",\"blocked\",\"\",\"http://phishing-bank-secure.xyz/login\",\"203.0.113.88\",\"10.0.2.14\",\"PHISHING\",\"critical\",\"\",\"desktop-hr-03\",\"m.chen\"",
+      "\"2024-01-15 01:05:33\",\"dns\",\"allowed\",\"AAAA\",\"ipv6.google.com\",\"2607:f8b0:4004:c07::8b\",\"2001:db8:1::50\",\"\",\"\",\"\",\"macbook-dev-12\",\"r.patel\"",
+      "\"2024-01-15 01:28:57\",\"dns\",\"blocked\",\"A\",\"ransomware-payload.darkweb.ru\",\"185.220.101.5\",\"172.16.10.8\",\"RANSOMWARE\",\"critical\",\"Ransom.WannaCry\",\"srv-app-02\",\"svc_backup\"",
+      "\"2024-01-15 01:54:22\",\"proxy\",\"allowed\",\"\",\"https://salesforce.com/api/v2/data\",\"13.110.64.153\",\"10.5.1.200\",\"\",\"\",\"\",\"crm-workstation-04\",\"t.williams\"",
+      "\"2024-01-15 02:11:09\",\"dns\",\"blocked\",\"A\",\"cryptominer-pool.monero.to\",\"94.102.49.190\",\"10.3.7.15\",\"CRYPTOMINING\",\"high\",\"CoinMiner.Generic\",\"dev-workstation-22\",\"b.nguyen\"",
+      "\"2024-01-15 02:33:44\",\"dns\",\"allowed\",\"MX\",\"mail.company.com\",\"192.0.2.25\",\"192.168.0.5\",\"\",\"\",\"\",\"mail-server-01\",\"SYSTEM\""
+    ],
+    "sourcetype": "cisco_umbrella"
+  }
+}

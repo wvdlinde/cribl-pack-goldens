@@ -1,0 +1,30 @@
+{
+  "key": "nginx_access::__optimization__",
+  "sourcetype": "nginx_access",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 260,
+  "updated_at": "2026-07-20T09:37:04.875Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "uri === '/health' || uri === '/favicon.ico'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop health checks and favicon requests (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "uri && /\\.(js|css|png|jpg|gif|woff2?|map|svg|ico)$/.test(uri)",
+      "disabled": true,
+      "final": true,
+      "description": "Drop static asset requests (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

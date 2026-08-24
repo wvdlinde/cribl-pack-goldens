@@ -1,0 +1,67 @@
+{
+  "key": "dnf_3::__extraction__",
+  "sourcetype": "dnf_3",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:38:25.182Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host, pid) and leave the KVP body in a scratch field for further parsing",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+dnf\\[(?<pid>\\d+)\\]:\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the remaining key=value pairs (user, src_ip, action, package, repo, gpgcheck, result, msg, url, transaction_id) from the scratch KVP field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized event time, message field, and severity from result",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "C.Time.parse(timestamp, 'MMM d HH:mm:ss')"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "severity",
+            "value": "result === 'failure' ? 'high' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'dnf'"
+          }
+        ],
+        "remove": [
+          "__kvp"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

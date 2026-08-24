@@ -1,0 +1,72 @@
+{
+  "key": "fml_spam::__extraction__",
+  "sourcetype": "fml_spam",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:58:51.799Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the fml_spam event envelope and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>[A-Z][a-z]{2}\\s+[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})\\s+(?<process_name>fml_spam)\\[(?<process_id>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(ACCEPT|REJECT|WARN|ERROR|QUARANTINE)\\s/)",
+      "disabled": false,
+      "description": "Extract spam decision, mail identities, source IP, score, reason, and list",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<__action>ACCEPT|REJECT|WARN|ERROR|QUARANTINE)\\s+sender=<(?<sender>[^>]*)>\\s+recipient=(?<recipient>(?<recipient_local>[^@\\s]+)@(?<dst_host>[^\\s]+))\\s+ip=(?<src_ip>\\S+)\\s+score=(?<__score>-?\\d+(?:\\.\\d+)?)\\s+reason=\"(?<reason>[^\"]*)\"\\s+list=(?<mailing_list>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "__action && __score",
+      "disabled": false,
+      "description": "Normalize action and enrich the parsed mail event",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "__action === 'ACCEPT' ? 'allowed' : __action === 'REJECT' ? 'blocked' : __action === 'QUARANTINE' ? 'quarantined' : __action === 'WARN' ? 'observed' : 'failed'"
+          },
+          {
+            "name": "severity",
+            "value": "__action === 'ERROR' ? 'error' : __action === 'REJECT' || __action === 'QUARANTINE' || __action === 'WARN' ? 'warning' : 'info'"
+          },
+          {
+            "name": "score",
+            "value": "Number(__score)"
+          },
+          {
+            "name": "protocol",
+            "value": "'smtp'"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          }
+        ],
+        "remove": [
+          "__action",
+          "__score"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,159 @@
+{
+  "key": "mcafee_epo_solidcoreevents::__extraction__",
+  "sourcetype": "mcafee_epo_solidcoreevents",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:19:29.992Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp and remaining KVP message from raw Solidcore event line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3} \\d{2} \\d{4} \\d{2}:\\d{2}:\\d{2}) (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the key=value pairs (host, ip, EventID, EventName, Severity, User, etc.) from the message field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize extracted KVP fields into consistent field names for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "ip"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          },
+          {
+            "name": "user",
+            "value": "User"
+          },
+          {
+            "name": "action",
+            "value": "Action"
+          },
+          {
+            "name": "severity",
+            "value": "Severity"
+          },
+          {
+            "name": "event_id",
+            "value": "EventID"
+          },
+          {
+            "name": "event_name",
+            "value": "EventName"
+          },
+          {
+            "name": "object_name",
+            "value": "ObjectName"
+          },
+          {
+            "name": "object_type",
+            "value": "ObjectType"
+          },
+          {
+            "name": "reputation",
+            "value": "Reputation"
+          },
+          {
+            "name": "rule_name",
+            "value": "RuleName"
+          },
+          {
+            "name": "result",
+            "value": "Result"
+          },
+          {
+            "name": "command_line",
+            "value": "CommandLine"
+          },
+          {
+            "name": "sha1",
+            "value": "SHA1"
+          },
+          {
+            "name": "feature",
+            "value": "Feature"
+          },
+          {
+            "name": "policy_name",
+            "value": "PolicyName"
+          },
+          {
+            "name": "device_id",
+            "value": "DeviceID"
+          },
+          {
+            "name": "error_code",
+            "value": "ErrorCode"
+          },
+          {
+            "name": "target_pid",
+            "value": "TargetPID"
+          }
+        ],
+        "remove": [
+          "ip",
+          "host",
+          "User",
+          "Action",
+          "Severity",
+          "EventID",
+          "EventName",
+          "ObjectName",
+          "ObjectType",
+          "Reputation",
+          "RuleName",
+          "Result",
+          "CommandLine",
+          "SHA1",
+          "Feature",
+          "PolicyName",
+          "DeviceID",
+          "ErrorCode",
+          "TargetPID"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive epoch _time from the parsed timestamp string",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

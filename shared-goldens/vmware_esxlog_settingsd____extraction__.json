@@ -1,0 +1,77 @@
+{
+  "key": "vmware_esxlog_settingsd::__extraction__",
+  "sourcetype": "vmware_esxlog_settingsd",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:39:55.239Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base fields: timestamp, host, pid, optional severity, component, and message from settingsd log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+settingsd\\[(?<pid>\\d+)\\]:\\s+(?:(?<severity>warning|error|critical):\\s+)?\\[(?<component>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('from ')",
+      "disabled": false,
+      "description": "Extract source IP (IPv4 or IPv6) when message includes a 'from <ip>' clause",
+      "conf": {
+        "source": "message",
+        "regex": "/from (?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /[Uu]ser '/.test(message)",
+      "disabled": false,
+      "description": "Extract username from messages referencing a quoted user",
+      "conf": {
+        "source": "message",
+        "regex": "/[Uu]ser '(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity default, classify action type, and derive event time",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/authenticated successfully/) ? 'login_success' : message.match(/Authentication failed/) ? 'login_failure' : message.match(/Successfully applied|Applied setting|Applied bulk|updated from/) ? 'config_change' : message.match(/Failed to apply|Failed to write/) ? 'config_change_failure' : message.match(/Persisted setting|Snapshot of host configuration|Configuration reload/) ? 'config_store' : message.match(/Repeated failed attempts/) ? 'brute_force_detected' : 'other'"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

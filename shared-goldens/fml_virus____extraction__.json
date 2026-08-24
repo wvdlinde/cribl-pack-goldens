@@ -1,0 +1,100 @@
+{
+  "key": "fml_virus::__extraction__",
+  "sourcetype": "fml_virus",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:23:55.937Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the FortiMail virus log KVP (key=value) formatted _raw into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, message, sender/recipient, source IP/host, virus and file names, and set protocol context",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "Math.floor(new Date(date+'T'+time).getTime()/1000)"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "sender",
+            "value": "from"
+          },
+          {
+            "name": "recipient",
+            "value": "to"
+          },
+          {
+            "name": "src_ip",
+            "value": "client_name && client_name.match(/^[0-9.]+$/) || client_name && client_name.match(/:/) ? client_name : undefined"
+          },
+          {
+            "name": "src_host",
+            "value": "client_name && !client_name.match(/^[0-9.]+$/) && !client_name.match(/:/) ? client_name : undefined"
+          },
+          {
+            "name": "virus_name",
+            "value": "virus"
+          },
+          {
+            "name": "file_name",
+            "value": "file"
+          },
+          {
+            "name": "protocol",
+            "value": "'smtp'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize FortiMail 'pri' field into a consistent severity level",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "pri==='critical' ? 'critical' : pri==='error' ? 'high' : pri==='warning' ? 'medium' : pri==='information' ? 'low' : 'unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize the action field into standard block/allow/fail semantics per Rule 13",
+      "conf": {
+        "add": [
+          {
+            "name": "action_normalized",
+            "value": "action==='quarantined' ? 'blocked' : action==='rejected' ? 'blocked' : action==='delivery_failed' ? 'failed' : action==='delivered' ? 'allowed' : 'unknown'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

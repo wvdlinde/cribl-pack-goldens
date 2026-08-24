@@ -1,0 +1,30 @@
+{
+  "key": "vmware_esxlog_etcd::cim::__mapping__",
+  "sourcetype": "vmware_esxlog_etcd",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:00:54.878Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map to CIM base fields",
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "host || Computer || hostname || 'unknown'"
+          },
+          {
+            "name": "source",
+            "value": "'vmware_esxlog_etcd'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

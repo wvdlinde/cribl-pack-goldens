@@ -1,0 +1,30 @@
+{
+  "key": "https_request::cim::__mapping__",
+  "sourcetype": "https_request",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:30:44.102Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map to CIM base fields",
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "host || Computer || hostname || 'unknown'"
+          },
+          {
+            "name": "source",
+            "value": "'https_request'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

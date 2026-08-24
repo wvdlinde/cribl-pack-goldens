@@ -1,0 +1,77 @@
+{
+  "key": "pan_system::__extraction__",
+  "sourcetype": "pan_system",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:39:12.256Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"pan_system_syslog\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_syslog_header",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<syslog_priority>\\d+)>(?<syslog_timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<syslog_hostname>\\S+)\\s+(?<__payload>.+)$/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "description": "Fall back to _raw when there is no syslog header to strip",
+      "conf": {
+        "add": [
+          {
+            "name": "__payload",
+            "value": "__payload || _raw"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "parse_csv_fields",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "__payload",
+        "fields": [
+          "future_use_0",
+          "log_time",
+          "serial_number",
+          "type",
+          "content_threat_type",
+          "future_use_1",
+          "log_time",
+          "virtual_system",
+          "event_code",
+          "object",
+          "future_use_2",
+          "future_use_3",
+          "module",
+          "severity",
+          "description",
+          "sequence_number",
+          "action_flags",
+          "device_group_hierarchy_level_1",
+          "device_group_hierarchy_level_2",
+          "device_group_hierarchy_level_3",
+          "device_group_hierarchy_level_4",
+          "virtual_system_name",
+          "host"
+        ],
+        "delimChar": ",",
+        "quoteChar": "\""
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

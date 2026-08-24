@@ -1,0 +1,262 @@
+{
+  "key": "ivanti_linux_secure::cim#network::__mapping__",
+  "sourcetype": "ivanti_linux_secure",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:28:26.699Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "dst_host"
+          },
+          {
+            "name": "dvc",
+            "value": "dst_host"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || 'ssh'"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || 'tcp').toLowerCase()"
+          },
+          {
+            "name": "action",
+            "value": "action == 'success' ? 'allowed' : (action == 'failure' ? 'blocked' : action)"
+          },
+          {
+            "name": "user",
+            "value": "user"
+          },
+          {
+            "name": "app",
+            "value": "process"
+          },
+          {
+            "name": "process_id",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "vendor_account",
+            "value": "auth_method"
+          },
+          {
+            "name": "vendor_action",
+            "value": "severity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_linux_secure'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "src_ip",
+          "dest_ip",
+          "src_port",
+          "dest_port",
+          "protocol",
+          "transport",
+          "action",
+          "application",
+          "bytes_in",
+          "bytes_out",
+          "duration",
+          "rule_name",
+          "src_zone",
+          "dest_zone",
+          "host",
+          "log_time",
+          "_time",
+          "event_type",
+          "src",
+          "dest",
+          "dvc",
+          "user",
+          "app",
+          "process_id",
+          "vendor_account",
+          "vendor_action",
+          "sourcetype",
+          "index",
+          "source",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_raw",
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

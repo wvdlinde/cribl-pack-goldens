@@ -1,0 +1,84 @@
+{
+  "key": "vmware_esxlog_esxtokend::__extraction__",
+  "sourcetype": "vmware_esxlog_esxtokend",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:23:52.880Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base fields: timestamp, hostname, pid, severity, and message from esxtokend log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+esxtokend\\[(?<pid>\\d+)\\]:\\s+\\[(?<severity>\\w+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message !== undefined",
+      "disabled": false,
+      "description": "Extract user field from message, handling both quoted and key=value formats",
+      "conf": {
+        "source": "message",
+        "regex": "/user\\s*=?\\s*'(?<user>[^']*)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message !== undefined",
+      "disabled": false,
+      "description": "Extract IPv4 source address anywhere in the message text",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('[') > -1",
+      "disabled": false,
+      "description": "Extract IPv6 source address enclosed in brackets when present",
+      "conf": {
+        "source": "message",
+        "regex": "/\\[(?<src_ip>[0-9a-fA-F:]+)\\]/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action from message content, normalize severity, and derive _time from timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/issued/i) ? 'token_issued' : message.match(/validation failed/i) ? 'validation_failed' : message.match(/successfully validated/i) ? 'validated' : message.match(/renew/i) ? 'renewal_failed' : message.match(/revoked/i) ? 'revoked' : message.match(/brute force|repeated failed/i) ? 'brute_force_detected' : message.match(/unusual IP/i) ? 'suspicious_request' : message.match(/cache cleared/i) ? 'cache_cleared' : message.match(/malformed|unable to parse/i) ? 'parse_error' : message.match(/clock skew/i) ? 'clock_skew_detected' : message.match(/tampering|signature verification failed/i) ? 'tampering_detected' : message.match(/refresh succeeded/i) ? 'token_refreshed' : message.match(/unreachable/i) ? 'store_unreachable' : 'unknown'"
+          },
+          {
+            "name": "severity_norm",
+            "value": "severity === 'critical' ? 'critical' : severity === 'error' ? 'high' : severity === 'warning' ? 'medium' : 'low'"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

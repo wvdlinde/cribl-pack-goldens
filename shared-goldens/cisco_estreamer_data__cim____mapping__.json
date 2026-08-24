@@ -1,0 +1,146 @@
+{
+  "key": "cisco_estreamer_data::cim::__mapping__",
+  "sourcetype": "cisco_estreamer_data",
+  "dest_format": "cim::__mapping__",
+  "score": 90,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:16:06.739Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ip_address || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toLowerCase()"
+          },
+          {
+            "name": "action",
+            "value": "(action && action.toLowerCase()=='blocked') ? 'blocked' : (action && action.toLowerCase()=='allow') ? 'allowed' : (result=='Success' ? 'allowed' : (result=='Failure' ? 'blocked' : (action || '')))"
+          },
+          {
+            "name": "app",
+            "value": "app || protocol || ''"
+          },
+          {
+            "name": "user",
+            "value": "user || ''"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(initiator_bytes || 0)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(responder_bytes || 0)"
+          },
+          {
+            "name": "url",
+            "value": "url || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "sensor || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-23)",
+      "conf": {
+        "add": [
+          {
+            "name": "signature",
+            "value": "msg || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "sid ? String(sid) : ''"
+          },
+          {
+            "name": "category",
+            "value": "classification || ''"
+          },
+          {
+            "name": "src_mac",
+            "value": "mac_address || ''"
+          },
+          {
+            "name": "os",
+            "value": "os || ''"
+          },
+          {
+            "name": "object",
+            "value": "file_name || ''"
+          },
+          {
+            "name": "rule",
+            "value": "policy || ''"
+          },
+          {
+            "name": "severity",
+            "value": "priority || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco:estreamer:data'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

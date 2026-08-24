@@ -1,0 +1,96 @@
+{
+  "key": "trendmicro_interscan::__extraction__",
+  "sourcetype": "trendmicro_interscan",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:35:18.960Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('CEF:')",
+      "disabled": false,
+      "description": "Parse CEF-formatted InterScan Web Security events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:\\d+\\|(?<vendor>[^|]*)\\|(?<product>[^|]*)\\|(?<version>[^|]*)\\|(?<signature_id>[^|]*)\\|(?<name>[^|]*)\\|(?<severity>[^|]*)\\|.*?src=(?<src_ip>\\S+).*?dst=(?<dst_ip>\\S+).*?dpt=(?<dst_port>\\S+).*?suser=(?<user>\\S+).*?request=(?<url>\\S+).*?act=(?<action>\\S+)(?:.*?cs1Label=(?<cs1_label>\\S+).*?cs1=(?<cs1>\\S+))?(?:.*?cs2Label=(?<cs2_label>\\S+).*?cs2=(?<cs2>\\S+))?(?:.*?cs3Label=(?<cs3_label>\\S+).*?cs3=(?<cs3>\\S+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!_raw.startsWith('CEF:')",
+      "disabled": false,
+      "description": "Parse syslog header for TMCM/text-based InterScan events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^\\S+ \\d+ \\d+ [\\d:]+ (?<host>\\S+) (?<process>\\S+)\\[(?<pid>\\d+)\\]: (?<event_type>\\S+) time=\"(?<timestamp>[^\"]+)\" severity=(?<severity>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message_type=='TMCM_LOG' && protocol && (protocol=='HTTP' || protocol=='HTTPS' || protocol=='FTP')",
+      "disabled": false,
+      "description": "Parse web/ftp proxy fields from TMCM_LOG events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/protocol=(?<protocol>\\S+) action=(?<action>\\S+) src=(?<src_ip>\\S+) dst=(?<dst_ip>\\S+) dport=(?<dst_port>\\d+) user=\"?(?<user>[^\" ]*)\"? url=\"(?<url>[^\"]*)\" reason=\"(?<reason>[^\"]*)\" virus=\"(?<virus>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.indexOf('InterScan_MessagingSecurity')!=-1",
+      "disabled": false,
+      "description": "Parse SMTP/messaging security fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/protocol=(?<protocol>\\S+) action=(?<action>\\S+) sender=(?<sender>\\S+) recipient=(?<recipient>\\S+) subject=\"(?<subject>[^\"]*)\" virus=\"(?<virus>[^\"]*)\" reason=\"(?<reason>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.indexOf('InterScan_Management')!=-1",
+      "disabled": false,
+      "description": "Parse admin login failure events",
+      "conf": {
+        "source": "_raw",
+        "regex": "/admin_user=(?<admin_user>\\S+) src=(?<src_ip>\\S+) reason=\"(?<reason>[^\"]*)\" attempts=(?<attempts>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action/severity and derive message field",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : (event_type=='LOGIN_FAILED' ? 'failed' : undefined)"
+          },
+          {
+            "name": "message",
+            "value": "subject ? subject : (url ? url : (reason ? reason : _raw))"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : undefined"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

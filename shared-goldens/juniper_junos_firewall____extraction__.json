@@ -1,0 +1,56 @@
+{
+  "key": "juniper_junos_firewall::__extraction__",
+  "sourcetype": "juniper_junos_firewall",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:25:42.156Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"vmware_nsx_firewall_syslog\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_rfc5424",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<version>\\d+)\\s+(?<syslog_timestamp>\\S+)\\s+(?<hostname>\\S+)\\s+(?<app_name>\\S+)\\s+(?<procid>\\S+)\\s+(?<msgid>\\S+)\\s+(?<structured_data>\\[[^\\]]*\\]|-)(?:\\s+(?<message>.+))?$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_structured_data",
+      "conf": {
+        "source": "structured_data",
+        "regex": "/^\\[(?<sd_id>[^\\s\\]]+)\\s+(?<sd_kvp_payload>[^\\]]*)\\]$/"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "parse_sd_kvps",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "sd_kvp_payload",
+        "delimChar": " ",
+        "pairDelim": "=",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_firewall_message",
+      "conf": {
+        "source": "message",
+        "regex": "/^<(?<fw_subtype>\\d+)\\s+(?<fw_session_id>[^>]+)>\\s+(?<ip_family>\\S+)\\s+(?<reason>\\S+)\\s+(?<action>\\S+)\\s+(?<rule_id>\\d+)\\s+(?<direction>\\S+)(?:\\s+(?<bytes>\\d+))?\\s+(?<protocol>\\S+)\\s+(?<src_ip>(?:\\d{1,3}(?:\\.\\d{1,3}){3}|[0-9A-Fa-f:.]+))\\/(?<src_port>\\d+)->(?<dest_ip>(?:\\d{1,3}(?:\\.\\d{1,3}){3}|[0-9A-Fa-f:.]+))\\/(?<dest_port>\\d+)(?:\\s+(?<tcp_flags>\\S+))?$/"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

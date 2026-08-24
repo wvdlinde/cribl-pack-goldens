@@ -1,0 +1,126 @@
+{
+  "key": "jira_security::cim::__mapping__",
+  "sourcetype": "jira_security",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:34:09.033Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "src",
+            "value": "ip || ''"
+          },
+          {
+            "name": "user",
+            "value": "actor && actor.username || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "actor && actor.username || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "action",
+            "value": "outcome == 'SUCCESS' ? 'success' : (outcome == 'BLOCKED' ? 'blocked' : (outcome == 'FAILURE' ? 'failure' : outcome))"
+          },
+          {
+            "name": "signature",
+            "value": "eventType || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "eventType || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionId || ''"
+          },
+          {
+            "name": "severity",
+            "value": "(level || '').toLowerCase()"
+          },
+          {
+            "name": "object",
+            "value": "issueKey || project || ''"
+          },
+          {
+            "name": "dest_user",
+            "value": "changes && changes.grantee || ''"
+          },
+          {
+            "name": "category",
+            "value": "eventType && eventType.indexOf('user.login') === 0 ? 'Authentication' : (eventType && eventType.indexOf('account.') === 0 ? 'Account' : 'Application')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_product",
+            "value": "'Atlassian Jira'"
+          },
+          {
+            "name": "app",
+            "value": "'Jira'"
+          },
+          {
+            "name": "authentication_method",
+            "value": "reason && reason.indexOf('threshold') === -1 ? 'password' : ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'jira_security'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

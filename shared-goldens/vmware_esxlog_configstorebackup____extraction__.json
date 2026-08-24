@@ -1,0 +1,88 @@
+{
+  "key": "vmware_esxlog_configstorebackup::__extraction__",
+  "sourcetype": "vmware_esxlog_configstorebackup",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:44:23.419Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base ESXi ConfigStoreBackup log structure: timestamp, host, pid, sub-component, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<esxi_host>\\S+)\\s+ConfigStoreBackup\\[(?<pid>\\d+)\\]:\\s+\\[Originator@\\d+\\s+sub=(?<sub_component>\\S+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/from (\\d{1,3}(?:\\.\\d{1,3}){3})/)",
+      "disabled": false,
+      "description": "Extract source IP address when message references a triggering/originating IP",
+      "conf": {
+        "source": "message",
+        "regex": "/from (?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Notifying vpxd')",
+      "disabled": false,
+      "description": "Extract destination host and port when backup process notifies vCenter of failure",
+      "conf": {
+        "source": "message",
+        "regex": "/to (?<dst_host>[\\w.-]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('User ')",
+      "disabled": false,
+      "description": "Extract user field for manual backup initiation events",
+      "conf": {
+        "source": "message",
+        "regex": "/^User (?<user>\\S+) initiated/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive severity, action, and protocol/direction fields from message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.startsWith('CRITICAL') ? 'critical' : message.startsWith('ERROR') ? 'error' : message.startsWith('WARNING') ? 'warning' : message.match(/denied|Suspicious/) ? 'warning' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/completed successfully|completed,/) ? 'success' : message.match(/Failed|failed|Unable to acquire lock/) ? 'failure' : message.match(/denied|insufficient privileges/) ? 'denied' : message.match(/Suspicious/) ? 'suspicious' : message.match(/skipped/) ? 'skipped' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.match(/SOAP event channel/) ? 'soap' : message.match(/hostd API/) ? 'https' : message.match(/internal API/) ? 'http' : 'none'"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? 'inbound' : (dst_host ? 'outbound' : 'unknown')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

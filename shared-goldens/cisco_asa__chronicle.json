@@ -1,0 +1,374 @@
+{
+  "key": "cisco_asa::chronicle",
+  "sourcetype": "cisco_asa",
+  "dest_format": "chronicle",
+  "score": 93,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-15T11:25:05.011Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "cisco_asa to UDM pipeline.\nParses events, drops noise, maps to UDM schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "_raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/) ? _raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/)[1] : null"
+          },
+          {
+            "name": "asa_code",
+            "value": "_raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/) ? _raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/)[1] : null"
+          },
+          {
+            "name": "event_code",
+            "value": "asa_code || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/) ? Date.parse(_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/)[1]) / 1000 : undefined"
+          },
+          {
+            "name": "host",
+            "value": "_raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/) ? _raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/)[1] : undefined"
+          }
+        ]
+      },
+      "description": "Extract severity, message code, timestamp, and device host from the syslog header (%ASA-/%FTD-)"
+    },
+    {
+      "id": "lookup",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "matchMode": "exact",
+        "reloadPeriodSec": 60,
+        "addToEvent": false,
+        "ignoreCase": false,
+        "inFields": [
+          {
+            "eventField": "asa_code",
+            "lookupField": "asa_code"
+          }
+        ],
+        "outFields": [
+          {
+            "lookupField": "regex",
+            "eventField": "__regex"
+          }
+        ],
+        "file": "cisco_asa_parsing.csv"
+      },
+      "description": "Fetch the per-code extraction regex for this code (184 codes)"
+    },
+    {
+      "id": "eval",
+      "filter": "__regex && _raw.match(__regex)",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "groups",
+            "value": "_raw.match(__regex).groups"
+          },
+          {
+            "name": "",
+            "value": "Object.assign(__e, groups)"
+          }
+        ],
+        "remove": [
+          "groups",
+          "__regex"
+        ]
+      },
+      "description": "Apply the code-specific regex and spread its named groups onto the event"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "transport",
+            "value": "transport ? transport.toLowerCase() : (icmp_type != null || icmp_code != null) ? 'icmp' : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || (_raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i) ? _raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i)[1] : undefined)"
+          },
+          {
+            "name": "user",
+            "value": "src_nt_domain ? src_nt_domain + '\\\\' + (src_user || '') : src_user || src_sg_info || user || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_interface || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_interface || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration_hour != null ? Number(duration_hour) * 3600 + Number(duration_minute) * 60 + Number(duration_second) : undefined"
+          },
+          {
+            "name": "icmp_type",
+            "value": "/icmp/i.test(String(transport)) ? icmp_type : undefined"
+          },
+          {
+            "name": "icmp_code",
+            "value": "/icmp/i.test(String(transport)) ? icmp_code : undefined"
+          }
+        ]
+      },
+      "description": "Alias per-code fields to CIM canonical names + fallback action verb"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "message_id == '302013' || message_id == '302015'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop connection build/teardown events (302013/302015) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "message_id == '106100' && action == 'Permitted'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine ACL permit events (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to UDM schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden UDM mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "product",
+            "value": "'ASA'"
+          },
+          {
+            "name": "version",
+            "value": "'9.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "principal",
+            "value": "{}"
+          },
+          {
+            "name": "principal.user",
+            "value": "{}"
+          },
+          {
+            "name": "target",
+            "value": "{}"
+          },
+          {
+            "name": "network",
+            "value": "{}"
+          },
+          {
+            "name": "security_result",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.event_type",
+            "value": "('NETWORK_CONNECTION') != null && String('NETWORK_CONNECTION') != 'undefined' && String('NETWORK_CONNECTION') != 'null' && String('NETWORK_CONNECTION') != '-' && String('NETWORK_CONNECTION') != '' ? ('NETWORK_CONNECTION') : undefined"
+          },
+          {
+            "name": "metadata.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "metadata.product_name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "principal.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "principal.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "principal.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "principal.user.userid",
+            "value": "(src_user || user) != null && String(src_user || user) != 'undefined' && String(src_user || user) != 'null' && String(src_user || user) != '-' && String(src_user || user) != '' ? (src_user || user) : undefined"
+          },
+          {
+            "name": "target.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "target.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → Google Chronicle UDM"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "network.ip_protocol",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "network.sent_bytes",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "network.received_bytes",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "security_result.action",
+            "value": "(/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') != null && String(/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') != 'undefined' && String(/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') != 'null' && String(/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') != '-' && String(/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') != '' ? (/deny|drop|block|denied/i.test(String(action)) ? 'BLOCK' : 'ALLOW') : undefined"
+          },
+          {
+            "name": "security_result.rule_name",
+            "value": "(rule_id || access_group || acl_name) != null && String(rule_id || access_group || acl_name) != 'undefined' && String(rule_id || access_group || acl_name) != 'null' && String(rule_id || access_group || acl_name) != '-' && String(rule_id || access_group || acl_name) != '' ? (rule_id || access_group || acl_name) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_asa:chronicle'"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "metadata",
+          "metadata.*",
+          "principal",
+          "principal.*",
+          "target",
+          "target.*",
+          "network",
+          "network.*",
+          "security_result",
+          "security_result.*"
+        ]
+      },
+      "description": "Keep only Google Chronicle UDM fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "network.received_bytes",
+        "issue": "OCSF field \"network.received_bytes\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "network.received_bytes"
+    ],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}

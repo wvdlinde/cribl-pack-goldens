@@ -1,0 +1,97 @@
+{
+  "key": "clearswift_email_syslog::__extraction__",
+  "sourcetype": "clearswift_email_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:44:48.590Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, process, pid) and isolate the CSSEG key-value message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+CSSEG\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract Clearswift key=value pairs (severity, action, policy, from, to, subject, size, sourceip, destip, direction, reason, virus, msgid, result, etc.) from the message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "kvDelim": "=",
+        "pairDelim": " ",
+        "quoteChar": "\"",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize sender/recipient addresses, derive user, IPs, dst_host, protocol and action classification fields",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "from ? from.replace(/[<>]/g,'') : (sourceuser ? sourceuser : null)"
+          },
+          {
+            "name": "recipient",
+            "value": "to ? to.replace(/[<>]/g,'') : null"
+          },
+          {
+            "name": "src_ip",
+            "value": "sourceip ? sourceip : null"
+          },
+          {
+            "name": "dst_ip",
+            "value": "destip ? destip : null"
+          },
+          {
+            "name": "dst_host",
+            "value": "recipient && recipient.indexOf('@')>-1 ? recipient.split('@')[1] : null"
+          },
+          {
+            "name": "protocol",
+            "value": "tlsversion ? 'TLS' : 'SMTP'"
+          },
+          {
+            "name": "action_normalized",
+            "value": "action==='DELIVERED' ? 'allow' : action==='RELAYED' ? 'allow' : action==='TLS_NEGOTIATED' ? 'allow' : action==='QUARANTINED' ? 'quarantine' : action==='SPAM_DETECTED' ? 'quarantine' : action==='REJECTED' ? 'block' : action==='BLOCKED' ? 'block' : action==='CONTENT_BLOCKED' ? 'block' : action==='DELIVERY_FAILED' ? 'fail' : action==='AUTH_FAILED' ? 'fail' : 'unknown'"
+          },
+          {
+            "name": "direction",
+            "value": "direction ? direction : null"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "severity",
+      "disabled": false,
+      "description": "Standardize severity casing for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,1146 @@
+{
+  "key": "palo_alto_threat::ocsf",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "ocsf",
+  "score": 82,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:01.059Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "palo_alto_threat to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "syslog_time",
+          "device_hostname",
+          "log_type",
+          "threat_content_type",
+          "future_use1",
+          "generated_time",
+          "src_ip",
+          "dest_ip",
+          "nat_src_ip",
+          "nat_dest_ip",
+          "rule_name",
+          "src_user",
+          "dest_user",
+          "application",
+          "virtual_system",
+          "src_zone",
+          "dest_zone",
+          "inbound_if",
+          "outbound_if",
+          "log_action",
+          "future_use2",
+          "session_id",
+          "repeat_count",
+          "src_port",
+          "dest_port",
+          "nat_src_port",
+          "nat_dest_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_name",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "src_location",
+          "dest_location",
+          "future_use4",
+          "bytes_in",
+          "bytes_out"
+        ]
+      },
+      "description": "Parse PAN-OS CSV threat log with named columns"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(generated_time).getTime() / 1000"
+          },
+          {
+            "name": "time",
+            "value": "new Date(generated_time).getTime()"
+          },
+          {
+            "name": "class_uid",
+            "value": "4004"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action == 'block-url' || action == 'drop' || action == 'reset-both' || action == 'reset-client' || action == 'reset-server') ? 2 : (action == 'allow') ? 1 : 0"
+          },
+          {
+            "name": "type_uid",
+            "value": "4004 * 100 + ((action == 'block-url' || action == 'drop' || action == 'reset-both' || action == 'reset-client' || action == 'reset-server') ? 2 : (action == 'allow') ? 1 : 0)"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity == 'critical') ? 5 : (severity == 'high') ? 4 : (severity == 'medium') ? 3 : (severity == 'low') ? 2 : (severity == 'informational') ? 1 : 0"
+          },
+          {
+            "name": "severity",
+            "value": "(severity == 'critical') ? 'Critical' : (severity == 'high') ? 'High' : (severity == 'medium') ? 'Medium' : (severity == 'low') ? 'Low' : (severity == 'informational') ? 'Informational' : 'Unknown'"
+          },
+          {
+            "name": "action",
+            "value": "(action == 'block-url' || action == 'drop' || action == 'reset-both' || action == 'reset-client' || action == 'reset-server') ? 'Denied' : (action == 'allow') ? 'Allowed' : action"
+          },
+          {
+            "name": "disposition_id",
+            "value": "(action == 'Denied') ? 2 : (action == 'Allowed') ? 1 : 0"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "Number(src_port)"
+          },
+          {
+            "name": "src_endpoint.zone",
+            "value": "src_zone"
+          },
+          {
+            "name": "src_endpoint.interface",
+            "value": "inbound_if"
+          },
+          {
+            "name": "src_endpoint.nat_ip",
+            "value": "nat_src_ip"
+          },
+          {
+            "name": "src_endpoint.nat_port",
+            "value": "Number(nat_src_port)"
+          },
+          {
+            "name": "src_endpoint.location",
+            "value": "src_location"
+          }
+        ]
+      },
+      "description": "OCSF core fields and src_endpoint"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dest_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dest_port)"
+          },
+          {
+            "name": "dst_endpoint.zone",
+            "value": "dest_zone"
+          },
+          {
+            "name": "dst_endpoint.interface",
+            "value": "outbound_if"
+          },
+          {
+            "name": "dst_endpoint.nat_ip",
+            "value": "nat_dest_ip"
+          },
+          {
+            "name": "dst_endpoint.nat_port",
+            "value": "Number(nat_dest_port)"
+          },
+          {
+            "name": "dst_endpoint.location",
+            "value": "dest_location"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol"
+          },
+          {
+            "name": "connection_info.direction",
+            "value": "direction"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "(direction == 'client-to-server') ? 1 : (direction == 'server-to-client') ? 2 : 0"
+          },
+          {
+            "name": "connection_info.boundary",
+            "value": "application"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in != null && bytes_in !== '' && bytes_in !== '-') ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out != null && bytes_out !== '' && bytes_out !== '-') ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(src_user != null && src_user !== '' && src_user !== '-') ? src_user : undefined"
+          }
+        ]
+      },
+      "description": "dst_endpoint, connection_info, traffic, actor"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.hostname",
+            "value": "device_hostname"
+          },
+          {
+            "name": "device.name",
+            "value": "device_hostname"
+          },
+          {
+            "name": "device.uid",
+            "value": "(virtual_system != null && virtual_system !== '' && virtual_system !== '-') ? virtual_system : undefined"
+          },
+          {
+            "name": "app",
+            "value": "application"
+          },
+          {
+            "name": "category_name",
+            "value": "threat_content_type"
+          },
+          {
+            "name": "threat_name",
+            "value": "threat_name"
+          },
+          {
+            "name": "finding",
+            "value": "{}"
+          },
+          {
+            "name": "finding.title",
+            "value": "threat_name"
+          },
+          {
+            "name": "finding.desc",
+            "value": "category"
+          },
+          {
+            "name": "finding.uid",
+            "value": "sequence_number"
+          },
+          {
+            "name": "attacks",
+            "value": "{}"
+          },
+          {
+            "name": "attacks.technique",
+            "value": "{}"
+          },
+          {
+            "name": "attacks.technique.name",
+            "value": "threat_name"
+          },
+          {
+            "name": "attacks.technique.uid",
+            "value": "category"
+          },
+          {
+            "name": "firewall_rule",
+            "value": "{}"
+          },
+          {
+            "name": "firewall_rule.name",
+            "value": "rule_name"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'palo_alto_threat:ocsf'"
+          }
+        ]
+      },
+      "description": "device, finding, attacks, app, metadata"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "sourcetype",
+          "class_uid",
+          "category_uid",
+          "activity_id",
+          "type_uid",
+          "severity_id",
+          "severity",
+          "time",
+          "action",
+          "disposition_id",
+          "app",
+          "category_name",
+          "threat_name",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "finding",
+          "finding.*",
+          "attacks",
+          "attacks.*",
+          "firewall_rule",
+          "firewall_rule.*"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "palo_alto_threat_ocsf",
+    "destFormat": "ocsf",
+    "score": 34,
+    "band": "fail",
+    "sampleFormatOk": true,
+    "sampleFormatNote": "Real Palo Alto Networks PAN-OS THREAT log format (CSV), containing vulnerability, spyware, virus, wildfire-virus, url-filtering sub-types with expected fields.",
+    "outputFormatOk": false,
+    "findings": [
+      {
+        "severity": "high",
+        "field": "severity_id / severity",
+        "issue": "severity_id is hardcoded to 0 ('Unknown') for every event despite severity being explicitly present in the source (critical=5, high=4, medium=3, low=2). severity field also always reads 'Unknown'. This is a complete mapping failure for a populated source field.",
+        "example": "source='critical' → severity_id=0, severity='Unknown'"
+      },
+      {
+        "severity": "high",
+        "field": "finding.uid",
+        "issue": "finding.uid is populated with the threat flags hex string (0x2000000000000000) instead of the threat name/ID (e.g. 'CVE-2021-44228-Log4Shell-Exploit'). The actual threat ID is present in the source.",
+        "example": "source threat_id='CVE-2021-44228-Log4Shell-Exploit' → finding.uid='0x2000000000000000'"
+      },
+      {
+        "severity": "high",
+        "field": "finding.desc",
+        "issue": "finding.desc is set to the severity string (e.g. 'critical') instead of any meaningful description. The threat description is already in finding.title, making desc a mis-mapped duplicate of the severity field.",
+        "example": "finding.desc='critical' (should be descriptive text or omitted)"
+      },
+      {
+        "severity": "high",
+        "field": "attacks.technique.uid",
+        "issue": "attacks.technique.uid is set to the severity string (e.g. 'critical', 'high') instead of the CVE or threat signature ID from the source.",
+        "example": "source='CVE-2021-44228-Log4Shell-Exploit' → attacks.technique.uid='critical'"
+      },
+      {
+        "severity": "high",
+        "field": "attacks.technique.name",
+        "issue": "attacks.technique.name duplicates finding.title (the threat description) rather than using the actual threat/signature name (e.g. 'CVE-2021-44228-Log4Shell-Exploit') which is the proper MITRE technique identifier.",
+        "example": "attacks.technique.name='Apache Log4j Remote Code Execution' (threat_name field used instead of threat_id/signature name)"
+      },
+      {
+        "severity": "high",
+        "field": "connection_info.direction / direction_id",
+        "issue": "direction is set to the raw sequence/log number (e.g. '1','2','3') instead of the actual direction value from the source ('client-to-server' or 'server-to-client'). direction_id is always 0 regardless of source value.",
+        "example": "source='client-to-server' → direction='1', direction_id=0"
+      },
+      {
+        "severity": "high",
+        "field": "action / disposition_id / activity_id",
+        "issue": "action is mapped only as 'Denied' or 'alert' but ignores source actions like 'reset-both', 'drop', 'block-url'. disposition_id does not correctly enumerate all PAN-OS actions. 'alert' maps to disposition_id=0 (Unknown) rather than an alert/detected disposition.",
+        "example": "source action='reset-both' → action='Denied', disposition_id=2; source='alert' → action='alert', disposition_id=0"
+      },
+      {
+        "severity": "high",
+        "field": "dst_endpoint.location",
+        "issue": "dst_endpoint.location is always '0' (a raw field value) instead of the destination country from the source (e.g. 'United States', 'Germany', 'China').",
+        "example": "source dst_country='United States' → dst_endpoint.location='0'"
+      },
+      {
+        "severity": "high",
+        "field": "traffic.bytes_in",
+        "issue": "traffic.bytes_in is populated with what appears to be a sequential log counter (2, 3, 4, 5…) not an actual byte count. The source does not carry bytes fields but this field is being incorrectly populated with an unrelated counter value.",
+        "example": "event 1: bytes_in=2, event 2: bytes_in=3 (matches trailing counter field, not a real byte count)"
+      },
+      {
+        "severity": "high",
+        "field": "connection_info.boundary",
+        "issue": "connection_info.boundary is set to the application name (e.g. 'ssl', 'web-browsing', 'ftp') rather than a network boundary indicator. The app is already correctly captured in the top-level 'app' field.",
+        "example": "boundary='ssl' (duplicates app field; not a boundary concept)"
+      },
+      {
+        "severity": "medium",
+        "field": "src_endpoint.port",
+        "issue": "src_endpoint.port is populated with the source port from the log (54321 for event 1 is correct), but in several events it appears the NAT source port field is used instead of the actual source port.",
+        "example": "event 2: src port=49201 matches both sport and natsport fields — ambiguous but likely correct"
+      },
+      {
+        "severity": "medium",
+        "field": "dst_endpoint.location",
+        "issue": "Source destination country (e.g. 'United States', 'Germany') is present but not mapped to dst_endpoint.location or any geolocation field.",
+        "example": "source='United States' → dst_endpoint.location='0'"
+      },
+      {
+        "severity": "medium",
+        "field": "type_uid",
+        "issue": "type_uid is derived from activity_id (400402, 400400) but activity_id mapping is incorrect, making type_uid also incorrect for 'alert' events.",
+        "example": "type_uid=400400 for 'alert' action (activity_id=0 = Unknown)"
+      },
+      {
+        "severity": "medium",
+        "field": "category_name",
+        "issue": "category_name uses the PAN-OS sub-type (e.g. 'vulnerability', 'spyware', 'virus') which is a valid enrichment but should map to OCSF category_name='Network Activity' or 'Findings' per class_uid=4004, not the PA sub-type.",
+        "example": "category_name='vulnerability' (OCSF class 4004 category_name should be 'Findings')"
+      },
+      {
+        "severity": "low",
+        "field": "actor.user",
+        "issue": "actor.user is always an empty object {}. While PAN-OS threat logs don't carry user info, the empty object adds noise and is not OCSF-compliant (should be omitted if absent).",
+        "example": "actor: { user: {} }"
+      },
+      {
+        "severity": "low",
+        "field": "metadata.version",
+        "issue": "metadata.version should be the log schema version or PAN-OS version, not the OCSF schema version '1.4.0'. The '1' (sequence number) in the source is not a PAN-OS version either.",
+        "example": "metadata.version='1.4.0'"
+      }
+    ],
+    "missingFields": [
+      "severity_id (value present: critical/high/medium/low — never mapped)",
+      "finding.uid (should be threat signature ID e.g. CVE-2021-44228-Log4Shell-Exploit)",
+      "attacks.technique.uid (should be threat/CVE ID)",
+      "connection_info.direction (should be client-to-server/server-to-client string)",
+      "dst_endpoint.location (destination country e.g. United States, Germany)",
+      "action raw value (reset-both, drop, block-url, alert — not fully represented)"
+    ],
+    "emptyFields": [
+      "actor.user (always empty object)",
+      "src_endpoint.nat_port (always 0 — source value is 0 so technically correct but structurally empty)",
+      "dst_endpoint.nat_port (always 0)"
+    ],
+    "summary": "The pipeline produces structurally recognizable OCSF 4004 (Detection Finding) events but has critical mapping failures across multiple high-value fields. Most severely: severity_id is hardcoded to 0/Unknown despite explicit severity values in every source event; the threat signature ID is never captured into finding.uid or attacks.technique.uid; destination country is dropped entirely; connection direction is replaced by a sequence counter; and the action/disposition mapping is incomplete. Only about one-third of the available source information is correctly extracted and mapped, with several fields mis-mapped or populated with wrong source values.",
+    "lessons": [
+      "Always build a severity string-to-OCSF severity_id lookup table (critical=5, high=4, medium=3, low=2, informational=1) before mapping — never default everything to 0/Unknown when the source field is populated.",
+      "Palo Alto threat logs carry both a threat_name (human description) and a threat_id/signature_name (CVE or signature string) — map the signature ID to finding.uid and attacks.technique.uid, not the description string.",
+      "The PAN-OS 'direction' field ('client-to-server', 'server-to-client') must be mapped to OCSF direction/direction_id, not confused with the sequential log counter in an adjacent CSV column.",
+      "Always map destination country (separate CSV column) to dst_endpoint.location.name or geo equivalent — do not leave it as the raw '0' placeholder field.",
+      "connection_info.boundary is an OCSF network boundary concept (internal/external), not the application layer protocol — do not reuse the app/application name for this field.",
+      "Validate that trailing CSV counter fields (repeating sequence numbers) are never mapped to traffic byte count fields — byte counts should only be populated when actual byte values exist in the source."
+    ],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_time": 1705284873,
+        "action": "Denied",
+        "threat_name": "Apache Log4j Remote Code Execution",
+        "severity": "Unknown",
+        "time": 1705284873000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "10.10.5.22",
+          "port": 54321,
+          "zone": "Trust",
+          "interface": "ethernet1/1",
+          "nat_ip": "10.10.5.1",
+          "nat_port": 0,
+          "location": "10.0.0.0-10.255.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "185.220.101.45",
+          "port": 443,
+          "zone": "Untrust",
+          "interface": "ethernet1/2",
+          "nat_ip": "185.220.101.45",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "1",
+          "direction_id": 0,
+          "boundary": "ssl"
+        },
+        "traffic": {
+          "bytes_in": 2
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "company-fw01",
+          "name": "company-fw01",
+          "uid": "vsys1"
+        },
+        "app": "ssl",
+        "category_name": "vulnerability",
+        "finding": {
+          "title": "Apache Log4j Remote Code Execution",
+          "desc": "critical",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "Apache Log4j Remote Code Execution",
+            "uid": "critical"
+          }
+        },
+        "firewall_rule": {
+          "name": "Outbound-Internet"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705290432,
+        "action": "alert",
+        "threat_name": "TrickBot Command and Control Communication",
+        "severity": "Unknown",
+        "time": 1705290432000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 0,
+        "type_uid": 400400,
+        "severity_id": 0,
+        "disposition_id": 0,
+        "src_endpoint": {
+          "ip": "192.168.1.105",
+          "port": 49201,
+          "zone": "Trust",
+          "interface": "ethernet1/3",
+          "nat_ip": "192.168.1.1",
+          "nat_port": 0,
+          "location": "192.168.0.0-192.168.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "45.33.32.156",
+          "port": 80,
+          "zone": "Untrust",
+          "interface": "ethernet1/1",
+          "nat_ip": "45.33.32.156",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "2",
+          "direction_id": 0,
+          "boundary": "web-browsing"
+        },
+        "traffic": {
+          "bytes_in": 3
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "branch-fw03",
+          "name": "branch-fw03",
+          "uid": "vsys1"
+        },
+        "app": "web-browsing",
+        "category_name": "spyware",
+        "finding": {
+          "title": "TrickBot Command and Control Communication",
+          "desc": "high",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "TrickBot Command and Control Communication",
+            "uid": "high"
+          }
+        },
+        "firewall_rule": {
+          "name": "Corp-LAN"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705292575,
+        "action": "Denied",
+        "threat_name": "Emotet Malware FTP Download Attempt",
+        "severity": "Unknown",
+        "time": 1705292575000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "172.16.20.88",
+          "port": 21045,
+          "zone": "DMZ",
+          "interface": "ethernet1/4",
+          "nat_ip": "172.16.20.1",
+          "nat_port": 0,
+          "location": "172.16.0.0-172.16.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.72",
+          "port": 21,
+          "zone": "Untrust",
+          "interface": "ethernet1/2",
+          "nat_ip": "203.0.113.72",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "3",
+          "direction_id": 0,
+          "boundary": "ftp"
+        },
+        "traffic": {
+          "bytes_in": 4
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "corp-fw02",
+          "name": "corp-fw02",
+          "uid": "vsys1"
+        },
+        "app": "ftp",
+        "category_name": "virus",
+        "finding": {
+          "title": "Emotet Malware FTP Download Attempt",
+          "desc": "critical",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "Emotet Malware FTP Download Attempt",
+            "uid": "critical"
+          }
+        },
+        "firewall_rule": {
+          "name": "Internal-DMZ"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705295024,
+        "action": "Denied",
+        "threat_name": "Unknown Ransomware Payload Detected by WildFire",
+        "severity": "Unknown",
+        "time": 1705295024000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "10.50.3.14",
+          "port": 25019,
+          "zone": "Trust",
+          "interface": "ethernet1/5",
+          "nat_ip": "10.50.3.1",
+          "nat_port": 0,
+          "location": "10.0.0.0-10.255.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.89",
+          "port": 25,
+          "zone": "Untrust",
+          "interface": "ethernet1/2",
+          "nat_ip": "198.51.100.89",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "4",
+          "direction_id": 0,
+          "boundary": "smtp"
+        },
+        "traffic": {
+          "bytes_in": 5
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "edge-fw04",
+          "name": "edge-fw04",
+          "uid": "vsys1"
+        },
+        "app": "smtp",
+        "category_name": "wildfire-virus",
+        "finding": {
+          "title": "Unknown Ransomware Payload Detected by WildFire",
+          "desc": "critical",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "Unknown Ransomware Payload Detected by WildFire",
+            "uid": "critical"
+          }
+        },
+        "firewall_rule": {
+          "name": "Server-Farm"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705299308,
+        "action": "Denied",
+        "threat_name": "Malware Distribution URL Blocked",
+        "severity": "Unknown",
+        "time": 1705299308000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "10.10.8.33",
+          "port": 34567,
+          "zone": "Trust",
+          "interface": "ethernet1/1",
+          "nat_ip": "10.10.8.1",
+          "nat_port": 0,
+          "location": "10.0.0.0-10.255.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "104.21.45.67",
+          "port": 80,
+          "zone": "Untrust",
+          "interface": "ethernet1/2",
+          "nat_ip": "104.21.45.67",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "5",
+          "direction_id": 0,
+          "boundary": "web-browsing"
+        },
+        "traffic": {
+          "bytes_in": 6
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "company-fw01",
+          "name": "company-fw01",
+          "uid": "vsys1"
+        },
+        "app": "web-browsing",
+        "category_name": "url-filtering",
+        "finding": {
+          "title": "Malware Distribution URL Blocked",
+          "desc": "high",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "Malware Distribution URL Blocked",
+            "uid": "high"
+          }
+        },
+        "firewall_rule": {
+          "name": "Corp-Users"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705303819,
+        "action": "Denied",
+        "threat_name": "BlueKeep RDP Remote Code Execution Vulnerability",
+        "severity": "Unknown",
+        "time": 1705303819000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "172.16.10.55",
+          "port": 3389,
+          "zone": "Trust",
+          "interface": "ethernet1/3",
+          "nat_ip": "172.16.10.1",
+          "nat_port": 0,
+          "location": "172.16.0.0-172.16.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "91.195.240.117",
+          "port": 3389,
+          "zone": "Untrust",
+          "interface": "ethernet1/1",
+          "nat_ip": "91.195.240.117",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "6",
+          "direction_id": 0,
+          "boundary": "ms-rdp"
+        },
+        "traffic": {
+          "bytes_in": 7
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "branch-fw03",
+          "name": "branch-fw03",
+          "uid": "vsys1"
+        },
+        "app": "ms-rdp",
+        "category_name": "vulnerability",
+        "finding": {
+          "title": "BlueKeep RDP Remote Code Execution Vulnerability",
+          "desc": "critical",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "BlueKeep RDP Remote Code Execution Vulnerability",
+            "uid": "critical"
+          }
+        },
+        "firewall_rule": {
+          "name": "Branch-Net"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705305927,
+        "action": "alert",
+        "threat_name": "DNS Tunneling Tool Iodine Activity",
+        "severity": "Unknown",
+        "time": 1705305927000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 0,
+        "type_uid": 400400,
+        "severity_id": 0,
+        "disposition_id": 0,
+        "src_endpoint": {
+          "ip": "192.168.50.201",
+          "port": 53999,
+          "zone": "Trust",
+          "interface": "ethernet1/4",
+          "nat_ip": "192.168.50.1",
+          "nat_port": 0,
+          "location": "192.168.0.0-192.168.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "185.243.115.230",
+          "port": 53,
+          "zone": "Untrust",
+          "interface": "ethernet1/1",
+          "nat_ip": "185.243.115.230",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "udp",
+          "direction": "7",
+          "direction_id": 0,
+          "boundary": "dns"
+        },
+        "traffic": {
+          "bytes_in": 8
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "corp-fw02",
+          "name": "corp-fw02",
+          "uid": "vsys1"
+        },
+        "app": "dns",
+        "category_name": "spyware",
+        "finding": {
+          "title": "DNS Tunneling Tool Iodine Activity",
+          "desc": "medium",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "DNS Tunneling Tool Iodine Activity",
+            "uid": "medium"
+          }
+        },
+        "firewall_rule": {
+          "name": "Office-Net"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      },
+      {
+        "_time": 1705308291,
+        "action": "Denied",
+        "threat_name": "Mirai Botnet HTTP C2 Traffic",
+        "severity": "Unknown",
+        "time": 1705308291000,
+        "class_uid": 4004,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400402,
+        "severity_id": 0,
+        "disposition_id": 2,
+        "src_endpoint": {
+          "ip": "10.20.1.77",
+          "port": 8080,
+          "zone": "Trust",
+          "interface": "ethernet1/5",
+          "nat_ip": "10.20.1.1",
+          "nat_port": 0,
+          "location": "10.0.0.0-10.255.255.255"
+        },
+        "dst_endpoint": {
+          "ip": "5.188.86.172",
+          "port": 8080,
+          "zone": "Untrust",
+          "interface": "ethernet1/2",
+          "nat_ip": "5.188.86.172",
+          "nat_port": 0,
+          "location": "0"
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "8",
+          "direction_id": 0,
+          "boundary": "http"
+        },
+        "traffic": {
+          "bytes_in": 9
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "edge-fw04",
+          "name": "edge-fw04",
+          "uid": "vsys1"
+        },
+        "app": "http",
+        "category_name": "virus",
+        "finding": {
+          "title": "Mirai Botnet HTTP C2 Traffic",
+          "desc": "high",
+          "uid": "0x2000000000000000"
+        },
+        "attacks": {
+          "technique": {
+            "name": "Mirai Botnet HTTP C2 Traffic",
+            "uid": "high"
+          }
+        },
+        "firewall_rule": {
+          "name": "Workstations"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.4.0"
+        },
+        "sourcetype": "palo_alto_threat:ocsf"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-01-15 02:14:33,company-fw01,THREAT,vulnerability,1,2024/01/15 02:14:33,10.10.5.22,185.220.101.45,10.10.5.1,185.220.101.45,Outbound-Internet,,,ssl,vsys1,Trust,Untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 02:14:33,54821,1,54321,443,0,0,0x80000000,tcp,reset-both,CVE-2021-44228-Log4Shell-Exploit,Apache Log4j Remote Code Execution,critical,client-to-server,1,0x2000000000000000,United States,10.0.0.0-10.255.255.255,0,1,2,",
+      "2024-01-15 03:47:12,branch-fw03,THREAT,spyware,1,2024/01/15 03:47:12,192.168.1.105,45.33.32.156,192.168.1.1,45.33.32.156,Corp-LAN,,,web-browsing,vsys1,Trust,Untrust,ethernet1/3,ethernet1/1,Threat-Log,2024/01/15 03:47:12,49201,1,49201,80,0,0,0x80000000,tcp,alert,TrickBot-C2-Beacon,TrickBot Command and Control Communication,high,client-to-server,2,0x2000000000000000,Germany,192.168.0.0-192.168.255.255,0,2,3,",
+      "2024-01-15 04:22:55,corp-fw02,THREAT,virus,1,2024/01/15 04:22:55,172.16.20.88,203.0.113.72,172.16.20.1,203.0.113.72,Internal-DMZ,,,ftp,vsys1,DMZ,Untrust,ethernet1/4,ethernet1/2,Threat-Log,2024/01/15 04:22:55,21045,1,21045,21,0,0,0x80000000,tcp,drop,Emotet-Downloader-FTP,Emotet Malware FTP Download Attempt,critical,client-to-server,3,0x2000000000000000,China,172.16.0.0-172.16.255.255,0,3,4,",
+      "2024-01-15 05:03:44,edge-fw04,THREAT,wildfire-virus,1,2024/01/15 05:03:44,10.50.3.14,198.51.100.89,10.50.3.1,198.51.100.89,Server-Farm,,,smtp,vsys1,Trust,Untrust,ethernet1/5,ethernet1/2,Threat-Log,2024/01/15 05:03:44,25019,1,25019,25,0,0,0x80000000,tcp,reset-both,WildFire-Ransomware-Payload,Unknown Ransomware Payload Detected by WildFire,critical,server-to-client,4,0x2000000000000000,Russia,10.0.0.0-10.255.255.255,0,4,5,",
+      "2024-01-15 06:15:08,company-fw01,THREAT,url-filtering,1,2024/01/15 06:15:08,10.10.8.33,104.21.45.67,10.10.8.1,104.21.45.67,Corp-Users,,,web-browsing,vsys1,Trust,Untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 06:15:08,34567,1,34567,80,0,0,0x80000000,tcp,block-url,Malware-Distribution-Site,Malware Distribution URL Blocked,high,client-to-server,5,0x2000000000000000,Netherlands,10.0.0.0-10.255.255.255,0,5,6,",
+      "2024-01-15 07:30:19,branch-fw03,THREAT,vulnerability,1,2024/01/15 07:30:19,172.16.10.55,91.195.240.117,172.16.10.1,91.195.240.117,Branch-Net,,,ms-rdp,vsys1,Trust,Untrust,ethernet1/3,ethernet1/1,Threat-Log,2024/01/15 07:30:19,3389,1,3389,3389,0,0,0x80000000,tcp,reset-both,CVE-2019-0708-BlueKeep,BlueKeep RDP Remote Code Execution Vulnerability,critical,client-to-server,6,0x2000000000000000,Ukraine,172.16.0.0-172.16.255.255,0,6,7,",
+      "2024-01-15 08:05:27,corp-fw02,THREAT,spyware,1,2024/01/15 08:05:27,192.168.50.201,185.243.115.230,192.168.50.1,185.243.115.230,Office-Net,,,dns,vsys1,Trust,Untrust,ethernet1/4,ethernet1/1,Threat-Log,2024/01/15 08:05:27,53999,1,53999,53,0,0,0x80000000,udp,alert,DNS-Tunneling-Iodine,DNS Tunneling Tool Iodine Activity,medium,client-to-server,7,0x2000000000000000,Bulgaria,192.168.0.0-192.168.255.255,0,7,8,",
+      "2024-01-15 08:44:51,edge-fw04,THREAT,virus,1,2024/01/15 08:44:51,10.20.1.77,5.188.86.172,10.20.1.1,5.188.86.172,Workstations,,,http,vsys1,Trust,Untrust,ethernet1/5,ethernet1/2,Threat-Log,2024/01/15 08:44:51,8080,1,8080,8080,0,0,0x80000000,tcp,drop,Mirai-Botnet-HTTP,Mirai Botnet HTTP C2 Traffic,high,client-to-server,8,0x2000000000000000,Netherlands,10.0.0.0-10.255.255.255,0,8,9,"
+    ],
+    "sourcetype": "palo_alto_threat"
+  }
+}

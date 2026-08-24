@@ -1,0 +1,368 @@
+{
+  "key": "infoblox_dns::ocsf::__mapping__",
+  "sourcetype": "infoblox_dns",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:28.784Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract common syslog/BIND fields and DNS query details from Infoblox named logs.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "overwrite": true,
+        "iterations": 100,
+        "regex": "/^(?<event_timestamp>\\S+)/gm",
+        "regexList": [
+          {
+            "regex": "/^\\S+\\s+(?<facility>\\S+)/gm"
+          },
+          {
+            "regex": "/^\\S+\\s+\\S+\\s+(?<device>\\S+)/gm"
+          },
+          {
+            "regex": "/\\snamed\\[(?<process_id>\\d+)\\]:/gm"
+          },
+          {
+            "regex": "/\\snamed\\[\\d+\\]:\\s+(?<status_code>\\S+)/gm"
+          },
+          {
+            "regex": "/\\snamed\\[\\d+\\]:\\s+\\S+\\s+(?<message>.*)$/gm"
+          },
+          {
+            "regex": "/client\\s+(?<client_ip>[^#\\s]+)#/gm"
+          },
+          {
+            "regex": "/client\\s+[^#\\s]+#(?<client_port>\\d+)/gm"
+          },
+          {
+            "regex": "/query:\\s+(?<query_hostname>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer\\s+of\\s+'(?<query_hostname>[^\\/']+)/gm"
+          },
+          {
+            "regex": "/query:\\s+\\S+\\s+(?<query_class>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer\\s+of\\s+'[^\\/']+\\/(?<query_class>[^']+)'/gm"
+          },
+          {
+            "regex": "/query:\\s+\\S+\\s+\\S+\\s+(?<query_type>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer\\s+of\\s+'[^']+':\\s+(?<query_type>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer\\s+of\\s+'[^']+':\\s+\\S+\\s+(?<transfer_status>.*)$/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF DNS Activity target schema fields and retain source-only attributes under unmapped.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "query",
+            "value": "{}"
+          },
+          {
+            "name": "query.hostname",
+            "value": "query_hostname ? {name: query_hostname} : null"
+          },
+          {
+            "name": "query.class",
+            "value": "query_class"
+          },
+          {
+            "name": "query.type",
+            "value": "query_type"
+          },
+          {
+            "name": "query.opcode_id",
+            "value": "0"
+          },
+          {
+            "name": "status_detail",
+            "value": "message"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.event_timestamp",
+            "value": "event_timestamp"
+          },
+          {
+            "name": "unmapped.facility",
+            "value": "facility"
+          },
+          {
+            "name": "unmapped.device",
+            "value": "device"
+          },
+          {
+            "name": "unmapped.process_id",
+            "value": "process_id"
+          },
+          {
+            "name": "unmapped.client_ip",
+            "value": "client_ip"
+          },
+          {
+            "name": "unmapped.client_port",
+            "value": "client_port"
+          },
+          {
+            "name": "unmapped.transfer_status",
+            "value": "transfer_status"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract common Infoblox named log fields used for OCSF DNS Activity mapping",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>\\S+)\\s+\\S+\\s+(?<server_hostname>\\S+)\\s+named\\[(?<process_id>\\d+)\\]:\\s+(?<severity>\\w+)\\s+(?<dns_action>[^:]+):/gm",
+        "regexList": [
+          {
+            "regex": "/client\\s+(?<client_ip>\\d{1,3}(?:\\.\\d{1,3}){3})#(?<client_port>\\d+)/gm"
+          },
+          {
+            "regex": "/query:\\s+(?<query_name>\\S+)\\s+IN\\s+(?<query_type>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer of '(?<xfer_zone>[^\\/']+)\\/IN':\\s+(?<xfer_type>\\S+)/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map extracted DNS log fields to target OCSF DNS Activity schema fields",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "Date.parse(event_time)/1000"
+          },
+          {
+            "name": "class_uid",
+            "value": "4003"
+          },
+          {
+            "name": "activity_id",
+            "value": "dns_action==='queries'?1:99"
+          },
+          {
+            "name": "status_id",
+            "value": "severity==='info'?1:0"
+          },
+          {
+            "name": "status",
+            "value": "severity==='info'?'Success':'Unknown'"
+          },
+          {
+            "name": "rcode",
+            "value": "'Unknown'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "event_time.indexOf('+')>0 ? event_time.substring(event_time.indexOf('+')+1,event_time.indexOf('+')+3)*60 + event_time.substring(event_time.indexOf('+')+4,event_time.indexOf('+')+6)*1 : (event_time.lastIndexOf('-')>9 ? (0 - (event_time.substring(event_time.lastIndexOf('-')+1,event_time.lastIndexOf('-')+3)*60 + event_time.substring(event_time.lastIndexOf('-')+4,event_time.lastIndexOf('-')+6)*1)) : 0)"
+          },
+          {
+            "name": "observables",
+            "value": "[]"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<original_time>\\d{4}-\\d{2}-\\d{2}T[^\\s]+)\\s+/gm",
+        "regexList": [
+          {
+            "regex": "/^(?:\\S+\\s+){2}(?<reporter_name>\\S+)\\s+/gm"
+          },
+          {
+            "regex": "/named\\[\\d+\\]:\\s+(?<log_level>\\w+)/gm"
+          },
+          {
+            "regex": "/client\\s+(?<client_ip>\\d{1,3}(?:\\.\\d{1,3}){3})#/gm"
+          },
+          {
+            "regex": "/client\\s+\\d{1,3}(?:\\.\\d{1,3}){3}#(?<client_port>\\d+)/gm"
+          },
+          {
+            "regex": "/query:\\s+(?<query_name>\\S+)\\s+(?<dns_class>\\S+)\\s+(?<query_type>\\S+)/gm"
+          },
+          {
+            "regex": "/transfer of '(?<xfer_zone>[^\\/']+)\\/(?<xfer_class>[^']+)':\\s+(?<xfer_type>\\S+)/gm"
+          },
+          {
+            "regex": "/\\+[^()]*\\((?<server_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract timestamp, reporter, severity, client endpoint, DNS query, and transfer details from Infoblox named logs"
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Parse source event time into OCSF query_time",
+      "conf": {
+        "srcField": "original_time",
+        "dstField": "query_time",
+        "defaultTimezone": "UTC",
+        "timestamps": [],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "log_level==='info'?1:log_level==='warning'?3:log_level==='error'?4:0"
+          },
+          {
+            "name": "type_uid",
+            "value": "_raw.indexOf(' xfer-out:')>=0?400399:(_raw.indexOf(' query:')>=0?400301:400300)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "client_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "client_port?client_port*1:null"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "reporter_name"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "server_ip?server_ip:null"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "53"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'DNS Activity'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Infoblox DNS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Infoblox'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'unknown'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "reporter_name"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Create required OCSF DNS Activity fields and endpoint/metadata objects"
+    },
+    {
+      "filter": "__e.query_name || __e.xfer_zone",
+      "conf": {
+        "add": [
+          {
+            "name": "answers",
+            "value": "[{}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Populate DNS answer resource record fields when query or transfer details are present"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [],
+        "keep": [
+          "answers.*",
+          "dst_endpoint.*",
+          "severity_id",
+          "query_time",
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "__*",
+          "cribl_*"
+        ]
+      },
+      "id": "eval",
+      "description": "Keep target OCSF schema fields while preserving Cribl internal fields"
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

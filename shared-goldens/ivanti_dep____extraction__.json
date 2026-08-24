@@ -1,0 +1,67 @@
+{
+  "key": "ivanti_dep::__extraction__",
+  "sourcetype": "ivanti_dep",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:56:02.784Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, process, pid) and isolate the KVP message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<dep_host>\\S+)\\s+(?<process>[A-Za-z]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (level, event, user, src_ip, device_serial, apple_dep_id, profile, result, reason, session_id, device_count) from the message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized severity, action, event_type, and timestamp fields from parsed DEP log fields",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level=='critical' ? 'critical' : level=='error' ? 'high' : level=='warn' ? 'medium' : 'low'"
+          },
+          {
+            "name": "action",
+            "value": "result=='SUCCESS' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "event_type",
+            "value": "event"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(syslog_timestamp + ' ' + new Date().getFullYear())/1000"
+          }
+        ],
+        "remove": [
+          "event"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,40 @@
+{
+  "key": "citrix_netscaler_appfw_cef::__extraction__",
+  "sourcetype": "citrix_netscaler_appfw_cef",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:24:06.461Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"imperva_incapsula_waf\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_cef_header",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]+)\\|(?<product>[^|]+)\\|(?<product_version>[^|]+)\\|(?<signature_id>[^|]+)\\|(?<name>[^|]+)\\|(?<severity>[^|]+)\\|(?<__cef_payload>.*)$/"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "parse_cef_kvp",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__cef_payload",
+        "delimChar": " ",
+        "pairDelim": "=",
+        "cleanFields": true
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

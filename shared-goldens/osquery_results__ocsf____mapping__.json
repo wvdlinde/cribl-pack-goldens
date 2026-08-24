@@ -1,0 +1,444 @@
+{
+  "key": "osquery_results::ocsf::__mapping__",
+  "sourcetype": "osquery_results",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:41.702Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse osquery JSON payload from _raw into parsed object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "time",
+            "value": "parsed.unixTime ? parsed.unixTime : _time"
+          },
+          {
+            "name": "message",
+            "value": "parsed.name"
+          },
+          {
+            "name": "status_code",
+            "value": "parsed.action"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsed.log_type"
+          },
+          {
+            "name": "process",
+            "value": "{}"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "parsed.columns && parsed.columns.cmdline ? parsed.columns.cmdline : ''"
+          },
+          {
+            "name": "process.created_time",
+            "value": "parsed.unixTime ? parsed.unixTime : null"
+          },
+          {
+            "name": "process.file",
+            "value": "{}"
+          },
+          {
+            "name": "process.file.path",
+            "value": "parsed.columns && parsed.columns.path ? parsed.columns.path : null"
+          },
+          {
+            "name": "process.file.name",
+            "value": "parsed.columns && parsed.columns.path ? parsed.columns.path.split('/').pop() : null"
+          },
+          {
+            "name": "process.file.ext",
+            "value": "parsed.columns && parsed.columns.path && parsed.columns.path.indexOf('.') >= 0 ? parsed.columns.path.split('.').pop() : null"
+          },
+          {
+            "name": "process.file.type_id",
+            "value": "parsed.columns && parsed.columns.path ? 8 : 0"
+          },
+          {
+            "name": "process.name",
+            "value": "parsed.columns && parsed.columns.path ? parsed.columns.path.split('/').pop() : (parsed.name ? parsed.name.split('/').pop() : null)"
+          },
+          {
+            "name": "process.pid",
+            "value": "parsed.columns && parsed.columns.pid ? parsed.columns.pid : null"
+          },
+          {
+            "name": "process.uid",
+            "value": "parsed.decorations && parsed.decorations.host_uuid && parsed.columns && parsed.columns.pid ? parsed.decorations.host_uuid + ':' + parsed.columns.pid : (parsed.columns && parsed.columns.pid ? parsed.columns.pid : null)"
+          },
+          {
+            "name": "process.user",
+            "value": "{}"
+          },
+          {
+            "name": "process.user.name",
+            "value": "parsed.columns && parsed.columns.username ? parsed.columns.username : (parsed.columns && parsed.columns.user ? parsed.columns.user : null)"
+          },
+          {
+            "name": "process.user.uid",
+            "value": "parsed.columns && parsed.columns.uid ? parsed.columns.uid : null"
+          },
+          {
+            "name": "process.user.type_id",
+            "value": "parsed.columns && (parsed.columns.username || parsed.columns.user) ? ((parsed.columns.username==='root' || parsed.columns.user==='root' || parsed.columns.uid==='0') ? 2 : 1) : null"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.query_name",
+            "value": "parsed.name"
+          },
+          {
+            "name": "unmapped.hostIdentifier",
+            "value": "parsed.hostIdentifier"
+          },
+          {
+            "name": "unmapped.calendarTime",
+            "value": "parsed.calendarTime"
+          },
+          {
+            "name": "unmapped.epoch",
+            "value": "parsed.epoch"
+          },
+          {
+            "name": "unmapped.counter",
+            "value": "parsed.counter"
+          },
+          {
+            "name": "unmapped.columns",
+            "value": "parsed.columns"
+          },
+          {
+            "name": "unmapped.decorations",
+            "value": "parsed.decorations"
+          },
+          {
+            "name": "unmapped.action",
+            "value": "parsed.action"
+          },
+          {
+            "name": "unmapped.log_type",
+            "value": "parsed.log_type"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF process activity fields from parsed osquery result data"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "filterExpr": "name==='process.pid'",
+        "format": "none",
+        "depth": 5
+      },
+      "id": "numerify",
+      "description": "Convert process.pid from osquery string to a numeric value"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "osq",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse osquery JSON payload from _raw."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1007"
+          },
+          {
+            "name": "activity_id",
+            "value": "osq.name && osq.name.indexOf('process_events')>=0 ? (osq.action==='added'?1:osq.action==='removed'?2:0) : 0"
+          },
+          {
+            "name": "status_id",
+            "value": "osq.action==='added'||osq.action==='removed'?1:0"
+          },
+          {
+            "name": "status",
+            "value": "osq.action==='added'||osq.action==='removed'?'Success':'Unknown'"
+          },
+          {
+            "name": "injection_type_id",
+            "value": "0"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.cmd_line",
+            "value": "osq.columns && osq.columns.cmdline ? osq.columns.cmdline : ''"
+          },
+          {
+            "name": "actor.process.created_time",
+            "value": "osq.unixTime ? osq.unixTime : null"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "osq.columns && osq.columns.path ? osq.columns.path.replace(/^.*\\//,'') : null"
+          },
+          {
+            "name": "actor.process.pid",
+            "value": "osq.columns && osq.columns.pid ? osq.columns.pid*1 : null"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "osq.columns && osq.columns.pid ? ((osq.decorations && osq.decorations.host_uuid ? osq.decorations.host_uuid : osq.hostIdentifier) + ':' + osq.columns.pid) : null"
+          },
+          {
+            "name": "actor.process.file",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.file.name",
+            "value": "osq.columns && osq.columns.path ? osq.columns.path.replace(/^.*\\//,'') : null"
+          },
+          {
+            "name": "actor.process.file.path",
+            "value": "osq.columns && osq.columns.path ? osq.columns.path : null"
+          },
+          {
+            "name": "actor.process.file.ext",
+            "value": "osq.columns && osq.columns.path && osq.columns.path.indexOf('.')>=0 ? osq.columns.path.replace(/^.*\\./,'') : null"
+          },
+          {
+            "name": "actor.process.file.type_id",
+            "value": "osq.columns && osq.columns.path ? 8 : 0"
+          },
+          {
+            "name": "actor.process.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.user.name",
+            "value": "osq.columns && (osq.columns.username || osq.columns.user) ? (osq.columns.username || osq.columns.user) : null"
+          },
+          {
+            "name": "actor.process.user.uid",
+            "value": "osq.columns && osq.columns.uid ? osq.columns.uid : null"
+          },
+          {
+            "name": "actor.process.user.type_id",
+            "value": "osq.columns && (osq.columns.username || osq.columns.user) ? ((osq.columns.username==='root' || osq.columns.uid==='0') ? 2 : 1) : 0"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "osq.columns && (osq.columns.username || osq.columns.user) ? (osq.columns.username || osq.columns.user) : null"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "osq.columns && osq.columns.uid ? osq.columns.uid : null"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "osq.columns && (osq.columns.username || osq.columns.user) ? ((osq.columns.username==='root' || osq.columns.uid==='0') ? 2 : 1) : 0"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'actor.user.name',type_id:4},{name:'actor.process.name',type_id:9},{name:'actor.process.pid',type_id:15},{name:'actor.process.cmd_line',type_id:13},{name:'actor.process.file.path',type_id:45},{name:'actor.process.file.name',type_id:7}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed osquery result fields into OCSF process_activity fields."
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON from _raw into a parsed object for OCSF field mapping.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed osquery fields to target OCSF process activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "launch_type_id",
+            "value": "parsed.name && parsed.name.indexOf('process_events') >= 0 ? 3 : 0"
+          },
+          {
+            "name": "launch_type",
+            "value": "parsed.name && parsed.name.indexOf('process_events') >= 0 ? 'Exec' : 'Unknown'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "parsed.calendarTime && parsed.calendarTime.indexOf(' UTC') >= 0 ? 0 : null"
+          },
+          {
+            "name": "severity_id",
+            "value": "parsed.log_type === 'result' ? 1 : 0"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.type_id",
+            "value": "1"
+          },
+          {
+            "name": "device.type",
+            "value": "'Server'"
+          },
+          {
+            "name": "device.hostname",
+            "value": "parsed.hostIdentifier ? parsed.hostIdentifier : null"
+          },
+          {
+            "name": "device.uid",
+            "value": "parsed.decorations && parsed.decorations.host_uuid ? parsed.decorations.host_uuid : null"
+          },
+          {
+            "name": "device.owner",
+            "value": "{}"
+          },
+          {
+            "name": "device.owner.name",
+            "value": "parsed.columns ? (parsed.columns.username || parsed.columns.user || null) : null"
+          },
+          {
+            "name": "device.owner.uid",
+            "value": "parsed.columns && parsed.columns.uid ? parsed.columns.uid : null"
+          },
+          {
+            "name": "device.owner.type_id",
+            "value": "parsed.columns && ((parsed.columns.username && parsed.columns.username === 'root') || (parsed.columns.user && parsed.columns.user === 'root') || (parsed.columns.uid && parsed.columns.uid === '0')) ? 2 : ((parsed.columns && (parsed.columns.username || parsed.columns.user || parsed.columns.uid)) ? 1 : 0)"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse osquery JSON payload from _raw into parsed object"
+    },
+    {
+      "id": "eval",
+      "description": "Map selected OCSF Process Activity target schema fields from parsed osquery data",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "parsed.action==='added' && parsed.name && parsed.name.indexOf('process')>=0 ? 100701 : 100700"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "parsed.name"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.calendarTime"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'osquery'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "parsed.decorations && parsed.decorations.host_uuid ? parsed.decorations.host_uuid : null"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'osquery'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "null"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "parsed.hostIdentifier"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "parsed.decorations && parsed.decorations.host_uuid ? parsed.decorations.host_uuid : null"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "remove": [
+          "parsed"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,122 @@
+{
+  "key": "aws_guardduty::cim::__mapping__",
+  "sourcetype": "aws_guardduty",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:53:45.475Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Intrusion_Detection'"
+          },
+          {
+            "name": "signature_id",
+            "value": "type || ''"
+          },
+          {
+            "name": "signature",
+            "value": "title || ''"
+          },
+          {
+            "name": "category",
+            "value": "type ? type.split(':')[0] : ''"
+          },
+          {
+            "name": "severity",
+            "value": "String(severity != null ? severity : '')"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(severity || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "(resource && resource.instanceDetails && resource.instanceDetails.instanceId) || accountId || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "resource && resource.instanceDetails && resource.instanceDetails.instanceId ? resource.instanceDetails.instanceId : ''"
+          },
+          {
+            "name": "dest",
+            "value": "resource && resource.instanceDetails && resource.instanceDetails.networkInterfaces && resource.instanceDetails.networkInterfaces[0] ? (resource.instanceDetails.networkInterfaces[0].publicIp || resource.instanceDetails.networkInterfaces[0].privateIpAddress) : ''"
+          },
+          {
+            "name": "dest_zone",
+            "value": "resource && resource.instanceDetails && resource.instanceDetails.networkInterfaces && resource.instanceDetails.networkInterfaces[0] ? resource.instanceDetails.networkInterfaces[0].subnetId : ''"
+          },
+          {
+            "name": "user",
+            "value": "resource && resource.accessKeyDetails && resource.accessKeyDetails.userName ? resource.accessKeyDetails.userName : ''"
+          },
+          {
+            "name": "object",
+            "value": "resource && resource.accessKeyDetails ? (resource.accessKeyDetails.accessKeyId || resource.accessKeyDetails.principalId) : (resource && resource.instanceDetails ? resource.instanceDetails.instanceId : '')"
+          },
+          {
+            "name": "app",
+            "value": "resource && resource.resourceType ? resource.resourceType : ''"
+          },
+          {
+            "name": "message_id",
+            "value": "id || ''"
+          },
+          {
+            "name": "src_zone",
+            "value": "region || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "rule",
+            "value": "type || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'AWS GuardDuty'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws_guardduty'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

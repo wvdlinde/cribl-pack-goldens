@@ -1,0 +1,126 @@
+{
+  "key": "corelight_ldap::cim::__mapping__",
+  "sourcetype": "corelight_ldap",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:25:33.931Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "event_type",
+            "value": "'LDAP Authentication'"
+          },
+          {
+            "name": "src",
+            "value": "id.orig_h"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "id.resp_h"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "id.resp_h"
+          },
+          {
+            "name": "user",
+            "value": "object && object.match(/cn=([^,]+)/i) ? object.match(/cn=([^,]+)/i)[1] : ''"
+          },
+          {
+            "name": "action",
+            "value": "result == 'success' ? 'success' : (result ? 'failure' : '')"
+          },
+          {
+            "name": "signature",
+            "value": "opcode"
+          },
+          {
+            "name": "signature_id",
+            "value": "String(message_id || '')"
+          },
+          {
+            "name": "reason",
+            "value": "diagnostic_message"
+          },
+          {
+            "name": "object",
+            "value": "object"
+          },
+          {
+            "name": "session_id",
+            "value": "uid"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "dest_nt_domain",
+            "value": "object && object.match(/dc=[^,]+/gi) ? object.match(/dc=[^,]+/gi).join('.').replace(/dc=/gi,'') : ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "opcode == 'bind' ? 'LDAP simple bind' : 'LDAP'"
+          },
+          {
+            "name": "app",
+            "value": "'ldap'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ldap'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,622 @@
+{
+  "key": "sophos_xg::ocsf",
+  "sourcetype": "sophos_xg",
+  "dest_format": "ocsf",
+  "score": 100,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T07:03:17.549Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "sophos_xg to OCSF pipeline. Parses KVP, builds timestamp, maps to OCSF nested schema."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "fieldFilterExpr": "",
+        "fields": [],
+        "allow": [],
+        "deny": [],
+        "cleanFields": true
+      },
+      "description": "Extract all KVP fields from Sophos XG _raw log line"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "tz_offset",
+            "value": "timezone == 'IST' ? '+05:30' : (timezone == 'EST' ? '-05:00' : (timezone == 'PST' ? '-08:00' : (timezone == 'UTC' ? '+00:00' : '+00:00')))"
+          },
+          {
+            "name": "event_time_iso",
+            "value": "(date && time) ? (date + 'T' + time + tz_offset) : undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "(src_ip && src_ip != '') ? src_ip : undefined"
+          },
+          {
+            "name": "dst_ip",
+            "value": "(dst_ip && dst_ip != '') ? dst_ip : undefined"
+          },
+          {
+            "name": "user_name",
+            "value": "(user_name && user_name != '') ? user_name : undefined"
+          },
+          {
+            "name": "user_gp",
+            "value": "(user_gp && user_gp != '') ? user_gp : undefined"
+          },
+          {
+            "name": "application",
+            "value": "(application && application != '') ? application : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message && message != '') ? message : undefined"
+          },
+          {
+            "name": "tran_src_ip",
+            "value": "(tran_src_ip && tran_src_ip != '') ? tran_src_ip : undefined"
+          },
+          {
+            "name": "tran_dst_ip",
+            "value": "(tran_dst_ip && tran_dst_ip != '') ? tran_dst_ip : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "(src_port != undefined && src_port != '') ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_port",
+            "value": "(dst_port != undefined && dst_port != '') ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "sent_bytes",
+            "value": "(sent_bytes != undefined && sent_bytes != '') ? Number(sent_bytes) : undefined"
+          },
+          {
+            "name": "recv_bytes",
+            "value": "(recv_bytes != undefined && recv_bytes != '') ? Number(recv_bytes) : undefined"
+          },
+          {
+            "name": "sent_pkts",
+            "value": "(sent_pkts != undefined && sent_pkts != '') ? Number(sent_pkts) : undefined"
+          },
+          {
+            "name": "recv_pkts",
+            "value": "(recv_pkts != undefined && recv_pkts != '') ? Number(recv_pkts) : undefined"
+          },
+          {
+            "name": "fw_rule_id",
+            "value": "(fw_rule_id != undefined && fw_rule_id != '') ? Number(fw_rule_id) : undefined"
+          },
+          {
+            "name": "filesize",
+            "value": "(filesize != undefined && filesize != '') ? Number(filesize) : undefined"
+          }
+        ]
+      },
+      "description": "Build ISO8601 timestamp with real UTC offset; normalize empty fields; cast numerics"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "event_time_iso ? (new Date(event_time_iso).getTime() / 1000) : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "event_time_iso ? new Date(event_time_iso).toISOString() : undefined"
+          }
+        ]
+      },
+      "description": "Parse event time into _time (epoch) and RFC3339 timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "(protocol && protocol != '') ? protocol.toUpperCase() : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "log_type == 'Firewall' ? 4001 : (log_type == 'IDP' ? 4003 : (log_type == 'Anti-Virus' ? 4004 : (log_type == 'Authentication' ? 3002 : (log_type == 'Content Filtering' ? 4002 : (log_type == 'SSL/TLS' ? 4005 : 4001)))))"
+          },
+          {
+            "name": "category_uid",
+            "value": "log_type == 'Authentication' ? 3 : ((log_type == 'IDP' || log_type == 'Anti-Virus') ? 2 : 4)"
+          },
+          {
+            "name": "activity_id",
+            "value": "log_type == 'Authentication' ? (status == 'Successful' ? 1 : (status == 'Failed' ? 2 : 1)) : (log_type == 'IDP' ? 1 : (log_type == 'Anti-Virus' ? 1 : (log_type == 'Content Filtering' ? 6 : 6)))"
+          }
+        ]
+      },
+      "description": "Derive OCSF class/category/activity from log_type per spec"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "Number(class_uid) * 100 + Number(activity_id)"
+          },
+          {
+            "name": "severity_id",
+            "value": "priority == 'Information' ? 1 : (priority == 'Low' ? 2 : (priority == 'Warning' ? 3 : (priority == 'Medium' ? 3 : (priority == 'High' ? 4 : (priority == 'Critical' ? 5 : 0)))))"
+          },
+          {
+            "name": "severity",
+            "value": "priority == 'Information' ? 'Informational' : (priority == 'Low' ? 'Low' : (priority == 'Warning' ? 'Medium' : (priority == 'Medium' ? 'Medium' : (priority == 'High' ? 'High' : (priority == 'Critical' ? 'Critical' : 'Unknown')))))"
+          },
+          {
+            "name": "class_name",
+            "value": "log_type == 'Firewall' ? 'Network Activity' : (log_type == 'IDP' ? 'Detection Finding' : (log_type == 'Anti-Virus' ? 'Malware Activity' : (log_type == 'Authentication' ? 'Authentication' : (log_type == 'Content Filtering' ? 'Web Resource Access Activity' : (log_type == 'SSL/TLS' ? 'Network Activity' : 'Network Activity')))))"
+          },
+          {
+            "name": "activity_name",
+            "value": "log_type == 'Authentication' ? (status == 'Successful' ? 'Logon' : 'Logoff') : (log_type == 'Firewall' ? 'Traffic' : status)"
+          },
+          {
+            "name": "action",
+            "value": "(status == 'Allow') ? 'Allowed' : ((status == 'Deny' || status == 'Drop') ? 'Denied' : ((status == 'Alert') ? 'Performed' : 'Unknown'))"
+          },
+          {
+            "name": "action_id",
+            "value": "(status == 'Allow') ? 1 : ((status == 'Deny' || status == 'Drop') ? 2 : ((status == 'Alert') ? 3 : 0))"
+          }
+        ]
+      },
+      "description": "Compute type_uid, severity, class_name, activity_name, action_id"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{'ip': src_ip, 'port': (src_port != undefined ? Number(src_port) : undefined), 'mac': ((src_mac && src_mac != '') ? src_mac : undefined), 'location': (dst_country ? {'country': src_country} : {'country': src_country})}"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{'ip': dst_ip, 'port': (dst_port != undefined ? Number(dst_port) : undefined), 'location': {'country': dst_country}}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{'protocol_name': (protocol ? protocol.toLowerCase() : undefined), 'direction': ((srczonetype == 'WAN' && dstzonetype != 'WAN') ? 'Inbound' : ((srczonetype != 'WAN' && dstzonetype == 'WAN') ? 'Outbound' : 'Lateral')), 'direction_id': ((srczonetype == 'WAN' && dstzonetype != 'WAN') ? 1 : ((srczonetype != 'WAN' && dstzonetype == 'WAN') ? 2 : 3)), 'boundary': (srczone && dstzone ? (srczone + '-' + dstzone) : undefined)}"
+          },
+          {
+            "name": "traffic",
+            "value": "{'bytes_out': (sent_bytes != undefined ? Number(sent_bytes) : undefined), 'bytes_in': (recv_bytes != undefined ? Number(recv_bytes) : undefined), 'packets_out': (sent_pkts != undefined ? Number(sent_pkts) : undefined), 'packets_in': (recv_pkts != undefined ? Number(recv_pkts) : undefined)}"
+          }
+        ]
+      },
+      "description": "Build OCSF endpoint, connection_info, traffic objects"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor",
+            "value": "user_name ? {'user': {'name': user_name, 'groups': (user_gp ? [{'name': user_gp}] : undefined)}} : undefined"
+          },
+          {
+            "name": "firewall_rule",
+            "value": "{'uid': (fw_rule_id != undefined ? String(fw_rule_id) : undefined), 'nat_rule_id': ((nat_rule_id != undefined && nat_rule_id != '') ? String(nat_rule_id) : undefined), 'policy_type': ((policy_type != undefined && policy_type != '') ? String(policy_type) : undefined)}"
+          },
+          {
+            "name": "metadata",
+            "value": "{'version': '1.4.0', 'product': {'vendor_name': 'Sophos', 'name': 'Sophos XG Firewall'}, 'log_name': log_type, 'logged_time': (timestamp || undefined), 'original_time': (timestamp || undefined)}"
+          }
+        ]
+      },
+      "description": "Build actor.user, firewall_rule, metadata objects"
+    },
+    {
+      "id": "eval",
+      "filter": "log_type == 'IDP'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "attacks",
+            "value": "[{'technique': {'name': signature_msg, 'uid': (signature_id != undefined ? String(signature_id) : undefined)}, 'tactic': {'name': classification}}]"
+          },
+          {
+            "name": "finding_info",
+            "value": "{'title': signature_msg, 'uid': (signature_id != undefined ? String(signature_id) : undefined)}"
+          }
+        ]
+      },
+      "description": "IDP events: build attacks array"
+    },
+    {
+      "id": "eval",
+      "filter": "log_type == 'Anti-Virus'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "malware",
+            "value": "[{'name': virus, 'classification_ids': [1], 'file': {'name': filename, 'type': filetype, 'size': (filesize != undefined ? Number(filesize) : undefined), 'hashes': (sha256sum ? [{'algorithm': 'SHA-256', 'algorithm_id': 3, 'value': sha256sum}] : undefined)}}]"
+          },
+          {
+            "name": "file",
+            "value": "{'name': filename, 'type': filetype, 'size': (filesize != undefined ? Number(filesize) : undefined), 'hashes': (sha256sum ? [{'algorithm': 'SHA-256', 'algorithm_id': 3, 'value': sha256sum}] : undefined)}"
+          }
+        ]
+      },
+      "description": "Anti-Virus events: build malware array and file object"
+    },
+    {
+      "id": "eval",
+      "filter": "log_type == 'Authentication'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "auth_protocol",
+            "value": "auth_mechanism || undefined"
+          },
+          {
+            "name": "logon_type",
+            "value": "application || undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "status == 'Successful' ? 1 : (status == 'Failed' ? 2 : 0)"
+          }
+        ]
+      },
+      "description": "Authentication events: auth fields"
+    },
+    {
+      "id": "eval",
+      "filter": "log_type == 'SSL/TLS'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "tls",
+            "value": "{'version': (typeof tls_version != 'undefined' ? tls_version : undefined), 'cipher': (typeof cipher_suite != 'undefined' ? cipher_suite : undefined), 'certificate': (typeof certificate_cn != 'undefined' ? {'subject': certificate_cn} : undefined)}"
+          }
+        ]
+      },
+      "description": "SSL/TLS events: tls object"
+    },
+    {
+      "id": "eval",
+      "filter": "log_type == 'Content Filtering'",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "url",
+            "value": "(typeof url != 'undefined' && url) ? {'url_string': url} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(typeof url != 'undefined' && url) ? {'url': {'url_string': url}} : undefined"
+          }
+        ]
+      },
+      "description": "Content Filtering events: url object"
+    },
+    {
+      "id": "eval",
+      "filter": "(tran_src_ip && tran_src_ip != '') || (tran_dst_ip && tran_dst_ip != '')",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "network_proxy",
+            "value": "{'ip': (tran_src_ip || tran_dst_ip)}"
+          }
+        ]
+      },
+      "description": "NAT-translated IPs: network_proxy endpoint"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- Final cleanup: remove raw/intermediate source fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'sophos_xg'"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "date",
+          "time",
+          "timezone",
+          "tz_offset",
+          "event_time_iso",
+          "device",
+          "dir_disp",
+          "vconnid",
+          "log_id",
+          "log_component",
+          "log_subtype",
+          "priority",
+          "status",
+          "src_ip",
+          "dst_ip",
+          "src_port",
+          "dst_port",
+          "src_mac",
+          "src_country",
+          "dst_country",
+          "protocol",
+          "sent_bytes",
+          "recv_bytes",
+          "sent_pkts",
+          "recv_pkts",
+          "fw_rule_id",
+          "nat_rule_id",
+          "policy_type",
+          "srczone",
+          "dstzone",
+          "srczonetype",
+          "dstzonetype",
+          "user_name",
+          "user_gp",
+          "signature_id",
+          "signature_msg",
+          "classification",
+          "rule_priority",
+          "virus",
+          "filename",
+          "filetype",
+          "filesize",
+          "sha256sum",
+          "auth_mechanism",
+          "tls_version",
+          "cipher_suite",
+          "certificate_cn",
+          "tran_src_ip",
+          "tran_dst_ip",
+          "tran_src_port",
+          "tran_dst_port",
+          "iap",
+          "ips_policy_id",
+          "appfilter_policy_id",
+          "application_risk",
+          "application_technology",
+          "application_category",
+          "app_is_cloud",
+          "in_interface",
+          "out_interface",
+          "connid",
+          "hb_health",
+          "appresolvedby",
+          "reason",
+          "override_token",
+          "platform",
+          "target",
+          "category",
+          "time",
+          "log_time",
+          "event_type",
+          "vendor",
+          "product",
+          "__*"
+        ]
+      },
+      "description": "Remove raw/intermediate fields; keep OCSF output objects"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "warn",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "high",
+        "field": "timestamp / _time (event 1 - Firewall/IST)",
+        "issue": "Timezone conversion is wrong. Source: date=2024-01-15 time=08:23:11 timezone=IST (UTC+5:30) should yield 2024-01-15T02:53:11Z. Output shows 2024-01-15T02:53:11.000Z which is actually correct mathematically, but _time=1705287191 does NOT match 2024-01-15T02:53:11Z (that would be 1705283591). The _time epoch is inconsistent with the timestamp string.",
+        "example": "\"_time\": 1705287191 vs \"timestamp\": \"2024-01-15T02:53:11.000Z\" — epoch 1705287191 = 2024-01-15T03:53:11Z, not 02:53:11Z",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "timestamp / _time (event 2 - IDP/IST)",
+        "issue": "Source time=09:45:33 timezone=IST (UTC+5:30) → UTC = 04:15:33Z. Output timestamp=04:15:33Z is correct but _time=1705292133 = 2024-01-15T05:15:33Z — off by one hour, inconsistent with timestamp string.",
+        "example": "\"_time\": 1705292133 vs \"timestamp\": \"2024-01-15T04:15:33.000Z\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "timestamp (event 4 - Firewall/EST)",
+        "issue": "Source time=11:30:47 timezone=EST (UTC-5) → UTC = 16:30:47Z. Output timestamp=2024-01-15T16:30:47.000Z is correct but _time=1705336247 = 2024-01-15T16:30:47Z — this one is consistent. However event 3 timezone=UTC so _time=1705313525 should = 10:12:05Z but 1705313525 = 2024-01-15T10:12:05Z which is correct. Inconsistency only in IST events.",
+        "example": "IST events have _time and timestamp disagreeing by exactly 1 hour",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "output (event 4)",
+        "issue": "Output JSON is truncated/malformed — event 4 boundary value is cut off mid-string, and events 5-8 are entirely missing from the output array.",
+        "example": "\"boundary\": (cut off, no closing brace/bracket, events 5-8 absent)",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "class_uid / class_name (event 2 - IDP)",
+        "issue": "OCSF class_uid 4003 is 'Network Activity' (or varies by spec version); for IDS/IPS findings OCSF uses class_uid 4001 (Network Activity) or 2004 (Detection Finding with class_uid=2004). class_uid=4003 with class_name='Detection Finding' is incorrect — Detection Finding is class_uid 2004 in OCSF 1.x.",
+        "example": "\"class_uid\": 4003, \"class_name\": \"Detection Finding\" — should be 2004",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "class_uid / class_name (event 3 - Anti-Virus)",
+        "issue": "OCSF Malware Activity class_uid is 1005, not 4004. 4004 does not correspond to 'Malware Activity' in OCSF 1.4.0.",
+        "example": "\"class_uid\": 4004, \"class_name\": \"Malware Activity\" — should be class_uid 1005",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "category_uid (event 2)",
+        "issue": "category_uid=2 maps to 'Findings' in OCSF. For IDP/Network events this is plausible but class_uid=4003 doesn't exist in category 2. With the wrong class_uid the category_uid pairing is also invalid.",
+        "example": "\"category_uid\": 2, \"class_uid\": 4003 — invalid combination",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "category_uid (event 3)",
+        "issue": "category_uid=2 is 'Findings'. Malware Activity (class 1005) belongs to category_uid 2 — but class_uid=4004 doesn't exist, making the entire classification block wrong.",
+        "example": "\"category_uid\": 2, \"class_uid\": 4004",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "type_uid (events 2, 3)",
+        "issue": "type_uid must equal class_uid * 100 + activity_id. Event 2: 4003*100+1=400301 matches numerically but class_uid is wrong so type_uid is wrong by derivation. Event 3: 4004*100+1=400401 same problem.",
+        "example": "type_uid=400301 derived from invalid class_uid=4003",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "activity_id (events 1, 4 - Firewall Allowed/Denied)",
+        "issue": "activity_id=6 mapped to activity_name='Traffic' for Network Activity class. In OCSF 1.4.0 Network Activity (4001) activity_id=6 is 'Traffic' which is valid, but 'Allowed'=1 and 'Denied'=2 are more precise activity_ids for firewall allow/deny actions. Using 6 (Traffic) loses the allow/deny semantics in activity_id.",
+        "example": "\"activity_id\": 6, \"activity_name\": \"Traffic\" for a Firewall Allow event",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "action / action_id (event 1)",
+        "issue": "action='Allowed' with action_id=1 is reasonable, but OCSF Network Activity uses disposition/disposition_id (not action/action_id) for the allow/deny outcome. Using non-standard 'action' field name instead of OCSF 'disposition'.",
+        "example": "\"action\": \"Allowed\", \"action_id\": 1 — OCSF uses disposition_id",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "severity_id (event 4)",
+        "issue": "Source priority=Warning. OCSF severity_id for Warning should be 3 (Medium) per OCSF mapping. Output shows severity_id=3, severity='Medium' — the label 'Medium' is used instead of 'Warning'. OCSF severity_id=3 = 'Low', severity_id=4='Medium'. Warning→Medium mapping and label are inconsistent.",
+        "example": "\"severity_id\": 3, \"severity\": \"Medium\" for Warning priority",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.direction (event 3 - Anti-Virus)",
+        "issue": "Source has src_country=R1 (internal) to dst_country=USA (external) over HTTP — this is Outbound, not 'Lateral'. 'Lateral' implies internal-to-internal movement.",
+        "example": "\"direction\": \"Lateral\", \"direction_id\": 3 for internal-src → external-dst",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "traffic (event 3 - Anti-Virus)",
+        "issue": "Source has sent_bytes, recv_bytes, sent_pkts, recv_pkts fields present but traffic object is empty {}. These values were dropped.",
+        "example": "\"traffic\": {} but source has sent_bytes=4096 style fields implied by protocol/ports",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "metadata.logged_time / metadata.original_time",
+        "issue": "Both logged_time and original_time are set to the same parsed event time. OCSF metadata.logged_time should represent when the SIEM/collector received/logged it (processing time), not the event time. Using event time for both is semantically incorrect.",
+        "example": "\"logged_time\": \"2024-01-15T02:53:11.000Z\", \"original_time\": \"2024-01-15T02:53:11.000Z\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "attacks[].tactic (event 2)",
+        "issue": "OCSF attacks object expects MITRE ATT&CK tactic with standardized uid (e.g. TA0001). Using Sophos classification 'Web Application Attack' as tactic name without uid is non-standard and loses MITRE mapping.",
+        "example": "\"tactic\": {\"name\": \"Web Application Attack\"} — no tactic uid",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "network_endpoint / src_endpoint (missing interface fields)",
+        "issue": "in_interface and out_interface values present in source are not mapped into src_endpoint or dst_endpoint interface_uid/name or network_interface objects.",
+        "example": "Source: in_interface='Port2' out_interface='Port1' — absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info (missing conn_uid)",
+        "issue": "Source connid=1234567 is present in firewall events but not mapped to connection_info.uid or any OCSF connection identifier field.",
+        "example": "Source connid=1234567 — not in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "firewall_rule.nat_rule_id / policy_type",
+        "issue": "nat_rule_id and policy_type are placed inside firewall_rule as strings rather than using OCSF standard network policy object. These are non-standard extensions without the 'unmapped' container.",
+        "example": "\"nat_rule_id\": \"0\", \"policy_type\": \"1\" inside firewall_rule",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "log_type (top-level retention)",
+        "issue": "log_type is kept as a top-level raw field alongside OCSF structured fields. It should either be mapped to metadata or placed in unmapped, not left as a root-level field alongside OCSF.",
+        "example": "\"log_type\": \"Firewall\" at root level",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "device_name / device_id (top-level)",
+        "issue": "device_name and device_id are left as top-level fields rather than being mapped to metadata.product.name or observer object in OCSF.",
+        "example": "\"device_name\": \"XG230\" at root — should be in metadata or observer",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "actor.user (event 3 - Anti-Virus)",
+        "issue": "OCSF Malware Activity uses 'actor' for the threat actor, not the authenticated user. The logged-in user (jsmith) initiating the download should map to a different field depending on class context, not actor.",
+        "example": "\"actor\": {\"user\": {\"name\": \"jsmith\"}} in Malware Activity class",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "The pipeline demonstrates reasonable structural intent for OCSF mapping but has several critical defects: the output is truncated (events 5-8 completely missing), OCSF class_uid values are incorrect for IDP (4003 instead of 2004) and Anti-Virus (4004 instead of 1005) events, IST timezone epoch values are off by one hour, and multiple source fields (connid, interfaces, NAT IP, URL, TLS details, auth fields) are dropped. The timestamp string values for UTC-based events appear correct but the paired epoch integers for IST events are inconsistent. OCSF structural conventions (disposition vs action, observer vs device_name at root, unmapped container) are not fully followed."
+  }
+}

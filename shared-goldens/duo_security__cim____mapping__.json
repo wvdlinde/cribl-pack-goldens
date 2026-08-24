@@ -1,0 +1,126 @@
+{
+  "key": "duo_security::cim::__mapping__",
+  "sourcetype": "duo_security",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:41:21.788Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          },
+          {
+            "name": "src",
+            "value": "ip_address || ''"
+          },
+          {
+            "name": "user",
+            "value": "username || admin || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "username || admin || ''"
+          },
+          {
+            "name": "dest_user",
+            "value": "target || ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "factor || ''"
+          },
+          {
+            "name": "app",
+            "value": "integration || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "os",
+            "value": "device || ''"
+          },
+          {
+            "name": "category",
+            "value": "context ? (event_type + ':' + context) : event_type || ''"
+          },
+          {
+            "name": "action",
+            "value": "action || (event_type=='authentication' ? 'login' : (event_type=='telephony' ? 'telephony_auth' : 'admin_action'))"
+          },
+          {
+            "name": "vendor_action",
+            "value": "result || ''"
+          },
+          {
+            "name": "severity",
+            "value": "result=='SUCCESS' ? 'informational' : result=='FAILURE' ? 'medium' : result=='fraud' ? 'high' : 'unknown'"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(result=='SUCCESS' ? 1 : result=='FAILURE' ? 4 : result=='fraud' ? 7 : 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "signature",
+            "value": "reason || ''"
+          },
+          {
+            "name": "subject",
+            "value": "admin ? (admin + ' performed ' + action) : ''"
+          },
+          {
+            "name": "object",
+            "value": "phone || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'duo_security'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

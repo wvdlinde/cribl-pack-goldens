@@ -1,0 +1,118 @@
+{
+  "key": "vmware_esxlog_vmauthd::__extraction__",
+  "sourcetype": "vmware_esxlog_vmauthd",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:23.668Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base vmauthd syslog structure: timestamp, host, pid, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<dst_host>\\S+) vmauthd\\[(?<pid>\\d+)\\]: (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Login succeeded')",
+      "disabled": false,
+      "description": "Parse successful login events for user, auth pipe path, and source IP",
+      "conf": {
+        "source": "message",
+        "regex": "/^Login succeeded for user '(?<user>[^']*)' on (?<auth_path>\\S+) from (?<src_ip>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('AUTHENTICATION FAILED')",
+      "disabled": false,
+      "description": "Parse failed authentication events for user, source IP, and failure reason",
+      "conf": {
+        "source": "message",
+        "regex": "/^AUTHENTICATION FAILED: user '(?<user>[^']*)' from (?<src_ip>[^:]+): (?<failure_reason>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Connection accepted') && message.indexOf('on port') !== -1",
+      "disabled": false,
+      "description": "Parse standard connection accepted events with source IP and destination port",
+      "conf": {
+        "source": "message",
+        "regex": "/^Connection accepted from (?<src_ip>\\S+) on port (?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Connection accepted') && message.indexOf('bytes payload client') !== -1",
+      "disabled": false,
+      "description": "Parse connection accepted events with payload byte count, source IP, and source port",
+      "conf": {
+        "source": "message",
+        "regex": "/^Connection accepted from \\d+ bytes payload client, source (?<src_ip>\\S+) port (?<src_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Connection refused')",
+      "disabled": false,
+      "description": "Parse connection refused events with source IP and refusal reason",
+      "conf": {
+        "source": "message",
+        "regex": "/^Connection refused from (?<src_ip>[^:]+): (?<failure_reason>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, severity, and protocol based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.startsWith('Login succeeded') ? 'success' : message.startsWith('AUTHENTICATION FAILED') ? 'failure' : message.startsWith('Connection accepted') ? 'accepted' : message.startsWith('Connection refused') ? 'refused' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "(action == 'failure' || action == 'refused') ? 'high' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "event_type",
+            "value": "'authentication'"
+          }
+        ],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

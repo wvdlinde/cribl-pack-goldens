@@ -1,0 +1,80 @@
+{
+  "key": "vmware_esxlog_crond::__extraction__",
+  "sourcetype": "vmware_esxlog_crond",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:37:48.779Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base crond syslog structure: timestamp, host, process, pid, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<host>\\S+) (?<process>\\w+)\\[(?<pid>\\d+)\\]: (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('crond: USER')",
+      "disabled": false,
+      "description": "Extract user, job pid, and command from standard crond job execution lines",
+      "conf": {
+        "source": "message",
+        "regex": "/^crond: USER (?<user>\\S+) PID (?<cmd_pid>\\d+) CMD (?<command>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('LOAD_CRONTAB')",
+      "disabled": false,
+      "description": "Extract user and crontab file path from crontab load/reload events",
+      "conf": {
+        "source": "message",
+        "regex": "/^LOAD_CRONTAB: user (?<user>\\S+) new crontab (?<crontab_path>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('exit status') !== -1",
+      "disabled": false,
+      "description": "Extract exit status code from command completion messages",
+      "conf": {
+        "source": "message",
+        "regex": "/exit status (?<exit_status>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity and action based on crond message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.match(/SUSPICIOUS COMMAND/) ? 'critical' : message.match(/ERROR/) ? 'error' : message.match(/WARNING/) ? 'warning' : message.match(/FAILED/) ? 'error' : message.match(/PERMISSION DENIED/) ? 'warning' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/SUSPICIOUS COMMAND/) ? 'blocked' : message.match(/FAILED/) ? 'failure' : message.match(/PERMISSION DENIED/) ? 'denied' : message.match(/cannot fork process/) ? 'error' : exit_status === '0' ? 'success' : exit_status ? 'failure' : 'executed'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

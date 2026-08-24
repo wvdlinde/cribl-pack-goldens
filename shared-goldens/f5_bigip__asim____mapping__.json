@@ -1,0 +1,126 @@
+{
+  "key": "f5_bigip::asim::__mapping__",
+  "sourcetype": "f5_bigip",
+  "dest_format": "asim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T04:19:48.003Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'NetworkSession'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'7'"
+          },
+          {
+            "name": "event_type",
+            "value": "'NetworkSession'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "_time"
+          },
+          {
+            "name": "Dvc",
+            "value": "host || device || ''"
+          },
+          {
+            "name": "SrcIpAddr",
+            "value": "client_ip || src_ip || ''"
+          },
+          {
+            "name": "SrcPortNumber",
+            "value": "Number(client_port || src_port || 0)"
+          },
+          {
+            "name": "DstIpAddr",
+            "value": "pool_ip || node_ip || dest_ip || vip_ip || ''"
+          },
+          {
+            "name": "DstPortNumber",
+            "value": "Number(pool_port || dest_port || 0)"
+          },
+          {
+            "name": "NetworkProtocol",
+            "value": "(protocol || 'TCP').toUpperCase()"
+          },
+          {
+            "name": "DvcAction",
+            "value": "status || action || message || ''"
+          },
+          {
+            "name": "EventResult",
+            "value": "(status && (status.match(/down|fail|error|timed out|reset|unavailable/i))) ? 'Failure' : 'Success'"
+          },
+          {
+            "name": "EventSeverity",
+            "value": "severity == 'err' ? 'High' : (severity == 'warning' ? 'Medium' : (severity == 'notice' ? 'Low' : (severity == 'info' ? 'Informational' : 'Informational')))"
+          },
+          {
+            "name": "EventType",
+            "value": "'NetworkSession'"
+          },
+          {
+            "name": "EventSchema",
+            "value": "'NetworkSession'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "EventSchemaVersion",
+            "value": "'0.2.6'"
+          },
+          {
+            "name": "EventProduct",
+            "value": "'BIG-IP'"
+          },
+          {
+            "name": "EventVendor",
+            "value": "'F5'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'f5_bigip'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

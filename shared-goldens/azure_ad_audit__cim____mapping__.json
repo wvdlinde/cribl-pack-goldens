@@ -1,0 +1,138 @@
+{
+  "key": "azure_ad_audit::cim::__mapping__",
+  "sourcetype": "azure_ad_audit",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:39:02.042Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "event_type",
+            "value": "'AzureAD_AuditLog'"
+          },
+          {
+            "name": "src",
+            "value": "callerIpAddress || (properties && properties.initiatedBy && properties.initiatedBy.user && properties.initiatedBy.user.ipAddress) || ''"
+          },
+          {
+            "name": "user",
+            "value": "identity || (properties && properties.initiatedBy && properties.initiatedBy.user && properties.initiatedBy.user.userPrincipalName) || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "properties && properties.initiatedBy && properties.initiatedBy.user && properties.initiatedBy.user.userPrincipalName || ''"
+          },
+          {
+            "name": "dest_user",
+            "value": "properties && properties.targetResources && properties.targetResources[0] && properties.targetResources[0].userPrincipalName || ''"
+          },
+          {
+            "name": "object",
+            "value": "properties && properties.targetResources && properties.targetResources[0] && properties.targetResources[0].displayName || ''"
+          },
+          {
+            "name": "action",
+            "value": "resultType == 'Success' ? 'success' : (resultType == 'Failure' ? 'failure' : (resultType || ''))"
+          },
+          {
+            "name": "vendor_action",
+            "value": "resultType || ''"
+          },
+          {
+            "name": "signature",
+            "value": "operationName || (properties && properties.activityDisplayName) || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "properties && properties.id || ''"
+          },
+          {
+            "name": "category",
+            "value": "properties && properties.category || category || ''"
+          },
+          {
+            "name": "app",
+            "value": "properties && properties.loggedByService || ''"
+          },
+          {
+            "name": "duration",
+            "value": "Number(durationMs || 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-21)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level || ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "resultDescription || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "correlationId || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "resourceId || ''"
+          },
+          {
+            "name": "src_nt_domain",
+            "value": "tenantId || ''"
+          },
+          {
+            "name": "process",
+            "value": "properties && properties.operationType || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'azure_ad_audit'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

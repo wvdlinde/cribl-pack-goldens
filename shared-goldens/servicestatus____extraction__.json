@@ -1,0 +1,68 @@
+{
+  "key": "servicestatus::__extraction__",
+  "sourcetype": "servicestatus",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:03:31.027Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse servicestatus syslog line into timestamp, host, pid, severity, service, status, user, src_ip, dst_port, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+servicestatus\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+)\\s+service=(?<service>\\S+)\\s+status=(?<status>\\S+)\\s+user=(?<user>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+dst_port=(?<dst_port>\\d+)\\s+msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized action from service status",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status.match(/^(running|completed|verified)$/) ? 'success' : status.match(/^(failed|crashed|stopped)$/) ? 'blocked' : status.match(/^(degraded|slow|suspicious)$/) ? 'warning' : 'unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to standard levels",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity=='ALERT' ? 'critical' : severity.toLowerCase()"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Flag IPv6 source addresses for downstream handling",
+      "conf": {
+        "add": [
+          {
+            "name": "__src_ip_is_v6",
+            "value": "src_ip.indexOf(':') !== -1"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

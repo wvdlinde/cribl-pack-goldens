@@ -1,0 +1,96 @@
+{
+  "key": "vmware_esxlog_nfcd::__extraction__",
+  "sourcetype": "vmware_esxlog_nfcd",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:01:38.037Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, pid, module and message from base Nfcd log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Nfcd\\[(?<pid>\\d+)\\]:\\s+\\[(?<module>[^\\]]+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/Connecting to server/)",
+      "disabled": false,
+      "description": "Extract destination IP:port from outbound connection attempts (supports IPv4 and bracketed IPv6)",
+      "conf": {
+        "source": "message",
+        "regex": "/Connecting to server \\[?(?<dst_ip>[0-9a-fA-F:.]+)\\]?:(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/from |peer |remote /)",
+      "disabled": false,
+      "description": "Extract source IP:port from inbound/peer connection events (supports IPv4 and bracketed IPv6)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:from|peer|remote)\\s+\\[?(?<src_ip>[0-9a-fA-F:.]+)\\]?:(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module === 'NfcAuthd'",
+      "disabled": false,
+      "description": "Extract user and source IP from authentication events (no port present)",
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)' from \\[?(?<src_ip>[0-9a-fA-F:.]+)\\]?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/Bound successfully on port/)",
+      "disabled": false,
+      "description": "Extract listening port for socket bind events",
+      "conf": {
+        "source": "message",
+        "regex": "/Bound successfully on port (?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, severity, and normalize protocol for NFC daemon events",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/succeeded|completed|Accepted|Bound|handshake completed/) ? 'allow' : message.match(/FAILED|failed|Rejected|ERROR|error|expired|reset by peer|closed unexpectedly|timed out/) ? 'deny' : 'info'"
+          },
+          {
+            "name": "severity",
+            "value": "message.match(/ERROR|FAILED|error|failed|corrupted/) ? 'error' : message.match(/Rejected|reset by peer|timed out|expired|closed unexpectedly/) ? 'warning' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

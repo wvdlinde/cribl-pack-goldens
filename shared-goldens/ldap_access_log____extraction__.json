@@ -1,0 +1,124 @@
+{
+  "key": "ldap_access_log::__extraction__",
+  "sourcetype": "ldap_access_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:12:30.373Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, pid, conn id) and isolate the slapd message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\sslapd\\[(?<pid>\\d+)\\]:\\sconn=(?<conn_id>\\d+)\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('ACCEPT') !== -1",
+      "disabled": false,
+      "description": "Parse connection ACCEPT events (src/dst IP and port)",
+      "conf": {
+        "source": "message",
+        "regex": "/^fd=(?<fd>\\d+)\\sACCEPT\\sfrom\\sIP=(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s\\(IP=(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)\\)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('BIND') !== -1 && message.indexOf('RESULT') === -1",
+      "disabled": false,
+      "description": "Parse BIND (authentication) events - dn, method, mech, ssf",
+      "conf": {
+        "source": "message",
+        "regex": "/^op=(?<op>\\d+)\\sBIND\\sdn=\"(?<dn>[^\"]*)\"\\smethod=(?<method>\\d+)\\smech=(?<mech>\\S+)\\sssf=(?<ssf>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('RESULT') !== -1",
+      "disabled": false,
+      "description": "Parse RESULT and SEARCH RESULT events - tag, err, nentries, text",
+      "conf": {
+        "source": "message",
+        "regex": "/^op=(?<op>\\d+)\\s(?:SEARCH\\s)?RESULT\\stag=(?<tag>\\d+)\\serr=(?<err>\\d+)\\s(?:nentries=(?<nentries>\\d+)\\s)?text=(?<text>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('SRCH') !== -1 && message.indexOf('SEARCH RESULT') === -1",
+      "disabled": false,
+      "description": "Parse SRCH (search request) events - base, scope, filter",
+      "conf": {
+        "source": "message",
+        "regex": "/^op=(?<op>\\d+)\\sSRCH\\sbase=\"(?<search_base>[^\"]*)\"\\sscope=(?<scope>\\d+)\\sfilter=\"(?<search_filter>[^\"]*)\"$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('closed') !== -1",
+      "disabled": false,
+      "description": "Parse connection close events - fd and source IP/port",
+      "conf": {
+        "source": "message",
+        "regex": "/^fd=(?<fd>\\d+)\\sclosed\\s\\(connection\\slost\\)\\sIP=(?<src_ip>[\\d.]+):(?<src_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof dn !== 'undefined'",
+      "disabled": false,
+      "description": "Extract user (cn) from bind dn",
+      "conf": {
+        "source": "dn",
+        "regex": "/^cn=(?<user>[^,]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, protocol, and severity based on parsed LDAP event fields",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.indexOf('ACCEPT') !== -1 ? 'connect' : message.indexOf('closed') !== -1 ? 'disconnect' : message.indexOf('BIND') !== -1 ? 'bind' : message.indexOf('SEARCH RESULT') !== -1 ? 'search_result' : message.indexOf('SRCH') !== -1 ? 'search' : message.indexOf('RESULT') !== -1 ? 'result' : 'unknown'"
+          },
+          {
+            "name": "protocol",
+            "value": "typeof dst_port !== 'undefined' && dst_port === '636' ? 'ldaps' : 'ldap'"
+          },
+          {
+            "name": "severity",
+            "value": "typeof err !== 'undefined' && err !== '0' ? 'failure' : 'info'"
+          },
+          {
+            "name": "_time",
+            "value": "C.Time.parse(timestamp, 'MMM D HH:mm:ss')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

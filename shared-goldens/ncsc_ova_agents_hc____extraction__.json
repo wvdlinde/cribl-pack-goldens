@@ -1,0 +1,80 @@
+{
+  "key": "ncsc_ova_agents_hc::__extraction__",
+  "sourcetype": "ncsc_ova_agents_hc",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:22:07.281Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse JSON-formatted OVA agent health-check log into fields",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp to Cribl _time",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Map source IP, action, and message fields from parsed JSON, removing now-redundant originals",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "ip_address"
+          },
+          {
+            "name": "action",
+            "value": "outcome"
+          },
+          {
+            "name": "message",
+            "value": "details"
+          }
+        ],
+        "remove": [
+          "ip_address",
+          "details",
+          "outcome"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to standard levels",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity==='CRITICAL' ? 'critical' : severity==='ERROR' ? 'error' : severity==='WARNING' ? 'warning' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

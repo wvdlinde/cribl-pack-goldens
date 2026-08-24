@@ -1,0 +1,429 @@
+{
+  "key": "windows_powershell::ocsf",
+  "sourcetype": "windows_powershell",
+  "dest_format": "ocsf",
+  "score": 87,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-10T12:55:26.383Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "windows_powershell to OCSF pipeline. Parses events, maps to OCSF Process Activity (4007)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<log_time>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+[AP]M)\\s+LogName=(?<LogName>\\S+)\\s+SourceName=(?<SourceName>\\S+)\\s+EventCode=(?<EventCode>\\d+)\\s+EventType=(?<EventType>\\d+)\\s+Type=(?<Type>\\w+)\\s+ComputerName=(?<ComputerName>\\S+)\\s+User=(?<User>\\S+)/"
+      },
+      "description": "Extract timestamp and structured fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/Sid=(?<Sid>\\S+)\\s+SidType=(?<SidType>\\S+)\\s+TaskCategory=(?<TaskCategory>.*?)\\s+OpCode=(?<OpCode>.*?)\\s+RecordNumber=(?<RecordNumber>\\d+)\\s+Keywords=(?<Keywords>\\S+)\\s+Message=(?<Message>[\\s\\S]*)/"
+      },
+      "description": "Extract Sid, TaskCategory, OpCode, RecordNumber, Keywords, Message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "Message",
+        "regex": "/Command Name = (?<CommandName>[^\\n]*?)\\s+Command Type = (?<CommandType>[^\\n]*?)\\s+Script Name = (?<ScriptName>[^\\n]*?)\\s+Command Path = (?<CommandPath>[^\\n]*?)\\s+Sequence Number/"
+      },
+      "description": "Extract command/script context from Message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "Message",
+        "regex": "/Severity = (?<CtxSeverity>[^\\n]*?)\\s+Host Name = (?<HostName>[^\\n]*?)\\s+Host Version = (?<HostVersion>[^\\n]*?)\\s+Host ID/"
+      },
+      "description": "Extract context severity, host name and version"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "Message",
+        "regex": "/Engine Version = (?<EngineVersion>[^\\n]*?)\\s+Runspace ID/"
+      },
+      "description": "Extract engine version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "ComputerName || undefined"
+          },
+          {
+            "name": "user",
+            "value": "User || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventCode || undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "Type == 'Information' ? 1 : Type == 'Warning' ? 4 : Type == 'Error' ? 5 : 1"
+          },
+          {
+            "name": "signature",
+            "value": "TaskCategory || undefined"
+          }
+        ]
+      },
+      "description": "Alias canonical fields + severity_id from Type"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Map to OCSF Process Activity (4007) ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4007"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "400701"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "process",
+            "value": "{}"
+          },
+          {
+            "name": "process.file",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      },
+      "description": "OCSF core objects/ids"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor.user.name",
+            "value": "User || undefined"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "Sid || undefined"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "CommandName || undefined"
+          },
+          {
+            "name": "process.name",
+            "value": "CommandName || undefined"
+          },
+          {
+            "name": "process.file.name",
+            "value": "ScriptName || undefined"
+          },
+          {
+            "name": "process.file.path",
+            "value": "CommandPath && String(CommandPath).trim() != '' ? CommandPath : undefined"
+          },
+          {
+            "name": "process.file.type",
+            "value": "CommandType || undefined"
+          },
+          {
+            "name": "message",
+            "value": "Message || undefined"
+          },
+          {
+            "name": "raw_data",
+            "value": "_raw || undefined"
+          }
+        ]
+      },
+      "description": "Map process/actor/message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "device.hostname",
+            "value": "host || undefined"
+          },
+          {
+            "name": "device.name",
+            "value": "ComputerName || undefined"
+          },
+          {
+            "name": "device.type",
+            "value": "'Server'"
+          },
+          {
+            "name": "device.os",
+            "value": "{name:'Windows',type:'Windows'}"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'PowerShell'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "EngineVersion || HostVersion || undefined"
+          },
+          {
+            "name": "metadata.event_code",
+            "value": "EventCode || undefined"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "LogName || undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "RecordNumber || undefined"
+          }
+        ]
+      },
+      "description": "Map device/metadata"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "(log_time && new Date(String(log_time)).getTime()) ? new Date(String(log_time)).getTime() : undefined"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'windows_powershell:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time && new Date(String(log_time)).getTime()) ? new Date(String(log_time)).getTime() / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set time + sourcetype"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "actor",
+          "actor.*",
+          "process",
+          "process.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "message",
+          "raw_data",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF Process Activity fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "warn",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"none\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"362\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "class_uid / type_uid",
+        "issue": "OCSF class_uid 4007 is 'Script Activity' and type_uid 400701 maps to 'Script Activity: Unknown'. The correct class for PowerShell command execution (EventCode 4103) should be 4002 (Process Activity) or at minimum the type_uid must arithmetically match class_uid*100+activity_id. 4007*100+1=400701 is internally consistent but class 4007 does not exist in OCSF 1.x; valid process-related class is 4001 (File System Activity) or 4002 (Process Activity). Using a non-existent class_uid invalidates the event.",
+        "example": "class_uid: 4007, type_uid: 400701",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "category_uid",
+        "issue": "category_uid is set to 1 (System Activity), but OCSF class 4002 (Process Activity) belongs to category_uid 4 (Network Activity) is wrong — Process Activity belongs to category 4? No: Process Activity (4002) is in category_uid 4 'Discovery'. Actually in OCSF 1.x, Process Activity is category 4 'Discovery'? Correct mapping: Script Activity (if it existed as 4007) would be System Activity (1). But category_uid=1 paired with a non-standard class_uid=4007 is unverifiable and likely wrong.",
+        "example": "category_uid: 1 with class_uid: 4007",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "actor.process",
+        "issue": "actor.process is an empty object {}. The source contains a clear Host Application field ('Powershell -PSConsoleFile ...exshell.psc1 -command ...') which should populate actor.process.cmd_line or actor.process.file.path. This value is present in the raw input but not mapped.",
+        "example": "Host Application = Powershell -PSConsoleFile C:\\Program Files\\Microsoft\\Exchange Server\\V15\\\\bin\\exshell.psc1",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "process.file.type",
+        "issue": "OCSF file.type should be a numeric type_id or a standard string like 'Regular File', not 'Cmdlet'. 'Cmdlet' is the PowerShell command type, not a filesystem object type. It should be mapped to a separate field such as process.file.type_id or kept as unmapped metadata.",
+        "example": "process.file.type: \"Cmdlet\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "severity_id",
+        "issue": "severity_id=1 maps to 'Informational' in OCSF, which is correct for Type=Information/Severity=Informational. However OCSF severity_id=1 is 'Informational' — this is actually correct. No issue here on value, but note OCSF severity_id=1 is defined as 'Informational'.",
+        "example": "severity_id: 1 — acceptable",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "unmapped: OpCode / TaskCategory / Keywords / SidType",
+        "issue": "Source fields OpCode, TaskCategory, Keywords, and SidType are present in the raw event but not mapped to any OCSF field. TaskCategory ('Executing Pipeline') and OpCode could enrich metadata.extension or be placed in unmapped. Keywords=None could be metadata.log_level.",
+        "example": "TaskCategory=Executing Pipeline, OpCode=To be used when operation is just executing a method",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "actor.user.name",
+        "issue": "actor.user.name is set to 'SYSTEM' (from top-level User field), but the message body contains 'User = AD\\SYSTEM' which confirms the domain. The domain component 'AD' is dropped. Should be 'AD\\SYSTEM' or split into name='SYSTEM' and domain='AD'.",
+        "example": "actor.user.name: \"SYSTEM\" vs source \"User = AD\\SYSTEM\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "metadata.uid",
+        "issue": "metadata.uid is set to RecordNumber (4822371469), but OCSF metadata.uid is intended for a unique event identifier (GUID/UUID). RecordNumber is better placed in metadata.event_code extension or a custom field. The Host ID (fe6c9340-986c-4587-a0a4-8d39033a361f) or RunspaceID would be a more appropriate GUID candidate.",
+        "example": "metadata.uid: \"4822371469\" (RecordNumber, not a UUID)",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "time vs _time",
+        "issue": "Both 'time' (milliseconds epoch: 1671717526000) and '_time' (seconds epoch: 1671717526) are present. OCSF requires 'time' in milliseconds, which is correctly set. _time in seconds is a Cribl internal field and is acceptable, but having both could cause consumer confusion.",
+        "example": "_time: 1671717526, time: 1671717526000",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "device.type",
+        "issue": "device.type is set to the string 'Server' but OCSF device.type_id should be a numeric value (e.g., 1 for Server). The string 'Server' alone without a type_id is non-conformant.",
+        "example": "device.type: \"Server\" — missing device.type_id",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "The pipeline produces a structurally recognizable OCSF-shaped event with correct timestamp, host, metadata, and key command fields extracted. However, class_uid 4007 does not exist in OCSF 1.x (valid Script Activity class is 4007 in OCSF 1.3+ but needs verification; if invalid it is a critical schema violation), actor.process is an empty object despite a rich Host Application value in the source, domain information is dropped from the user field, and several source fields (OpCode, TaskCategory, Keywords, RunspaceID) are entirely unmapped. The process.file.type using 'Cmdlet' as a filesystem type is semantically incorrect."
+  }
+}

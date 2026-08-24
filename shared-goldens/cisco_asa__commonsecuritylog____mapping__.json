@@ -1,0 +1,300 @@
+{
+  "key": "cisco_asa::commonsecuritylog::__mapping__",
+  "sourcetype": "cisco_asa",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 248,
+  "updated_at": "2026-07-16T07:39:47.264Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "product",
+            "value": "'ASA'"
+          },
+          {
+            "name": "version",
+            "value": "'9.x'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Sentinel CommonSecurityLog",
+      "conf": {
+        "add": [
+          {
+            "name": "TimeGenerated",
+            "value": "((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != null && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'undefined' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'null' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '-' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '' ? ((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) : undefined"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "(version) != null && String(version) != 'undefined' && String(version) != 'null' && String(version) != '-' && String(version) != '' ? (version) : undefined"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "(event_code || asa_code || ftd_code || signature) != null && String(event_code || asa_code || ftd_code || signature) != 'undefined' && String(event_code || asa_code || ftd_code || signature) != 'null' && String(event_code || asa_code || ftd_code || signature) != '-' && String(event_code || asa_code || ftd_code || signature) != '' ? (event_code || asa_code || ftd_code || signature) : undefined"
+          },
+          {
+            "name": "Activity",
+            "value": "(message || action) != null && String(message || action) != 'undefined' && String(message || action) != 'null' && String(message || action) != '-' && String(message || action) != '' ? (message || action) : undefined"
+          },
+          {
+            "name": "SourceIP",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "SourcePort",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? (src_port) : undefined"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? (dest_port) : undefined"
+          },
+          {
+            "name": "Protocol",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "(action) != null && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' && String(action) != '' ? (action) : undefined"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "(src_user || user) != null && String(src_user || user) != 'undefined' && String(src_user || user) != 'null' && String(src_user || user) != '-' && String(src_user || user) != '' ? (src_user || user) : undefined"
+          },
+          {
+            "name": "DestinationUserName",
+            "value": "(dest_user) != null && String(dest_user) != 'undefined' && String(dest_user) != 'null' && String(dest_user) != '-' && String(dest_user) != '' ? (dest_user) : undefined"
+          },
+          {
+            "name": "SentBytes",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? (bytes_out) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "ReceivedBytes",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? (bytes_in) : undefined"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "(app || protocol) != null && String(app || protocol) != 'undefined' && String(app || protocol) != 'null' && String(app || protocol) != '-' && String(app || protocol) != '' ? (app || protocol) : undefined"
+          },
+          {
+            "name": "DeviceName",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != null && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != 'undefined' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != 'null' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != '-' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != '' ? (severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) : undefined"
+          },
+          {
+            "name": "RequestURL",
+            "value": "(url) != null && String(url) != 'undefined' && String(url) != 'null' && String(url) != '-' && String(url) != '' ? (url) : undefined"
+          },
+          {
+            "name": "SourceTranslatedAddress",
+            "value": "(src_translated_ip) != null && String(src_translated_ip) != 'undefined' && String(src_translated_ip) != 'null' && String(src_translated_ip) != '-' && String(src_translated_ip) != '' ? (src_translated_ip) : undefined"
+          },
+          {
+            "name": "DestinationTranslatedAddress",
+            "value": "(dest_translated_ip) != null && String(dest_translated_ip) != 'undefined' && String(dest_translated_ip) != 'null' && String(dest_translated_ip) != '-' && String(dest_translated_ip) != '' ? (dest_translated_ip) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_asa:commonsecuritylog'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "description": "Capture unmapped fields → AdditionalExtensions (KVP)",
+      "conf": {
+        "type": "kvp",
+        "dstField": "AdditionalExtensions",
+        "fields": [
+          "!__*",
+          "!cribl_*",
+          "!future_use*",
+          "!TimeGenerated",
+          "!DeviceVendor",
+          "!DeviceProduct",
+          "!DeviceVersion",
+          "!DeviceEventClassID",
+          "!Activity",
+          "!SourceIP",
+          "!SourcePort",
+          "!DestinationIP",
+          "!DestinationPort",
+          "!Protocol",
+          "!DeviceAction",
+          "!SourceUserName",
+          "!DestinationUserName",
+          "!SentBytes",
+          "!ReceivedBytes",
+          "!ApplicationProtocol",
+          "!DeviceName",
+          "!LogSeverity",
+          "!RequestURL",
+          "!SourceTranslatedAddress",
+          "!DestinationTranslatedAddress",
+          "!typeof",
+          "!log_time",
+          "!undefined",
+          "!String",
+          "!length",
+          "!new",
+          "!Date",
+          "!Number",
+          "!toISOString",
+          "!isNaN",
+          "!_time",
+          "!now",
+          "!vendor",
+          "!product",
+          "!version",
+          "!event_code",
+          "!asa_code",
+          "!ftd_code",
+          "!signature",
+          "!message",
+          "!action",
+          "!src_ip",
+          "!src_port",
+          "!dest_ip",
+          "!dest_port",
+          "!transport",
+          "!protocol",
+          "!src_user",
+          "!user",
+          "!dest_user",
+          "!bytes_out",
+          "!bytes_in",
+          "!app",
+          "!host",
+          "!severity",
+          "!null",
+          "!url",
+          "!src_translated_ip",
+          "!dest_translated_ip",
+          "!_raw",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!AdditionalExtensions",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Keep only Sentinel CommonSecurityLog fields + routing",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "TimeGenerated",
+          "TimeGenerated.*",
+          "DeviceVendor",
+          "DeviceVendor.*",
+          "DeviceProduct",
+          "DeviceProduct.*",
+          "DeviceVersion",
+          "DeviceVersion.*",
+          "DeviceEventClassID",
+          "DeviceEventClassID.*",
+          "Activity",
+          "Activity.*",
+          "SourceIP",
+          "SourceIP.*",
+          "SourcePort",
+          "SourcePort.*",
+          "DestinationIP",
+          "DestinationIP.*",
+          "DestinationPort",
+          "DestinationPort.*",
+          "Protocol",
+          "Protocol.*",
+          "DeviceAction",
+          "DeviceAction.*",
+          "SourceUserName",
+          "SourceUserName.*",
+          "DestinationUserName",
+          "DestinationUserName.*",
+          "SentBytes",
+          "SentBytes.*",
+          "ReceivedBytes",
+          "ReceivedBytes.*",
+          "ApplicationProtocol",
+          "ApplicationProtocol.*",
+          "DeviceName",
+          "DeviceName.*",
+          "LogSeverity",
+          "LogSeverity.*",
+          "RequestURL",
+          "RequestURL.*",
+          "SourceTranslatedAddress",
+          "SourceTranslatedAddress.*",
+          "DestinationTranslatedAddress",
+          "DestinationTranslatedAddress.*",
+          "AdditionalExtensions"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

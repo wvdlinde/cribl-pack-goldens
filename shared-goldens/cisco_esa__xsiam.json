@@ -1,0 +1,197 @@
+{
+  "key": "cisco_esa::xsiam",
+  "sourcetype": "cisco_esa",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:05.803Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "cisco_esa → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "__product",
+            "value": "'Email Security Appliance'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_esa:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "cisco_esa_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 16,
+    "outputSample": [
+      {
+        "_raw": "Mon Jan 13 00:31:05 2025 Warning: MID 182743 ICID 94823 Reputation Filter: Message from 185.220.101.47 has reputation score -7.5, REJECTED",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 01:12:07 2025 Critical: MID 182746 DLP violation detected: Policy 'PCI-DSS' matched, message from <cfo@company.com> to <vendor@external.org> QUARANTINED",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 01:24:51 2025 Info: MID 182747 ICID 94827 DKIM: pass header.d=amazon.com",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 01:39:22 2025 Warning: MID 182748 ICID 94828 Anti-Virus: INFECTED with 'Trojan.GenericKD.48291' attachment 'invoice.exe', MESSAGE DROPPED",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 01:53:44 2025 Info: MID 182749 ICID 94829 SPF: pass identity=mailfrom; envelope-from=\"noreply@paypal.com\"",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 03:05:54 2025 Warning: MID 182754 ICID 94834 Anti-Spam: POSITIVE score 98, action QUARANTINED, subject 'URGENT: Claim Your Prize NOW!!!'",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 03:47:48 2025 Critical: MID 182757 outbreak filter: Level 5 threat detected, rule 'phishing-credential-harvest-2025' DROPPED",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      },
+      {
+        "_raw": "Mon Jan 13 04:15:59 2025 Warning: MID 182759 ICID 94839 From: <billing@amaz0n-secure.ru> SPF: fail, DKIM: fail, DMARC: fail ACTION: DROPPED",
+        "_time": 1784047751.534,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Cisco",
+        "__product": "Email Security Appliance",
+        "sourcetype": "cisco_esa:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "header.d",
+      "identity"
+    ],
+    "sampleRaw": [
+      "Mon Jan 13 00:31:05 2025 Warning: MID 182743 ICID 94823 Reputation Filter: Message from 185.220.101.47 has reputation score -7.5, REJECTED",
+      "Mon Jan 13 01:12:07 2025 Critical: MID 182746 DLP violation detected: Policy 'PCI-DSS' matched, message from <cfo@company.com> to <vendor@external.org> QUARANTINED",
+      "Mon Jan 13 01:24:51 2025 Info: MID 182747 ICID 94827 DKIM: pass header.d=amazon.com",
+      "Mon Jan 13 01:39:22 2025 Warning: MID 182748 ICID 94828 Anti-Virus: INFECTED with 'Trojan.GenericKD.48291' attachment 'invoice.exe', MESSAGE DROPPED",
+      "Mon Jan 13 01:53:44 2025 Info: MID 182749 ICID 94829 SPF: pass identity=mailfrom; envelope-from=\"noreply@paypal.com\"",
+      "Mon Jan 13 03:05:54 2025 Warning: MID 182754 ICID 94834 Anti-Spam: POSITIVE score 98, action QUARANTINED, subject 'URGENT: Claim Your Prize NOW!!!'",
+      "Mon Jan 13 03:47:48 2025 Critical: MID 182757 outbreak filter: Level 5 threat detected, rule 'phishing-credential-harvest-2025' DROPPED",
+      "Mon Jan 13 04:15:59 2025 Warning: MID 182759 ICID 94839 From: <billing@amaz0n-secure.ru> SPF: fail, DKIM: fail, DMARC: fail ACTION: DROPPED"
+    ],
+    "sourcetype": "cisco_esa"
+  }
+}

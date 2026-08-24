@@ -1,0 +1,30 @@
+{
+  "key": "windows_sysmon::__optimization__",
+  "sourcetype": "windows_sysmon",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:23:29.197Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "EventID === '5'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop process terminated events (EventID 5) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '7' && Image && /\\\\(Windows|Microsoft)\\\\/.test(Image)",
+      "disabled": true,
+      "final": true,
+      "description": "Drop routine Microsoft DLL image loads (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

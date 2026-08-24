@@ -1,0 +1,96 @@
+{
+  "key": "vmware_esxlog_cmmdstimemachinedump::__extraction__",
+  "sourcetype": "vmware_esxlog_cmmdstimemachinedump",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:52:08.995Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the ESXi CmmdsTimeMachine log envelope",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[^\\s\\[]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<component>[^\\]]+)\\]\\s+(?<severity>DEBUG|INFO|WARNING|ERROR):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.startsWith('Unauthorized access attempt') || message.startsWith('SSH session'))",
+      "disabled": false,
+      "description": "Extract source IP from remote access events",
+      "conf": {
+        "source": "message",
+        "regex": "/\\bfrom\\s+(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[A-Fa-f0-9]*:[A-Fa-f0-9:]+)\\b/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.startsWith('Node ') || message.startsWith('Master election') || message.startsWith('Time skew') || message.startsWith('Network partition'))",
+      "disabled": false,
+      "description": "Extract IPv4 or IPv6 peer node address",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\bNode\\s+|\\bnode=|\\bnode\\s+)(?<peer_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[A-Fa-f0-9]*:[A-Fa-f0-9:]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Trace buffer flush requested by user')",
+      "disabled": false,
+      "description": "Extract requesting user and source host",
+      "conf": {
+        "source": "message",
+        "regex": "/requested by user\\s+(?<user>\\S+)\\s+via\\s+(?<src_host>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.includes('writing to ') || message.includes('dump file '))",
+      "disabled": false,
+      "description": "Extract dump file path from file operations",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:writing to|dump file)\\s+(?<file_path>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "message",
+      "disabled": false,
+      "description": "Classify event action, direction, and protocol",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.startsWith('Unauthorized access attempt') ? 'denied' : message.startsWith('Failed ') || message.includes('unable to reach') ? 'failed' : message.includes('completed') || message.includes('complete') || message.includes('successfully') || message.includes('created') || message.includes('rejoined') ? 'succeeded' : message.includes('detected') || message.includes('exceeded threshold') || message.includes('elevated') ? 'alerted' : message.includes('initiated') || message.includes('requested') || message.includes('triggered') ? 'initiated' : 'observed'"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? 'inbound' : peer_ip ? 'internal' : 'local'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.startsWith('SSH session') ? 'ssh' : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

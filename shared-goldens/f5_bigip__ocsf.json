@@ -1,0 +1,506 @@
+{
+  "key": "f5_bigip::ocsf",
+  "sourcetype": "f5_bigip",
+  "dest_format": "ocsf",
+  "score": 91,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T07:00:58.910Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "f5_bigip to OCSF pipeline. Parses events, discriminates class, maps to OCSF schema."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<msg_id>[\\d:]+):\\s+(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base syslog header with msg_id"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message == undefined",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header without msg_id (e.g. syslog-ng, httpd)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && message.indexOf('SSL') >= 0 && message.indexOf('->') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<ssl_event>SSL [\\w\\s()]+(?:failed|error))\\s+for\\s+(?:TCP\\s+)?(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse SSL failures"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && message.indexOf('SYN flood') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/SYN flood attack detected from\\s+(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+),\\s*rate:\\s*(?<attack_rate>\\d+)\\s*(?<attack_rate_unit>\\w+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse SYN flood"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && message.indexOf('Rule') >= 0 && message.indexOf('->') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Rule\\s+(?<irule>[\\w\\/]+)\\s+aborted for connection\\s+(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse iRule abort"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && (message.indexOf('Pool member') >= 0 || message.indexOf('pool member') >= 0 || (message.indexOf('Pool') >= 0 && message.indexOf('member') >= 0))",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Pool\\s+(?<pool_name>[\\w\\/]+)\\s+member\\s+(?<member_ip>[\\d.]+):(?<member_port>\\d+)\\s+monitor status\\s+(?<monitor_status>\\w+)/i",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse pool member status"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && message.indexOf('No members available') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/No members available for pool\\s+(?<pool_name>[\\w\\/]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse pool exhaustion"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message != undefined && message.indexOf('Connection') >= 0 && message.indexOf('limit exceeded') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/for\\s+(?:virtual server|client)\\s+(?<vs_ip>[\\d.]+):(?<vs_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse connection limit — virtual server is destination"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process != undefined && process == 'httpd'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>[\\d.]+)\\s+-\\s+(?<user>[\\w\\-]+)\\s+\\[(?<http_timestamp>[^\\]]+)\\]\\s+\"(?<http_method>[A-Z]+)\\s+(?<uri>[^\\s]+)\\s+(?<http_version>HTTP\\/[\\d.]+)\"\\s+(?<http_status>\\d+)\\s+(?<http_bytes>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse httpd access log"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Classify + normalize timestamp ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "process == 'httpd' ? 'http_access' : message == undefined ? 'unknown' : message.indexOf('Configuration reload') >= 0 ? 'config_reload' : message.indexOf('SSL') >= 0 && message.indexOf('->') >= 0 ? 'ssl_error' : message.indexOf('SYN flood') >= 0 ? 'syn_flood' : message.indexOf('Rule') >= 0 && message.indexOf('aborted') >= 0 ? 'irule_abort' : message.indexOf('member') >= 0 && message.indexOf('monitor status') >= 0 ? 'pool_member_status' : message.indexOf('No members available') >= 0 ? 'pool_exhausted' : message.indexOf('Connection') >= 0 && message.indexOf('limit') >= 0 ? 'connection_limit' : 'generic'"
+          },
+          {
+            "name": "log_time",
+            "value": "http_timestamp || timestamp || undefined"
+          },
+          {
+            "name": "year_now",
+            "value": "String(new Date().getFullYear())"
+          }
+        ]
+      },
+      "description": "Classify event_type and pick source timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "http_timestamp ? new Date(String(http_timestamp).replace(/^(\\d+)\\/(\\w+)\\/(\\d+):(.+)$/,'$2 $1 $3 $4')).getTime()/1000 : timestamp ? new Date(String(timestamp)+' '+year_now).getTime()/1000 : _time"
+          }
+        ]
+      },
+      "description": "Compute _time from source timestamp, defaulting year to current"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "Math.round(_time*1000)"
+          }
+        ]
+      },
+      "description": "OCSF time in ms"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map to OCSF ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "event_type == 'config_reload' ? 1001 : event_type == 'http_access' ? 6001 : 4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "event_type == 'config_reload' ? 1 : event_type == 'http_access' ? 6 : 4"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_type == 'http_access' ? (http_method == 'GET' ? 2 : http_method == 'POST' ? 3 : http_method == 'PUT' ? 4 : http_method == 'DELETE' ? 5 : 1) : event_type == 'config_reload' ? 3 : event_type == 'ssl_error' ? 3 : event_type == 'pool_member_status' ? 3 : event_type == 'connection_limit' ? 5 : event_type == 'syn_flood' ? 5 : event_type == 'irule_abort' ? 5 : 1"
+          }
+        ]
+      },
+      "description": "Set class_uid, category_uid, activity_id per event class"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "class_uid * 100 + activity_id"
+          },
+          {
+            "name": "activity_name",
+            "value": "event_type == 'http_access' ? http_method : event_type == 'config_reload' ? 'Reload' : event_type == 'ssl_error' ? 'Close' : event_type == 'pool_member_status' ? 'Close' : 'General'"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'emerg' ? 6 : severity == 'alert' ? 6 : severity == 'crit' ? 5 : severity == 'err' ? 4 : severity == 'error' ? 4 : severity == 'warning' ? 3 : severity == 'notice' ? 2 : severity == 'info' ? 1 : 0"
+          },
+          {
+            "name": "severity",
+            "value": "severity"
+          }
+        ]
+      },
+      "description": "type_uid, activity_name, severity_id"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "src_ip ? {ip: src_ip, port: Number(src_port || 0)} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "dst_ip ? {ip: dst_ip, port: Number(dst_port || 0)} : member_ip ? {ip: member_ip, port: Number(member_port || 0)} : vs_ip ? {ip: vs_ip, port: Number(vs_port || 0)} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "class_uid == 4001 ? {protocol_name: (ssl_event ? 'SSL/TLS' : 'TCP'), protocol_num: 6} : undefined"
+          }
+        ]
+      },
+      "description": "Build src/dst_endpoint and connection_info nested objects"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{version: '1.0.0', product: {name: 'BIG-IP', vendor_name: 'F5 Networks'}, profiles: ['host']}"
+          },
+          {
+            "name": "observer",
+            "value": "host ? {hostname: host} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "host ? {hostname: host} : undefined"
+          },
+          {
+            "name": "process",
+            "value": "process ? {name: process, pid: Number(pid || 0)} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "user ? {user: {name: user}} : undefined"
+          }
+        ]
+      },
+      "description": "metadata, observer, device, process, actor objects"
+    },
+    {
+      "id": "eval",
+      "filter": "class_uid == 6001",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "http_request",
+            "value": "{http_method: http_method, url: {path: uri}, version: http_version}"
+          },
+          {
+            "name": "http_response",
+            "value": "{code: Number(http_status || 0)}"
+          },
+          {
+            "name": "traffic",
+            "value": "{bytes_out: Number(http_bytes || 0)}"
+          }
+        ]
+      },
+      "description": "HTTP request/response for web resources activity"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Cleanup raw/intermediate fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'f5_bigip'"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "src_ip",
+          "src_port",
+          "dst_ip",
+          "dst_port",
+          "member_ip",
+          "member_port",
+          "vs_ip",
+          "vs_port",
+          "pid",
+          "host",
+          "user",
+          "http_status",
+          "http_bytes",
+          "http_method",
+          "uri",
+          "http_version",
+          "http_timestamp",
+          "log_time",
+          "year_now",
+          "attack_rate",
+          "attack_rate_unit",
+          "irule",
+          "pool_name",
+          "monitor_status",
+          "ssl_event",
+          "__*"
+        ]
+      },
+      "description": "Remove raw/intermediate source fields, keep OCSF output"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "traffic.bytes_in",
+        "issue": "OCSF field \"traffic.bytes_in\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "_time / time",
+        "issue": "Timestamps are wrong/inconsistent. Most events use a fabricated epoch (~1794700997) that does not correspond to Nov 15 of any real year. Event 4 (httpd) correctly uses 1700009058 (2023-11-15), but all other events use ~1794xxxxxx which maps to ~2026-10-xx, not Nov 15 2023. The syslog header has no year, but the httpd log body contains [15/Nov/2023:00:44:18 +0000] — the pipeline should have inferred 2023 consistently for all events.",
+        "example": "_time: 1794700997 for 'Nov 15 00:03:17' maps to ~Oct 2026, not Nov 2023",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "class_uid",
+        "issue": "OCSF class_uid values are fabricated and do not match the OCSF specification. Network Activity is 4001 (correct), but System Activity is 1001, HTTP Activity is 6001 — OCSF defines System Activity as 1001 (acceptable) but HTTP Activity class_uid is 4002 (Web Resources Activity) or similar, not 6001. These UIDs are not valid OCSF class identifiers.",
+        "example": "class_uid: 6001 for HTTP access; OCSF HTTP Activity = 4002",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "type_uid",
+        "issue": "type_uid values are arithmetically inconsistent with OCSF spec. OCSF type_uid = class_uid * 100 + activity_id. For class_uid=1001, activity_id=3: expected 100103, got 100103 (ok for event 2). For class_uid=6001, activity_id=2: expected 600102, got 600102 — but class_uid 6001 itself is invalid. For class_uid=4001, activity_id=3: 400103 is correct math but activity_id=3 'Close' is semantically wrong for pool-member-down and SSL-error events.",
+        "example": "type_uid: 400103 used for pool_member_status and ssl_error events where 'Close' activity is a semantic mismatch",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "category_uid",
+        "issue": "category_uid=4 for Network Activity is correct, but category_uid=1 for System Activity and category_uid=6 for HTTP do not match OCSF category definitions. OCSF category 6 is 'Application Activity', not a valid stand-alone HTTP category.",
+        "example": "category_uid: 6 for http_access event; OCSF does not define category 6 as HTTP",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "activity_id / activity_name",
+        "issue": "activity_id=3 mapped to activity_name='Close' for SSL errors and pool-member-down events is semantically incorrect. SSL handshake failure should be activity_id=1 (Open/Attempt) with a fail status, not 'Close'. Pool member down is a status event, not a connection close.",
+        "example": "activity_id: 3, activity_name: 'Close' for ssl_error event 01260013:6",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "output truncated",
+        "issue": "The pipeline output JSON is truncated mid-stream after event 6. Events 7 (connection limit) and 8 (memory critical) are missing entirely from the output.",
+        "example": "Output ends at '_time: 1794' for event 7, JSON is incomplete",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "status / status_id",
+        "issue": "OCSF Network Activity and related classes require a 'status' and 'status_id' field. All error/failure events (SSL handshake failed, pool no members, monitor status down) are missing status/status_id entirely. These are mandatory OCSF fields.",
+        "example": "Event 1 SSL handshake failure has no status_id field; OCSF requires status_id for class 4001",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "src_endpoint.port",
+        "issue": "HTTP access event (event 4) has src_endpoint.port set to 0 — the source port is not present in the raw log, which is correct, but setting it to 0 is misleading. Should be omitted or null rather than 0.",
+        "example": "src_endpoint: {ip: '192.168.50.12', port: 0}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "msg_id",
+        "issue": "'msg_id' is a non-standard OCSF field. The F5 message ID (e.g. 01260013:6) should be mapped to metadata.log_name or unmapped.raw_data or the severity level extracted from it. Using a custom top-level field breaks OCSF schema compliance.",
+        "example": "msg_id: '01260013:6' at top level",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "event_type",
+        "issue": "'event_type' is not an OCSF top-level field. OCSF uses class_uid + type_uid + type_name to describe event type. This custom field adds noise but also duplicates intent without proper OCSF mapping.",
+        "example": "event_type: 'ssl_error' — not in OCSF schema",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "severity / severity_id",
+        "issue": "severity_id mapping from syslog severity levels is partially correct (info→1, notice→2, warning→3, err→4) but OCSF severity_id for 'err' should be 4 (Error) and 'crit' should be 5 (Critical). The mapping appears plausible but event 8 (crit) is truncated so cannot be verified.",
+        "example": "severity_id: 4 for 'err' level — acceptable, but crit→5 unverifiable due to truncation",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.protocol_num",
+        "issue": "protocol_num=6 hardcoded for TCP/SSL is plausible (TCP=6 per IANA), but SSL/TLS is not a transport protocol with IANA number 6 — it rides atop TCP. Setting protocol_num=6 for SSL/TLS conflates transport and application layers.",
+        "example": "connection_info: {protocol_name: 'SSL/TLS', protocol_num: 6}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "pool / virtual_server",
+        "issue": "Pool names (/Common/web_pool_443, /Common/app_pool) and virtual server names (/Common/vs_http) present in the raw messages are not mapped to any OCSF field. These are significant operational values that should appear in unmapped or a custom extension.",
+        "example": "Message 'No members available for pool /Common/web_pool_443' — pool name not extracted",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "metadata.profiles",
+        "issue": "profiles: ['host'] is static and hardcoded for all events regardless of event type. OCSF profiles should reflect which optional profile extensions are actually applied.",
+        "example": "metadata.profiles: ['host'] on all 6 visible events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "timestamp",
+        "issue": "Retaining 'timestamp' as a separate string field alongside 'time' (epoch ms) is redundant in OCSF. OCSF only defines 'time' (epoch ms). 'timestamp' should be removed or placed in unmapped.",
+        "example": "timestamp: 'Nov 15 00:03:17' alongside time: 1794700997000",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "sourcetype",
+        "issue": "sourcetype is a Splunk/Cribl metadata field, not an OCSF field. Should be placed under metadata or removed from the OCSF output.",
+        "example": "sourcetype: 'f5_bigip' at top level",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "traffic.bytes_in"
+    ],
+    "emptyFields": [
+      "src_endpoint.port on http_access event (set to 0, effectively empty/unknown)"
+    ],
+    "summary": "The pipeline produces structurally recognizable OCSF-like output but has critical failures: timestamps are wrong for 7 of 8 events (fabricated epoch ~2026 instead of 2023), OCSF class_uid/type_uid values do not conform to the actual OCSF specification, mandatory status/status_id fields are absent from all events, and the output is physically truncated (events 7-8 missing). The HTTP access event is the closest to correct, having properly extracted actor, http_request, and http_response fields, but even it uses an invalid class_uid. Several source values (pool names, virtual server names, memory percentage) are present in the raw logs but not extracted."
+  }
+}

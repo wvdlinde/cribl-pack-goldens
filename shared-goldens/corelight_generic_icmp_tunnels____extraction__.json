@@ -1,0 +1,119 @@
+{
+  "key": "corelight_generic_icmp_tunnels::__extraction__",
+  "sourcetype": "corelight_generic_icmp_tunnels",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:46:28.922Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Corelight ICMP tunnel detection JSON event",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Map raw Zeek/Corelight fields to normalized network field names",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "ts*1000"
+          },
+          {
+            "name": "src_ip",
+            "value": "this['id.orig_h']"
+          },
+          {
+            "name": "src_port",
+            "value": "this['id.orig_p']"
+          },
+          {
+            "name": "dst_ip",
+            "value": "this['id.resp_h']"
+          },
+          {
+            "name": "dst_port",
+            "value": "this['id.resp_p']"
+          },
+          {
+            "name": "protocol",
+            "value": "proto"
+          },
+          {
+            "name": "session_id",
+            "value": "uid"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p",
+          "proto",
+          "_path"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol naming (icmp/icmp6 -> icmp/icmpv6) and classify action based on detection/notice fields",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "protocol=='icmp6' ? 'icmpv6' : protocol"
+          },
+          {
+            "name": "action",
+            "value": "notice==true ? 'alert' : 'allowed'"
+          },
+          {
+            "name": "is_ipv6",
+            "value": "src_ip.match(/:/) || dst_ip.match(/:/) ? true : false"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive traffic direction based on private/internal source IP ranges (RFC1918 and link-local IPv6)",
+      "conf": {
+        "add": [
+          {
+            "name": "__is_private_src",
+            "value": "src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|fe80:|::ffff:)/) ? true : false"
+          },
+          {
+            "name": "__is_private_dst",
+            "value": "dst_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|fe80:|::ffff:)/) ? true : false"
+          },
+          {
+            "name": "direction",
+            "value": "__is_private_src && !__is_private_dst ? 'outbound' : (!__is_private_src && __is_private_dst ? 'inbound' : 'internal')"
+          }
+        ],
+        "remove": [
+          "__is_private_src",
+          "__is_private_dst"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,118 @@
+{
+  "key": "isva_syslog::cim::__mapping__",
+  "sourcetype": "isva_syslog",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:50:08.019Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "user",
+            "value": "user || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "user || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "url",
+            "value": "uri || ''"
+          },
+          {
+            "name": "object",
+            "value": "object || uri || ''"
+          },
+          {
+            "name": "rule",
+            "value": "acl_name || ''"
+          },
+          {
+            "name": "authentication_method",
+            "value": "mechanism || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "msg_id || ''"
+          },
+          {
+            "name": "signature",
+            "value": "message || ''"
+          },
+          {
+            "name": "duration",
+            "value": "Number(timeout_seconds || 0)"
+          },
+          {
+            "name": "app",
+            "value": "'webseald'"
+          },
+          {
+            "name": "action",
+            "value": "(message && message.toLowerCase().indexOf('succeeded')>-1) ? 'success' : (message && message.toLowerCase().indexOf('passed')>-1) ? 'success' : (message && message.toLowerCase().indexOf('failed')>-1) ? 'failure' : (message && message.toLowerCase().indexOf('denied')>-1) ? 'blocked' : (message && message.toLowerCase().indexOf('violation')>-1) ? 'blocked' : (message && message.toLowerCase().indexOf('timeout')>-1) ? 'terminated' : 'unknown'"
+          },
+          {
+            "name": "transport",
+            "value": "method ? 'tcp' : ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-16)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_product",
+            "value": "'IBM Security Verify Access'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'isva_syslog'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

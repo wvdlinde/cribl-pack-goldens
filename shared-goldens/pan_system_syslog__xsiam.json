@@ -1,0 +1,194 @@
+{
+  "key": "pan_system_syslog::xsiam",
+  "sourcetype": "pan_system_syslog",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:15.560Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "pan_system_syslog → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'pan system syslog'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'pan_system_syslog:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "pan_system_syslog_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "<epoch>1748294400</epoch><serial>001801012345</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:03:12</time_generated><vsys></vsys><eventid>general</eventid><object></object><module>general</module><severity>informational</severity><description>Panorama connected</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748294820</epoch><serial>001801012345</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:10:20</time_generated><vsys>vsys1</vsys><eventid>auth-success</eventid><object>admin</object><module>auth</module><severity>informational</severity><description>User admin logged in from 192.168.1.50 using web</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748295110</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:15:10</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>medium</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748295480</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:21:20</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>medium</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748295840</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:27:20</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>high</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh - account locked</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748296200</epoch><serial>001801023456</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:30:00</time_generated><vsys></vsys><eventid>sys-reboot</eventid><object></object><module>general</module><severity>informational</severity><description>System rebooted by user admin</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748297400</epoch><serial>001801023456</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:50:00</time_generated><vsys></vsys><eventid>ha-state-change</eventid><object>ha</object><module>ha</module><severity>high</severity><description>HA state changed from active to passive on device pa-fw-01</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      },
+      {
+        "_raw": "<epoch>1748298000</epoch><serial>001801034567</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 01:00:00</time_generated><vsys></vsys><eventid>ha-state-change</eventid><object>ha</object><module>ha</module><severity>high</severity><description>HA state changed from passive to active on device pa-fw-02</description>",
+        "_time": 1784049555.302,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan system syslog",
+        "__product": "Security",
+        "sourcetype": "pan_system_syslog:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "<epoch>1748294400</epoch><serial>001801012345</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:03:12</time_generated><vsys></vsys><eventid>general</eventid><object></object><module>general</module><severity>informational</severity><description>Panorama connected</description>",
+      "<epoch>1748294820</epoch><serial>001801012345</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:10:20</time_generated><vsys>vsys1</vsys><eventid>auth-success</eventid><object>admin</object><module>auth</module><severity>informational</severity><description>User admin logged in from 192.168.1.50 using web</description>",
+      "<epoch>1748295110</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:15:10</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>medium</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh</description>",
+      "<epoch>1748295480</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:21:20</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>medium</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh</description>",
+      "<epoch>1748295840</epoch><serial>001801056789</serial><type>SYSTEM</type><subtype>auth</subtype><time_generated>2025-05-26 00:27:20</time_generated><vsys>vsys1</vsys><eventid>auth-fail</eventid><object>jsmith</object><module>auth</module><severity>high</severity><description>Failed authentication for user jsmith from 10.0.5.22 using ssh - account locked</description>",
+      "<epoch>1748296200</epoch><serial>001801023456</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:30:00</time_generated><vsys></vsys><eventid>sys-reboot</eventid><object></object><module>general</module><severity>informational</severity><description>System rebooted by user admin</description>",
+      "<epoch>1748297400</epoch><serial>001801023456</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 00:50:00</time_generated><vsys></vsys><eventid>ha-state-change</eventid><object>ha</object><module>ha</module><severity>high</severity><description>HA state changed from active to passive on device pa-fw-01</description>",
+      "<epoch>1748298000</epoch><serial>001801034567</serial><type>SYSTEM</type><subtype>general</subtype><time_generated>2025-05-26 01:00:00</time_generated><vsys></vsys><eventid>ha-state-change</eventid><object>ha</object><module>ha</module><severity>high</severity><description>HA state changed from passive to active on device pa-fw-02</description>"
+    ],
+    "sourcetype": "pan_system_syslog"
+  }
+}

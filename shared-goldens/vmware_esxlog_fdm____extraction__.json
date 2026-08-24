@@ -1,0 +1,86 @@
+{
+  "key": "vmware_esxlog_fdm::__extraction__",
+  "sourcetype": "vmware_esxlog_fdm",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:15:08.105Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base FDM log line into timestamp, host, thread id, component, opID, severity, and message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Fdm:\\s+\\[(?<thread_id>\\S+)\\s+'(?<component>[^']+)'\\s+opID=(?<opid>\\S+)\\]\\s+\\[(?<severity>\\w+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /[Hh]ost\\s+[\\w.-]+/.test(message)",
+      "disabled": false,
+      "description": "Extract destination host (and optional IP in brackets) referenced in host/heartbeat/state-change messages",
+      "conf": {
+        "source": "message",
+        "regex": "/[Hh]ost\\s+(?<dst_host>[\\w.-]+)(?:\\s+\\[(?<dst_ip>[\\d.]+)\\])?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(peer|at|address)\\s+[\\d.]+/.test(message)",
+      "disabled": false,
+      "description": "Extract destination IP and optional port from peer/at/address style messages (SSL, vpxd connection, isolation address)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:peer|at|address)\\s+(?<dst_ip>[\\d.]+)(?::(?<dst_port>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity level and derive an action classification from the message text",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='ERROR' ? 'critical' : severity=='WARNING' ? 'warning' : 'informational'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/succeeded|resumed|reachable|retained|master/) ? 'success' : message.match(/failed|Lost|dead|exhausted|unreachable/) ? 'failure' : 'info'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event time from the extracted ISO timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,204 @@
+{
+  "key": "alibaba_cloud_actiontrail::xsiam",
+  "sourcetype": "alibaba_cloud_actiontrail",
+  "dest_format": "xsiam",
+  "score": 80,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-06T08:34:48.324Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "alibaba_cloud_actiontrail → Cortex XSIAM passthrough.\nPreserves _raw and __inputId; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'alibaba cloud actiontrail'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'alibaba_cloud_actiontrail:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__inputId",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep the source-native payload, XSIAM headers, and required integration identifier"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "alibaba_cloud_actiontrail_to_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 57,
+    "outputSample": [
+      {
+        "_raw": "{\"eventId\":\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:03:22Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"DescribeInstances\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-001-ABC\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"AliyunCLI/3.0.16\",\"requestParameters\":{\"RegionId\":\"cn-hangzhou\",\"PageSize\":\"50\"},\"responseElements\":{\"RequestId\":\"REQ-001-ABC\",\"TotalCount\":\"12\"},\"sourceIpAddress\":\"10.0.1.45\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"21234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"ops-user-01\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxA\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:17:44Z\",\"eventSource\":\"ram.aliyuncs.com\",\"eventName\":\"CreateUser\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-002-BCD\",\"serviceName\":\"RAM\",\"apiVersion\":\"2015-05-01\",\"userAgent\":\"AlibabaCloud/Java-SDK-v2.0\",\"requestParameters\":{\"UserName\":\"svc-account-deploy\",\"DisplayName\":\"Deploy Service Account\",\"MobilePhone\":\"\",\"Email\":\"\"},\"responseElements\":{\"RequestId\":\"REQ-002-BCD\",\"User\":{\"UserId\":\"987654321098765\",\"UserName\":\"svc-account-deploy\"}},\"sourceIpAddress\":\"203.0.113.55\",\"userIdentity\":{\"type\":\"root-account\",\"principalId\":\"1234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"root\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxB\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"c3d4e5f6-a7b8-9012-cdef-123456789012\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:29:11Z\",\"eventSource\":\"oss.aliyuncs.com\",\"eventName\":\"GetObject\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-003-CDE\",\"serviceName\":\"OSS\",\"apiVersion\":\"2019-05-17\",\"userAgent\":\"Mozilla/5.0 compatible\",\"requestParameters\":{\"BucketName\":\"prod-data-backup\",\"ObjectKey\":\"db/snapshot-20240114.tar.gz\",\"ByteRange\":\"0-10485760\"},\"responseElements\":{\"RequestId\":\"REQ-003-CDE\",\"ContentLength\":\"10485761\"},\"sourceIpAddress\":\"185.220.101.34\",\"userIdentity\":{\"type\":\"anonymous\",\"principalId\":\"\",\"accountId\":\"\",\"userName\":\"\",\"accessKeyId\":\"\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"AccessDenied\",\"errorMessage\":\"Access Denied\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"d4e5f6a7-b8c9-0123-defa-234567890123\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:45:33Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"StopInstance\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-004-DEF\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"Terraform/1.5.0 terraform-provider-alicloud/1.212.0\",\"requestParameters\":{\"InstanceId\":\"i-bp1abc123def456789\",\"ForceStop\":\"false\",\"ConfirmStop\":\"true\"},\"responseElements\":{\"RequestId\":\"REQ-004-DEF\"},\"sourceIpAddress\":\"10.0.1.100\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"31234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"terraform-ci\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxC\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"e5f6a7b8-c9d0-1234-efab-345678901234\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:02:55Z\",\"eventSource\":\"ram.aliyuncs.com\",\"eventName\":\"AttachPolicyToUser\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-005-EFG\",\"serviceName\":\"RAM\",\"apiVersion\":\"2015-05-01\",\"userAgent\":\"AliyunCLI/3.0.16\",\"requestParameters\":{\"PolicyType\":\"System\",\"PolicyName\":\"AdministratorAccess\",\"UserName\":\"svc-account-deploy\"},\"responseElements\":{\"RequestId\":\"REQ-005-EFG\"},\"sourceIpAddress\":\"203.0.113.55\",\"userIdentity\":{\"type\":\"root-account\",\"principalId\":\"1234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"root\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxB\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"f6a7b8c9-d0e1-2345-fabc-456789012345\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:14:07Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"DescribeSecurityGroups\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-006-FGH\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"python-requests/2.28.0\",\"requestParameters\":{\"RegionId\":\"cn-beijing\",\"PageNumber\":\"1\",\"PageSize\":\"100\"},\"responseElements\":{\"RequestId\":\"REQ-006-FGH\",\"TotalCount\":\"7\"},\"sourceIpAddress\":\"198.51.100.88\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"41234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"dev-user-02\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxD\"},\"acsRegion\":\"cn-beijing\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"a7b8c9d0-e1f2-3456-abcd-567890123456\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:28:39Z\",\"eventSource\":\"slb.aliyuncs.com\",\"eventName\":\"CreateLoadBalancer\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-007-GHI\",\"serviceName\":\"SLB\",\"apiVersion\":\"2014-05-15\",\"userAgent\":\"Terraform/1.5.0 terraform-provider-alicloud/1.212.0\",\"requestParameters\":{\"RegionId\":\"cn-hangzhou\",\"LoadBalancerName\":\"prod-lb-web-01\",\"LoadBalancerSpec\":\"slb.s3.large\",\"AddressType\":\"internet\",\"InternetChargeType\":\"paybytraffic\"},\"responseElements\":{\"RequestId\":\"REQ-007-GHI\",\"LoadBalancerId\":\"lb-bp1xyz987654\",\"Address\":\"47.99.123.45\"},\"sourceIpAddress\":\"10.0.1.100\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"31234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"terraform-ci\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxC\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventId\":\"b8c9d0e1-f2a3-4567-bcde-678901234567\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:43:12Z\",\"eventSource\":\"sts.aliyuncs.com\",\"eventName\":\"AssumeRole\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-008-HIJ\",\"serviceName\":\"STS\",\"apiVersion\":\"2015-04-01\",\"userAgent\":\"AlibabaCloud/Python-SDK-v2.0\",\"requestParameters\":{\"RoleArn\":\"acs:ram::1234567890123456:role/cross-account-auditor\",\"RoleSessionName\":\"audit-session-20240115\",\"DurationSeconds\":\"3600\"},\"responseElements\":{\"RequestId\":\"REQ-008-HIJ\",\"Credentials\":{\"AccessKeyId\":\"STS.NXXXXXXXXXXXXXXX\",\"Expiration\":\"2024-01-15T02:43:12Z\"}},\"sourceIpAddress\":\"172.16.0.25\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"51234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"auditor\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxE\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "alibaba cloud actiontrail",
+        "__product": "Security",
+        "sourcetype": "alibaba_cloud_actiontrail:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "eventId",
+      "eventVersion",
+      "eventTime",
+      "eventSource",
+      "eventName",
+      "eventType",
+      "requestId",
+      "serviceName",
+      "apiVersion",
+      "userAgent",
+      "requestParameters",
+      "responseElements",
+      "sourceIpAddress",
+      "userIdentity",
+      "acsRegion",
+      "errorCode",
+      "errorMessage"
+    ],
+    "sampleRaw": [
+      "{\"eventId\":\"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:03:22Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"DescribeInstances\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-001-ABC\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"AliyunCLI/3.0.16\",\"requestParameters\":{\"RegionId\":\"cn-hangzhou\",\"PageSize\":\"50\"},\"responseElements\":{\"RequestId\":\"REQ-001-ABC\",\"TotalCount\":\"12\"},\"sourceIpAddress\":\"10.0.1.45\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"21234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"ops-user-01\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxA\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:17:44Z\",\"eventSource\":\"ram.aliyuncs.com\",\"eventName\":\"CreateUser\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-002-BCD\",\"serviceName\":\"RAM\",\"apiVersion\":\"2015-05-01\",\"userAgent\":\"AlibabaCloud/Java-SDK-v2.0\",\"requestParameters\":{\"UserName\":\"svc-account-deploy\",\"DisplayName\":\"Deploy Service Account\",\"MobilePhone\":\"\",\"Email\":\"\"},\"responseElements\":{\"RequestId\":\"REQ-002-BCD\",\"User\":{\"UserId\":\"987654321098765\",\"UserName\":\"svc-account-deploy\"}},\"sourceIpAddress\":\"203.0.113.55\",\"userIdentity\":{\"type\":\"root-account\",\"principalId\":\"1234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"root\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxB\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"c3d4e5f6-a7b8-9012-cdef-123456789012\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:29:11Z\",\"eventSource\":\"oss.aliyuncs.com\",\"eventName\":\"GetObject\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-003-CDE\",\"serviceName\":\"OSS\",\"apiVersion\":\"2019-05-17\",\"userAgent\":\"Mozilla/5.0 compatible\",\"requestParameters\":{\"BucketName\":\"prod-data-backup\",\"ObjectKey\":\"db/snapshot-20240114.tar.gz\",\"ByteRange\":\"0-10485760\"},\"responseElements\":{\"RequestId\":\"REQ-003-CDE\",\"ContentLength\":\"10485761\"},\"sourceIpAddress\":\"185.220.101.34\",\"userIdentity\":{\"type\":\"anonymous\",\"principalId\":\"\",\"accountId\":\"\",\"userName\":\"\",\"accessKeyId\":\"\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"AccessDenied\",\"errorMessage\":\"Access Denied\"}",
+      "{\"eventId\":\"d4e5f6a7-b8c9-0123-defa-234567890123\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T00:45:33Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"StopInstance\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-004-DEF\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"Terraform/1.5.0 terraform-provider-alicloud/1.212.0\",\"requestParameters\":{\"InstanceId\":\"i-bp1abc123def456789\",\"ForceStop\":\"false\",\"ConfirmStop\":\"true\"},\"responseElements\":{\"RequestId\":\"REQ-004-DEF\"},\"sourceIpAddress\":\"10.0.1.100\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"31234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"terraform-ci\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxC\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"e5f6a7b8-c9d0-1234-efab-345678901234\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:02:55Z\",\"eventSource\":\"ram.aliyuncs.com\",\"eventName\":\"AttachPolicyToUser\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-005-EFG\",\"serviceName\":\"RAM\",\"apiVersion\":\"2015-05-01\",\"userAgent\":\"AliyunCLI/3.0.16\",\"requestParameters\":{\"PolicyType\":\"System\",\"PolicyName\":\"AdministratorAccess\",\"UserName\":\"svc-account-deploy\"},\"responseElements\":{\"RequestId\":\"REQ-005-EFG\"},\"sourceIpAddress\":\"203.0.113.55\",\"userIdentity\":{\"type\":\"root-account\",\"principalId\":\"1234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"root\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxB\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"f6a7b8c9-d0e1-2345-fabc-456789012345\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:14:07Z\",\"eventSource\":\"ecs.aliyuncs.com\",\"eventName\":\"DescribeSecurityGroups\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-006-FGH\",\"serviceName\":\"ECS\",\"apiVersion\":\"2014-05-26\",\"userAgent\":\"python-requests/2.28.0\",\"requestParameters\":{\"RegionId\":\"cn-beijing\",\"PageNumber\":\"1\",\"PageSize\":\"100\"},\"responseElements\":{\"RequestId\":\"REQ-006-FGH\",\"TotalCount\":\"7\"},\"sourceIpAddress\":\"198.51.100.88\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"41234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"dev-user-02\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxD\"},\"acsRegion\":\"cn-beijing\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"a7b8c9d0-e1f2-3456-abcd-567890123456\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:28:39Z\",\"eventSource\":\"slb.aliyuncs.com\",\"eventName\":\"CreateLoadBalancer\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-007-GHI\",\"serviceName\":\"SLB\",\"apiVersion\":\"2014-05-15\",\"userAgent\":\"Terraform/1.5.0 terraform-provider-alicloud/1.212.0\",\"requestParameters\":{\"RegionId\":\"cn-hangzhou\",\"LoadBalancerName\":\"prod-lb-web-01\",\"LoadBalancerSpec\":\"slb.s3.large\",\"AddressType\":\"internet\",\"InternetChargeType\":\"paybytraffic\"},\"responseElements\":{\"RequestId\":\"REQ-007-GHI\",\"LoadBalancerId\":\"lb-bp1xyz987654\",\"Address\":\"47.99.123.45\"},\"sourceIpAddress\":\"10.0.1.100\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"31234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"terraform-ci\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxC\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}",
+      "{\"eventId\":\"b8c9d0e1-f2a3-4567-bcde-678901234567\",\"eventVersion\":\"1\",\"eventTime\":\"2024-01-15T01:43:12Z\",\"eventSource\":\"sts.aliyuncs.com\",\"eventName\":\"AssumeRole\",\"eventType\":\"ApiCall\",\"requestId\":\"REQ-008-HIJ\",\"serviceName\":\"STS\",\"apiVersion\":\"2015-04-01\",\"userAgent\":\"AlibabaCloud/Python-SDK-v2.0\",\"requestParameters\":{\"RoleArn\":\"acs:ram::1234567890123456:role/cross-account-auditor\",\"RoleSessionName\":\"audit-session-20240115\",\"DurationSeconds\":\"3600\"},\"responseElements\":{\"RequestId\":\"REQ-008-HIJ\",\"Credentials\":{\"AccessKeyId\":\"STS.NXXXXXXXXXXXXXXX\",\"Expiration\":\"2024-01-15T02:43:12Z\"}},\"sourceIpAddress\":\"172.16.0.25\",\"userIdentity\":{\"type\":\"ram-user\",\"principalId\":\"51234567890123456\",\"accountId\":\"1234567890123456\",\"userName\":\"auditor\",\"accessKeyId\":\"LTAI4GxxxxxxxxxxxxE\"},\"acsRegion\":\"cn-hangzhou\",\"errorCode\":\"\",\"errorMessage\":\"\"}"
+    ],
+    "sourcetype": "alibaba_cloud_actiontrail"
+  }
+}

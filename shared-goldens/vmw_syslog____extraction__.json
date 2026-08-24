@@ -1,0 +1,56 @@
+{
+  "key": "vmw_syslog::__extraction__",
+  "sourcetype": "vmw_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:12:55.470Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header fields: syslog timestamp, source IP, ISO timestamp, hostname, process, pid, user, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>\\w{3}\\s+\\d+\\s\\d{2}:\\d{2}:\\d{2})\\s(?<src_ip>\\S+)\\s(?<timestamp>\\S+)\\s(?<dst_host>\\S+)\\s(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s\\[(?<user>[^\\]]+)\\]:\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('esxcli')",
+      "disabled": false,
+      "description": "Parse esxcli command structure from message body into namespace, object, target, and action",
+      "conf": {
+        "source": "message",
+        "regex": "/^esxcli\\s+(?<command_namespace>\\S+)\\s+(?<command_object>\\S+)\\s+(?<command_target>\\S+)\\s+(?<action>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol/severity fields for vmware syslog audit events",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'syslog'"
+          },
+          {
+            "name": "severity",
+            "value": "'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

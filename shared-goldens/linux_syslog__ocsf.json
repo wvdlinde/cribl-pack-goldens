@@ -1,0 +1,692 @@
+{
+  "key": "linux_syslog::ocsf",
+  "sourcetype": "linux_syslog",
+  "dest_format": "ocsf",
+  "score": 91,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:18.632Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "linux_syslog to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<log_time>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>\\S+)\\s+(?<process>[^\\[:]+)(?:\\[(?<pid>\\d+)\\])?:\\s+(?<message>.+)$/"
+      },
+      "description": "Parse syslog header (timestamp, host, process, pid, message)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'sshd'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<action>Accepted|Failed|Invalid)\\s+(?<auth_method>\\S+)\\s+for\\s+(?:invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+)\\s+port\\s+(?<src_port>\\d+)\\s*(?<ssh_proto>\\S+)?/"
+      },
+      "description": "Extract SSH authentication fields (user, src_ip, port, method, protocol)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'sudo'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<user>\\S+)\\s+:\\s+.*?USER=(?<runas_user>\\S+)\\s*;\\s*COMMAND=(?<command>.+)/"
+      },
+      "description": "Extract sudo command fields (user, runas_user, command)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('UFW') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/\\[UFW\\s+(?<action>\\w+)\\].*?SRC=(?<src_ip>[\\d.]+)\\s+DST=(?<dest_ip>[\\d.]+).*?PROTO=(?<transport>\\w+).*?SPT=(?<src_port>\\d+)\\s+DPT=(?<dest_port>\\d+)/"
+      },
+      "description": "Extract UFW firewall block fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'nginx' || (message && /HTTP\\//.test(message))",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/\"(?<http_method>\\w+)\\s+(?<uri>\\S+)\\s+HTTP\\/[\\d.]+\"\\s+(?<status_code>\\d+)\\s+(?<resp_bytes>\\d+)/"
+      },
+      "description": "Extract nginx access log fields (method, uri, status, bytes)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process && (process === 'postfix/smtpd' || process === 'postfix/smtp' || process === 'postfix/qmgr' || process === 'postfix/local')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:connect from|from)\\s+\\S+\\[(?<src_ip>[\\d.a-fA-F:]+)\\]/"
+      },
+      "description": "Extract postfix client IP"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "app",
+            "value": "process || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Linux'"
+          },
+          {
+            "name": "severity",
+            "value": "action === 'Failed' || action === 'Invalid' || action === 'BLOCK' ? 4 : 6"
+          },
+          {
+            "name": "action",
+            "value": "action === 'Accepted' ? 'success' : action === 'Failed' || action === 'Invalid' ? 'failure' : action ? String(action).toLowerCase() : undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "process || undefined"
+          },
+          {
+            "name": "transport",
+            "value": "transport ? transport : (ssh_proto ? 'TCP' : undefined)"
+          },
+          {
+            "name": "connection_protocol",
+            "value": "ssh_proto ? ssh_proto : (transport ? transport : undefined)"
+          }
+        ]
+      },
+      "description": "Normalize linux syslog fields to canonical model"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "process === 'CRON' || (message && /session (opened|closed) for user/.test(message))",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop CRON session noise (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "message && /Created slice|Removed slice/.test(message)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop systemd slice creation/removal messages (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Syslog'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1"
+          }
+        ]
+      },
+      "description": "Map canonical fields to OCSF 1.4 base"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip && String(src_ip) !== '' && String(src_ip) !== 'undefined' ? String(src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port && String(src_port) !== '' && String(src_port) !== 'undefined' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dest_ip && String(dest_ip) !== '' && String(dest_ip) !== 'undefined' ? String(dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "dest_port && String(dest_port) !== '' && String(dest_port) !== 'undefined' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "connection_protocol && String(connection_protocol) !== '' && String(connection_protocol) !== 'undefined' ? String(connection_protocol).toUpperCase() : (transport && String(transport) !== '' && String(transport) !== 'undefined' ? String(transport).toUpperCase() : undefined)"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "resp_bytes && String(resp_bytes) !== '' && String(resp_bytes) !== 'undefined' ? Number(resp_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) && String(user || src_user) !== '' && String(user || src_user) !== 'undefined' ? String(user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host && String(host) !== '' ? String(host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product && String(product) !== '' ? String(product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor && String(vendor) !== '' ? String(vendor) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "message && String(message) !== '' ? String(message) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "log_time && log_time !== '' ? new Date(String(log_time) + ' 2024').getTime() : _time * 1000"
+          }
+        ]
+      },
+      "description": "Map all OCSF endpoint, connection, traffic, actor, device, metadata fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'linux_syslog:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "log_time && log_time !== '' ? new Date(String(log_time) + ' 2024').getTime() / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*",
+          "message"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "linux_syslog_ocsf",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 51,
+    "outputSample": [
+      {
+        "_time": 1719273797,
+        "host": "web-01",
+        "message": "Failed password for root from 185.220.101.42 port 54321 ssh2",
+        "src_endpoint": {
+          "ip": "185.220.101.42",
+          "port": 54321
+        },
+        "dst_endpoint": {},
+        "connection_info": {
+          "protocol_name": "SSH2"
+        },
+        "traffic": {},
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "web-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 3,
+        "time": 1719273797000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719274064,
+        "host": "db-02",
+        "message": "[1234567.891] Out of memory: Kill process 8821 (mysqld) score 892 or sacrifice child",
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {},
+        "traffic": {},
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "db-02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719274064000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719274325,
+        "host": "mail-01",
+        "message": "connect from unknown[91.213.8.101]",
+        "src_endpoint": {
+          "ip": "91.213.8.101"
+        },
+        "dst_endpoint": {},
+        "connection_info": {},
+        "traffic": {},
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "mail-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719274325000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719274713,
+        "host": "proxy-01",
+        "message": "2001:db8::ff00:42:8329 - - [25/Jun/2024:00:18:33 +0000] \"GET /admin/.env HTTP/1.1\" 404 162 \"-\" \"python-requests/2.28.0\"",
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {},
+        "traffic": {
+          "bytes_in": 162
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "proxy-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719274713000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719275031,
+        "host": "fw-01",
+        "message": "[UFW BLOCK] IN=eth0 OUT= MAC=aa:bb:cc:dd:ee:ff SRC=192.0.2.77 DST=10.0.1.5 LEN=44 TOS=0x00 PREC=0x00 TTL=238 ID=54321 PROTO=TCP SPT=47832 DPT=23 WINDOW=1024 RES=0x00 SYN URGP=0",
+        "src_endpoint": {
+          "ip": "192.0.2.77",
+          "port": 47832
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.5",
+          "port": 23
+        },
+        "connection_info": {
+          "protocol_name": "TCP"
+        },
+        "traffic": {},
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "fw-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 3,
+        "time": 1719275031000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719275469,
+        "host": "app-03",
+        "message": "Accepted publickey for deploy from 10.0.5.22 port 61234 ssh2",
+        "src_endpoint": {
+          "ip": "10.0.5.22",
+          "port": 61234
+        },
+        "dst_endpoint": {},
+        "connection_info": {
+          "protocol_name": "SSH2"
+        },
+        "traffic": {},
+        "actor": {
+          "user": {
+            "name": "deploy"
+          }
+        },
+        "device": {
+          "hostname": "app-03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719275469000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719275469,
+        "host": "app-03",
+        "message": "pam_unix(sshd:session): session opened for user deploy by (uid=0)",
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {},
+        "traffic": {},
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "app-03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719275469000,
+        "sourcetype": "linux_syslog:ocsf"
+      },
+      {
+        "_time": 1719276442,
+        "host": "db-02",
+        "message": "[1234891.003] EXT4-fs error (device sdb1): ext4_journal_check_start:61: Detected aborted journal",
+        "src_endpoint": {},
+        "dst_endpoint": {},
+        "connection_info": {},
+        "traffic": {},
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "db-02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Syslog",
+            "vendor_name": "Linux"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 5,
+        "time": 1719276442000,
+        "sourcetype": "linux_syslog:ocsf"
+      }
+    ],
+    "sampleKeys": [
+      "IN",
+      "OUT",
+      "MAC",
+      "SRC",
+      "DST",
+      "LEN",
+      "TOS",
+      "PREC",
+      "TTL",
+      "ID",
+      "PROTO",
+      "SPT",
+      "DPT",
+      "WINDOW",
+      "RES",
+      "URGP"
+    ],
+    "sampleRaw": [
+      "Jun 25 00:03:17 web-01 sshd[10421]: Failed password for root from 185.220.101.42 port 54321 ssh2",
+      "Jun 25 00:07:44 db-02 kernel: [1234567.891] Out of memory: Kill process 8821 (mysqld) score 892 or sacrifice child",
+      "Jun 25 00:12:05 mail-01 postfix/smtpd[3341]: connect from unknown[91.213.8.101]",
+      "Jun 25 00:18:33 proxy-01 nginx[4412]: 2001:db8::ff00:42:8329 - - [25/Jun/2024:00:18:33 +0000] \"GET /admin/.env HTTP/1.1\" 404 162 \"-\" \"python-requests/2.28.0\"",
+      "Jun 25 00:23:51 fw-01 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=aa:bb:cc:dd:ee:ff SRC=192.0.2.77 DST=10.0.1.5 LEN=44 TOS=0x00 PREC=0x00 TTL=238 ID=54321 PROTO=TCP SPT=47832 DPT=23 WINDOW=1024 RES=0x00 SYN URGP=0",
+      "Jun 25 00:31:09 app-03 sshd[7761]: Accepted publickey for deploy from 10.0.5.22 port 61234 ssh2",
+      "Jun 25 00:31:09 app-03 sshd[7761]: pam_unix(sshd:session): session opened for user deploy by (uid=0)",
+      "Jun 25 00:47:22 db-02 kernel: [1234891.003] EXT4-fs error (device sdb1): ext4_journal_check_start:61: Detected aborted journal"
+    ],
+    "sourcetype": "linux_syslog"
+  }
+}

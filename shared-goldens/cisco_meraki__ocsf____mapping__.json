@@ -1,0 +1,399 @@
+{
+  "key": "cisco_meraki::ocsf::__mapping__",
+  "sourcetype": "cisco_meraki",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:13.514Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<device>\\S+)/gm"
+          },
+          {
+            "regex": "/^\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+(?<event_type>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bsrc=(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<src_port>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bdst=(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<dst_port>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bprotocol=(?<protocol>\\S+)/gm"
+          },
+          {
+            "regex": "/\\btranslated_src_ip=(?<translated_src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/gm"
+          },
+          {
+            "regex": "/\\btranslated_port=(?<translated_port>\\d+)/gm"
+          },
+          {
+            "regex": "/\\burl=(?<url>\\S+)/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract timestamp, device, event type, and available network attributes from Meraki MX log lines."
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Normalize the log timestamp into the OCSF time field.",
+      "conf": {
+        "srcField": "event_time",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [
+          {
+            "regex": "/^(\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+            "strptime": "%Y-%m-%d %H:%M:%S"
+          }
+        ],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 30,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "message",
+            "value": "event_type ? event_type : _raw"
+          },
+          {
+            "name": "status_code",
+            "value": "event_type ? event_type : 'unknown'"
+          },
+          {
+            "name": "status_id",
+            "value": "event_type ? 1 : 0"
+          },
+          {
+            "name": "status_detail",
+            "value": "_raw"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.device",
+            "value": "device"
+          },
+          {
+            "name": "unmapped.event_type",
+            "value": "event_type"
+          },
+          {
+            "name": "unmapped.src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "unmapped.src_port",
+            "value": "src_port"
+          },
+          {
+            "name": "unmapped.dst_ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "unmapped.dst_port",
+            "value": "dst_port"
+          },
+          {
+            "name": "unmapped.protocol",
+            "value": "protocol"
+          },
+          {
+            "name": "unmapped.translated_src_ip",
+            "value": "translated_src_ip"
+          },
+          {
+            "name": "unmapped.translated_port",
+            "value": "translated_port"
+          },
+          {
+            "name": "unmapped.url",
+            "value": "url"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Set OCSF target fields and preserve parsed source attributes under unmapped."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_date>\\d{4}-\\d{2}-\\d{2})\\s+(?<event_time>\\d{2}:\\d{2}:\\d{2})\\s+(?<device_name>\\S+)\\s+(?<event_type>\\S+)/gm",
+        "regexList": [
+          {
+            "regex": "/\\bdst=(?<dst_ip>[^:\\s]+):(?<dst_port>\\d+)/gm"
+          },
+          {
+            "regex": "/\\burl=(?<url_string>\\S+)/gm"
+          },
+          {
+            "regex": "/\\burl=(?<url_scheme>[A-Za-z][A-Za-z0-9+.-]*):\\/\\/(?<url_hostname>[^\\/:?#\\s]+)(?::(?<url_port>\\d+))?(?<url_path>\\/[^?#\\s]*)?(?:\\?(?<url_query_string>\\S+))?/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract network activity fields from Meraki MX raw events."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "6"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "status",
+            "value": "'Success'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "dst_port"
+          },
+          {
+            "name": "url",
+            "value": "url_string ? {} : null"
+          },
+          {
+            "name": "url.url_string",
+            "value": "url_string ? url_string : null"
+          },
+          {
+            "name": "url.scheme",
+            "value": "url_scheme ? url_scheme : null"
+          },
+          {
+            "name": "url.hostname",
+            "value": "url_hostname ? url_hostname : null"
+          },
+          {
+            "name": "url.port",
+            "value": "url_port ? url_port : (url_scheme==='http'?80:(url_scheme==='https'?443:null))"
+          },
+          {
+            "name": "url.path",
+            "value": "url_path ? url_path : null"
+          },
+          {
+            "name": "url.query_string",
+            "value": "url_query_string ? url_query_string : null"
+          },
+          {
+            "name": "observables",
+            "value": "url_string ? [{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11},{name:'url.url_string',type_id:6}] : [{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11}]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Populate OCSF Network Activity target schema fields."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "value != null && (name==='activity_id'||name==='class_uid'||name==='severity_id'||name==='timezone_offset'||name==='dst_endpoint.port'||name==='url.port'||name==='observables[0].type_id'||name==='observables[1].type_id'||name==='observables[2].type_id')",
+        "format": "none"
+      },
+      "id": "numerify",
+      "description": "Convert mapped numeric OCSF fields extracted as strings to numbers."
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract Meraki MX values needed for OCSF Network Activity mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<original_time>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<device_name>\\S+)/gm"
+          },
+          {
+            "regex": "/^\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+(?<meraki_event_type>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bsrc=(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})(?::(?<src_port>\\d+))?/gm"
+          },
+          {
+            "regex": "/\\bdst=(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3})(?::(?<dst_port>\\d+))?/gm"
+          },
+          {
+            "regex": "/\\bprotocol=(?<protocol_name>[A-Za-z0-9]+)/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create target OCSF Network Activity fields from extracted Meraki MX values.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "400106"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "meraki_event_type ? 'meraki_' + meraki_event_type : 'meraki_mx'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Meraki MX'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "device_name"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Cisco Meraki'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "device_name"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "src_ip ? ((/^10\\./.test(src_ip)||/^192\\.168\\./.test(src_ip)||/^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(src_ip)) ? (dst_ip ? ((/^10\\./.test(dst_ip)||/^192\\.168\\./.test(dst_ip)||/^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(dst_ip)) ? 3 : 2) : 0) : (dst_ip ? ((/^10\\./.test(dst_ip)||/^192\\.168\\./.test(dst_ip)||/^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(dst_ip)) ? 1 : 0) : 0)) : 0"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "connection_info.direction_id===3 ? 2 : (connection_info.direction_id===2 || connection_info.direction_id===1 ? 3 : 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol_name ? protocol_name.toLowerCase() : (meraki_event_type==='urls' ? 'tcp' : null)"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "protocol_name ? (protocol_name.toLowerCase()==='tcp'?6:(protocol_name.toLowerCase()==='udp'?17:(protocol_name.toLowerCase()==='icmp'?1:null))) : (meraki_event_type==='urls' ? 6 : null)"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "(src_ip && src_ip.indexOf(':')>=0) || (dst_ip && dst_ip.indexOf(':')>=0) ? 6 : 4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "device_name + ':' + src_ip + ':' + src_port + '>' + dst_ip + ':' + dst_port"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "original_time",
+          "device_name",
+          "meraki_event_type",
+          "src_ip",
+          "src_port",
+          "dst_ip",
+          "dst_port",
+          "protocol_name"
+        ]
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert OCSF enum and port fields to numbers.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name==='type_uid'||name==='src_endpoint.port'||name==='connection_info.direction_id'||name==='connection_info.boundary_id'||name==='connection_info.protocol_num'||name==='connection_info.protocol_ver_id'",
+        "format": "none"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

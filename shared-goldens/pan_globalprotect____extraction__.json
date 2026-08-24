@@ -1,0 +1,77 @@
+{
+  "key": "pan_globalprotect::__extraction__",
+  "sourcetype": "pan_globalprotect",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:41:12.343Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"pan_globalprotect_syslog\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "parse_syslog_header",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<syslog_priority>\\d+)>(?<syslog_timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<syslog_hostname>\\S+)\\s+(?<__payload>.+)$/"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "parse_csv_fields",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "__payload",
+        "fields": [
+          "future_use_0",
+          "log_time",
+          "serial_number",
+          "type",
+          "subtype",
+          "future_use_1",
+          "log_time",
+          "virtual_system",
+          "event_code",
+          "stage",
+          "auth_method",
+          "tunnel_type",
+          "src_user",
+          "source_region",
+          "machine_name",
+          "public_ip",
+          "public_ipv6",
+          "private_ip",
+          "private_ipv6",
+          "host_id",
+          "serial_number_device",
+          "client_version",
+          "client_os",
+          "client_os_version",
+          "repeat_count",
+          "reason",
+          "error",
+          "description",
+          "status",
+          "location",
+          "login_duration",
+          "connect_method",
+          "error_code",
+          "portal",
+          "sequence_number",
+          "action_flags"
+        ],
+        "delimChar": ",",
+        "quoteChar": "\""
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

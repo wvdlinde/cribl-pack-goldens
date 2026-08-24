@@ -1,0 +1,42 @@
+{
+  "key": "azure_signin::cim::__mapping__",
+  "sourcetype": "azure_signin",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:22:28.699Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map to CIM Authentication",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "SubjectUserName || UserName || properties && properties.userDisplayName || actor && actor.displayName"
+          },
+          {
+            "name": "src",
+            "value": "IpAddress || ipAddress || client && client.ipAddress"
+          },
+          {
+            "name": "dest",
+            "value": "Computer || WorkstationName || 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "EventID == '4624' || (status && status.errorCode == 0) || (outcome && outcome.result == 'SUCCESS') ? 'success' : 'failure'"
+          },
+          {
+            "name": "app",
+            "value": "appDisplayName || 'Windows'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

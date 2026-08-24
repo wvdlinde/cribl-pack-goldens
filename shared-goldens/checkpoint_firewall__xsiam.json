@@ -1,0 +1,212 @@
+{
+  "key": "checkpoint_firewall::xsiam",
+  "sourcetype": "checkpoint_firewall",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:09.022Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "checkpoint_firewall → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'Log'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop log-only events (no security action) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__vendor",
+            "value": "'CheckPoint'"
+          },
+          {
+            "name": "__product",
+            "value": "'Firewall'"
+          },
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'checkpoint_firewall:xsiam'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__vendor, __product, __sourceIdentifier, sourcetype)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "checkpoint_firewall_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "Jun 25 06:02:11 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=gw-corp01 src=10.1.5.22 dst=8.8.8.8 proto=\"udp\" s_port=\"54321\" service=\"53\" rule=\"5\" xlatesrc=\"203.0.113.45\" nat_rulenum=\"2\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 06:15:44 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Drop\" orig=gw-corp01 src=185.220.101.47 dst=203.0.113.45 proto=\"tcp\" s_port=\"63201\" service=\"22\" rule=\"48\" reason=\"Unauthorized access attempt\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 06:31:09 fw-dmz02 product=\"SmartDefense\" action=\"Drop\" orig=fw-dmz02 src=91.213.50.12 dst=172.16.10.5 proto=\"tcp\" s_port=\"44312\" service=\"80\" attack=\"HTTP Header Injection\" severity=\"high\" rule=\"31\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 06:47:33 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=gw-corp01 src=10.2.3.14 dst=10.2.3.1 proto=\"tcp\" s_port=\"49823\" service=\"443\" rule=\"12\" user=\"jsmith\" src_machine=\"WKSTN-042\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 07:03:55 fw-branch03 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=fw-branch03 src=192.168.10.25 dst=10.0.0.5 proto=\"tcp\" s_port=\"52100\" service=\"3389\" rule=\"19\" vpn_peer=\"fw-corp01\" tunnel_type=\"site-to-site\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 07:18:22 gw-corp01 product=\"IPS\" action=\"Drop\" orig=gw-corp01 src=198.51.100.77 dst=203.0.113.45 proto=\"tcp\" s_port=\"41002\" service=\"8080\" attack=\"SQL Injection\" severity=\"critical\" blade=\"IPS\" rule=\"2\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 07:29:47 fw-dmz02 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=fw-dmz02 src=10.1.100.8 dst=192.0.2.55 proto=\"tcp\" s_port=\"55621\" service=\"443\" rule=\"7\" xlatesrc=\"172.16.10.1\" xlatedst=\"192.0.2.55\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      },
+      {
+        "_raw": "Jun 25 07:44:01 gw-corp01 product=\"Anti-Malware\" action=\"Drop\" orig=gw-corp01 src=10.5.5.30 dst=104.21.44.99 proto=\"tcp\" s_port=\"49301\" service=\"80\" blade=\"Anti-Malware\" malware_name=\"Trojan.GenericKD\" rule=\"3\" user=\"bwilson\"",
+        "_time": 1784047854.889,
+        "__vendor": "CheckPoint",
+        "__product": "Firewall",
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "sourcetype": "checkpoint_firewall:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "product",
+      "action",
+      "orig",
+      "src",
+      "dst",
+      "proto",
+      "s_port",
+      "service",
+      "rule",
+      "xlatesrc",
+      "nat_rulenum",
+      "reason",
+      "attack",
+      "severity",
+      "user",
+      "src_machine",
+      "vpn_peer",
+      "tunnel_type",
+      "blade",
+      "xlatedst",
+      "malware_name"
+    ],
+    "sampleRaw": [
+      "Jun 25 06:02:11 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=gw-corp01 src=10.1.5.22 dst=8.8.8.8 proto=\"udp\" s_port=\"54321\" service=\"53\" rule=\"5\" xlatesrc=\"203.0.113.45\" nat_rulenum=\"2\"",
+      "Jun 25 06:15:44 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Drop\" orig=gw-corp01 src=185.220.101.47 dst=203.0.113.45 proto=\"tcp\" s_port=\"63201\" service=\"22\" rule=\"48\" reason=\"Unauthorized access attempt\"",
+      "Jun 25 06:31:09 fw-dmz02 product=\"SmartDefense\" action=\"Drop\" orig=fw-dmz02 src=91.213.50.12 dst=172.16.10.5 proto=\"tcp\" s_port=\"44312\" service=\"80\" attack=\"HTTP Header Injection\" severity=\"high\" rule=\"31\"",
+      "Jun 25 06:47:33 gw-corp01 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=gw-corp01 src=10.2.3.14 dst=10.2.3.1 proto=\"tcp\" s_port=\"49823\" service=\"443\" rule=\"12\" user=\"jsmith\" src_machine=\"WKSTN-042\"",
+      "Jun 25 07:03:55 fw-branch03 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=fw-branch03 src=192.168.10.25 dst=10.0.0.5 proto=\"tcp\" s_port=\"52100\" service=\"3389\" rule=\"19\" vpn_peer=\"fw-corp01\" tunnel_type=\"site-to-site\"",
+      "Jun 25 07:18:22 gw-corp01 product=\"IPS\" action=\"Drop\" orig=gw-corp01 src=198.51.100.77 dst=203.0.113.45 proto=\"tcp\" s_port=\"41002\" service=\"8080\" attack=\"SQL Injection\" severity=\"critical\" blade=\"IPS\" rule=\"2\"",
+      "Jun 25 07:29:47 fw-dmz02 product=\"VPN-1 & FireWall-1\" action=\"Accept\" orig=fw-dmz02 src=10.1.100.8 dst=192.0.2.55 proto=\"tcp\" s_port=\"55621\" service=\"443\" rule=\"7\" xlatesrc=\"172.16.10.1\" xlatedst=\"192.0.2.55\"",
+      "Jun 25 07:44:01 gw-corp01 product=\"Anti-Malware\" action=\"Drop\" orig=gw-corp01 src=10.5.5.30 dst=104.21.44.99 proto=\"tcp\" s_port=\"49301\" service=\"80\" blade=\"Anti-Malware\" malware_name=\"Trojan.GenericKD\" rule=\"3\" user=\"bwilson\""
+    ],
+    "sourcetype": "checkpoint_firewall"
+  }
+}

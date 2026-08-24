@@ -1,0 +1,126 @@
+{
+  "key": "stream_dns::cim::__mapping__",
+  "sourcetype": "stream_dns",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:46:05.688Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Resolution'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'DNS'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toLowerCase()"
+          },
+          {
+            "name": "vendor_action",
+            "value": "rcode || ''"
+          },
+          {
+            "name": "action",
+            "value": "rcode == 'NOERROR' ? 'success' : 'failure'"
+          },
+          {
+            "name": "category",
+            "value": "event_type || ''"
+          },
+          {
+            "name": "object",
+            "value": "query || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "hostname || ''"
+          },
+          {
+            "name": "severity",
+            "value": "(severity || '').toLowerCase() == 'info' ? 'informational' : (severity || '').toLowerCase()"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'critical' ? 5 : severity == 'high' ? 4 : severity == 'medium' ? 3 : severity == 'low' ? 2 : severity == 'info' ? 1 : 0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "rule",
+            "value": "Array.isArray(flags) ? flags.join(',') : String(flags || '')"
+          },
+          {
+            "name": "app",
+            "value": "'dns'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'stream_dns'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'stream:dns'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

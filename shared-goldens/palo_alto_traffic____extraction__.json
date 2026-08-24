@@ -1,0 +1,92 @@
+{
+  "key": "palo_alto_traffic::__extraction__",
+  "sourcetype": "palo_alto_traffic",
+  "dest_format": "__extraction__",
+  "score": 99,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:25:04.987Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use2",
+          "generated_time",
+          "src_ip",
+          "dest_ip",
+          "nat_src_ip",
+          "nat_dest_ip",
+          "rule_name",
+          "src_user",
+          "dest_user",
+          "application",
+          "virtual_system",
+          "src_zone",
+          "dest_zone",
+          "inbound_if",
+          "outbound_if",
+          "log_action",
+          "future_use3",
+          "session_id",
+          "repeat_count",
+          "src_port",
+          "dest_port",
+          "nat_src_port",
+          "nat_dest_port",
+          "flags",
+          "protocol",
+          "action",
+          "bytes",
+          "bytes_out",
+          "bytes_in",
+          "packets",
+          "start_time",
+          "duration",
+          "category",
+          "future_use4",
+          "sequence_number",
+          "action_flags",
+          "src_location",
+          "dest_location",
+          "future_use5",
+          "packets_out",
+          "packets_in",
+          "session_end_reason"
+        ]
+      },
+      "description": "Parse PAN-OS CSV traffic log with named columns"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "generated_time || start_time || receive_time || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (generated_time, start_time, receive_time) so _time reflects the source event, not pipeline processing time"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from palo_alto_traffic::cim: 69/70 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

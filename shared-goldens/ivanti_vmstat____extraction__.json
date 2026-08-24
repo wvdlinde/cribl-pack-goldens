@@ -1,0 +1,89 @@
+{
+  "key": "ivanti_vmstat::__extraction__",
+  "sourcetype": "ivanti_vmstat",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:14:45.108Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header (timestamp, host, pid) and remaining KVP payload from vmstat log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>[A-Za-z]{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<host>\\S+)\\svmstat\\[(?<pid>\\d+)\\]:\\s(?<kvp_data>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse remaining key=value pairs (severity, subsystem, user, src, dst, event, msg, etc.) from kvp_data",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp_data",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to standard schema (src_ip, dst_ip, message, action) and drop raw/duplicate fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "action",
+            "value": "event"
+          }
+        ],
+        "remove": [
+          "src",
+          "dst",
+          "msg",
+          "event",
+          "kvp_data"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity levels and classify action outcome (success/failure/other)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity=='CRIT' ? 'critical' : severity=='ERROR' ? 'error' : severity=='WARN' ? 'warning' : 'info'"
+          },
+          {
+            "name": "outcome",
+            "value": "action && action.match(/success/) ? 'success' : action && action.match(/failure/) ? 'failure' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

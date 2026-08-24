@@ -1,0 +1,640 @@
+{
+  "key": "windows_security::ocsf::__mapping__",
+  "sourcetype": "windows_security",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T12:59:54.677Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract Windows Security XML fields needed for OCSF authentication mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/<EventID>(?<event_id>[^<]+)<\\/EventID>/gm",
+        "regexList": [
+          {
+            "regex": "/<Data Name='LogonType'>(?<logon_type>[^<]+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='IpAddress'>(?<ip_address>[^<]+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='ImpersonationLevel'>(?<impersonation_level>[^<]+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Computer>(?<computer>[^<]+)<\\/Computer>/gm"
+          },
+          {
+            "regex": "/<Data Name='TargetUserName'>(?<target_user_name>[^<]+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='TargetDomainName'>(?<target_domain_name>[^<]+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='ProcessName'>(?<process_name>[^<]+)<\\/Data>/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set target OCSF authentication fields from extracted Windows Security fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "3"
+          },
+          {
+            "name": "message",
+            "value": "event_id==='4624' ? 'Windows successful logon event' : event_id==='4634' ? 'Windows account logoff event' : 'Windows authentication event'"
+          },
+          {
+            "name": "status_code",
+            "value": "event_id"
+          },
+          {
+            "name": "status_detail",
+            "value": "event_id==='4624' ? 'Success' : event_id==='4634' ? 'LOGOFF_USER_INITIATED' : 'Unknown'"
+          },
+          {
+            "name": "is_remote",
+            "value": "(logon_type==='3' || logon_type==='10' || (ip_address && ip_address !== '-')) ? true : false"
+          },
+          {
+            "name": "account_switch_type_id",
+            "value": "impersonation_level && impersonation_level !== '-' ? 2 : 0"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.event_id",
+            "value": "event_id"
+          },
+          {
+            "name": "unmapped.logon_type",
+            "value": "logon_type"
+          },
+          {
+            "name": "unmapped.ip_address",
+            "value": "ip_address"
+          },
+          {
+            "name": "unmapped.impersonation_level",
+            "value": "impersonation_level"
+          },
+          {
+            "name": "unmapped.computer",
+            "value": "computer"
+          },
+          {
+            "name": "unmapped.target_user_name",
+            "value": "target_user_name"
+          },
+          {
+            "name": "unmapped.target_domain_name",
+            "value": "target_domain_name"
+          },
+          {
+            "name": "unmapped.process_name",
+            "value": "process_name"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract Windows Security XML authentication fields used for OCSF mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/<EventID>(?<event_id>[^<]+)<\\/EventID>/gm",
+        "regexList": [
+          {
+            "regex": "/<TimeCreated\\s+SystemTime='(?<event_time>[^']+)'/gm"
+          },
+          {
+            "regex": "/<Execution\\s+ProcessID='(?<execution_pid>\\d+)'/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='SubjectUserSid'>(?<subject_user_sid>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='SubjectUserName'>(?<subject_user_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='TargetUserSid'>(?<target_user_sid>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='TargetUserName'>(?<target_user_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='TargetLogonId'>(?<target_logon_id>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='LogonType'>(?<logon_type_id>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='AuthenticationPackageName'>(?<auth_package>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='ProcessId'>(?<process_id>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='ProcessName'>(?<process_path>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='IpAddress'>(?<ip_address>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='LogonGuid'>(?<logon_guid>[^<]*)<\\/Data>/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF authentication target schema fields from extracted Windows event values.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "event_time ? Date.parse(event_time)/1000 : _time"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_id==='4624'?1:(event_id==='4634'||event_id==='4647'?2:(event_id==='4768'?3:(event_id==='4769'?4:(event_id==='4770'?5:(event_id==='4771'?6:0)))))"
+          },
+          {
+            "name": "status_id",
+            "value": "event_id==='4624'||event_id==='4634'||event_id==='4647'||event_id==='4768'||event_id==='4769'||event_id==='4770'?1:(event_id==='4771'?2:0)"
+          },
+          {
+            "name": "status",
+            "value": "status_id===1?'Success':(status_id===2?'Failure':'Unknown')"
+          },
+          {
+            "name": "logon_type",
+            "value": "logon_type_id==='2'?'Interactive':(logon_type_id==='3'?'Network':(logon_type_id==='4'?'Batch':(logon_type_id==='5'?'Service':(logon_type_id==='7'?'Unlock':(logon_type_id==='8'?'NetworkCleartext':(logon_type_id==='9'?'NewCredentials':(logon_type_id==='10'?'RemoteInteractive':(logon_type_id==='11'?'CachedInteractive':'Other'))))))))"
+          },
+          {
+            "name": "is_mfa",
+            "value": "false"
+          },
+          {
+            "name": "session",
+            "value": "{}"
+          },
+          {
+            "name": "session.created_time",
+            "value": "event_id==='4624' && event_time ? Date.parse(event_time)/1000 : null"
+          },
+          {
+            "name": "session.is_remote",
+            "value": "ip_address && ip_address !== '-' ? true : (logon_type_id==='3'||logon_type_id==='10'?true:false)"
+          },
+          {
+            "name": "session.issuer",
+            "value": "auth_package"
+          },
+          {
+            "name": "session.uid",
+            "value": "target_logon_id"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "subject_user_name && subject_user_name !== '-' ? subject_user_name : target_user_name"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "subject_user_sid && subject_user_sid !== '-' ? subject_user_sid : target_user_sid"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "actor.user.name==='SYSTEM'||actor.user.name==='LOCAL SERVICE'||actor.user.name==='NETWORK SERVICE'||(actor.user.name && actor.user.name.endsWith('$'))?3:(actor.user.name==='Administrator'?2:(actor.user.name?1:0))"
+          },
+          {
+            "name": "actor.user.has_mfa",
+            "value": "false"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.pid",
+            "value": "execution_pid ? execution_pid * 1 : null"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "process_id ? process_id : logon_guid"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "process_path ? process_path.split('\\\\').pop() : null"
+          },
+          {
+            "name": "actor.process.file",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.file.path",
+            "value": "process_path"
+          },
+          {
+            "name": "actor.process.file.name",
+            "value": "process_path ? process_path.split('\\\\').pop() : null"
+          },
+          {
+            "name": "actor.process.file.ext",
+            "value": "process_path && process_path.indexOf('.') >= 0 ? process_path.split('.').pop() : null"
+          },
+          {
+            "name": "actor.process.file.type_id",
+            "value": "process_path && process_path.toLowerCase().endsWith('.exe') ? 8 : (process_path ? 1 : 0)"
+          },
+          {
+            "name": "user",
+            "value": "{}"
+          },
+          {
+            "name": "user.name",
+            "value": "target_user_name"
+          },
+          {
+            "name": "user.uid",
+            "value": "target_user_sid"
+          },
+          {
+            "name": "user.type_id",
+            "value": "target_user_name==='SYSTEM'||target_user_name==='LOCAL SERVICE'||target_user_name==='NETWORK SERVICE'||(target_user_name && target_user_name.endsWith('$'))?3:(target_user_name==='Administrator'?2:(target_user_name?1:0))"
+          },
+          {
+            "name": "user.has_mfa",
+            "value": "false"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/<Provider Name='(?<provider_name>[^']*)'/gm",
+        "regexList": [
+          {
+            "regex": "/<Provider Name='[^']*' Guid='(?<provider_guid>[^']*)'\\/>/gm"
+          },
+          {
+            "regex": "/<Version>(?<event_version>[^<]*)<\\/Version>/gm"
+          },
+          {
+            "regex": "/<Computer>(?<computer>[^<]+)<\\/Computer>/gm"
+          },
+          {
+            "regex": "/<Data Name='TargetUserSid'>(?<target_user_sid>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='TargetUserName'>(?<target_user_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='TargetDomainName'>(?<target_domain_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='LogonType'>(?<logon_type>\\d+)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='LogonProcessName'>(?<logon_process_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='AuthenticationPackageName'>(?<auth_package>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='IpAddress'>(?<ip_address>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data Name='IpPort'>(?<ip_port>[^<]*)<\\/Data>/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract Windows Security XML values needed for OCSF authentication mapping"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "3002"
+          },
+          {
+            "name": "logon_type_id",
+            "value": "logon_type ? logon_type*1 : 0"
+          },
+          {
+            "name": "auth_protocol_id",
+            "value": "auth_package==='NTLM'?1:auth_package==='Kerberos'?2:auth_package==='Digest'?3:auth_package==='Negotiate'?99:0"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "user",
+            "value": "{}"
+          },
+          {
+            "name": "user.name",
+            "value": "target_user_name"
+          },
+          {
+            "name": "user.uid",
+            "value": "target_user_sid"
+          },
+          {
+            "name": "user.type_id",
+            "value": "target_user_name && (target_user_name==='SYSTEM'||target_user_name.endsWith('$')) ? 3 : target_user_name==='Administrator' ? 2 : 1"
+          },
+          {
+            "name": "service",
+            "value": "{}"
+          },
+          {
+            "name": "service.name",
+            "value": "logon_process_name ? logon_process_name.trim() : provider_name"
+          },
+          {
+            "name": "service.uid",
+            "value": "provider_guid"
+          },
+          {
+            "name": "service.version",
+            "value": "event_version"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "computer"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "computer"
+          },
+          {
+            "name": "dst_endpoint.uid",
+            "value": "computer"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "ip_address && ip_address !== '-' ? ip_address : null"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "ip_port && ip_port !== '-' ? ip_port*1 : null"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "6"
+          },
+          {
+            "name": "dst_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.owner.name",
+            "value": "target_user_name"
+          },
+          {
+            "name": "dst_endpoint.owner.uid",
+            "value": "target_user_sid"
+          },
+          {
+            "name": "dst_endpoint.owner.type_id",
+            "value": "target_user_name && (target_user_name==='SYSTEM'||target_user_name.endsWith('$')) ? 3 : target_user_name==='Administrator' ? 2 : 1"
+          },
+          {
+            "name": "observables",
+            "value": "[]"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF Authentication schema fields from extracted Windows values"
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract Windows Security XML fields needed for OCSF authentication mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/<Provider\\s+Name='(?<provider_name>[^']+)'/gm",
+        "regexList": [
+          {
+            "regex": "/<Provider[^>]+Guid='(?<provider_uid>[^']+)'/gm"
+          },
+          {
+            "regex": "/<EventID>(?<event_id>\\d+)<\\/EventID>/gm"
+          },
+          {
+            "regex": "/<Version>(?<event_version>\\d+)<\\/Version>/gm"
+          },
+          {
+            "regex": "/<Level>(?<level>\\d+)<\\/Level>/gm"
+          },
+          {
+            "regex": "/<TimeCreated\\s+SystemTime='(?<original_time>[^']+)'\\/>/gm"
+          },
+          {
+            "regex": "/<Channel>(?<channel>[^<]+)<\\/Channel>/gm"
+          },
+          {
+            "regex": "/<Computer>(?<computer>[^<]+)<\\/Computer>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='TargetUserSid'>(?<target_user_sid>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='TargetUserName'>(?<target_user_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='AuthenticationPackageName'>(?<authentication_package_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='WorkstationName'>(?<workstation_name>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='IpAddress'>(?<ip_address>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='IpPort'>(?<ip_port>[^<]*)<\\/Data>/gm"
+          },
+          {
+            "regex": "/<Data\\s+Name='LogonType'>(?<logon_type>[^<]*)<\\/Data>/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF Authentication target schema fields from extracted Windows Security event fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "level==='0'?1:level==='4'?3:level==='2'?4:1"
+          },
+          {
+            "name": "type_uid",
+            "value": "event_id==='4624'?300201:event_id==='4634'?300202:event_id==='4768'?300203:event_id==='4769'?300204:event_id==='4770'?300205:event_id==='4771'?300206:event_id==='4648'?300207:300200"
+          },
+          {
+            "name": "auth_protocol",
+            "value": "authentication_package_name && authentication_package_name !== '-' ? authentication_package_name : null"
+          },
+          {
+            "name": "account_switch_type",
+            "value": "event_id==='4648'?'Explicit Credentials':null"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.hostname",
+            "value": "workstation_name && workstation_name !== '-' ? workstation_name : null"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "ip_address && ip_address !== '-' ? ip_address : null"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "workstation_name && workstation_name !== '-' ? workstation_name : null"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "ip_port && ip_port !== '-' ? ip_port : null"
+          },
+          {
+            "name": "src_endpoint.type_id",
+            "value": "computer ? 6 : null"
+          },
+          {
+            "name": "src_endpoint.owner",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.owner.uid",
+            "value": "target_user_sid"
+          },
+          {
+            "name": "src_endpoint.owner.name",
+            "value": "target_user_name"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "target_user_name && target_user_name.endsWith('$') ? 3 : target_user_name==='SYSTEM' ? 3 : target_user_name==='Administrator' ? 2 : 1"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "channel"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "original_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "provider_name"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "provider_uid"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "event_version"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "computer"
+          },
+          {
+            "name": "metadata.reporter.hostname",
+            "value": "computer"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "provider_name",
+          "provider_uid",
+          "event_id",
+          "event_version",
+          "level",
+          "original_time",
+          "channel",
+          "computer",
+          "target_user_sid",
+          "target_user_name",
+          "authentication_package_name",
+          "workstation_name",
+          "ip_address",
+          "ip_port",
+          "logon_type"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

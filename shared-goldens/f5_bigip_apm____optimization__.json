@@ -1,0 +1,22 @@
+{
+  "key": "f5_bigip_apm::__optimization__",
+  "sourcetype": "f5_bigip_apm",
+  "dest_format": "__optimization__",
+  "score": 100,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 454,
+  "updated_at": "2026-08-13T10:26:41.595Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

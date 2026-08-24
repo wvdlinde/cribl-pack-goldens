@@ -1,0 +1,84 @@
+{
+  "key": "mdstat::__extraction__",
+  "sourcetype": "mdstat",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:28:59.737Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog structure: timestamp, host, optional source IP, process, pid, and message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?:(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})\\s+)?(?<process>\\w+)(?:\\[(?<pid>\\d+)\\])?:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract the md device identifier (e.g. md0, md1) from the message regardless of source line type",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\/dev\\/)?(?<md_device>md\\d+)/i",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'kernel'",
+      "disabled": false,
+      "description": "Extract uptime timestamp and detail text from kernel-originated mdstat messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^\\[(?<kernel_uptime>[\\d.]+)\\]\\s+(?<kernel_detail>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'mdadm'",
+      "disabled": false,
+      "description": "Extract mdadm event type and optional component device from mdadm-originated messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<mdadm_event>\\w+) event detected on md device \\/dev\\/\\w+(?:,\\s*component device \\/dev\\/(?<component_device>\\w+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action and severity based on message content, and derive event time from syslog timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/Disk failure|Fail event|disabling device/) ? 'failure' : message.match(/recovery done|SpareActive|RebuildStarted|full recovery|recovery of RAID/) ? 'recovery' : message.match(/degraded|WARNING/) ? 'degraded' : message.match(/DeviceDisappeared|NewArray|capacity change|unknown partition table/) ? 'topology_change' : 'info'"
+          },
+          {
+            "name": "severity",
+            "value": "message.match(/failure|Fail event|degraded|WARNING/) ? 'high' : message.match(/DeviceDisappeared|capacity change|unknown partition table/) ? 'medium' : 'info'"
+          },
+          {
+            "name": "_time",
+            "value": "strptime(timestamp, '%b %d %H:%M:%S')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

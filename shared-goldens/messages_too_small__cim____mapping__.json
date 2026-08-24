@@ -1,0 +1,126 @@
+{
+  "key": "messages_too_small::cim::__mapping__",
+  "sourcetype": "messages_too_small",
+  "dest_format": "cim::__mapping__",
+  "score": 91,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:03:28.089Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'messages_too_small'"
+          },
+          {
+            "name": "src",
+            "value": "String(src || '')"
+          },
+          {
+            "name": "src_port",
+            "value": "sport !== undefined && sport !== null && sport !== '' ? Number(sport) : undefined"
+          },
+          {
+            "name": "dest",
+            "value": "String(dst || '')"
+          },
+          {
+            "name": "dest_port",
+            "value": "dport !== undefined && dport !== null && dport !== '' ? Number(dport) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toLowerCase()"
+          },
+          {
+            "name": "vendor_action",
+            "value": "String(action || outcome || '')"
+          },
+          {
+            "name": "action",
+            "value": "['drop','discard','rejected','failure','reset'].includes((action || outcome || '').toLowerCase()) ? 'blocked' : (action || outcome || '').toLowerCase() == 'alert' ? 'unknown' : (action || outcome || '').toLowerCase()"
+          },
+          {
+            "name": "dvc",
+            "value": "String(host || '')"
+          },
+          {
+            "name": "process",
+            "value": "(proc || '').replace(/\\[\\d+\\]$/, '') || component || ''"
+          },
+          {
+            "name": "process_id",
+            "value": "((proc || '').match(/\\[(\\d+)\\]$/) || [])[1] || ''"
+          },
+          {
+            "name": "severity",
+            "value": "(level || '').toLowerCase()"
+          },
+          {
+            "name": "severity_id",
+            "value": "(level || '').toUpperCase() == 'CRITICAL' ? 5 : (level || '').toUpperCase() == 'ERROR' ? 4 : (level || '').toUpperCase() == 'WARN' ? 3 : (level || '').toUpperCase() == 'NOTICE' ? 2 : (level || '').toUpperCase() == 'INFO' ? 1 : 0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "packets",
+            "value": "count !== undefined && count !== null && count !== '' ? Number(count) : undefined"
+          },
+          {
+            "name": "object",
+            "value": "String(topic || '')"
+          },
+          {
+            "name": "signature",
+            "value": "msg && (msg.indexOf('messages_too_small') >= 0 || msg.indexOf('MessageSizeTooSmall') >= 0) ? 'messages_too_small' : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'messages_too_small'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,68 @@
+{
+  "key": "vmware_esxlog_smartd::__extraction__",
+  "sourcetype": "vmware_esxlog_smartd",
+  "dest_format": "__extraction__",
+  "score": 95,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:42:33.372Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog fields from smartd log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+smartd\\[(?<pid>\\d+)\\]:\\s+Device:\\s+(?<device>\\S+)\\s+\\[(?<device_type>[A-Z]+)\\],\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /changed from/.test(message)",
+      "disabled": false,
+      "description": "Extract SMART attribute id, name, and before/after values from attribute change messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<attribute_class>Usage|Prefail)?\\s*Attribute:\\s*(?<attribute_id>\\d+)\\s+(?<attribute_name>\\S+)\\s+changed from\\s+(?<value_from>\\d+)\\s+to\\s+(?<value_to>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('SMART overall-health self-assessment test result')",
+      "disabled": false,
+      "description": "Extract overall-health self-assessment test result (PASSED/FAILED)",
+      "conf": {
+        "source": "message",
+        "regex": "/self-assessment test result:\\s*(?<health_result>PASSED|FAILED!?)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity based on smartd message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message && message.match(/FAILED|error count increased|Currently unreadable|failed to read/) ? 'critical' : message && message.match(/changed from|previously logged error count/) ? 'warning' : message && message.match(/PASSED|OK|without error/) ? 'info' : 'notice'"
+          },
+          {
+            "name": "action",
+            "value": "message && message.match(/self-test completed without error/) ? 'self_test_pass' : message && message.match(/FAILED!?/) ? 'health_check_fail' : message && message.match(/PASSED/) ? 'health_check_pass' : message && message.match(/changed from/) ? 'attribute_change' : message && message.match(/error count/) ? 'error_count_change' : 'status_report'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

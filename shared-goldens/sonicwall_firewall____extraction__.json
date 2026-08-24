@@ -1,0 +1,442 @@
+{
+  "key": "sonicwall_firewall::__extraction__",
+  "sourcetype": "sonicwall_firewall",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:20.762Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse firewall key-value pairs from _raw into kv object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "dstField": "kv",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": [
+          ":",
+          "/",
+          "."
+        ],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert numeric parsed fields for traffic calculations.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [
+          "kv.time",
+          "kv.id",
+          "kv.sn",
+          "kv.fw",
+          "kv.src",
+          "kv.dst",
+          "kv.srcMac",
+          "kv.dstMac",
+          "kv.proto",
+          "kv.msg",
+          "kv.note"
+        ],
+        "format": "none"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed firewall fields to target OCSF network activity fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "traffic.bytes",
+            "value": "kv.sent!=null && kv.rcvd!=null ? kv.sent + kv.rcvd : null"
+          },
+          {
+            "name": "traffic.packets",
+            "value": "kv.spkt!=null && kv.rpkt!=null ? kv.spkt + kv.rpkt : null"
+          },
+          {
+            "name": "unmapped.id",
+            "value": "kv.id"
+          },
+          {
+            "name": "unmapped.sn",
+            "value": "kv.sn"
+          },
+          {
+            "name": "unmapped.fw",
+            "value": "kv.fw"
+          },
+          {
+            "name": "unmapped.pri",
+            "value": "kv.pri"
+          },
+          {
+            "name": "unmapped.c",
+            "value": "kv.c"
+          },
+          {
+            "name": "unmapped.m",
+            "value": "kv.m"
+          },
+          {
+            "name": "unmapped.n",
+            "value": "kv.n"
+          },
+          {
+            "name": "unmapped.src",
+            "value": "kv.src"
+          },
+          {
+            "name": "unmapped.dst",
+            "value": "kv.dst"
+          },
+          {
+            "name": "unmapped.srcMac",
+            "value": "kv.srcMac"
+          },
+          {
+            "name": "unmapped.dstMac",
+            "value": "kv.dstMac"
+          },
+          {
+            "name": "unmapped.proto",
+            "value": "kv.proto"
+          },
+          {
+            "name": "unmapped.sent",
+            "value": "kv.sent"
+          },
+          {
+            "name": "unmapped.rcvd",
+            "value": "kv.rcvd"
+          },
+          {
+            "name": "unmapped.spkt",
+            "value": "kv.spkt"
+          },
+          {
+            "name": "unmapped.rpkt",
+            "value": "kv.rpkt"
+          },
+          {
+            "name": "unmapped.cdur",
+            "value": "kv.cdur"
+          },
+          {
+            "name": "unmapped.note",
+            "value": "kv.note"
+          },
+          {
+            "name": "message",
+            "value": "kv.msg"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "status_detail",
+            "value": "kv.note ? kv.note : kv.msg"
+          },
+          {
+            "name": "status_code",
+            "value": "kv.msg"
+          },
+          {
+            "name": "time",
+            "value": "kv.time ? Date.parse(kv.time.replace(' ','T')+'Z')/1000 : _time"
+          },
+          {
+            "name": "status_id",
+            "value": "kv.msg && kv.msg.toLowerCase().indexOf('dropped') >= 0 ? 2 : (kv.msg && kv.msg.toLowerCase().indexOf('opened') >= 0 ? 1 : 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Extract firewall key-value pairs from raw event text for downstream OCSF mapping.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "dstField": "",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": [
+          ":",
+          "/",
+          "."
+        ],
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF Network Activity target schema fields from parsed firewall fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "activity_id",
+            "value": "__e.msg==='Connection Opened'?1:(__e.msg && __e.msg.toLowerCase().indexOf('dropped')>=0?3:99)"
+          },
+          {
+            "name": "status",
+            "value": "__e.msg==='Connection Opened'?'Success':((__e.msg && __e.msg.toLowerCase().indexOf('dropped')>=0)?'Failure':'Unknown')"
+          },
+          {
+            "name": "severity_id",
+            "value": "__e.pri*1<=1?5:(__e.pri*1<=3?4:(__e.pri*1<=4?3:(__e.pri*1<=5?2:1)))"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "__e.dst ? __e.dst.split(':')[0] : null"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "__e.dst ? __e.dst.split(':')[1]*1 : null"
+          },
+          {
+            "name": "dst_endpoint.interface_name",
+            "value": "__e.dst ? __e.dst.split(':')[2] : null"
+          },
+          {
+            "name": "dst_endpoint.uid",
+            "value": "__e.dst ? __e.dst.split(':')[0] : null"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "0"
+          },
+          {
+            "name": "url.scheme",
+            "value": "(__e.proto && __e.proto.indexOf('/')>=0) ? __e.proto.split('/')[1] : null"
+          },
+          {
+            "name": "url.port",
+            "value": "__e.dst ? __e.dst.split(':')[1]*1 : null"
+          },
+          {
+            "name": "url.category_ids",
+            "value": "(__e.note && __e.note.toLowerCase().indexOf('suspicious')>=0) ? [92] : []"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract firewall key fields for OCSF network activity mapping.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/\\bid=(?<log_name>\\S+)/gm",
+        "regexList": [
+          {
+            "regex": "/\\bsn=(?<serial_number>\\S+)/gm"
+          },
+          {
+            "regex": "/\\btime=\"(?<event_time>[^\"]+)\"/gm"
+          },
+          {
+            "regex": "/\\bfw=(?<fw_ip>\\S+)/gm"
+          },
+          {
+            "regex": "/\\bmsg=\"(?<msg>[^\"]+)\"/gm"
+          },
+          {
+            "regex": "/\\bn=(?<conn_uid>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bsrc=(?<src_ip>[^:\\s]+):(?<src_port>\\d+):(?<src_interface>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bdst=(?<dst_ip>[^:\\s]+):(?<dst_port>\\d+):(?<dst_interface>[^\\s]+)/gm"
+          },
+          {
+            "regex": "/\\bproto=(?<protocol_name>[^\\/\\s]+)(?:\\/(?<service_name>[^\\s]+))?/gm"
+          },
+          {
+            "regex": "/\\bsrcMac=(?<src_mac>\\S+)/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF network activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "msg==='Connection Opened'?400101:(msg && msg.toLowerCase().indexOf('dropped')>=0?400103:400100)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "src_port ? src_port*1 : null"
+          },
+          {
+            "name": "src_endpoint.interface_name",
+            "value": "src_interface"
+          },
+          {
+            "name": "src_endpoint.svc_name",
+            "value": "service_name"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "src_mac ? src_mac : src_ip"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "log_name"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "event_time"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Firewall'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "serial_number"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'SonicWall'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "null"
+          },
+          {
+            "name": "metadata.reporter.ip",
+            "value": "fw_ip"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "serial_number"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "log_name"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "src_ip && dst_ip && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(src_ip) && !/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(dst_ip) ? 2 : (src_ip && dst_ip && !/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(src_ip) && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(dst_ip) ? 1 : (src_ip && dst_ip && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(src_ip) && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(dst_ip) ? 3 : 0))"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "src_ip && dst_ip && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(src_ip) && /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(dst_ip) ? 2 : (src_ip && dst_ip && (/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(src_ip) || /^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[0-1])\\.)/.test(dst_ip)) ? 3 : 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol_name ? protocol_name.toLowerCase() : null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "protocol_name==='tcp'?6:(protocol_name==='udp'?17:(protocol_name==='icmp'?1:0))"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "conn_uid"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "log_name",
+          "serial_number",
+          "event_time",
+          "fw_ip",
+          "msg",
+          "conn_uid",
+          "src_ip",
+          "src_port",
+          "src_interface",
+          "dst_ip",
+          "dst_port",
+          "dst_interface",
+          "protocol_name",
+          "service_name",
+          "src_mac"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "arg",
+        "c",
+        "cdur",
+        "dst",
+        "dstmac",
+        "fname",
+        "fw",
+        "group",
+        "id",
+        "m",
+        "method",
+        "msg",
+        "n",
+        "note",
+        "pri",
+        "proto",
+        "rcvd",
+        "rpkt",
+        "sent",
+        "sn",
+        "spkt",
+        "src",
+        "srcmac",
+        "time",
+        "user",
+        "usrgrp"
+      ]
+    }
+  },
+  "report": null
+}

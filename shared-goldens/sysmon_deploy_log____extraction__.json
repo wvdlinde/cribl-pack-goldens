@@ -1,0 +1,73 @@
+{
+  "key": "sysmon_deploy_log::__extraction__",
+  "sourcetype": "sysmon_deploy_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:46:44.601Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract leading ISO8601 timestamp and remaining key=value body from raw sysmon deploy log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<__kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse remaining key=value pairs (host, ip, user, action, status, version, config_hash, config_version, pid, driver, error, reason, severity, msg) from the KVP body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_body",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize fields: derive src_host/src_ip, compute _time epoch, classify action category, default severity when absent, and drop scratch/original fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_host",
+            "value": "host"
+          },
+          {
+            "name": "src_ip",
+            "value": "ip"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "action_category",
+            "value": "action && action.match(/INSTALL|UNINSTALL/) ? 'deployment' : action && action.match(/CONFIG/) ? 'configuration' : action && action.match(/SERVICE|DRIVER/) ? 'service' : 'other'"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : (status=='FAILURE' ? 'ERROR' : (status=='WARNING' ? 'WARNING' : 'INFO'))"
+          }
+        ],
+        "remove": [
+          "host",
+          "ip",
+          "__kvp_body"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

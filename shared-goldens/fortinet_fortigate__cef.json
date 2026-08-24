@@ -1,0 +1,812 @@
+{
+  "key": "fortinet_fortigate::cef",
+  "sourcetype": "fortinet_fortigate",
+  "dest_format": "cef",
+  "score": 98,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T09:54:26.637Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "fortinet_fortigate to CEF pipeline."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/CEF:\\d+\\|(?<__cef_vendor>[^|]*)\\|(?<__cef_product>[^|]*)\\|(?<__cef_version>[^|]*)\\|(?<__cef_id>[^|]*)\\|(?<__cef_name>[^|]*)\\|(?<__cef_severity>[^|]*)\\|(?<__cef_ext>.*)$/"
+      },
+      "description": "Extract CEF extension (if CEF-wrapped)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__kvp_src",
+            "value": "__cef_ext || _raw"
+          }
+        ]
+      },
+      "description": "Set KVP source field"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_src",
+        "delimChar": " ",
+        "quoteChar": "\""
+      },
+      "description": "Parse KVP fields"
+    },
+    {
+      "id": "code",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "maxNumOfIterations": 5000,
+        "code": "for (const key of Object.keys(__e)) {\n  if (key.startsWith(\"FTNTFGT\")) {\n    const clean = key.slice(7);\n    if (!__e[clean]) __e[clean] = __e[key];\n    delete __e[key];\n  }\n}"
+      },
+      "description": "Strip FTNTFGT prefix from FortiGate vendor fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || src || srcaddr || srcip || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || dst || dstaddr || dstip || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || spt || srcport || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || dpt || dstport || undefined"
+          },
+          {
+            "name": "__proto_raw",
+            "value": "String(transport || protocol || proto || '')"
+          },
+          {
+            "name": "proto_num",
+            "value": "__proto_raw != '' ? __proto_raw : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "__proto_raw == '6' ? 'tcp' : __proto_raw == '17' ? 'udp' : __proto_raw == '1' ? 'icmp' : __proto_raw == '58' ? 'ipv6-icmp' : __proto_raw == '47' ? 'gre' : __proto_raw == '50' ? 'esp' : __proto_raw == '51' ? 'ah' : __proto_raw == '132' ? 'sctp' : (__proto_raw || undefined)"
+          },
+          {
+            "name": "action",
+            "value": "action || act || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "event_code || logid || undefined"
+          },
+          {
+            "name": "message",
+            "value": "type ? (subtype ? String(type) + ':' + String(subtype) : String(type)) : (msg || undefined)"
+          },
+          {
+            "name": "log_time",
+            "value": "eventtime ? Number(String(eventtime).substring(0,13)) : (date && time ? Date.parse(String(date) + 'T' + String(time)) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "level == 'emergency' || level == 'alert' ? 1 : level == 'critical' ? 2 : level == 'error' ? 3 : level == 'warning' ? 4 : level == 'notice' ? 5 : level == 'information' ? 6 : (severity || undefined)"
+          },
+          {
+            "name": "level_word",
+            "value": "level || undefined"
+          },
+          {
+            "name": "host",
+            "value": "host || devname || devid || undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "__e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "app",
+            "value": "service || app || appcat || undefined"
+          },
+          {
+            "name": "appcat",
+            "value": "appcat || undefined"
+          },
+          {
+            "name": "service",
+            "value": "service || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "(srcintfrole && srcintfrole != 'undefined' ? srcintfrole : srcintf) || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "(dstintfrole && dstintfrole != 'undefined' ? dstintfrole : dstintf) || undefined"
+          },
+          {
+            "name": "src_interface",
+            "value": "srcintf || undefined"
+          },
+          {
+            "name": "dest_interface",
+            "value": "dstintf || undefined"
+          },
+          {
+            "name": "src_intf_role",
+            "value": "srcintfrole || undefined"
+          },
+          {
+            "name": "dest_intf_role",
+            "value": "dstintfrole || undefined"
+          },
+          {
+            "name": "src_country",
+            "value": "srccountry || undefined"
+          },
+          {
+            "name": "dest_country",
+            "value": "dstcountry || undefined"
+          },
+          {
+            "name": "policy_id",
+            "value": "policyid || undefined"
+          },
+          {
+            "name": "policy_name",
+            "value": "policyname || poluuid || undefined"
+          },
+          {
+            "name": "policy_type",
+            "value": "policytype || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionid || externalId || identifier || undefined"
+          },
+          {
+            "name": "sent_pkts",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "rcvd_pkts",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "src_mac",
+            "value": "srcmac || undefined"
+          },
+          {
+            "name": "dest_mac",
+            "value": "dstmac || undefined"
+          },
+          {
+            "name": "master_src_mac",
+            "value": "mastersrcmac || undefined"
+          },
+          {
+            "name": "master_dst_mac",
+            "value": "masterdstmac || undefined"
+          },
+          {
+            "name": "nat_disposition",
+            "value": "trandisp || undefined"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "trandisp == 'dnat' ? undefined : (transip || tranip || natip || undefined)"
+          },
+          {
+            "name": "src_translated_port",
+            "value": "trandisp == 'dnat' ? undefined : (tranport || natport || undefined)"
+          },
+          {
+            "name": "dest_translated_ip",
+            "value": "trandisp == 'dnat' ? (tranip || undefined) : undefined"
+          },
+          {
+            "name": "dest_translated_port",
+            "value": "trandisp == 'dnat' ? (tranport || undefined) : undefined"
+          },
+          {
+            "name": "vdom",
+            "value": "vd || vdom || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration || undefined"
+          },
+          {
+            "name": "dev_id",
+            "value": "devid || undefined"
+          },
+          {
+            "name": "os",
+            "value": "osname || undefined"
+          },
+          {
+            "name": "src_sw_version",
+            "value": "srcswversion || undefined"
+          },
+          {
+            "name": "dst_os",
+            "value": "dstosname || undefined"
+          },
+          {
+            "name": "dst_sw_version",
+            "value": "dstswversion || undefined"
+          },
+          {
+            "name": "dev_type",
+            "value": "devtype || undefined"
+          },
+          {
+            "name": "cr_score",
+            "value": "crscore || undefined"
+          },
+          {
+            "name": "cr_action",
+            "value": "craction || undefined"
+          },
+          {
+            "name": "cr_level",
+            "value": "crlevel || undefined"
+          },
+          {
+            "name": "wan_in",
+            "value": "wanin || undefined"
+          },
+          {
+            "name": "wan_out",
+            "value": "wanout || undefined"
+          },
+          {
+            "name": "lan_in",
+            "value": "lanin || undefined"
+          },
+          {
+            "name": "lan_out",
+            "value": "lanout || undefined"
+          },
+          {
+            "name": "sent_delta",
+            "value": "sentdelta || undefined"
+          },
+          {
+            "name": "rcvd_delta",
+            "value": "rcvddelta || undefined"
+          },
+          {
+            "name": "unauth_user",
+            "value": "unauthuser || undefined"
+          },
+          {
+            "name": "unauth_user_source",
+            "value": "unauthusersource || undefined"
+          },
+          {
+            "name": "tz_field",
+            "value": "tz || undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_src",
+          "__proto_raw",
+          "__cef_ext",
+          "__cef_vendor",
+          "__cef_product",
+          "__cef_version",
+          "__cef_id",
+          "__cef_name",
+          "__cef_severity"
+        ]
+      },
+      "description": "Normalize CEF/FortiGate field names to standard"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to CEF schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Fortinet'"
+          },
+          {
+            "name": "product",
+            "value": "'FortiGate'"
+          },
+          {
+            "name": "version",
+            "value": "'7.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sig",
+            "value": "event_code || 'event'"
+          },
+          {
+            "name": "__name",
+            "value": "message || action || 'Event'"
+          },
+          {
+            "name": "__sev",
+            "value": "severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1"
+          },
+          {
+            "name": "__hdr",
+            "value": "'CEF:0|Fortinet|FortiGate|7.x|' + String(__sig) + '|' + String(__name) + '|' + String(__sev) + '|'"
+          },
+          {
+            "name": "__ext",
+            "value": "''"
+          }
+        ]
+      },
+      "description": "Build CEF header"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_ip) && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' ? __ext + 'src=' + String(src_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_port) && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' ? __ext + 'spt=' + String(src_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_ip) && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' ? __ext + 'dst=' + String(dest_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_port) && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' ? __ext + 'dpt=' + String(dest_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(proto_num) && String(proto_num) != 'undefined' && String(proto_num) != 'null' && String(proto_num) != '-' ? __ext + 'proto=' + String(proto_num) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(transport) && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' ? __ext + 'cs7=' + String(transport) + ' cs7Label=Transport ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(action) && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' ? __ext + 'act=' + String(action) + ' ' : __ext"
+          }
+        ]
+      },
+      "description": "Build CEF extension"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(unauth_user) && String(unauth_user) != 'undefined' && String(unauth_user) != 'null' && String(unauth_user) != '-' && String(unauth_user) != '' ? __ext + 'suser=' + String(unauth_user) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(unauth_user_source) && String(unauth_user_source) != 'undefined' && String(unauth_user_source) != 'null' && String(unauth_user_source) != '-' ? __ext + 'cs8=' + String(unauth_user_source) + ' cs8Label=UnauthUserSource ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(bytes_in) && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' ? __ext + 'in=' + String(bytes_in) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(bytes_out) && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' ? __ext + 'out=' + String(bytes_out) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(app) && String(app) != 'undefined' && String(app) != 'null' && String(app) != '-' ? __ext + 'app=' + String(app) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(host) && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' ? __ext + 'dvchost=' + String(host) + ' ' : __ext"
+          }
+        ]
+      },
+      "description": "CEF extension cont"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(session_id) && String(session_id) != 'undefined' && String(session_id) != 'null' && String(session_id) != '-' ? __ext + 'externalId=' + String(session_id) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(policy_name) && String(policy_name) != 'undefined' && String(policy_name) != 'null' && String(policy_name) != '-' && String(policy_name) != '' ? __ext + 'cs1=' + String(policy_name) + ' cs1Label=Rule ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(policy_id) && String(policy_id) != 'undefined' && String(policy_id) != 'null' && String(policy_id) != '-' && String(policy_id) != '0' ? __ext + 'cs2=' + String(policy_id) + ' cs2Label=PolicyID ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(policy_type) && String(policy_type) != 'undefined' && String(policy_type) != 'null' && String(policy_type) != '-' ? __ext + 'cs9=' + String(policy_type) + ' cs9Label=PolicyType ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dev_id) && String(dev_id) != 'undefined' && String(dev_id) != 'null' && String(dev_id) != '-' ? __ext + 'deviceExternalId=' + String(dev_id) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dev_type) && String(dev_type) != 'undefined' && String(dev_type) != 'null' && String(dev_type) != '-' ? __ext + 'deviceType=' + String(dev_type) + ' ' : __ext"
+          }
+        ]
+      },
+      "description": "CEF extension cont"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(os) && String(os) != 'undefined' && String(os) != 'null' && String(os) != '-' ? __ext + 'cs6=' + String(os) + ' cs6Label=SrcOS ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_sw_version) && String(src_sw_version) != 'undefined' && String(src_sw_version) != 'null' && String(src_sw_version) != '-' ? __ext + 'cs10=' + String(src_sw_version) + ' cs10Label=SrcSWVersion ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dst_os) && String(dst_os) != 'undefined' && String(dst_os) != 'null' && String(dst_os) != '-' ? __ext + 'cs11=' + String(dst_os) + ' cs11Label=DstOS ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dst_sw_version) && String(dst_sw_version) != 'undefined' && String(dst_sw_version) != 'null' && String(dst_sw_version) != '-' ? __ext + 'cs12=' + String(dst_sw_version) + ' cs12Label=DstSWVersion ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(vdom) && String(vdom) != 'undefined' && String(vdom) != 'null' && String(vdom) != '-' ? __ext + 'cs5=' + String(vdom) + ' cs5Label=VDOM ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(level_word) && String(level_word) != 'undefined' && String(level_word) != 'null' && String(level_word) != '-' ? __ext + 'cs13=' + String(level_word) + ' cs13Label=Level ' : __ext"
+          }
+        ]
+      },
+      "description": "CEF extension cont"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_mac) && String(src_mac) != 'undefined' && String(src_mac) != 'null' && String(src_mac) != '-' ? __ext + 'smac=' + String(src_mac) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_mac) && String(dest_mac) != 'undefined' && String(dest_mac) != 'null' && String(dest_mac) != '-' ? __ext + 'dmac=' + String(dest_mac) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(master_src_mac) && String(master_src_mac) != 'undefined' && String(master_src_mac) != 'null' && String(master_src_mac) != '-' ? __ext + 'cs14=' + String(master_src_mac) + ' cs14Label=MasterSrcMac ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(master_dst_mac) && String(master_dst_mac) != 'undefined' && String(master_dst_mac) != 'null' && String(master_dst_mac) != '-' ? __ext + 'cs15=' + String(master_dst_mac) + ' cs15Label=MasterDstMac ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_interface) && String(src_interface) != 'undefined' && String(src_interface) != 'null' && String(src_interface) != '-' ? __ext + 'deviceInboundInterface=' + String(src_interface) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_interface) && String(dest_interface) != 'undefined' && String(dest_interface) != 'null' && String(dest_interface) != '-' ? __ext + 'deviceOutboundInterface=' + String(dest_interface) + ' ' : __ext"
+          }
+        ]
+      },
+      "description": "CEF extension cont"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(src_intf_role) && String(src_intf_role) != 'undefined' && String(src_intf_role) != 'null' && String(src_intf_role) != '-' ? __ext + 'cs16=' + String(src_intf_role) + ' cs16Label=SrcIntfRole ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_intf_role) && String(dest_intf_role) != 'undefined' && String(dest_intf_role) != 'null' && String(dest_intf_role) != '-' ? __ext + 'cs17=' + String(dest_intf_role) + ' cs17Label=DstIntfRole ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_country) && String(src_country) != 'undefined' && String(src_country) != 'null' && String(src_country) != '-' ? __ext + 'cs3=' + String(src_country) + ' cs3Label=SrcCountry ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_country) && String(dest_country) != 'undefined' && String(dest_country) != 'null' && String(dest_country) != '-' ? __ext + 'cs4=' + String(dest_country) + ' cs4Label=DstCountry ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(nat_disposition) && String(nat_disposition) != 'undefined' && String(nat_disposition) != 'null' && String(nat_disposition) != '-' ? __ext + 'cs18=' + String(nat_disposition) + ' cs18Label=NatDisposition ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(appcat) && String(appcat) != 'undefined' && String(appcat) != 'null' && String(appcat) != '-' ? __ext + 'cs19=' + String(appcat) + ' cs19Label=AppCat ' : __ext"
+          }
+        ]
+      },
+      "description": "CEF extension cont"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(dest_translated_ip) && String(dest_translated_ip) != 'undefined' && String(dest_translated_ip) != 'null' && String(dest_translated_ip) != '-' ? __ext + 'destinationTranslatedAddress=' + String(dest_translated_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(dest_translated_port) && String(dest_translated_port) != 'undefined' && String(dest_translated_port) != 'null' && String(dest_translated_port) != '-' ? __ext + 'destinationTranslatedPort=' + String(dest_translated_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_translated_ip) && String(src_translated_ip) != 'undefined' && String(src_translated_ip) != 'null' && String(src_translated_ip) != '-' ? __ext + 'sourceTranslatedAddress=' + String(src_translated_ip) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(src_translated_port) && String(src_translated_port) != 'undefined' && String(src_translated_port) != 'null' && String(src_translated_port) != '-' ? __ext + 'sourceTranslatedPort=' + String(src_translated_port) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(sent_pkts) && String(sent_pkts) != 'undefined' && String(sent_pkts) != 'null' && String(sent_pkts) != '-' ? __ext + 'spkt=' + String(sent_pkts) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(rcvd_pkts) && String(rcvd_pkts) != 'undefined' && String(rcvd_pkts) != 'null' && String"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "high",
+        "field": "_raw",
+        "issue": "8/8 events missing a valid CEF:0|…| CEF header",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "src",
+        "issue": "source value present but \"src\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "spt",
+        "issue": "source value present but \"spt\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "act",
+        "issue": "source value present but \"act\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "externalId",
+        "issue": "source value present but \"externalId\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "cs1",
+        "issue": "source value present but \"cs1\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "cs2",
+        "issue": "source value present but \"cs2\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "deviceExternalId",
+        "issue": "source value present but \"deviceExternalId\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "smac",
+        "issue": "source value present but \"smac\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "dmac",
+        "issue": "source value present but \"dmac\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "cs3",
+        "issue": "source value present but \"cs3\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "cn3",
+        "issue": "source value present but \"cn3\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"netbios forward\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "_time",
+        "issue": "_time=1783936302.432 does not match the event's eventtime (1757600388.419 ≈ 2025-09-11). The _time appears to be the pipeline processing time, not the log event time",
+        "example": "eventtime=1757600388419 but _time=1783936302.432 (off by ~26 million seconds)",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "CEF extension keys",
+        "issue": "CEF standard mandates use of defined extension key names (src, dst, spt, dpt, proto, act, in, out, deviceExternalId, etc.). Pipeline uses non-standard custom names (src_ip, dest_ip, src_port, dest_port, proto_num, bytes_in, bytes_out) which are not valid CEF extension keys",
+        "example": "src_ip=10.42.73.127 should be src=10.42.73.127; dest_ip should be dst; spt/dpt instead of src_port/dest_port",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "policy_name",
+        "issue": "policy_name is mapped to the poluuid value instead of policyname. poluuid='0bf82f11-0497-4ded-a4b8-8450c8e9c94a' is placed in policy_name field",
+        "example": "policy_name='0bf82f11-0497-4ded-a4b8-8450c8e9c94a' but policyname='' and poluuid='0bf82f11-0497-4ded-a4b8-8450c8e9c94a'",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "src_zone / dest_zone",
+        "issue": "src_zone mapping is inconsistent: event 1 uses srcintf value ('REDACTED') while event 2 uses srcintfrole value ('lan'). The logic appears to fall back to srcintfrole when srcintfrole != 'undefined', conflating interface name with zone",
+        "example": "Event1 src_zone='REDACTED' (srcintf), Event2 src_zone='lan' (srcintfrole='lan')",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "severity / __sev",
+        "issue": "Two severity fields with different values exist on the same event: severity=5 and __sev=4. CEF severity should be a single consistent value",
+        "example": "severity=5 vs __sev=4 on event 1",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "CEF severity scale",
+        "issue": "FortiGate 'notice' level maps to CEF severity 4 (__sev) or 5 (severity) — CEF uses 0-10 scale. Neither value is documented/consistent, and notice should map to approximately 3-4",
+        "example": "__sev=4, severity=5 for level=notice",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "version",
+        "issue": "version is hardcoded to '7.x' rather than derived from the log; acceptable if source doesn't carry version, but worth noting",
+        "example": "version=7.x (hardcoded)",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "osname / srcswversion / devtype",
+        "issue": "Source fields osname, srcswversion, devtype, crscore, crlevel, craction present in input are not mapped to any CEF output field",
+        "example": "osname=Windows, srcswversion=10, devtype=Router — absent from output mappings",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "src",
+      "spt",
+      "act",
+      "externalId",
+      "cs1",
+      "cs2",
+      "deviceExternalId",
+      "smac",
+      "dmac",
+      "cs3",
+      "cn3"
+    ],
+    "emptyFields": [
+      "src",
+      "spt",
+      "act",
+      "externalId",
+      "cs1",
+      "cs2",
+      "deviceExternalId",
+      "smac",
+      "dmac",
+      "cs3",
+      "cn3"
+    ],
+    "summary": "The pipeline fails to produce actual CEF-formatted output strings. While it correctly parses most FortiGate key=value fields into intermediate JSON and builds a partial CEF header in __hdr, it never assembles the complete CEF event (header + extension) as a formatted _raw string, which is the fundamental requirement of CEF format. Additionally, _time is set to pipeline processing time rather than event time, policy_name is mis-mapped to the poluuid value, CEF standard extension key names are not used, and several source fields (osname, devtype, crscore, unauthuser) are dropped entirely."
+  }
+}

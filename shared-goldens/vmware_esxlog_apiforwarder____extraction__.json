@@ -1,0 +1,98 @@
+{
+  "key": "vmware_esxlog_apiforwarder::__extraction__",
+  "sourcetype": "vmware_esxlog_apiforwarder",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:11:51.145Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog-style structure: timestamp, host, pid, optional severity tag, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s(?<dst_host>\\S+)\\sApiforwarder\\[(?<pid>\\d+)\\]:\\s(?:(?<severity>\\w+):\\s)?(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Default severity to info when not explicitly tagged, and set protocol to tcp",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.indexOf('from ') !== -1 || message.indexOf('peer ') !== -1)",
+      "disabled": false,
+      "description": "Extract source IP (including IPv6) and port from connection-related messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:from|peer)\\s(?<src_ip>[0-9a-fA-F:.]+):(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('[user=') !== -1",
+      "disabled": false,
+      "description": "Extract user from bracketed [user=xxx] notation on forwarding requests",
+      "conf": {
+        "source": "message",
+        "regex": "/\\[user=(?<user>[^\\]]+)\\]/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"user '\") !== -1",
+      "disabled": false,
+      "description": "Extract user from quoted 'user' notation on authentication failure messages",
+      "conf": {
+        "source": "message",
+        "regex": "/user\\s'(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/^Accepted/) ? 'accepted' : message.match(/^Rejected/) ? 'rejected' : message.match(/^Authentication failed/) ? 'failed' : message.match(/^Repeated authentication failures/) ? 'blocked' : message.match(/^Connection reset/) ? 'reset' : message.match(/^Slow response/) ? 'slow_response' : message.match(/^Forwarding request/) ? 'forwarded' : 'unknown'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

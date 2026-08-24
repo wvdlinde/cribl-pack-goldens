@@ -1,0 +1,270 @@
+{
+  "key": "fortinet_fortigate::__extraction__",
+  "sourcetype": "fortinet_fortigate",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:36:00.845Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/CEF:\\d+\\|(?<__cef_vendor>[^|]*)\\|(?<__cef_product>[^|]*)\\|(?<__cef_version>[^|]*)\\|(?<__cef_id>[^|]*)\\|(?<__cef_name>[^|]*)\\|(?<__cef_severity>[^|]*)\\|(?<__cef_ext>.*)$/"
+      },
+      "description": "Extract CEF extension (if CEF-wrapped)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__kvp_src",
+            "value": "__cef_ext || _raw"
+          }
+        ]
+      },
+      "description": "Set KVP source field"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_src",
+        "delimChar": " ",
+        "quoteChar": "\""
+      },
+      "description": "Parse KVP fields"
+    },
+    {
+      "id": "code",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "maxNumOfIterations": 5000,
+        "code": "for (const key of Object.keys(__e)) {\n  if (key.startsWith(\"FTNTFGT\")) {\n    const clean = key.slice(7);\n    if (!__e[clean]) __e[clean] = __e[key];\n    delete __e[key];\n  }\n}"
+      },
+      "description": "Strip FTNTFGT prefix from FortiGate vendor fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || src || srcaddr || srcip || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || dst || dstaddr || dstip || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || spt || srcport || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || dpt || dstport || undefined"
+          },
+          {
+            "name": "__proto_raw",
+            "value": "String(transport || protocol || proto || \"\")"
+          },
+          {
+            "name": "transport",
+            "value": "__proto_raw == '6' ? 'tcp' : __proto_raw == '17' ? 'udp' : __proto_raw == '1' ? 'icmp' : __proto_raw == '58' ? 'ipv6-icmp' : __proto_raw == '47' ? 'gre' : __proto_raw == '50' ? 'esp' : __proto_raw == '51' ? 'ah' : __proto_raw == '132' ? 'sctp' : (__proto_raw || undefined)"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || proto || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || act || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "event_code || logid || undefined"
+          },
+          {
+            "name": "message",
+            "value": "type ? (subtype ? String(type) + ':' + String(subtype) : String(type)) : (msg || undefined)"
+          },
+          {
+            "name": "log_time",
+            "value": "eventtime ? Number(String(eventtime).substring(0,13)) : (date && time ? Date.parse(String(date) + 'T' + String(time)) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "level == 'emergency' || level == 'alert' ? 1 : level == 'critical' ? 2 : level == 'error' ? 3 : level == 'warning' ? 4 : level == 'notice' ? 5 : level == 'information' ? 6 : (severity || undefined)"
+          },
+          {
+            "name": "host",
+            "value": "host || devname || devid || undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || __e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "app",
+            "value": "app || service || appcat || undefined"
+          },
+          {
+            "name": "application",
+            "value": "app || service || undefined"
+          },
+          {
+            "name": "service",
+            "value": "service || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "(srcintfrole && srcintfrole != 'undefined' ? srcintfrole : srcintf) || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "(dstintfrole && dstintfrole != 'undefined' ? dstintfrole : dstintf) || undefined"
+          },
+          {
+            "name": "src_interface",
+            "value": "srcintf || undefined"
+          },
+          {
+            "name": "dest_interface",
+            "value": "dstintf || undefined"
+          },
+          {
+            "name": "src_country",
+            "value": "srccountry || undefined"
+          },
+          {
+            "name": "dest_country",
+            "value": "dstcountry || undefined"
+          },
+          {
+            "name": "policy_id",
+            "value": "policyid || undefined"
+          },
+          {
+            "name": "policy_name",
+            "value": "policyname || poluuid || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionid || externalId || identifier || undefined"
+          },
+          {
+            "name": "sent_bytes",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "rcvd_bytes",
+            "value": "__e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "sent_pkts",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "rcvd_pkts",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "src_mac",
+            "value": "srcmac || mastersrcmac || undefined"
+          },
+          {
+            "name": "dest_mac",
+            "value": "dstmac || masterdstmac || undefined"
+          },
+          {
+            "name": "device_ip",
+            "value": "device_ip || undefined"
+          },
+          {
+            "name": "nat_disposition",
+            "value": "trandisp || undefined"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "trandisp == 'dnat' ? undefined : (transip || tranip || natip || undefined)"
+          },
+          {
+            "name": "src_translated_port",
+            "value": "trandisp == 'dnat' ? undefined : (tranport || natport || undefined)"
+          },
+          {
+            "name": "dest_translated_ip",
+            "value": "trandisp == 'dnat' ? (tranip || undefined) : undefined"
+          },
+          {
+            "name": "dest_translated_port",
+            "value": "trandisp == 'dnat' ? (tranport || undefined) : undefined"
+          },
+          {
+            "name": "vdom",
+            "value": "vd || vdom || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration || undefined"
+          },
+          {
+            "name": "packets_in",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "packets_out",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "dev_id",
+            "value": "devid || undefined"
+          },
+          {
+            "name": "os",
+            "value": "osname || undefined"
+          },
+          {
+            "name": "os_version",
+            "value": "srcswversion || osversion || undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_src",
+          "__proto_raw",
+          "__cef_ext",
+          "__cef_vendor",
+          "__cef_product",
+          "__cef_version",
+          "__cef_id",
+          "__cef_name",
+          "__cef_severity"
+        ]
+      },
+      "description": "Normalize CEF/FortiGate field names to standard"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction (golden-slice) from fortinet_fortigate::cim: 49/49 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "key": "modular_alerts_risk::__extraction__",
+  "sourcetype": "modular_alerts_risk",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:34:03.577Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Split the leading ISO timestamp and sourcetype token from the trailing key=value payload",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+modular_alerts_risk\\s+(?<__kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract space-delimited key=value pairs (quoted values supported) from the scratch KVP body field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_body",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from the extracted timestamp and normalize destination field names to dst_* convention",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dest_ip"
+          },
+          {
+            "name": "dst_port",
+            "value": "dest_port"
+          },
+          {
+            "name": "dst_host",
+            "value": "dest_host"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toLowerCase() : protocol"
+          }
+        ],
+        "remove": [
+          "dest_ip",
+          "dest_port",
+          "dest_host",
+          "timestamp",
+          "__kvp_body"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action/status field and message alias for downstream mapping stages",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status == 'triggered' ? 'triggered' : status == 'closed' ? 'closed' : status"
+          },
+          {
+            "name": "message",
+            "value": "risk_message"
+          },
+          {
+            "name": "user",
+            "value": "risk_object_type == 'user' ? risk_object : undefined"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

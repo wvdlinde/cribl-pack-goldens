@@ -1,0 +1,530 @@
+{
+  "key": "fortinet_fortigate::commonsecuritylog",
+  "sourcetype": "fortinet_fortigate",
+  "dest_format": "commonsecuritylog",
+  "score": 100,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-15T13:14:18.031Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "fortinet_fortigate to CommonSecurityLog pipeline.\nParses events, drops noise, maps to CommonSecurityLog schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/CEF:\\d+\\|(?<__cef_vendor>[^|]*)\\|(?<__cef_product>[^|]*)\\|(?<__cef_version>[^|]*)\\|(?<__cef_id>[^|]*)\\|(?<__cef_name>[^|]*)\\|(?<__cef_severity>[^|]*)\\|(?<__cef_ext>.*)$/"
+      },
+      "description": "Extract CEF extension (if CEF-wrapped)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__kvp_src",
+            "value": "__cef_ext || _raw"
+          }
+        ]
+      },
+      "description": "Set KVP source field"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_src",
+        "delimChar": " ",
+        "quoteChar": "\""
+      },
+      "description": "Parse KVP fields"
+    },
+    {
+      "id": "code",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "maxNumOfIterations": 5000,
+        "code": "for (const key of Object.keys(__e)) {\n  if (key.startsWith(\"FTNTFGT\")) {\n    const clean = key.slice(7);\n    if (!__e[clean]) __e[clean] = __e[key];\n    delete __e[key];\n  }\n}"
+      },
+      "description": "Strip FTNTFGT prefix from FortiGate vendor fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || src || srcaddr || srcip || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || dst || dstaddr || dstip || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || spt || srcport || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || dpt || dstport || undefined"
+          },
+          {
+            "name": "__proto_raw",
+            "value": "String(transport || protocol || proto || \"\")"
+          },
+          {
+            "name": "transport",
+            "value": "__proto_raw == '6' ? 'tcp' : __proto_raw == '17' ? 'udp' : __proto_raw == '1' ? 'icmp' : __proto_raw == '58' ? 'ipv6-icmp' : __proto_raw == '47' ? 'gre' : __proto_raw == '50' ? 'esp' : __proto_raw == '51' ? 'ah' : __proto_raw == '132' ? 'sctp' : (__proto_raw || undefined)"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || proto || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || act || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "event_code || logid || undefined"
+          },
+          {
+            "name": "message",
+            "value": "type ? (subtype ? String(type) + ':' + String(subtype) : String(type)) : (msg || undefined)"
+          },
+          {
+            "name": "log_time",
+            "value": "eventtime ? Number(String(eventtime).substring(0,13)) : (date && time ? Date.parse(String(date) + 'T' + String(time)) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "level == 'emergency' || level == 'alert' ? 1 : level == 'critical' ? 2 : level == 'error' ? 3 : level == 'warning' ? 4 : level == 'notice' ? 5 : level == 'information' ? 6 : (severity || undefined)"
+          },
+          {
+            "name": "host",
+            "value": "host || devname || devid || undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || __e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "app",
+            "value": "app || service || appcat || undefined"
+          },
+          {
+            "name": "application",
+            "value": "app || service || undefined"
+          },
+          {
+            "name": "service",
+            "value": "service || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "(srcintfrole && srcintfrole != 'undefined' ? srcintfrole : srcintf) || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "(dstintfrole && dstintfrole != 'undefined' ? dstintfrole : dstintf) || undefined"
+          },
+          {
+            "name": "src_interface",
+            "value": "srcintf || undefined"
+          },
+          {
+            "name": "dest_interface",
+            "value": "dstintf || undefined"
+          },
+          {
+            "name": "src_country",
+            "value": "srccountry || undefined"
+          },
+          {
+            "name": "dest_country",
+            "value": "dstcountry || undefined"
+          },
+          {
+            "name": "policy_id",
+            "value": "policyid || undefined"
+          },
+          {
+            "name": "policy_name",
+            "value": "policyname || poluuid || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionid || externalId || identifier || undefined"
+          },
+          {
+            "name": "sent_bytes",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "rcvd_bytes",
+            "value": "__e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "sent_pkts",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "rcvd_pkts",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "src_mac",
+            "value": "srcmac || mastersrcmac || undefined"
+          },
+          {
+            "name": "dest_mac",
+            "value": "dstmac || masterdstmac || undefined"
+          },
+          {
+            "name": "device_ip",
+            "value": "device_ip || undefined"
+          },
+          {
+            "name": "nat_disposition",
+            "value": "trandisp || undefined"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "trandisp == 'dnat' ? undefined : (transip || tranip || natip || undefined)"
+          },
+          {
+            "name": "src_translated_port",
+            "value": "trandisp == 'dnat' ? undefined : (tranport || natport || undefined)"
+          },
+          {
+            "name": "dest_translated_ip",
+            "value": "trandisp == 'dnat' ? (tranip || undefined) : undefined"
+          },
+          {
+            "name": "dest_translated_port",
+            "value": "trandisp == 'dnat' ? (tranport || undefined) : undefined"
+          },
+          {
+            "name": "vdom",
+            "value": "vd || vdom || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration || undefined"
+          },
+          {
+            "name": "packets_in",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "packets_out",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "dev_id",
+            "value": "devid || undefined"
+          },
+          {
+            "name": "os",
+            "value": "osname || undefined"
+          },
+          {
+            "name": "os_version",
+            "value": "srcswversion || osversion || undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_src",
+          "__proto_raw",
+          "__cef_ext",
+          "__cef_vendor",
+          "__cef_product",
+          "__cef_version",
+          "__cef_id",
+          "__cef_name",
+          "__cef_severity"
+        ]
+      },
+      "description": "Normalize CEF/FortiGate field names to standard"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "src_ip && dst_ip && src_ip === dst_ip",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop local loopback traffic (src=dst) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'accept' && application === 'PING'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop health check / keepalive PING traffic (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to CommonSecurityLog schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden CommonSecurityLog mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Fortinet'"
+          },
+          {
+            "name": "product",
+            "value": "'FortiGate'"
+          },
+          {
+            "name": "version",
+            "value": "'7.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "DeviceVendor",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "(version) != null && String(version) != 'undefined' && String(version) != 'null' && String(version) != '-' && String(version) != '' ? (version) : undefined"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "(event_code || asa_code || ftd_code || signature) != null && String(event_code || asa_code || ftd_code || signature) != 'undefined' && String(event_code || asa_code || ftd_code || signature) != 'null' && String(event_code || asa_code || ftd_code || signature) != '-' && String(event_code || asa_code || ftd_code || signature) != '' ? (event_code || asa_code || ftd_code || signature) : undefined"
+          },
+          {
+            "name": "Activity",
+            "value": "(message || action) != null && String(message || action) != 'undefined' && String(message || action) != 'null' && String(message || action) != '-' && String(message || action) != '' ? (message || action) : undefined"
+          },
+          {
+            "name": "SourceIP",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "SourcePort",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? (src_port) : undefined"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? (dest_port) : undefined"
+          },
+          {
+            "name": "Protocol",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "(action) != null && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' && String(action) != '' ? (action) : undefined"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "(src_user || user) != null && String(src_user || user) != 'undefined' && String(src_user || user) != 'null' && String(src_user || user) != '-' && String(src_user || user) != '' ? (src_user || user) : undefined"
+          },
+          {
+            "name": "DestinationUserName",
+            "value": "(dest_user) != null && String(dest_user) != 'undefined' && String(dest_user) != 'null' && String(dest_user) != '-' && String(dest_user) != '' ? (dest_user) : undefined"
+          },
+          {
+            "name": "SentBytes",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? (bytes_out) : undefined"
+          },
+          {
+            "name": "ReceivedBytes",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? (bytes_in) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → Sentinel CommonSecurityLog"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "ApplicationProtocol",
+            "value": "(app || protocol) != null && String(app || protocol) != 'undefined' && String(app || protocol) != 'null' && String(app || protocol) != '-' && String(app || protocol) != '' ? (app || protocol) : undefined"
+          },
+          {
+            "name": "DeviceName",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != null && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != 'undefined' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != 'null' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != '-' && String(severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) != '' ? (severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1) : undefined"
+          },
+          {
+            "name": "RequestURL",
+            "value": "(url) != null && String(url) != 'undefined' && String(url) != 'null' && String(url) != '-' && String(url) != '' ? (url) : undefined"
+          },
+          {
+            "name": "SourceTranslatedAddress",
+            "value": "(src_translated_ip) != null && String(src_translated_ip) != 'undefined' && String(src_translated_ip) != 'null' && String(src_translated_ip) != '-' && String(src_translated_ip) != '' ? (src_translated_ip) : undefined"
+          },
+          {
+            "name": "DestinationTranslatedAddress",
+            "value": "(dest_translated_ip) != null && String(dest_translated_ip) != 'undefined' && String(dest_translated_ip) != 'null' && String(dest_translated_ip) != '-' && String(dest_translated_ip) != '' ? (dest_translated_ip) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'fortinet_fortigate:commonsecuritylog'"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "DeviceVendor",
+          "DeviceVendor.*",
+          "DeviceProduct",
+          "DeviceProduct.*",
+          "DeviceVersion",
+          "DeviceVersion.*",
+          "DeviceEventClassID",
+          "DeviceEventClassID.*",
+          "Activity",
+          "Activity.*",
+          "SourceIP",
+          "SourceIP.*",
+          "SourcePort",
+          "SourcePort.*",
+          "DestinationIP",
+          "DestinationIP.*",
+          "DestinationPort",
+          "DestinationPort.*",
+          "Protocol",
+          "Protocol.*",
+          "DeviceAction",
+          "DeviceAction.*",
+          "SourceUserName",
+          "SourceUserName.*",
+          "DestinationUserName",
+          "DestinationUserName.*",
+          "SentBytes",
+          "SentBytes.*",
+          "ReceivedBytes",
+          "ReceivedBytes.*",
+          "ApplicationProtocol",
+          "ApplicationProtocol.*",
+          "DeviceName",
+          "DeviceName.*",
+          "LogSeverity",
+          "LogSeverity.*",
+          "RequestURL",
+          "RequestURL.*",
+          "SourceTranslatedAddress",
+          "SourceTranslatedAddress.*",
+          "DestinationTranslatedAddress",
+          "DestinationTranslatedAddress.*"
+        ]
+      },
+      "description": "Keep only Sentinel CommonSecurityLog fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "spec-validation",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}

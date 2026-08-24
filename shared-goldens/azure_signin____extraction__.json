@@ -1,0 +1,375 @@
+{
+  "key": "azure_signin::__extraction__",
+  "sourcetype": "azure_signin",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T12:59:49.496Z",
+  "functions": [
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse the stringified JSON event in _raw into event fields."
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Normalize event time from the source time field.",
+      "conf": {
+        "srcField": "time",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "6"
+          },
+          {
+            "name": "api.operation",
+            "value": "__e.properties && __e.properties.requestMethod ? __e.properties.requestMethod : __e.operationName"
+          },
+          {
+            "name": "api.request.uid",
+            "value": "__e.properties && __e.properties.requestId ? __e.properties.requestId : __e.correlationId"
+          },
+          {
+            "name": "api.response.code",
+            "value": "__e.properties && __e.properties.responseStatusCode != null ? __e.properties.responseStatusCode : (__e.resultSignature ? __e.resultSignature*1 : null)"
+          },
+          {
+            "name": "api.response.message",
+            "value": "__e.level"
+          },
+          {
+            "name": "http_response.code",
+            "value": "__e.properties && __e.properties.responseStatusCode != null ? __e.properties.responseStatusCode : (__e.resultSignature ? __e.resultSignature*1 : null)"
+          },
+          {
+            "name": "status_code",
+            "value": "__e.resultSignature"
+          },
+          {
+            "name": "status_detail",
+            "value": "__e.level"
+          },
+          {
+            "name": "message",
+            "value": "__e.operationName"
+          },
+          {
+            "name": "unmapped.resourceId",
+            "value": "__e.resourceId"
+          },
+          {
+            "name": "unmapped.operationVersion",
+            "value": "__e.operationVersion"
+          },
+          {
+            "name": "unmapped.category",
+            "value": "__e.category"
+          },
+          {
+            "name": "unmapped.durationMs",
+            "value": "__e.durationMs"
+          },
+          {
+            "name": "unmapped.callerIpAddress",
+            "value": "__e.callerIpAddress"
+          },
+          {
+            "name": "unmapped.correlationId",
+            "value": "__e.correlationId"
+          },
+          {
+            "name": "unmapped.location",
+            "value": "__e.location"
+          },
+          {
+            "name": "unmapped.properties",
+            "value": "__e.properties"
+          },
+          {
+            "name": "unmapped.tenantId",
+            "value": "__e.tenantId"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed Microsoft Graph Activity fields to OCSF API Activity schema fields."
+    },
+    {
+      "id": "serde",
+      "description": "Parse stringified JSON event payload in _raw into fields for OCSF mapping.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract URL components from the Microsoft Graph request URI.",
+      "filter": "properties && properties.requestUri",
+      "conf": {
+        "source": "properties.requestUri",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<url_scheme>[^:]+):\\/\\/(?<url_hostname>[^\\/\\?#:]+)(?::(?<url_port>\\d+))?(?<url_path>[^\\?]*)(?:\\?(?<url_query_string>.*))?$/gm"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map Microsoft Graph activity fields to OCSF API Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "6003"
+          },
+          {
+            "name": "activity_id",
+            "value": "properties && (properties.requestMethod==='GET' || properties.requestMethod==='HEAD') ? 2 : (properties && properties.requestMethod==='POST' ? 1 : (properties && (properties.requestMethod==='PUT' || properties.requestMethod==='PATCH') ? 3 : (properties && properties.requestMethod==='DELETE' ? 4 : 99)))"
+          },
+          {
+            "name": "status_id",
+            "value": "properties && properties.responseStatusCode!=null && properties.responseStatusCode>=200 && properties.responseStatusCode<400 ? 1 : (resultSignature!=null && resultSignature>=200 && resultSignature<400 ? 1 : (properties && properties.responseStatusCode>=400 ? 2 : (resultSignature>=400 ? 2 : 0)))"
+          },
+          {
+            "name": "status",
+            "value": "properties && properties.responseStatusCode!=null && properties.responseStatusCode>=200 && properties.responseStatusCode<400 ? 'Success' : (resultSignature!=null && resultSignature>=200 && resultSignature<400 ? 'Success' : (properties && properties.responseStatusCode>=400 ? 'Failure' : (resultSignature>=400 ? 'Failure' : 'Unknown')))"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "properties && properties.UserPrincipalObjectID ? properties.UserPrincipalObjectID : (properties && properties.servicePrincipalId ? properties.servicePrincipalId : null)"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "properties && properties.appId ? properties.appId : (properties && properties.servicePrincipalId ? properties.servicePrincipalId : null)"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "properties && properties.C_Idtyp==='app' ? 4 : 0"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "properties && properties.appId ? properties.appId : null"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "operationName ? operationName : null"
+          },
+          {
+            "name": "actor.process.user.uid",
+            "value": "properties && properties.servicePrincipalId ? properties.servicePrincipalId : null"
+          },
+          {
+            "name": "actor.process.user.name",
+            "value": "properties && properties.appId ? properties.appId : null"
+          },
+          {
+            "name": "actor.process.user.type_id",
+            "value": "properties && properties.C_Idtyp==='app' ? 4 : 0"
+          },
+          {
+            "name": "resources",
+            "value": "[]"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "properties && properties.requestMethod ? properties.requestMethod : null"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "properties && properties.userAgent ? properties.userAgent : ''"
+          },
+          {
+            "name": "http_request.url.url_string",
+            "value": "properties && properties.requestUri ? properties.requestUri : null"
+          },
+          {
+            "name": "http_request.url.scheme",
+            "value": "url_scheme ? url_scheme : null"
+          },
+          {
+            "name": "http_request.url.hostname",
+            "value": "url_hostname ? url_hostname : null"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "url_path ? url_path : null"
+          },
+          {
+            "name": "http_request.url.port",
+            "value": "url_port ? url_port : null"
+          },
+          {
+            "name": "http_request.url.query_string",
+            "value": "url_query_string ? url_query_string : null"
+          },
+          {
+            "name": "observables",
+            "value": "[]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse stringified JSON event payload from _raw into parsed object",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map Microsoft Graph activity fields into OCSF API Activity target fields",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "severity_id",
+            "value": "parsed.level==='Informational'?1:parsed.level==='Warning'?3:parsed.level==='Error'?4:parsed.level==='Critical'?5:0"
+          },
+          {
+            "name": "type_uid",
+            "value": "parsed.properties && parsed.properties.requestMethod==='GET'?600302:parsed.properties && parsed.properties.requestMethod==='POST'?600301:parsed.properties && (parsed.properties.requestMethod==='PATCH' || parsed.properties.requestMethod==='PUT')?600303:parsed.properties && parsed.properties.requestMethod==='DELETE'?600304:600300"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "parsed.properties && parsed.properties.ipAddress ? parsed.properties.ipAddress : parsed.callerIpAddress"
+          },
+          {
+            "name": "src_endpoint.owner.uid",
+            "value": "parsed.properties && parsed.properties.UserPrincipalObjectID ? parsed.properties.UserPrincipalObjectID : parsed.properties && parsed.properties.servicePrincipalId ? parsed.properties.servicePrincipalId : null"
+          },
+          {
+            "name": "src_endpoint.owner.type_id",
+            "value": "parsed.properties && parsed.properties.C_Idtyp==='app'?4:parsed.properties && parsed.properties.UserPrincipalObjectID?1:0"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "parsed.properties && parsed.properties.appId ? parsed.properties.appId : null"
+          },
+          {
+            "name": "dst_endpoint.name",
+            "value": "parsed.properties && parsed.properties.requestUri ? parsed.properties.requestUri.split('/')[2] : 'graph.microsoft.com'"
+          },
+          {
+            "name": "dst_endpoint.svc_name",
+            "value": "parsed.operationName ? parsed.operationName : 'Microsoft Graph Activity'"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "parsed.category"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.time ? parsed.time : parsed.properties && parsed.properties.timeGenerated ? parsed.properties.timeGenerated : null"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "parsed.tenantId ? parsed.tenantId : parsed.properties && parsed.properties.tenantId ? parsed.properties.tenantId : null"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Microsoft Graph'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "parsed.operationVersion ? parsed.operationVersion : parsed.properties && parsed.properties.apiVersion ? parsed.properties.apiVersion : null"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "parsed.resourceId"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "parsed.correlationId ? parsed.correlationId : parsed.properties && parsed.properties.requestId ? parsed.properties.requestId : null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "__clonecount",
+        "__cribleventtype",
+        "__ctrlfields",
+        "__final",
+        "__inputid",
+        "__packid",
+        "__partition",
+        "__raw",
+        "__synthetic",
+        "__topicin",
+        "_time",
+        "calleripaddress",
+        "category",
+        "correlationid",
+        "cribl_pipe",
+        "durationms",
+        "level",
+        "location",
+        "operationname",
+        "operationversion",
+        "properties",
+        "resourceid",
+        "resultsignature",
+        "tenantid",
+        "time"
+      ]
+    }
+  },
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from azure_signin::cim: 60/63 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

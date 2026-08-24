@@ -1,0 +1,196 @@
+{
+  "key": "aws_cloudtrail::xsiam",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:21.116Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "aws_cloudtrail → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "eventName && /^(Describe|List|Get)/.test(eventName)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop read-only API calls (Describe*, List*, Get*) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "eventSource === 'sts.amazonaws.com' && eventName === 'AssumeRole' && userIdentity && userIdentity.type === 'AWSService'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop AWS internal service AssumeRole (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'c19f87b6262f48259b3d5d2a2c691802'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws_cloudtrail:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "aws_cloudtrail_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 51,
+    "outputSample": [
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/alice\",\"accountId\":\"123456789012\",\"userName\":\"alice\"},\"eventTime\":\"2024-01-15T02:14:33Z\",\"eventSource\":\"signin.amazonaws.com\",\"eventName\":\"ConsoleLogin\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.45\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\",\"requestParameters\":null,\"responseElements\":{\"ConsoleLogin\":\"Success\"},\"eventID\":\"abc123def456\",\"readOnly\":false,\"eventType\":\"AwsConsoleSignIn\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL2\",\"arn\":\"arn:aws:iam::123456789012:user/bob\",\"accountId\":\"123456789012\",\"userName\":\"bob\"},\"eventTime\":\"2024-01-15T03:22:11Z\",\"eventSource\":\"signin.amazonaws.com\",\"eventName\":\"ConsoleLogin\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"198.51.100.77\",\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\",\"requestParameters\":null,\"responseElements\":{\"ConsoleLogin\":\"Failure\"},\"errorCode\":\"Failed authentication\",\"errorMessage\":\"Failed authentication\",\"eventID\":\"def456ghi789\",\"readOnly\":false,\"eventType\":\"AwsConsoleSignIn\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROACKCEVSQ6C2EXAMPLE:session1\",\"arn\":\"arn:aws:sts::123456789012:assumed-role/DevOpsRole/session1\",\"accountId\":\"123456789012\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:role/DevOpsRole\",\"accountId\":\"123456789012\",\"userName\":\"DevOpsRole\"}}},\"eventTime\":\"2024-01-15T04:05:55Z\",\"eventSource\":\"sts.amazonaws.com\",\"eventName\":\"AssumeRole\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"10.0.1.45\",\"userAgent\":\"aws-cli/2.13.0 Python/3.11.4 Linux/5.15.0\",\"requestParameters\":{\"roleArn\":\"arn:aws:iam::987654321098:role/CrossAccountRole\",\"roleSessionName\":\"cross-account-session\"},\"responseElements\":{\"credentials\":{\"accessKeyId\":\"ASIAIOSFODNN7EXAMPLE\",\"expiration\":\"2024-01-15T12:05:55Z\"}},\"eventID\":\"ghi789jkl012\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL3\",\"arn\":\"arn:aws:iam::123456789012:user/carol\",\"accountId\":\"123456789012\",\"userName\":\"carol\"},\"eventTime\":\"2024-01-15T05:33:44Z\",\"eventSource\":\"iam.amazonaws.com\",\"eventName\":\"CreateUser\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"192.168.1.100\",\"userAgent\":\"aws-cli/2.12.0 Python/3.10.0 Darwin/22.6.0\",\"requestParameters\":{\"userName\":\"svc-automation\",\"path\":\"/service-accounts/\"},\"responseElements\":{\"user\":{\"path\":\"/service-accounts/\",\"userName\":\"svc-automation\",\"userId\":\"AIDANEWUSEREXAMPLE01\",\"arn\":\"arn:aws:iam::123456789012:user/svc-automation\",\"createDate\":\"2024-01-15T05:33:44Z\"}},\"eventID\":\"jkl012mno345\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL4\",\"arn\":\"arn:aws:iam::123456789012:user/dave\",\"accountId\":\"123456789012\",\"userName\":\"dave\"},\"eventTime\":\"2024-01-15T06:11:22Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"PutBucketPolicy\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"172.16.0.55\",\"userAgent\":\"aws-sdk-python/1.29.0 Python/3.11.0 Linux/5.10.0\",\"requestParameters\":{\"bucketName\":\"corp-sensitive-data-bucket\",\"policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":\\\"*\\\",\\\"Action\\\":\\\"s3:GetObject\\\",\\\"Resource\\\":\\\"arn:aws:s3:::corp-sensitive-data-bucket/*\\\"}]}\"},\"responseElements\":null,\"eventID\":\"mno345pqr678\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROACKCEVSQ6C2EXAMPL2:automation-job\",\"arn\":\"arn:aws:sts::123456789012:assumed-role/AutomationRole/automation-job\",\"accountId\":\"123456789012\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROACKCEVSQ6C2EXAMPL2\",\"arn\":\"arn:aws:iam::123456789012:role/AutomationRole\",\"accountId\":\"123456789012\",\"userName\":\"AutomationRole\"}}},\"eventTime\":\"2024-01-15T07:45:01Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"RunInstances\",\"awsRegion\":\"eu-west-1\",\"sourceIPAddress\":\"10.0.2.30\",\"userAgent\":\"aws-sdk-java/2.20.0 Linux/5.15.0 OpenJDK/17.0.5\",\"requestParameters\":{\"instanceType\":\"t3.large\",\"imageId\":\"ami-0abcdef1234567890\",\"minCount\":3,\"maxCount\":3,\"subnetId\":\"subnet-0123456789abcdef0\"},\"responseElements\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0abc123def456ghi7\"},{\"instanceId\":\"i-0abc123def456ghi8\"},{\"instanceId\":\"i-0abc123def456ghi9\"}]}},\"eventID\":\"pqr678stu901\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL5\",\"arn\":\"arn:aws:iam::123456789012:user/eve\",\"accountId\":\"123456789012\",\"userName\":\"eve\"},\"eventTime\":\"2024-01-15T08:02:17Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"AuthorizeSecurityGroupIngress\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.99\",\"userAgent\":\"aws-cli/2.13.0 Python/3.11.4 Windows/10\",\"requestParameters\":{\"groupId\":\"sg-0abc123def456ghi7\",\"ipPermissions\":{\"items\":[{\"ipProtocol\":\"tcp\",\"fromPort\":22,\"toPort\":22,\"ipRanges\":{\"items\":[{\"cidrIp\":\"0.0.0.0/0\"}]}}]}},\"responseElements\":{\"return\":true},\"eventID\":\"stu901vwx234\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      },
+      {
+        "_raw": "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL6\",\"arn\":\"arn:aws:iam::123456789012:user/frank\",\"accountId\":\"123456789012\",\"userName\":\"frank\"},\"eventTime\":\"2024-01-15T08:55:39Z\",\"eventSource\":\"iam.amazonaws.com\",\"eventName\":\"CreateAccessKey\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"185.220.101.45\",\"userAgent\":\"aws-cli/2.11.0 Python/3.9.0 Linux/4.19.0\",\"requestParameters\":{\"userName\":\"svc-automation\"},\"responseElements\":{\"accessKey\":{\"accessKeyId\":\"AKIANEWKEYEXAMPLE001\",\"status\":\"Active\",\"userName\":\"svc-automation\",\"createDate\":\"2024-01-15T08:55:39Z\"}},\"eventID\":\"vwx234yza567\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+        "_time": 1784048282.022,
+        "__sourceIdentifier": "c19f87b6262f48259b3d5d2a2c691802",
+        "sourcetype": "aws_cloudtrail:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "eventVersion",
+      "userIdentity",
+      "eventTime",
+      "eventSource",
+      "eventName",
+      "awsRegion",
+      "sourceIPAddress",
+      "userAgent",
+      "requestParameters",
+      "responseElements",
+      "eventID",
+      "readOnly",
+      "eventType",
+      "managementEvent",
+      "recipientAccountId",
+      "errorCode",
+      "errorMessage"
+    ],
+    "sampleRaw": [
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/alice\",\"accountId\":\"123456789012\",\"userName\":\"alice\"},\"eventTime\":\"2024-01-15T02:14:33Z\",\"eventSource\":\"signin.amazonaws.com\",\"eventName\":\"ConsoleLogin\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.45\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\",\"requestParameters\":null,\"responseElements\":{\"ConsoleLogin\":\"Success\"},\"eventID\":\"abc123def456\",\"readOnly\":false,\"eventType\":\"AwsConsoleSignIn\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL2\",\"arn\":\"arn:aws:iam::123456789012:user/bob\",\"accountId\":\"123456789012\",\"userName\":\"bob\"},\"eventTime\":\"2024-01-15T03:22:11Z\",\"eventSource\":\"signin.amazonaws.com\",\"eventName\":\"ConsoleLogin\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"198.51.100.77\",\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\",\"requestParameters\":null,\"responseElements\":{\"ConsoleLogin\":\"Failure\"},\"errorCode\":\"Failed authentication\",\"errorMessage\":\"Failed authentication\",\"eventID\":\"def456ghi789\",\"readOnly\":false,\"eventType\":\"AwsConsoleSignIn\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROACKCEVSQ6C2EXAMPLE:session1\",\"arn\":\"arn:aws:sts::123456789012:assumed-role/DevOpsRole/session1\",\"accountId\":\"123456789012\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:role/DevOpsRole\",\"accountId\":\"123456789012\",\"userName\":\"DevOpsRole\"}}},\"eventTime\":\"2024-01-15T04:05:55Z\",\"eventSource\":\"sts.amazonaws.com\",\"eventName\":\"AssumeRole\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"10.0.1.45\",\"userAgent\":\"aws-cli/2.13.0 Python/3.11.4 Linux/5.15.0\",\"requestParameters\":{\"roleArn\":\"arn:aws:iam::987654321098:role/CrossAccountRole\",\"roleSessionName\":\"cross-account-session\"},\"responseElements\":{\"credentials\":{\"accessKeyId\":\"ASIAIOSFODNN7EXAMPLE\",\"expiration\":\"2024-01-15T12:05:55Z\"}},\"eventID\":\"ghi789jkl012\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL3\",\"arn\":\"arn:aws:iam::123456789012:user/carol\",\"accountId\":\"123456789012\",\"userName\":\"carol\"},\"eventTime\":\"2024-01-15T05:33:44Z\",\"eventSource\":\"iam.amazonaws.com\",\"eventName\":\"CreateUser\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"192.168.1.100\",\"userAgent\":\"aws-cli/2.12.0 Python/3.10.0 Darwin/22.6.0\",\"requestParameters\":{\"userName\":\"svc-automation\",\"path\":\"/service-accounts/\"},\"responseElements\":{\"user\":{\"path\":\"/service-accounts/\",\"userName\":\"svc-automation\",\"userId\":\"AIDANEWUSEREXAMPLE01\",\"arn\":\"arn:aws:iam::123456789012:user/svc-automation\",\"createDate\":\"2024-01-15T05:33:44Z\"}},\"eventID\":\"jkl012mno345\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL4\",\"arn\":\"arn:aws:iam::123456789012:user/dave\",\"accountId\":\"123456789012\",\"userName\":\"dave\"},\"eventTime\":\"2024-01-15T06:11:22Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"PutBucketPolicy\",\"awsRegion\":\"us-west-2\",\"sourceIPAddress\":\"172.16.0.55\",\"userAgent\":\"aws-sdk-python/1.29.0 Python/3.11.0 Linux/5.10.0\",\"requestParameters\":{\"bucketName\":\"corp-sensitive-data-bucket\",\"policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":\\\"*\\\",\\\"Action\\\":\\\"s3:GetObject\\\",\\\"Resource\\\":\\\"arn:aws:s3:::corp-sensitive-data-bucket/*\\\"}]}\"},\"responseElements\":null,\"eventID\":\"mno345pqr678\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"AssumedRole\",\"principalId\":\"AROACKCEVSQ6C2EXAMPL2:automation-job\",\"arn\":\"arn:aws:sts::123456789012:assumed-role/AutomationRole/automation-job\",\"accountId\":\"123456789012\",\"sessionContext\":{\"sessionIssuer\":{\"type\":\"Role\",\"principalId\":\"AROACKCEVSQ6C2EXAMPL2\",\"arn\":\"arn:aws:iam::123456789012:role/AutomationRole\",\"accountId\":\"123456789012\",\"userName\":\"AutomationRole\"}}},\"eventTime\":\"2024-01-15T07:45:01Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"RunInstances\",\"awsRegion\":\"eu-west-1\",\"sourceIPAddress\":\"10.0.2.30\",\"userAgent\":\"aws-sdk-java/2.20.0 Linux/5.15.0 OpenJDK/17.0.5\",\"requestParameters\":{\"instanceType\":\"t3.large\",\"imageId\":\"ami-0abcdef1234567890\",\"minCount\":3,\"maxCount\":3,\"subnetId\":\"subnet-0123456789abcdef0\"},\"responseElements\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0abc123def456ghi7\"},{\"instanceId\":\"i-0abc123def456ghi8\"},{\"instanceId\":\"i-0abc123def456ghi9\"}]}},\"eventID\":\"pqr678stu901\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL5\",\"arn\":\"arn:aws:iam::123456789012:user/eve\",\"accountId\":\"123456789012\",\"userName\":\"eve\"},\"eventTime\":\"2024-01-15T08:02:17Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"AuthorizeSecurityGroupIngress\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.99\",\"userAgent\":\"aws-cli/2.13.0 Python/3.11.4 Windows/10\",\"requestParameters\":{\"groupId\":\"sg-0abc123def456ghi7\",\"ipPermissions\":{\"items\":[{\"ipProtocol\":\"tcp\",\"fromPort\":22,\"toPort\":22,\"ipRanges\":{\"items\":[{\"cidrIp\":\"0.0.0.0/0\"}]}}]}},\"responseElements\":{\"return\":true},\"eventID\":\"stu901vwx234\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPL6\",\"arn\":\"arn:aws:iam::123456789012:user/frank\",\"accountId\":\"123456789012\",\"userName\":\"frank\"},\"eventTime\":\"2024-01-15T08:55:39Z\",\"eventSource\":\"iam.amazonaws.com\",\"eventName\":\"CreateAccessKey\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"185.220.101.45\",\"userAgent\":\"aws-cli/2.11.0 Python/3.9.0 Linux/4.19.0\",\"requestParameters\":{\"userName\":\"svc-automation\"},\"responseElements\":{\"accessKey\":{\"accessKeyId\":\"AKIANEWKEYEXAMPLE001\",\"status\":\"Active\",\"userName\":\"svc-automation\",\"createDate\":\"2024-01-15T08:55:39Z\"}},\"eventID\":\"vwx234yza567\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"managementEvent\":true,\"recipientAccountId\":\"123456789012\"}"
+    ],
+    "sourcetype": "aws_cloudtrail"
+  }
+}

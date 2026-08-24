@@ -1,0 +1,83 @@
+{
+  "key": "modular_alerts_notable::__extraction__",
+  "sourcetype": "modular_alerts_notable",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:08:26.973Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract leading ISO8601 timestamp from the start of the raw event",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract the space-delimited key=\"value\" pairs (search_name, orig_sid, alert_severity, user, src_ip, dest_ip, signature, app, result_count, etc.) using KVP parsing",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to standard schema (dst_ip, dst_port, severity) and remove duplicate/raw-named fields per Rule 10",
+      "conf": {
+        "add": [
+          {
+            "name": "dst_ip",
+            "value": "dest_ip"
+          },
+          {
+            "name": "dst_port",
+            "value": "dest_port ? dest_port : ''"
+          },
+          {
+            "name": "severity",
+            "value": "alert_severity"
+          },
+          {
+            "name": "action",
+            "value": "'alert'"
+          }
+        ],
+        "remove": [
+          "dest_ip",
+          "dest_port",
+          "alert_severity"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify src_ip type as ipv4 or ipv6 per Rule 12 for downstream network handling",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip_type",
+            "value": "src_ip && src_ip.match(/:/) ? 'ipv6' : (src_ip ? 'ipv4' : '')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

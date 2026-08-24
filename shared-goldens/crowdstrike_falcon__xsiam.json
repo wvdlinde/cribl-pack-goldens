@@ -1,0 +1,225 @@
+{
+  "key": "crowdstrike_falcon::xsiam",
+  "sourcetype": "crowdstrike_falcon",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:23.379Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "crowdstrike_falcon → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'6cd7d60f0ff5497baecf6b9073c8000e'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'crowdstrike_falcon:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "crowdstrike_falcon_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 46,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:03:22.441Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"7f8e9d0c1b2a3456\",\"ComputerName\":\"DESKTOP-HR2847\",\"UserName\":\"jsmith\",\"DetectId\":\"ldt:7f8e9d0c1b2a3456:1234567890\",\"DetectDescription\":\"Suspicious PowerShell execution with encoded command\",\"Severity\":3,\"SeverityName\":\"High\",\"Tactic\":\"Execution\",\"Technique\":\"Command and Scripting Interpreter\",\"TechniqueId\":\"T1059.001\",\"FileName\":\"powershell.exe\",\"FilePath\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\\",\"SHA256HashData\":\"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2\",\"MD5HashData\":\"1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d\",\"CommandLine\":\"powershell.exe -enc UwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcw==\",\"ParentImageFileName\":\"cmd.exe\",\"ParentCommandLine\":\"cmd.exe /c powershell -enc ...\",\"GrandparentCommandLine\":\"explorer.exe\",\"LocalIP\":\"192.168.1.45\",\"RemoteIP\":\"185.220.101.47\",\"RemotePort\":443,\"LocalPort\":52341,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Prevention,Kill Process\",\"NetworkContainmentEnabled\":false,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"\",\"MitreAttackTechnique\":\"T1059.001\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:17:55.112Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"admin@company.com\",\"UserIp\":\"203.0.113.88\",\"OperationName\":\"saml2Assert\",\"ServiceName\":\"Falcon Identity\",\"Success\":false,\"AuditKeyValues\":[{\"Key\":\"error_code\",\"ValueString\":\"INVALID_SAML_ASSERTION\"},{\"Key\":\"idp\",\"ValueString\":\"okta.company.com\"}],\"UTCTimestamp\":1705276675,\"SessionId\":\"sess_9x8y7z6w5v4u\",\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:34:11.789Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"2b3c4d5e6f7a8901\",\"ComputerName\":\"SERVER-PROD-01\",\"UserName\":\"SYSTEM\",\"DetectId\":\"ldt:2b3c4d5e6f7a8901:9876543210\",\"DetectDescription\":\"Credential dumping via LSASS memory access\",\"Severity\":4,\"SeverityName\":\"Critical\",\"Tactic\":\"Credential Access\",\"Technique\":\"OS Credential Dumping\",\"TechniqueId\":\"T1003.001\",\"FileName\":\"mimikatz.exe\",\"FilePath\":\"C:\\\\Users\\\\Public\\\\Downloads\\\\\",\"SHA256HashData\":\"fc91b5f2dd8a63a3de2e62d4c9f3e7b1a5c8d2e4f6a8b0c2d4e6f8a0b2c4d6e8\",\"MD5HashData\":\"deadbeef1234567890abcdef12345678\",\"CommandLine\":\"mimikatz.exe privilege::debug sekurlsa::logonpasswords\",\"ParentImageFileName\":\"cmd.exe\",\"ParentCommandLine\":\"cmd.exe\",\"GrandparentCommandLine\":\"services.exe\",\"LocalIP\":\"10.0.1.15\",\"RemoteIP\":\"\",\"RemotePort\":0,\"LocalPort\":0,\"Protocol\":\"\",\"PatternDispositionDescription\":\"Prevention,Kill Process,Quarantine\",\"NetworkContainmentEnabled\":true,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"fc91b5f2dd8a63a3de2e62d4c9f3e7b1a5c8d2e4f6a8b0c2d4e6f8a0b2c4d6e8\",\"MitreAttackTechnique\":\"T1003.001\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T00:52:44.203Z\",\"event_type\":\"UserActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"bthompson@company.com\",\"UserIp\":\"10.10.20.55\",\"OperationName\":\"policy_modified\",\"ServiceName\":\"Falcon Prevention Policy\",\"Success\":true,\"AuditKeyValues\":[{\"Key\":\"policy_name\",\"ValueString\":\"Workstation Default Prevention\"},{\"Key\":\"action\",\"ValueString\":\"disabled_ransomware_protection\"},{\"Key\":\"previous_value\",\"ValueString\":\"enabled\"},{\"Key\":\"new_value\",\"ValueString\":\"disabled\"}],\"UTCTimestamp\":1705277564,\"SessionId\":\"sess_a1b2c3d4e5f6\",\"UserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:08:33.654Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"3c4d5e6f7a8b9012\",\"ComputerName\":\"LAPTOP-DEV-042\",\"UserName\":\"rgarcia\",\"DetectId\":\"ldt:3c4d5e6f7a8b9012:1122334455\",\"DetectDescription\":\"Suspicious scheduled task creation for persistence\",\"Severity\":2,\"SeverityName\":\"Medium\",\"Tactic\":\"Persistence\",\"Technique\":\"Scheduled Task/Job\",\"TechniqueId\":\"T1053.005\",\"FileName\":\"schtasks.exe\",\"FilePath\":\"C:\\\\Windows\\\\System32\\\\\",\"SHA256HashData\":\"b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4\",\"MD5HashData\":\"aabbccdd11223344aabbccdd11223344\",\"CommandLine\":\"schtasks /create /tn \\\"WindowsUpdate\\\" /tr \\\"C:\\\\ProgramData\\\\update.exe\\\" /sc onlogon /ru SYSTEM\",\"ParentImageFileName\":\"wscript.exe\",\"ParentCommandLine\":\"wscript.exe C:\\\\Temp\\\\setup.vbs\",\"GrandparentCommandLine\":\"outlook.exe\",\"LocalIP\":\"172.16.5.88\",\"RemoteIP\":\"91.195.240.117\",\"RemotePort\":8080,\"LocalPort\":49201,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Detection,Allow\",\"NetworkContainmentEnabled\":false,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"\",\"MitreAttackTechnique\":\"T1053.005\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:23:07.891Z\",\"event_type\":\"IncidentSummaryEvent\",\"cid\":\"abc123def456\",\"IncidentId\":\"inc:abc123def456:20240115001\",\"IncidentType\":6,\"State\":\"closed\",\"Status\":20,\"Tactics\":[\"Execution\",\"Persistence\",\"Credential Access\"],\"Techniques\":[\"T1059.001\",\"T1053.005\",\"T1003.001\"],\"Hosts\":[{\"DeviceId\":\"2b3c4d5e6f7a8901\",\"Hostname\":\"SERVER-PROD-01\"},{\"DeviceId\":\"7f8e9d0c1b2a3456\",\"Hostname\":\"DESKTOP-HR2847\"}],\"Users\":[\"jsmith\",\"SYSTEM\"],\"IncidentStartTime\":\"2024-01-15T00:03:22Z\",\"IncidentEndTime\":\"2024-01-15T01:20:00Z\",\"FineScore\":87.5,\"CreatedTime\":\"2024-01-15T00:45:00Z\",\"ModifiedTime\":\"2024-01-15T01:23:07Z\",\"Description\":\"Multi-stage intrusion: initial access via phishing, credential dumping detected on prod server\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T01:41:29.321Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"4d5e6f7a8b9c0123\",\"ComputerName\":\"WORKSTATION-FIN-07\",\"UserName\":\"mwilliams\",\"DetectId\":\"ldt:4d5e6f7a8b9c0123:2233445566\",\"DetectDescription\":\"Ransomware behavior: mass file encryption detected\",\"Severity\":4,\"SeverityName\":\"Critical\",\"Tactic\":\"Impact\",\"Technique\":\"Data Encrypted for Impact\",\"TechniqueId\":\"T1486\",\"FileName\":\"svchost32.exe\",\"FilePath\":\"C:\\\\Users\\\\mwilliams\\\\AppData\\\\Local\\\\Temp\\\\\",\"SHA256HashData\":\"e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6\",\"MD5HashData\":\"f1e2d3c4b5a69788f1e2d3c4b5a69788\",\"CommandLine\":\"svchost32.exe --encrypt --shadow-delete --ransom-note\",\"ParentImageFileName\":\"explorer.exe\",\"ParentCommandLine\":\"explorer.exe\",\"GrandparentCommandLine\":\"userinit.exe\",\"LocalIP\":\"10.0.5.72\",\"RemoteIP\":\"104.21.87.234\",\"RemotePort\":443,\"LocalPort\":55678,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Prevention,Kill Process,Quarantine,BlockingUnsupportedOrUnknown\",\"NetworkContainmentEnabled\":true,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6\",\"MitreAttackTechnique\":\"T1486\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-01-15T02:05:18.567Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"soc_analyst1@company.com\",\"UserIp\":\"192.168.100.25\",\"OperationName\":\"twoFactorAuthenticate\",\"ServiceName\":\"Falcon Platform\",\"Success\":true,\"AuditKeyValues\":[{\"Key\":\"mfa_method\",\"ValueString\":\"TOTP\"},{\"Key\":\"device_trust\",\"ValueString\":\"managed\"}],\"UTCTimestamp\":1705280718,\"SessionId\":\"sess_x9y8z7w6v5u4\",\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}",
+        "_time": 1784048282.398,
+        "__sourceIdentifier": "6cd7d60f0ff5497baecf6b9073c8000e",
+        "sourcetype": "crowdstrike_falcon:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "event_type",
+      "cid",
+      "aid",
+      "ComputerName",
+      "UserName",
+      "DetectId",
+      "DetectDescription",
+      "Severity",
+      "SeverityName",
+      "Tactic",
+      "Technique",
+      "TechniqueId",
+      "FileName",
+      "FilePath",
+      "SHA256HashData",
+      "MD5HashData",
+      "CommandLine",
+      "ParentImageFileName",
+      "ParentCommandLine",
+      "GrandparentCommandLine",
+      "LocalIP",
+      "RemoteIP",
+      "RemotePort",
+      "LocalPort",
+      "Protocol",
+      "PatternDispositionDescription",
+      "NetworkContainmentEnabled",
+      "OAuthClientId",
+      "MLLargeFileHash",
+      "MitreAttackTechnique",
+      "UserId",
+      "UserIp",
+      "OperationName",
+      "ServiceName",
+      "Success",
+      "AuditKeyValues",
+      "UTCTimestamp",
+      "SessionId",
+      "UserAgent",
+      "IncidentId",
+      "IncidentType",
+      "State",
+      "Status",
+      "Tactics",
+      "Techniques",
+      "Hosts",
+      "Users",
+      "IncidentStartTime",
+      "IncidentEndTime",
+      "FineScore",
+      "CreatedTime",
+      "ModifiedTime",
+      "Description"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-01-15T00:03:22.441Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"7f8e9d0c1b2a3456\",\"ComputerName\":\"DESKTOP-HR2847\",\"UserName\":\"jsmith\",\"DetectId\":\"ldt:7f8e9d0c1b2a3456:1234567890\",\"DetectDescription\":\"Suspicious PowerShell execution with encoded command\",\"Severity\":3,\"SeverityName\":\"High\",\"Tactic\":\"Execution\",\"Technique\":\"Command and Scripting Interpreter\",\"TechniqueId\":\"T1059.001\",\"FileName\":\"powershell.exe\",\"FilePath\":\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\\",\"SHA256HashData\":\"a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2\",\"MD5HashData\":\"1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d\",\"CommandLine\":\"powershell.exe -enc UwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcw==\",\"ParentImageFileName\":\"cmd.exe\",\"ParentCommandLine\":\"cmd.exe /c powershell -enc ...\",\"GrandparentCommandLine\":\"explorer.exe\",\"LocalIP\":\"192.168.1.45\",\"RemoteIP\":\"185.220.101.47\",\"RemotePort\":443,\"LocalPort\":52341,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Prevention,Kill Process\",\"NetworkContainmentEnabled\":false,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"\",\"MitreAttackTechnique\":\"T1059.001\"}",
+      "{\"timestamp\":\"2024-01-15T00:17:55.112Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"admin@company.com\",\"UserIp\":\"203.0.113.88\",\"OperationName\":\"saml2Assert\",\"ServiceName\":\"Falcon Identity\",\"Success\":false,\"AuditKeyValues\":[{\"Key\":\"error_code\",\"ValueString\":\"INVALID_SAML_ASSERTION\"},{\"Key\":\"idp\",\"ValueString\":\"okta.company.com\"}],\"UTCTimestamp\":1705276675,\"SessionId\":\"sess_9x8y7z6w5v4u\",\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
+      "{\"timestamp\":\"2024-01-15T00:34:11.789Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"2b3c4d5e6f7a8901\",\"ComputerName\":\"SERVER-PROD-01\",\"UserName\":\"SYSTEM\",\"DetectId\":\"ldt:2b3c4d5e6f7a8901:9876543210\",\"DetectDescription\":\"Credential dumping via LSASS memory access\",\"Severity\":4,\"SeverityName\":\"Critical\",\"Tactic\":\"Credential Access\",\"Technique\":\"OS Credential Dumping\",\"TechniqueId\":\"T1003.001\",\"FileName\":\"mimikatz.exe\",\"FilePath\":\"C:\\\\Users\\\\Public\\\\Downloads\\\\\",\"SHA256HashData\":\"fc91b5f2dd8a63a3de2e62d4c9f3e7b1a5c8d2e4f6a8b0c2d4e6f8a0b2c4d6e8\",\"MD5HashData\":\"deadbeef1234567890abcdef12345678\",\"CommandLine\":\"mimikatz.exe privilege::debug sekurlsa::logonpasswords\",\"ParentImageFileName\":\"cmd.exe\",\"ParentCommandLine\":\"cmd.exe\",\"GrandparentCommandLine\":\"services.exe\",\"LocalIP\":\"10.0.1.15\",\"RemoteIP\":\"\",\"RemotePort\":0,\"LocalPort\":0,\"Protocol\":\"\",\"PatternDispositionDescription\":\"Prevention,Kill Process,Quarantine\",\"NetworkContainmentEnabled\":true,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"fc91b5f2dd8a63a3de2e62d4c9f3e7b1a5c8d2e4f6a8b0c2d4e6f8a0b2c4d6e8\",\"MitreAttackTechnique\":\"T1003.001\"}",
+      "{\"timestamp\":\"2024-01-15T00:52:44.203Z\",\"event_type\":\"UserActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"bthompson@company.com\",\"UserIp\":\"10.10.20.55\",\"OperationName\":\"policy_modified\",\"ServiceName\":\"Falcon Prevention Policy\",\"Success\":true,\"AuditKeyValues\":[{\"Key\":\"policy_name\",\"ValueString\":\"Workstation Default Prevention\"},{\"Key\":\"action\",\"ValueString\":\"disabled_ransomware_protection\"},{\"Key\":\"previous_value\",\"ValueString\":\"enabled\"},{\"Key\":\"new_value\",\"ValueString\":\"disabled\"}],\"UTCTimestamp\":1705277564,\"SessionId\":\"sess_a1b2c3d4e5f6\",\"UserAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"}",
+      "{\"timestamp\":\"2024-01-15T01:08:33.654Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"3c4d5e6f7a8b9012\",\"ComputerName\":\"LAPTOP-DEV-042\",\"UserName\":\"rgarcia\",\"DetectId\":\"ldt:3c4d5e6f7a8b9012:1122334455\",\"DetectDescription\":\"Suspicious scheduled task creation for persistence\",\"Severity\":2,\"SeverityName\":\"Medium\",\"Tactic\":\"Persistence\",\"Technique\":\"Scheduled Task/Job\",\"TechniqueId\":\"T1053.005\",\"FileName\":\"schtasks.exe\",\"FilePath\":\"C:\\\\Windows\\\\System32\\\\\",\"SHA256HashData\":\"b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4\",\"MD5HashData\":\"aabbccdd11223344aabbccdd11223344\",\"CommandLine\":\"schtasks /create /tn \\\"WindowsUpdate\\\" /tr \\\"C:\\\\ProgramData\\\\update.exe\\\" /sc onlogon /ru SYSTEM\",\"ParentImageFileName\":\"wscript.exe\",\"ParentCommandLine\":\"wscript.exe C:\\\\Temp\\\\setup.vbs\",\"GrandparentCommandLine\":\"outlook.exe\",\"LocalIP\":\"172.16.5.88\",\"RemoteIP\":\"91.195.240.117\",\"RemotePort\":8080,\"LocalPort\":49201,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Detection,Allow\",\"NetworkContainmentEnabled\":false,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"\",\"MitreAttackTechnique\":\"T1053.005\"}",
+      "{\"timestamp\":\"2024-01-15T01:23:07.891Z\",\"event_type\":\"IncidentSummaryEvent\",\"cid\":\"abc123def456\",\"IncidentId\":\"inc:abc123def456:20240115001\",\"IncidentType\":6,\"State\":\"closed\",\"Status\":20,\"Tactics\":[\"Execution\",\"Persistence\",\"Credential Access\"],\"Techniques\":[\"T1059.001\",\"T1053.005\",\"T1003.001\"],\"Hosts\":[{\"DeviceId\":\"2b3c4d5e6f7a8901\",\"Hostname\":\"SERVER-PROD-01\"},{\"DeviceId\":\"7f8e9d0c1b2a3456\",\"Hostname\":\"DESKTOP-HR2847\"}],\"Users\":[\"jsmith\",\"SYSTEM\"],\"IncidentStartTime\":\"2024-01-15T00:03:22Z\",\"IncidentEndTime\":\"2024-01-15T01:20:00Z\",\"FineScore\":87.5,\"CreatedTime\":\"2024-01-15T00:45:00Z\",\"ModifiedTime\":\"2024-01-15T01:23:07Z\",\"Description\":\"Multi-stage intrusion: initial access via phishing, credential dumping detected on prod server\"}",
+      "{\"timestamp\":\"2024-01-15T01:41:29.321Z\",\"event_type\":\"DetectionSummaryEvent\",\"cid\":\"abc123def456\",\"aid\":\"4d5e6f7a8b9c0123\",\"ComputerName\":\"WORKSTATION-FIN-07\",\"UserName\":\"mwilliams\",\"DetectId\":\"ldt:4d5e6f7a8b9c0123:2233445566\",\"DetectDescription\":\"Ransomware behavior: mass file encryption detected\",\"Severity\":4,\"SeverityName\":\"Critical\",\"Tactic\":\"Impact\",\"Technique\":\"Data Encrypted for Impact\",\"TechniqueId\":\"T1486\",\"FileName\":\"svchost32.exe\",\"FilePath\":\"C:\\\\Users\\\\mwilliams\\\\AppData\\\\Local\\\\Temp\\\\\",\"SHA256HashData\":\"e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6\",\"MD5HashData\":\"f1e2d3c4b5a69788f1e2d3c4b5a69788\",\"CommandLine\":\"svchost32.exe --encrypt --shadow-delete --ransom-note\",\"ParentImageFileName\":\"explorer.exe\",\"ParentCommandLine\":\"explorer.exe\",\"GrandparentCommandLine\":\"userinit.exe\",\"LocalIP\":\"10.0.5.72\",\"RemoteIP\":\"104.21.87.234\",\"RemotePort\":443,\"LocalPort\":55678,\"Protocol\":\"TCP\",\"PatternDispositionDescription\":\"Prevention,Kill Process,Quarantine,BlockingUnsupportedOrUnknown\",\"NetworkContainmentEnabled\":true,\"OAuthClientId\":\"\",\"MLLargeFileHash\":\"e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6\",\"MitreAttackTechnique\":\"T1486\"}",
+      "{\"timestamp\":\"2024-01-15T02:05:18.567Z\",\"event_type\":\"AuthActivityAuditEvent\",\"cid\":\"abc123def456\",\"UserId\":\"soc_analyst1@company.com\",\"UserIp\":\"192.168.100.25\",\"OperationName\":\"twoFactorAuthenticate\",\"ServiceName\":\"Falcon Platform\",\"Success\":true,\"AuditKeyValues\":[{\"Key\":\"mfa_method\",\"ValueString\":\"TOTP\"},{\"Key\":\"device_trust\",\"ValueString\":\"managed\"}],\"UTCTimestamp\":1705280718,\"SessionId\":\"sess_x9y8z7w6v5u4\",\"UserAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}"
+    ],
+    "sourcetype": "crowdstrike_falcon"
+  }
+}

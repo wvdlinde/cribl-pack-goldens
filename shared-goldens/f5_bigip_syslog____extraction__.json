@@ -1,0 +1,118 @@
+{
+  "key": "f5_bigip_syslog::__extraction__",
+  "sourcetype": "f5_bigip_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:29:33.038Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse standard syslog header (pri, timestamp, host, severity word, process[pid]) and isolate the message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<severity>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\d+:\\d+:\\s*ASM:/.test(message)",
+      "disabled": false,
+      "description": "Split ASM message id/severity from the ASM key-value body",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<msgid>\\d+):(?<msg_severity_num>\\d+):\\s*ASM:(?<asm_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "asm_body != null",
+      "disabled": false,
+      "description": "Extract ASM key=value quoted fields (VIOLATIONS, REQUEST_STATUS, IP, USERNAME, SRC_PORT, DEST_PORT, REQUEST, etc.)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "asm_body",
+        "pairSeparator": ",",
+        "kvSeparator": "=",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process && process.trim() === 'sshd'",
+      "disabled": false,
+      "description": "Parse sshd authentication attempts (Accepted/Failed password)",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<ssh_action>Accepted|Failed) password for (?<user>\\S+) from (?<src_ip>[\\d.]+) port (?<src_port>\\d+) ssh2$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^\\d+:\\d+:/.test(message) && !/ASM:/.test(message)",
+      "disabled": false,
+      "description": "Parse LTM/GTM Pool, Node, SNAT, and AUDIT (httpd/tmsh) F5 internal messages",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<msgid>\\d+):(?<msg_severity_num>\\d+):\\s*(?:Pool\\s+(?<pool_name>\\S+)(?:\\s+member\\s+(?<dst_ip>[\\d.]+):(?<dst_port>\\d+))?\\s+(?:monitor status (?<status>\\w+)|has been marked (?<status_marked>\\w+))|Node\\s+(?<node_name>\\S+)\\s+monitor status (?<node_status>\\w+)|AUDIT - user (?<user>\\S+) - RAW:\\s*(?<audit_message>.*)|SNAT automap enabled on virtual server (?<vs_name>\\S+))\\.?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action, user, src/dst ip/port, protocol, and dst_host across all F5 event subtypes",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status ? status : (status_marked ? 'down' : (node_status ? node_status : (ssh_action ? ssh_action.toLowerCase() : (REQUEST_STATUS ? REQUEST_STATUS : null))))"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : (USERNAME && USERNAME !== 'N/A' ? USERNAME : null)"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip : (IP ? IP : null)"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip : null"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? src_port : (SRC_PORT ? SRC_PORT : null)"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? dst_port : (DEST_PORT ? DEST_PORT : null)"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

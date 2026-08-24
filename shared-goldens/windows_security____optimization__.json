@@ -1,0 +1,30 @@
+{
+  "key": "windows_security::__optimization__",
+  "sourcetype": "windows_security",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "wlinde@cribl.io",
+  "build": 296,
+  "updated_at": "2026-08-03T11:37:57.251Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "EventID === '5156' || EventID === '5157'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop Windows Filtering Platform events (5156/5157) (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '4624' && LogonType === '3'",
+      "disabled": true,
+      "final": true,
+      "description": "Drop routine network logon success events (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

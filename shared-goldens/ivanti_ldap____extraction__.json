@@ -1,0 +1,88 @@
+{
+  "key": "ivanti_ldap::__extraction__",
+  "sourcetype": "ivanti_ldap",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:49:49.100Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog structure: timestamp, host, process id, event id, and message text",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) LDAP\\[(?<pid>\\d+)\\]: (?<event_id>AUT\\d+) - (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/authentication (successful|failed)/)",
+      "disabled": false,
+      "description": "Extract user, realm, source IP, and target LDAP server for authentication success/failure events",
+      "conf": {
+        "source": "message",
+        "regex": "/for user '(?<user>[^']+)' at realm '(?<realm>[^']+)' from IPv?6? (?<src_ip>[0-9a-fA-F:.]+), server '(?<dst_host>[^:']+):(?<dst_port>\\d+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !src_ip",
+      "disabled": false,
+      "description": "Fallback extraction of source IP for events not matching the primary auth pattern (locked account, anonymous bind, brute force, injection)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:from IP|source IP) (?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !dst_host",
+      "disabled": false,
+      "description": "Fallback extraction of target LDAP server host and port for bind failures, certificate errors, search timeouts, and bind successes",
+      "conf": {
+        "source": "message",
+        "regex": "/server '(?<dst_host>[^:']+):(?<dst_port>\\d+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized action, severity, protocol, and _time fields from message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/authentication successful/) ? 'success' : message.match(/authentication failed/) ? 'failure' : message.match(/bind failed/) ? 'failure' : message.match(/bind successful/) ? 'success' : message.match(/account locked/) ? 'locked' : message.match(/rejected/) ? 'rejected' : message.match(/injection detected/) ? 'blocked' : message.match(/certificate validation failed/) ? 'failure' : message.match(/search timeout/) ? 'timeout' : message.match(/search operation completed/) ? 'success' : message.match(/password expired/) ? 'notification' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "message.match(/CRITICAL/) ? 'critical' : message.match(/WARNING/) ? 'warning' : message.match(/failed|failure|rejected|locked|timeout|injection|unreachable/) ? 'high' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port == '636' ? 'ldaps' : dst_port == '389' ? 'ldap' : 'ldap'"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

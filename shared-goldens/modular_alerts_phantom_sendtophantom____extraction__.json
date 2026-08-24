@@ -1,0 +1,163 @@
+{
+  "key": "modular_alerts_phantom_sendtophantom::__extraction__",
+  "sourcetype": "modular_alerts_phantom_sendtophantom",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:45:43.729Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Split leading timestamp from the key=value payload",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<__ts>\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2},\\d{3}\\s[+-]\\d{4})\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "__kvp",
+      "disabled": false,
+      "description": "Extract key=value pairs (quoted values supported) from the log body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "fields": [],
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "dest_url",
+      "disabled": false,
+      "description": "Break destination URL into scheme, host, port and path",
+      "conf": {
+        "source": "dest_url",
+        "regex": "/^(?<url_scheme>[a-zA-Z][\\w+.-]*):\\/\\/(?<dst_host>\\[[0-9a-fA-F:]+\\]|[^:\\/\\s]+)(?::(?<__url_port>\\d+))?(?<url_path>\\/\\S*)?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, network, identity and outcome fields",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? Math.round(Date.parse(__ts.replace(',','.').replace(' ','T').replace(' ',''))/1000) : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : 'info'"
+          },
+          {
+            "name": "src_ip",
+            "value": "source_ip ? source_ip.replace(/^\\[|\\]$/g,'') : undefined"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 'ipv6' : (src_ip ? 'ipv4' : undefined)"
+          },
+          {
+            "name": "dst_host",
+            "value": "dst_host ? dst_host.replace(/^\\[|\\]$/g,'') : undefined"
+          },
+          {
+            "name": "dst_port",
+            "value": "dest_port ? Number(dest_port) : (__url_port ? Number(__url_port) : undefined)"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app_protocol",
+            "value": "url_scheme ? url_scheme.toLowerCase() : 'https'"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|f[cd][0-9a-fA-F]{2}:|::1$)/) ? 'outbound' : 'inbound'"
+          },
+          {
+            "name": "user",
+            "value": "user && user.length > 0 ? user : 'unknown'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action"
+          },
+          {
+            "name": "action",
+            "value": "status === 'success' ? 'success' : (status ? 'failure' : undefined)"
+          },
+          {
+            "name": "container_id",
+            "value": "container_id ? container_id : undefined"
+          },
+          {
+            "name": "artifact_count",
+            "value": "artifact_count !== undefined ? Number(artifact_count) : undefined"
+          },
+          {
+            "name": "payload_size",
+            "value": "payload_size !== undefined ? Number(payload_size) : undefined"
+          },
+          {
+            "name": "retry_count",
+            "value": "retry_count !== undefined ? Number(retry_count) : undefined"
+          },
+          {
+            "name": "truncated",
+            "value": "raw_payload_truncated !== undefined ? (raw_payload_truncated === 'true') : undefined"
+          },
+          {
+            "name": "error_message",
+            "value": "error ? error : undefined"
+          },
+          {
+            "name": "error_type",
+            "value": "error ? error.split(/[:\\s]/)[0] : undefined"
+          },
+          {
+            "name": "message",
+            "value": "message ? message : (error ? error : (status ? 'send_to_phantom ' + status : undefined))"
+          },
+          {
+            "name": "log_file",
+            "value": "file"
+          }
+        ],
+        "remove": [
+          "__ts",
+          "__kvp",
+          "__url_port",
+          "source_ip",
+          "dest_port",
+          "raw_payload_truncated",
+          "error",
+          "file"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

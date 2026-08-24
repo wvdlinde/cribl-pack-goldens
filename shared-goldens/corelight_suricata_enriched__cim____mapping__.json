@@ -1,0 +1,134 @@
+{
+  "key": "corelight_suricata_enriched::cim::__mapping__",
+  "sourcetype": "corelight_suricata_enriched",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:10:39.561Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Intrusion_Detection'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'IDS_Attack'"
+          },
+          {
+            "name": "src",
+            "value": "__e['id.orig_h'] || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(__e['id.orig_p'] || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "__e['id.resp_h'] || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(__e['id.resp_p'] || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(proto || '').toLowerCase()"
+          },
+          {
+            "name": "app",
+            "value": "service || ''"
+          },
+          {
+            "name": "signature",
+            "value": "suricata && suricata.signature ? suricata.signature : ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "suricata && suricata.signature_id ? String(suricata.signature_id) : ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "suricata && suricata.severity !== undefined ? Number(suricata.severity) : null"
+          },
+          {
+            "name": "severity",
+            "value": "suricata && suricata.severity !== undefined ? String(suricata.severity) : ''"
+          },
+          {
+            "name": "action",
+            "value": "suricata && suricata.action ? suricata.action : ''"
+          },
+          {
+            "name": "category",
+            "value": "suricata && suricata.category ? suricata.category : ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-20)",
+      "conf": {
+        "add": [
+          {
+            "name": "rule_id",
+            "value": "suricata && suricata.gid !== undefined ? String(suricata.gid) : ''"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || ''"
+          },
+          {
+            "name": "object",
+            "value": "query || ''"
+          },
+          {
+            "name": "url",
+            "value": "sni || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Suricata'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_suricata_enriched'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

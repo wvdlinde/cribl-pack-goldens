@@ -1,0 +1,70 @@
+{
+  "key": "ivanti_miclient_access::__extraction__",
+  "sourcetype": "ivanti_miclient_access",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:11:38.212Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header and KVP body fields from ivanti_miclient_access log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<host>\\S+) (?<process>[^\\[]+)\\[(?<pid>\\d+)\\]: severity=(?<severity>\\S+) user=(?<user>\\S+) device_id=(?<device_id>\\S*) src_ip=(?<src_ip>\\S+) action=(?<action>\\S+) resource=(?<resource>\\S+) status=(?<status>\\S+) message=\"(?<message>[^\"]*)\" client_version=(?<client_version>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set canonical event time from extracted timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity level, clean empty device_id, detect IP version, and derive direction/outcome fields",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_level",
+            "value": "severity=='INFO'?'low':severity=='WARN'?'medium':severity=='ERROR'?'high':severity=='CRITICAL'?'critical':'unknown'"
+          },
+          {
+            "name": "device_id",
+            "value": "device_id==''?null:device_id"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip.match(/:/)?'ipv6':'ipv4'"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          },
+          {
+            "name": "outcome",
+            "value": "status=='SUCCESS'?'success':'failure'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

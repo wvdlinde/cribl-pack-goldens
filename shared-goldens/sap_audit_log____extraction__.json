@@ -1,0 +1,80 @@
+{
+  "key": "sap_audit_log::__extraction__",
+  "sourcetype": "sap_audit_log",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 363,
+  "updated_at": "2026-08-06T19:21:09.299Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse SAP audit log pipe-delimited key=value fields (timestamp, SID, client, user, terminal, tcode, event id, class, severity, message)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) \\| SID=(?<sid>\\S+) \\| Client=(?<client>\\S+) \\| User=(?<user>\\S+) \\| Terminal=(?<src_ip>\\S+) \\| TCode=(?<tcode>\\S+) \\| EventID=(?<event_id>\\S+) \\| Class=(?<event_class>\\S+) \\| Severity=(?<severity>\\S+) \\| Msg=(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event _time from extracted timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to lowercase and classify action outcome based on message content (Rule 13)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity.toLowerCase()"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/failed|locked/i) ? 'failure' : message.match(/successful|scheduled|released|executed|changed|unlocked|logged off|started/i) ? 'success' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "'SAP'"
+          },
+          {
+            "name": "dst_host",
+            "value": "sid"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify Terminal address as IPv4, IPv6 (Rule 12), or hostname",
+      "conf": {
+        "add": [
+          {
+            "name": "ip_version",
+            "value": "src_ip.match(/:/) ? 'ipv6' : src_ip.match(/^\\d+\\.\\d+\\.\\d+\\.\\d+$/) ? 'ipv4' : 'hostname'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,30 @@
+{
+  "key": "vmware_esxlog_esxtokend::cim::__mapping__",
+  "sourcetype": "vmware_esxlog_esxtokend",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:14:47.007Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map to CIM base fields",
+      "conf": {
+        "add": [
+          {
+            "name": "host",
+            "value": "host || Computer || hostname || 'unknown'"
+          },
+          {
+            "name": "source",
+            "value": "'vmware_esxlog_esxtokend'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

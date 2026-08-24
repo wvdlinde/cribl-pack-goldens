@@ -1,0 +1,88 @@
+{
+  "key": "ncsc_fidelis_assets::__extraction__",
+  "sourcetype": "ncsc_fidelis_assets",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:34.666Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Fidelis alert line into timestamp, host, and key=value fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<host>\\S+) severity=(?<severity>\\S+) alert_id=(?<alert_id>\\S+) src_ip=(?<src_ip>\\S+) src_port=(?<src_port>\\d+) dst_ip=(?<dst_ip>\\S+) dst_port=(?<dst_port>\\d+) protocol=(?<protocol>\\S+) policy=\"(?<policy>[^\"]*)\" action=(?<action>\\S+) user=(?<user>\\S*)(?: bytes_transferred=(?<bytes_transferred>\\d+))? details=\"(?<message>[^\"]*)\"$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive standard _time, normalize severity/action casing, and set direction based on private/link-local src_ip",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "severity",
+            "value": "severity.toLowerCase()"
+          },
+          {
+            "name": "action",
+            "value": "action.toLowerCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol.toUpperCase()"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip.match(/^(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.|fe80:)/) ? 'outbound' : 'inbound'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "user === ''",
+      "disabled": false,
+      "description": "Normalize empty user field to null when not present",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "alert_id",
+        "bytes_transferred",
+        "details",
+        "dst_ip",
+        "dst_port",
+        "policy",
+        "protocol",
+        "severity",
+        "src_ip",
+        "src_port",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

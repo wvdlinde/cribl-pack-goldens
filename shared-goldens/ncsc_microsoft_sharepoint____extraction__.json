@@ -1,0 +1,57 @@
+{
+  "key": "ncsc_microsoft_sharepoint::__extraction__",
+  "sourcetype": "ncsc_microsoft_sharepoint",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:00.048Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "attemptcount",
+        "bulkoperation",
+        "clientip",
+        "correlationid",
+        "destination",
+        "errorcode",
+        "expiration",
+        "filesizebytes",
+        "itemcount",
+        "itemname",
+        "linktype",
+        "malwarename",
+        "newpermission",
+        "oldpermission",
+        "operation",
+        "policyname",
+        "previousname",
+        "querytext",
+        "recipient",
+        "result",
+        "resultsreturned",
+        "severity",
+        "siteurl",
+        "source",
+        "targetuser",
+        "time",
+        "useragent",
+        "userid"
+      ]
+    }
+  },
+  "report": null
+}

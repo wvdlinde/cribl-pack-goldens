@@ -1,0 +1,126 @@
+{
+  "key": "corelight_tunnel::cim::__mapping__",
+  "sourcetype": "corelight_tunnel",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:25:45.937Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Traffic'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "String(action || '')"
+          },
+          {
+            "name": "action",
+            "value": "action == 'Tunnel::DISCOVER' ? 'discover' : action == 'Tunnel::CLOSE' ? 'close' : action == 'Tunnel::EXPIRE' ? 'expire' : String(action || '').replace('Tunnel::', '').toLowerCase()"
+          },
+          {
+            "name": "src",
+            "value": "String(id.orig_h || '')"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p)"
+          },
+          {
+            "name": "dest",
+            "value": "String(id.resp_h || '')"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p)"
+          },
+          {
+            "name": "app",
+            "value": "String(tunnel_type || '').replace('Tunnel::', '').toLowerCase()"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_resp == null ? null : Number(bytes_resp)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_orig == null ? null : Number(bytes_orig)"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes_orig == null && bytes_resp == null ? null : Number(bytes_orig || 0) + Number(bytes_resp || 0)"
+          },
+          {
+            "name": "session_id",
+            "value": "String(uid || community_id || '')"
+          },
+          {
+            "name": "signature",
+            "value": "String(notice || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "String(severity || '')"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'high' ? 8 : severity == 'low' ? 3 : null"
+          },
+          {
+            "name": "category",
+            "value": "String(_path || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_tunnel'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

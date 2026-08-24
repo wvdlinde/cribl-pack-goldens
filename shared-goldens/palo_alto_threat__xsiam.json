@@ -1,0 +1,194 @@
+{
+  "key": "palo_alto_threat::xsiam",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:16:16.120Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "palo_alto_threat → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "__product",
+            "value": "'PAN-OS'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'palo_alto_threat:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "palo_alto_threat_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "2024-01-15 02:14:33,THREAT,1,2024/01/15 02:14:33,192.168.1.45,10.0.0.1,192.168.1.45,10.0.0.1,Inbound-Policy,corp\\jsmith,,,vulnerability,vsys1,trust,untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 02:14:33,12345,1,54321,80,0,0,0x80000000,tcp,alert,\"CVE-2021-44228 Log4Shell RCE Attempt\",43705,critical,client-to-server,2024/01/15 02:14:33,0x0,US,0,1,0,0,,PA-5220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 03:27:18,THREAT,1,2024/01/15 03:27:18,203.0.113.42,172.16.10.5,203.0.113.42,172.16.10.5,DMZ-Policy,unknown,,,spyware,vsys1,untrust,dmz,ethernet1/3,ethernet1/4,Threat-Log,2024/01/15 03:27:18,23456,1,443,8443,0,0,0x80000000,tcp,drop,\"Cobalt Strike Beacon C2 Communication\",18050,critical,client-to-server,2024/01/15 03:27:18,0x0,CN,0,1,0,0,,PA-3220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 04:55:02,THREAT,1,2024/01/15 04:55:02,10.10.5.22,8.8.8.8,10.10.5.22,8.8.8.8,DNS-Policy,svc_account,,,spyware,vsys2,trust,untrust,ethernet1/5,ethernet1/6,Threat-Log,2024/01/15 04:55:02,34567,1,55443,53,0,0,0x80000000,udp,reset-both,\"DNS Tunneling Exfiltration Detected\",13001,high,client-to-server,2024/01/15 04:55:02,0x0,US,0,1,0,0,,PA-5220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 05:33:47,THREAT,1,2024/01/15 05:33:47,198.51.100.77,192.168.100.25,198.51.100.77,192.168.100.25,Web-Server-Policy,,,virus,vsys1,untrust,dmz,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 05:33:47,45678,1,12345,443,0,0,0x80000000,tcp,drop,\"Mirai Botnet Downloader\",52000,high,client-to-server,2024/01/15 05:33:47,0x0,RU,0,1,0,0,,PA-820,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 06:12:09,THREAT,1,2024/01/15 06:12:09,172.16.20.100,10.0.5.1,172.16.20.100,10.0.5.1,Internal-Policy,corp\\administrator,,,vulnerability,vsys1,dmz,trust,ethernet1/7,ethernet1/8,Threat-Log,2024/01/15 06:12:09,56789,1,44444,445,0,0,0x80000000,tcp,reset-both,\"EternalBlue MS17-010 SMB Exploit\",41000,critical,client-to-server,2024/01/15 06:12:09,0x0,0,0,1,0,0,,PA-5220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 07:04:31,THREAT,1,2024/01/15 07:04:31,10.20.30.55,104.16.85.20,10.20.30.55,104.16.85.20,URL-Filter-Policy,corp\\bwilliams,,,url-filtering,vsys1,trust,untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 07:04:31,67890,1,51234,80,0,0,0x80000000,tcp,block-url,\"Malicious URL Category Block - phishing\",10003,medium,client-to-server,2024/01/15 07:04:31,0x0,US,0,1,0,0,,PA-3220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 07:41:55,THREAT,1,2024/01/15 07:41:55,2001:db8::1,2001:db8::ffff,2001:db8::1,2001:db8::ffff,IPv6-Policy,corp\\tgarcia,,,wildfire-virus,vsys1,trust,untrust,ethernet1/9,ethernet1/10,Threat-Log,2024/01/15 07:41:55,78901,1,60000,443,0,0,0x80000000,tcp,drop,\"WildFire Malware: Ransomware Dropper\",100001,critical,client-to-server,2024/01/15 07:41:55,0x0,BR,0,1,0,0,,PA-5250,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      },
+      {
+        "_raw": "2024-01-15 08:03:22,THREAT,1,2024/01/15 08:03:22,192.168.50.75,10.1.1.1,192.168.50.75,10.1.1.1,Corp-Outbound,corp\\mlee,,,spyware,vsys1,trust,untrust,ethernet1/3,ethernet1/4,Threat-Log,2024/01/15 08:03:22,89012,1,49152,8080,0,0,0x80000000,tcp,alert,\"Emotet Trojan Callback Detected\",11050,high,client-to-server,2024/01/15 08:03:22,0x0,DE,0,1,0,0,,PA-3220,from-policy",
+        "_time": 1784047907.054,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "Palo Alto Networks",
+        "__product": "PAN-OS",
+        "sourcetype": "palo_alto_threat:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-01-15 02:14:33,THREAT,1,2024/01/15 02:14:33,192.168.1.45,10.0.0.1,192.168.1.45,10.0.0.1,Inbound-Policy,corp\\jsmith,,,vulnerability,vsys1,trust,untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 02:14:33,12345,1,54321,80,0,0,0x80000000,tcp,alert,\"CVE-2021-44228 Log4Shell RCE Attempt\",43705,critical,client-to-server,2024/01/15 02:14:33,0x0,US,0,1,0,0,,PA-5220,from-policy",
+      "2024-01-15 03:27:18,THREAT,1,2024/01/15 03:27:18,203.0.113.42,172.16.10.5,203.0.113.42,172.16.10.5,DMZ-Policy,unknown,,,spyware,vsys1,untrust,dmz,ethernet1/3,ethernet1/4,Threat-Log,2024/01/15 03:27:18,23456,1,443,8443,0,0,0x80000000,tcp,drop,\"Cobalt Strike Beacon C2 Communication\",18050,critical,client-to-server,2024/01/15 03:27:18,0x0,CN,0,1,0,0,,PA-3220,from-policy",
+      "2024-01-15 04:55:02,THREAT,1,2024/01/15 04:55:02,10.10.5.22,8.8.8.8,10.10.5.22,8.8.8.8,DNS-Policy,svc_account,,,spyware,vsys2,trust,untrust,ethernet1/5,ethernet1/6,Threat-Log,2024/01/15 04:55:02,34567,1,55443,53,0,0,0x80000000,udp,reset-both,\"DNS Tunneling Exfiltration Detected\",13001,high,client-to-server,2024/01/15 04:55:02,0x0,US,0,1,0,0,,PA-5220,from-policy",
+      "2024-01-15 05:33:47,THREAT,1,2024/01/15 05:33:47,198.51.100.77,192.168.100.25,198.51.100.77,192.168.100.25,Web-Server-Policy,,,virus,vsys1,untrust,dmz,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 05:33:47,45678,1,12345,443,0,0,0x80000000,tcp,drop,\"Mirai Botnet Downloader\",52000,high,client-to-server,2024/01/15 05:33:47,0x0,RU,0,1,0,0,,PA-820,from-policy",
+      "2024-01-15 06:12:09,THREAT,1,2024/01/15 06:12:09,172.16.20.100,10.0.5.1,172.16.20.100,10.0.5.1,Internal-Policy,corp\\administrator,,,vulnerability,vsys1,dmz,trust,ethernet1/7,ethernet1/8,Threat-Log,2024/01/15 06:12:09,56789,1,44444,445,0,0,0x80000000,tcp,reset-both,\"EternalBlue MS17-010 SMB Exploit\",41000,critical,client-to-server,2024/01/15 06:12:09,0x0,0,0,1,0,0,,PA-5220,from-policy",
+      "2024-01-15 07:04:31,THREAT,1,2024/01/15 07:04:31,10.20.30.55,104.16.85.20,10.20.30.55,104.16.85.20,URL-Filter-Policy,corp\\bwilliams,,,url-filtering,vsys1,trust,untrust,ethernet1/1,ethernet1/2,Threat-Log,2024/01/15 07:04:31,67890,1,51234,80,0,0,0x80000000,tcp,block-url,\"Malicious URL Category Block - phishing\",10003,medium,client-to-server,2024/01/15 07:04:31,0x0,US,0,1,0,0,,PA-3220,from-policy",
+      "2024-01-15 07:41:55,THREAT,1,2024/01/15 07:41:55,2001:db8::1,2001:db8::ffff,2001:db8::1,2001:db8::ffff,IPv6-Policy,corp\\tgarcia,,,wildfire-virus,vsys1,trust,untrust,ethernet1/9,ethernet1/10,Threat-Log,2024/01/15 07:41:55,78901,1,60000,443,0,0,0x80000000,tcp,drop,\"WildFire Malware: Ransomware Dropper\",100001,critical,client-to-server,2024/01/15 07:41:55,0x0,BR,0,1,0,0,,PA-5250,from-policy",
+      "2024-01-15 08:03:22,THREAT,1,2024/01/15 08:03:22,192.168.50.75,10.1.1.1,192.168.50.75,10.1.1.1,Corp-Outbound,corp\\mlee,,,spyware,vsys1,trust,untrust,ethernet1/3,ethernet1/4,Threat-Log,2024/01/15 08:03:22,89012,1,49152,8080,0,0,0x80000000,tcp,alert,\"Emotet Trojan Callback Detected\",11050,high,client-to-server,2024/01/15 08:03:22,0x0,DE,0,1,0,0,,PA-3220,from-policy"
+    ],
+    "sourcetype": "palo_alto_threat"
+  }
+}

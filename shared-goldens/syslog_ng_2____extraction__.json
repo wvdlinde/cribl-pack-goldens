@@ -1,0 +1,107 @@
+{
+  "key": "syslog_ng_2::__extraction__",
+  "sourcetype": "syslog_ng_2",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:55:21.330Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse standard syslog header: priority, timestamp, host, process, pid, and remaining message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[^\\[:\\s]+)(?:\\[(?<pid>\\d+)\\])?:\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process && process.indexOf('sshd') === 0",
+      "disabled": false,
+      "description": "Extract SSH authentication attempts (success/failure, user, source IP/port)",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<ssh_action>Failed|Accepted)\\s+(?<auth_method>password|publickey|keyboard-interactive)\\s+for\\s+(?:invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+)\\s+port\\s+(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process && process.indexOf('postfix') === 0",
+      "disabled": false,
+      "description": "Extract postfix SMTP reject events with source IP and SMTP status code",
+      "conf": {
+        "source": "message",
+        "regex": "/reject:\\s+RCPT from\\s+\\S+\\[(?<src_ip>[\\d.]+)\\]:\\s+(?<smtp_code>\\d+)\\s+(?<smtp_status>\\S+)\\s+(?<smtp_message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'kernel'",
+      "disabled": false,
+      "description": "Extract kernel netfilter/firewall log fields (src/dst IP, ports, protocol)",
+      "conf": {
+        "source": "message",
+        "regex": "/SRC=(?<src_ip>[\\d.]+)\\s+DST=(?<dst_ip>[\\d.]+)\\s+LEN=(?<len>\\d+)\\s+PROTO=(?<protocol>\\S+)\\s+SPT=(?<src_port>\\d+)\\s+DPT=(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!src_ip && message",
+      "disabled": false,
+      "description": "Generic fallback to extract source IP from 'from <ip>' pattern for auth/vpn/other events",
+      "conf": {
+        "source": "message",
+        "regex": "/from\\s+(?<src_ip>[\\d.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive syslog severity/facility from priority and normalize action based on message keywords",
+      "conf": {
+        "add": [
+          {
+            "name": "__pri_num",
+            "value": "Number(priority)"
+          },
+          {
+            "name": "facility_num",
+            "value": "Math.floor(__pri_num / 8)"
+          },
+          {
+            "name": "severity_num",
+            "value": "__pri_num % 8"
+          },
+          {
+            "name": "severity",
+            "value": "severity_num===0?'emergency':severity_num===1?'alert':severity_num===2?'critical':severity_num===3?'error':severity_num===4?'warning':severity_num===5?'notice':severity_num===6?'info':'debug'"
+          },
+          {
+            "name": "action",
+            "value": "message && message.match(/Failed|failed|reject|failure|blocked|denied/) ? 'denied' : (message && message.match(/Accepted|accepted|authorized|successful/) ? 'allowed' : 'unknown')"
+          }
+        ],
+        "remove": [
+          "__pri_num"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

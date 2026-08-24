@@ -1,0 +1,315 @@
+{
+  "key": "linux_audit::ocsf",
+  "sourcetype": "linux_audit",
+  "dest_format": "ocsf",
+  "score": 83,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:15:15.868Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "CyberArk IDP (Identity provisioning) JSON to OCSF Account Change (3005) pipeline."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw JSON events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse IDP JSON"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Map fields to OCSF 3005 (Account Change) ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "3005"
+          },
+          {
+            "name": "category_uid",
+            "value": "3"
+          },
+          {
+            "name": "activity_id",
+            "value": "actionType==='End' ? 2 : 1"
+          },
+          {
+            "name": "type_uid",
+            "value": "3005 * 100 + (actionType==='End' ? 2 : 1)"
+          },
+          {
+            "name": "severity_id",
+            "value": "auditType==='Error' ? 4 : (auditType==='Warning' ? 3 : 1)"
+          },
+          {
+            "name": "activity_name",
+            "value": "(action != null && String(action) !== '') ? String(action) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message != null && String(message) !== '') ? String(message) : undefined"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'cyberark_idp:ocsf'"
+          }
+        ]
+      },
+      "description": "Set OCSF classification + severity + names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(applicationCode != null && String(applicationCode) !== '') ? String(applicationCode) : 'IDP'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'CyberArk'"
+          },
+          {
+            "name": "metadata.product.feature",
+            "value": "(serviceName != null && String(serviceName) !== '') ? String(serviceName) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(uuid != null && String(uuid) !== '') ? String(uuid) : undefined"
+          },
+          {
+            "name": "metadata.correlation_uid",
+            "value": "(correlationId != null && String(correlationId) !== '') ? String(correlationId) : undefined"
+          }
+        ]
+      },
+      "description": "Set metadata (product = CyberArk IDP), uid from uuid"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(username != null && String(username) !== '') ? String(username) : undefined"
+          },
+          {
+            "name": "actor.user.email_addr",
+            "value": "(userId != null && String(userId) !== '') ? String(userId) : undefined"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "(userId != null && String(userId) !== '') ? String(userId) : undefined"
+          },
+          {
+            "name": "actor.user.type",
+            "value": "identityType==='NON_HUMAN' ? 'System' : (identityType != null && String(identityType) !== '' ? String(identityType) : undefined)"
+          }
+        ]
+      },
+      "description": "Map actor.user identity fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "(source != null && String(source) !== '') ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(source != null && String(source) !== '') ? String(source) : undefined"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(source != null && String(source) !== '') ? String(source) : undefined"
+          }
+        ]
+      },
+      "description": "Map src_endpoint.ip + device.hostname from source"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.tenantId",
+            "value": "(tenantId != null && String(tenantId) !== '') ? String(tenantId) : undefined"
+          },
+          {
+            "name": "unmapped.auditCode",
+            "value": "(auditCode != null && String(auditCode) !== '') ? String(auditCode) : undefined"
+          },
+          {
+            "name": "unmapped.auditType",
+            "value": "(auditType != null && String(auditType) !== '') ? String(auditType) : undefined"
+          },
+          {
+            "name": "unmapped.actionType",
+            "value": "(actionType != null && String(actionType) !== '') ? String(actionType) : undefined"
+          },
+          {
+            "name": "unmapped.component",
+            "value": "(component != null && String(component) !== '') ? String(component) : undefined"
+          },
+          {
+            "name": "unmapped.sessionId",
+            "value": "(sessionId != null && String(sessionId) !== '') ? String(sessionId) : undefined"
+          },
+          {
+            "name": "unmapped.correlationId",
+            "value": "(correlationId != null && String(correlationId) !== '') ? String(correlationId) : undefined"
+          },
+          {
+            "name": "unmapped.identityType",
+            "value": "(identityType != null && String(identityType) !== '') ? String(identityType) : undefined"
+          },
+          {
+            "name": "unmapped.cloudProvider",
+            "value": "(cloudProvider != null && String(cloudProvider) !== '') ? String(cloudProvider) : undefined"
+          },
+          {
+            "name": "unmapped.isDr",
+            "value": "isDr"
+          },
+          {
+            "name": "unmapped.originRegion",
+            "value": "(originRegion != null && String(originRegion) !== '') ? String(originRegion) : undefined"
+          },
+          {
+            "name": "unmapped.customData",
+            "value": "customData"
+          }
+        ]
+      },
+      "description": "Retain unmapped IDP source fields under unmapped.*"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "(timestamp != null && String(timestamp) !== '') ? Number(timestamp) : undefined"
+          },
+          {
+            "name": "_time",
+            "value": "(timestamp != null && String(timestamp) !== '') ? Number(timestamp) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Derive time/_time from source timestamp (ms epoch)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "activity_name",
+          "message",
+          "src_endpoint",
+          "src_endpoint.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "unmapped",
+          "unmapped.*",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF 3005 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

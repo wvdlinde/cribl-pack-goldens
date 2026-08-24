@@ -1,0 +1,111 @@
+{
+  "key": "symantec_email_cloud_antispam::__extraction__",
+  "sourcetype": "symantec_email_cloud_antispam",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:29:40.088Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse quoted CSV fields from Symantec Email Cloud AntiSpam log into base structured fields",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "timestamp",
+          "category",
+          "message_id",
+          "sender",
+          "recipient",
+          "subject",
+          "src_ip",
+          "src_country",
+          "action",
+          "policy",
+          "details"
+        ],
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Convert timestamp string to epoch _time",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "category=='Spam' || category=='Bulk'",
+      "disabled": false,
+      "description": "Extract spam score and confidence for spam/bulk category events",
+      "conf": {
+        "source": "details",
+        "regex": "/SpamScore:(?<spam_score>\\d+);Confidence:(?<confidence>\\w+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "category=='Virus'",
+      "disabled": false,
+      "description": "Extract virus name and malicious attachment name for virus category events",
+      "conf": {
+        "source": "details",
+        "regex": "/Virus:(?<virus_name>[^;]+);Attachment:(?<attachment>[^;]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "category=='Phishing'",
+      "disabled": false,
+      "description": "Extract phishing category and URL reputation for phishing category events",
+      "conf": {
+        "source": "details",
+        "regex": "/Category:(?<phishing_category>[^;]+);URLRep:(?<url_reputation>[^;]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity and normalize action based on category",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "category=='Virus' || category=='Phishing' || category=='PolicyViolation' ? 'high' : (category=='Spam' || category=='SuspiciousAttachment' || category=='DirectoryHarvest' || category=='AuthFailure') ? 'medium' : 'low'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : action"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

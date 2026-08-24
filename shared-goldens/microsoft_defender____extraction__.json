@@ -1,0 +1,41 @@
+{
+  "key": "microsoft_defender::__extraction__",
+  "sourcetype": "microsoft_defender",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T12:59:46.328Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "__clonecount",
+        "__cribleventtype",
+        "__ctrlfields",
+        "__final",
+        "__id",
+        "__packid",
+        "_time",
+        "records"
+      ]
+    }
+  },
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from microsoft_defender::cim: 32/35 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

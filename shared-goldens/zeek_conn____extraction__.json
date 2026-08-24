@@ -1,0 +1,284 @@
+{
+  "key": "zeek_conn::__extraction__",
+  "sourcetype": "zeek_conn",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:31.820Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract embedded JSON payload from syslog message.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/(?<json_str>\\{[\\s\\S]*\\})$/gm"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse embedded Corelight JSON payload.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "json_str",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Extract normalized event time from parsed Zeek timestamp.",
+      "conf": {
+        "srcField": "parsed.ts",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 150,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed connection fields to target OCSF Network Activity attributes.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "traffic.bytes",
+            "value": "parsed.orig_bytes!=null && parsed.resp_bytes!=null ? parsed.orig_bytes + parsed.resp_bytes : null"
+          },
+          {
+            "name": "traffic.packets",
+            "value": "parsed.orig_pkts!=null && parsed.resp_pkts!=null ? parsed.orig_pkts + parsed.resp_pkts : null"
+          },
+          {
+            "name": "status_code",
+            "value": "parsed.conn_state"
+          },
+          {
+            "name": "status_id",
+            "value": "parsed.conn_state==='SF'?1:(parsed.conn_state==='REJ'||parsed.conn_state==='S0'?2:99)"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsed.history"
+          },
+          {
+            "name": "message",
+            "value": "parsed._path + ' ' + parsed.proto + ' ' + parsed.conn_state"
+          },
+          {
+            "name": "unmapped",
+            "value": "parsed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Parse embedded Corelight JSON payload from syslog _raw.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "parsed",
+            "value": "_raw.indexOf('{') >= 0 ? JSON.parse(_raw.slice(_raw.indexOf('{'))) : {}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed Corelight connection fields to target OCSF Network Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "activity_id",
+            "value": "parsed.conn_state==='REJ'?5:(parsed.conn_state && parsed.conn_state.indexOf('RST')===0?3:6)"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "status",
+            "value": "parsed.conn_state==='REJ'?'Failure':(parsed.conn_state && parsed.conn_state.indexOf('RST')===0?'Failure':'Success')"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "parsed['id.resp_h']"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "parsed['id.resp_p']"
+          },
+          {
+            "name": "url.url_string",
+            "value": "parsed['spcap.url']"
+          },
+          {
+            "name": "url.scheme",
+            "value": "parsed['spcap.url'] ? parsed['spcap.url'].replace(/:\\/\\/.*$/,'').toLowerCase() : null"
+          },
+          {
+            "name": "url.hostname",
+            "value": "parsed['spcap.url'] ? parsed['spcap.url'].replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\\/\\//,'').replace(/[\\/?#].*$/,'') : null"
+          },
+          {
+            "name": "url.query_string",
+            "value": "parsed['spcap.url'] && parsed['spcap.url'].indexOf('?') >= 0 ? parsed['spcap.url'].replace(/^.*\\?/,'') : null"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^<(?<syslog_pri>\\d+)>1\\s+(?<syslog_ts>\\S+)\\s+(?<syslog_host>\\S+)\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+(?<json_str>\\{.*\\})$/gm"
+      },
+      "id": "regex_extract",
+      "description": "Extract RFC5424 syslog header values and embedded Corelight JSON payload."
+    },
+    {
+      "filter": "json_str",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "json_str",
+        "dstField": "parsed",
+        "remove": [],
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse embedded Corelight connection JSON into a parsed object."
+    },
+    {
+      "filter": "parsed",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "parsed.conn_state==='S0'||parsed.conn_state==='REJ'?400105:parsed.conn_state==='RSTO'||parsed.conn_state==='RSTR'?400103:400106"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "parsed['id.orig_h']"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "parsed['id.orig_p']"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "parsed.orig_l2_addr"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "parsed._path"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.ts"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Corelight'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Corelight'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "parsed._system_name"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "syslog_host"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "parsed._system_name"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "parsed.local_orig===true&&parsed.local_resp===true?3:parsed.local_orig===true&&parsed.local_resp===false?2:parsed.local_orig===false&&parsed.local_resp===true?1:0"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "parsed.local_orig===true&&parsed.local_resp===true?2:3"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "parsed.proto ? parsed.proto.toLowerCase() : null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "parsed.proto==='tcp'?6:parsed.proto==='udp'?17:parsed.proto==='icmp'?1:0"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "parsed['id.orig_h']&&parsed['id.orig_h'].indexOf('.')>=0?4:parsed['id.orig_h']&&parsed['id.orig_h'].indexOf(':')>=0?6:0"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "parsed.uid"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "syslog_pri",
+          "syslog_ts",
+          "syslog_host",
+          "json_str",
+          "parsed"
+        ]
+      },
+      "id": "eval",
+      "description": "Map parsed Corelight connection fields to OCSF Network Activity target schema fields."
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

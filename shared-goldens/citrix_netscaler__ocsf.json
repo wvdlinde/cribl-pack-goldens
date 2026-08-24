@@ -1,0 +1,396 @@
+{
+  "key": "citrix_netscaler::ocsf",
+  "sourcetype": "citrix_netscaler",
+  "dest_format": "ocsf",
+  "score": 100,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-13T08:53:13.185Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "citrix_netscaler to OCSF pipeline."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>\\s+(?<timestamp>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2}\\s+\\w+)\\s+(?<host>[^\\s]+)\\s+(?<node>[^\\s]+)\\s+:\\s+(?<category>\\w+)\\s+(?<log_type>\\w+)\\s+(?<ns_event_type>\\w+)\\s+(?<seq_id>\\d+)\\s+(?<flags>\\d+)\\s+:\\s+(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog envelope and Citrix NetScaler log header"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "facility",
+            "value": "priority ? Math.floor(priority / 8) : undefined"
+          },
+          {
+            "name": "severity_code",
+            "value": "priority ? priority % 8 : undefined"
+          }
+        ]
+      },
+      "description": "Parse syslog priority into facility and severity code"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "ns_event_type == 'SSL_HANDSHAKE_SUCCESS' && message && !message.match(/Backend/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/SPCBId\\s+(?<spcb_id>\\d+)\\s+-\\s+ClientIP\\s+(?<src_ip>[\\d.]+)\\s+-\\s+ClientPort\\s+(?<src_port>\\d+)\\s+-\\s+VserverServiceIP\\s+(?<dst_ip>[\\d.]+)\\s+-\\s+VserverServicePort\\s+(?<dst_port>\\d+)\\s+-\\s+ClientVersion\\s+(?<tls_version>\\S+)\\s+-\\s+CipherSuite\\s+\"(?<cipher_suite>[^\"]+)\"\\s+-\\s+Session\\s+(?<session_type>\\w+)\\s+-\\s+HandshakeTime\\s+(?<handshake_time_ms>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract fields from client-side SSL_HANDSHAKE_SUCCESS events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "ns_event_type == 'SSL_HANDSHAKE_SUCCESS' && message && message.match(/Backend/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Backend\\s+SPCBId\\s+(?<spcb_id>\\d+)\\s+-\\s+ServerIP\\s+(?<dst_ip>[\\d.]+)\\s+-\\s+ServerPort\\s+(?<dst_port>\\d+)\\s+-\\s+ProtocolVersion\\s+(?<tls_version>\\S+)\\s+-\\s+CipherSuite\\s+\"(?<cipher_suite>[^\"]+)\"\\s+-\\s+Session\\s+(?<session_type>\\w+)\\s+-\\s+SERVER_AUTHENTICATED\\s+-SerialNumber\\s+\"(?<cert_serial>[^\"]+)\"\\s+-\\s+SignatureAlgorithm\\s+\"(?<cert_sig_alg>[^\"]+)\"\\s+-\\s+ValidFrom\\s+\"(?<cert_valid_from>[^\"]+)\"\\s+-\\s+ValidTo\\s+\"(?<cert_valid_to>[^\"]+)\"\\s+-\\s+HandshakeTime\\s+(?<handshake_time_ms>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract fields from backend SSL_HANDSHAKE_SUCCESS events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "ns_event_type == 'SSL_HANDSHAKE_SUBJECTNAME' && message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/SPCBId\\s+(?<spcb_id>\\d+)\\s+-\\s+SubjectName\\s+\"(?<cert_subject>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract SubjectName from SSL_HANDSHAKE_SUBJECTNAME events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "ns_event_type == 'SSL_HANDSHAKE_ISSUERNAME' && message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/SPCBId\\s+(?<spcb_id>\\d+)\\s+-\\s+IssuerName\\s+\"(?<cert_issuer>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract IssuerName from SSL_HANDSHAKE_ISSUERNAME events"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Set OCSF time field ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "timestamp ? new Date(String(timestamp).replace(/\\//g,'-').replace(':',' ')).getTime() : null"
+          },
+          {
+            "name": "_time",
+            "value": "time ? time / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Parse syslog timestamp into epoch milliseconds for OCSF time and _time"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map to OCSF Network Activity schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "activity_id",
+            "value": "ns_event_type == 'SSL_HANDSHAKE_SUBJECTNAME' ? 6 : ns_event_type == 'SSL_HANDSHAKE_ISSUERNAME' ? 6 : 1"
+          },
+          {
+            "name": "activity_name",
+            "value": "ns_event_type == 'SSL_HANDSHAKE_SUBJECTNAME' ? 'Other' : ns_event_type == 'SSL_HANDSHAKE_ISSUERNAME' ? 'Other' : 'Open'"
+          },
+          {
+            "name": "type_uid",
+            "value": "(ns_event_type == 'SSL_HANDSHAKE_SUBJECTNAME' || ns_event_type == 'SSL_HANDSHAKE_ISSUERNAME') ? 400106 : 400101"
+          },
+          {
+            "name": "type_name",
+            "value": "(ns_event_type == 'SSL_HANDSHAKE_SUBJECTNAME' || ns_event_type == 'SSL_HANDSHAKE_ISSUERNAME') ? 'Network Activity: Other' : 'Network Activity: Open'"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "status_id",
+            "value": "ns_event_type == 'SSL_HANDSHAKE_SUCCESS' ? 1 : 1"
+          },
+          {
+            "name": "status",
+            "value": "ns_event_type == 'SSL_HANDSHAKE_SUCCESS' ? 'Success' : 'Success'"
+          }
+        ]
+      },
+      "description": "Map OCSF classification and enum companions"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "src_ip ? {ip: src_ip, port: Number(src_port || 0)} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "dst_ip ? {ip: dst_ip, port: Number(dst_port || 0)} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "{direction_id: (message && message.match(/Backend/)) ? 2 : 1, direction: (message && message.match(/Backend/)) ? 'Outbound' : 'Inbound', protocol_name: tls_version ? 'TLS' : 'TCP', session_type: session_type || undefined}"
+          }
+        ]
+      },
+      "description": "Build endpoint and connection_info structured objects"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "tls",
+            "value": "(tls_version || cipher_suite || cert_serial || cert_subject || cert_issuer) ? {version: tls_version || undefined, cipher: cipher_suite || undefined, certificate: {serial_number: cert_serial || undefined, subject: cert_subject || undefined, issuer: cert_issuer || undefined, fingerprints: undefined, created_time: cert_valid_from || undefined, expiration_time: cert_valid_to || undefined, signature_algorithm: cert_sig_alg || undefined}} : undefined"
+          }
+        ]
+      },
+      "description": "Build tls structured object with certificate details"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{version: '1.4.0', product: {name: 'Citrix NetScaler', vendor_name: 'Citrix'}, log_name: log_type || undefined, log_provider: 'SSLLOG'}"
+          },
+          {
+            "name": "device",
+            "value": "{hostname: host || undefined}"
+          },
+          {
+            "name": "unmapped",
+            "value": "{spcb_id: spcb_id || undefined, seq_id: seq_id || undefined, node: node || undefined, facility: facility, category: category || undefined, ns_event_type: ns_event_type || undefined, syslog_severity: severity_code, handshake_time_ms: handshake_time_ms ? Number(handshake_time_ms) : undefined}"
+          }
+        ]
+      },
+      "description": "Build metadata, device, and unmapped vendor-specific fields"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Cleanup raw/intermediate fields ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "priority",
+          "severity_code",
+          "flags",
+          "message",
+          "timestamp",
+          "node",
+          "category",
+          "log_type",
+          "ns_event_type",
+          "seq_id",
+          "spcb_id",
+          "src_ip",
+          "src_port",
+          "dst_ip",
+          "dst_port",
+          "tls_version",
+          "cipher_suite",
+          "session_type",
+          "handshake_time_ms",
+          "cert_serial",
+          "cert_subject",
+          "cert_issuer",
+          "cert_sig_alg",
+          "cert_valid_from",
+          "cert_valid_to",
+          "facility",
+          "_raw",
+          "__*"
+        ]
+      },
+      "description": "Drop raw source and intermediate fields"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 5: Final tag ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'citrix_netscaler'"
+          }
+        ]
+      },
+      "description": "Tag sourcetype"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "warn",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "high",
+        "field": "time / _time",
+        "issue": "Timestamp is wrong. The log timestamp is 10/03/2025:15:38:40 GMT which is Unix epoch 1743691120. The output shows 1759505920 (_time) and 1759505920000 (time), which is approximately September 2025 — off by ~185 days. The date parser appears to have swapped day and month (03 Oct vs 10 Mar) or applied wrong year logic.",
+        "example": "_time: 1759505920 vs expected ~1743691120",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "tls.certificate (events 1 & 2)",
+        "issue": "tls.certificate is an empty object {} for SSL_HANDSHAKE_SUCCESS client-side events. No certificate data exists in those raw events so the empty object is acceptable structurally, but OCSF expects the tls object to not include certificate if there is nothing to populate. Minor structural noise but not a true data loss.",
+        "example": "\"certificate\": {}",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "tls (event 3 — SSL_HANDSHAKE_SUBJECTNAME)",
+        "issue": "Event 3 has no TLS version, cipher, or network endpoint IPs because the raw log only carries SubjectName, but the subject string has a leading space that should be trimmed. Also, protocol_name is set to TCP instead of TLS for an SSL log event.",
+        "example": "\"protocol_name\": \"TCP\" on an SSLLOG event; subject: \" DC=com,...\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "tls.certificate.subject leading whitespace",
+        "issue": "SubjectName and IssuerName values are mapped with a leading space character not present in the original intent, e.g. ' DC=com,DC=afos...' instead of 'DC=com,DC=afos...'.",
+        "example": "\"subject\": \" DC=com,DC=afos,DC=ds,OU=XenApp,...\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "tls.certificate.created_time / expiration_time",
+        "issue": "OCSF expects certificate validity timestamps as Unix epoch integers (Long type) in the fingerprints/certificate object. The pipeline maps them as raw strings 'Feb 12 21:07:48 2025 GMT' instead of converting to epoch milliseconds.",
+        "example": "\"created_time\": \"Feb 12 21:07:48 2025 GMT\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.protocol_name (events 1 & 2)",
+        "issue": "protocol_name is set to 'TLS' but OCSF Network Activity expects an IANA transport protocol (TCP/UDP). TLS is an application-layer protocol; the correct value should be 'TCP' with TLS details in the tls object. However, setting TCP on event 3 (SUBJECTNAME) while TLS on events 1/2 is internally inconsistent.",
+        "example": "\"protocol_name\": \"TLS\" vs OCSF expects IANA transport layer e.g. TCP",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "tls.server_authenticated / auth_method",
+        "issue": "Event 4 (Backend SSL_HANDSHAKE_SUCCESS) contains 'SERVER_AUTHENTICATED' flag in the raw log, which is a meaningful security attribute but was not mapped to any OCSF field (e.g., tls.server_authenticated or unmapped).",
+        "example": "Raw: '- SERVER_AUTHENTICATED -' — not present in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "metadata.log_provider",
+        "issue": "log_provider is redundantly set to 'SSLLOG' which is the log subcategory, not a provider. The provider should be 'Citrix' or 'Citrix NetScaler'. OCSF metadata.log_provider is meant for the logging infrastructure name.",
+        "example": "\"log_provider\": \"SSLLOG\"",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "category_uid / category_name",
+        "issue": "category_uid 4 maps to 'Network Activity' in OCSF, but the correct OCSF category name for uid 4 is 'Network Activity' — this is correct. However class_uid 4001 is 'Network Activity' but these are TLS/SSL handshake events which could more precisely map to class 4023 (TLS Activity) in OCSF 1.4. This is a classification choice issue rather than a hard error.",
+        "example": "class_uid: 4001 used for TLS handshake; OCSF 1.4 defines 4023 for TLS Activity",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "The pipeline correctly identifies the OCSF Network Activity class, extracts most TLS fields (version, cipher, IPs, ports, certificate serial/signature), and preserves unmapped metadata well. However, the timestamp is materially wrong (off by ~185 days, likely a month/day swap in parsing), TLS certificate timestamps are left as raw strings instead of epoch integers, 'SERVER_AUTHENTICATED' is silently dropped, and there is inconsistent use of protocol_name (TLS vs TCP) across event types. These issues — especially the timestamp error — significantly reduce data reliability."
+  }
+}

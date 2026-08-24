@@ -1,0 +1,126 @@
+{
+  "key": "ivanti_miclient_access::cim::__mapping__",
+  "sourcetype": "ivanti_miclient_access",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:12:00.959Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'ivanti_miclient_access'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "user",
+            "value": "user || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "user || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "device_id || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "url",
+            "value": "resource || ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "action",
+            "value": "status == 'SUCCESS' ? 'allowed' : (status == 'FAILURE' ? 'blocked' : (action || ''))"
+          },
+          {
+            "name": "signature",
+            "value": "message || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "action || ''"
+          },
+          {
+            "name": "app",
+            "value": "client_version || ''"
+          },
+          {
+            "name": "severity",
+            "value": "severity || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 5 : (severity == 'ERROR' ? 4 : (severity == 'WARN' ? 3 : (severity == 'INFO' ? 1 : 0)))"
+          },
+          {
+            "name": "category",
+            "value": "action || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Ivanti MobileIron Client'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_miclient_access'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,145 @@
+{
+  "key": "fidelis_syslog::__extraction__",
+  "sourcetype": "fidelis_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T09:02:21.337Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header: priority, timestamp, host, facility, and KVP message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+Fidelis\\[(?<facility>\\w+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (with quoted-value support) from the Fidelis message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to common schema (ip/port/protocol/action/user/direction/severity)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "Src"
+          },
+          {
+            "name": "src_port",
+            "value": "SrcPort"
+          },
+          {
+            "name": "dst_ip",
+            "value": "Dst"
+          },
+          {
+            "name": "dst_port",
+            "value": "DstPort"
+          },
+          {
+            "name": "dst_host",
+            "value": "Host"
+          },
+          {
+            "name": "protocol",
+            "value": "typeof Proto !== 'undefined' ? Proto.toUpperCase() : undefined"
+          },
+          {
+            "name": "action",
+            "value": "typeof Action !== 'undefined' ? Action.toLowerCase() : (typeof Result !== 'undefined' ? Result.toLowerCase() : undefined)"
+          },
+          {
+            "name": "user",
+            "value": "typeof User !== 'undefined' && User !== '' ? User : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "typeof Direction !== 'undefined' ? Direction.toLowerCase() : undefined"
+          },
+          {
+            "name": "severity",
+            "value": "typeof Severity !== 'undefined' ? Number(Severity) : undefined"
+          },
+          {
+            "name": "category",
+            "value": "Category"
+          },
+          {
+            "name": "policy",
+            "value": "Policy"
+          },
+          {
+            "name": "session_id",
+            "value": "Session"
+          },
+          {
+            "name": "bytes",
+            "value": "typeof Bytes !== 'undefined' ? Number(Bytes) : undefined"
+          },
+          {
+            "name": "result",
+            "value": "Result"
+          },
+          {
+            "name": "event_type",
+            "value": "Type"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Cleanup: remove raw KVP source fields now that normalized fields exist",
+      "conf": {
+        "add": [],
+        "remove": [
+          "Src",
+          "SrcPort",
+          "Dst",
+          "DstPort",
+          "Host",
+          "Proto",
+          "Action",
+          "User",
+          "Direction",
+          "Severity",
+          "Category",
+          "Policy",
+          "Session",
+          "Bytes",
+          "Result",
+          "Type",
+          "pri",
+          "facility"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

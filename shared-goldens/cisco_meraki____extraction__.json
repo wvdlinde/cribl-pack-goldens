@@ -1,0 +1,87 @@
+{
+  "key": "cisco_meraki::__extraction__",
+  "sourcetype": "cisco_meraki",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:33:09.924Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Meraki syslog header: timestamp, device, optional event_type, and remaining key=value payload into scratch field",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<device>\\S+) (?:(?<event_type>[a-zA-Z0-9_-]+) )?(?<__kvp_data>\\S+=.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (src, dst, protocol, url, action, verdict, result, admin, priority, classification, message, client_mac, ssid, etc.) from the KVP payload",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_data",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "src && src.indexOf(':') !== -1",
+      "disabled": false,
+      "description": "Split combined src ip:port into src_ip and src_port",
+      "conf": {
+        "source": "src",
+        "regex": "/^(?<src_ip>[0-9.]+):(?<src_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "dst && dst.indexOf(':') !== -1",
+      "disabled": false,
+      "description": "Split combined dst ip:port into dst_ip and dst_port",
+      "conf": {
+        "source": "dst",
+        "regex": "/^(?<dst_ip>[0-9.]+):(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action/severity across event types, derive epoch _time, and drop scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action ? action : (verdict ? verdict : (result ? result : null))"
+          },
+          {
+            "name": "severity",
+            "value": "priority ? priority : null"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ],
+        "remove": [
+          "__kvp_data"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,99 @@
+{
+  "key": "ivanti_sun_jvm::__extraction__",
+  "sourcetype": "ivanti_sun_jvm",
+  "dest_format": "__extraction__",
+  "score": 97,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:59:22.715Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base JVM log line: timestamp, thread, severity, logger, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\[(?<thread>[^\\]]+)\\] (?<severity>\\w+) (?<logger>\\S+) - (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('Failed login attempt') >= 0",
+      "disabled": false,
+      "description": "Extract user and src_ip from failed login messages",
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)' from (?<src_ip>[\\d.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('Successful login from unusual location') >= 0",
+      "disabled": false,
+      "description": "Extract user and src_ip from unusual-location login messages",
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)', IP (?<src_ip>[\\d.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('Privilege escalation') >= 0",
+      "disabled": false,
+      "description": "Extract user, resource, and src_ip from privilege escalation messages",
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)' attempted to access (?<resource>\\S+) from (?<src_ip>[\\d.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.indexOf('VPN tunnel established') >= 0 || message.indexOf('Failed to deploy patch') >= 0)",
+      "disabled": false,
+      "description": "Extract user/src_ip/dst_ip for VPN events and dst_host/dst_ip for patch deployment failures",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:user='(?<user>[^']+)', client_ip=(?<src_ip>[\\d.]+), assigned_ip=(?<dst_ip>[\\d.]+))|(?:to host (?<dst_host>\\S+) \\((?<dst_ip2>[\\d.]+)\\))/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action from message content and normalize severity",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.indexOf('Failed login attempt') >= 0 ? 'login_failure' : message.indexOf('Successful login') >= 0 ? 'login_success' : message.indexOf('Privilege escalation') >= 0 ? 'privilege_escalation' : message.indexOf('VPN tunnel established') >= 0 ? 'vpn_connect' : message.indexOf('Failed to deploy patch') >= 0 ? 'patch_failure' : message.indexOf('SQLException') >= 0 ? 'db_error' : message.indexOf('SSL certificate expiring') >= 0 ? 'certificate_warning' : message.indexOf('License validation failed') >= 0 ? 'license_error' : 'info'"
+          },
+          {
+            "name": "severity_normalized",
+            "value": "severity == 'SEVERE' ? 'critical' : severity == 'ERROR' ? 'error' : severity == 'WARN' ? 'warning' : severity == 'INFO' ? 'info' : 'unknown'"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip2 ? dst_ip2 : dst_ip"
+          }
+        ],
+        "remove": [
+          "dst_ip2"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

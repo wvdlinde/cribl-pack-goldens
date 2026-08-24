@@ -1,0 +1,62 @@
+{
+  "key": "ivanti_es_devices::__extraction__",
+  "sourcetype": "ivanti_es_devices",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:22:20.714Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, host, process, pid, and structured key=value fields from syslog-style Ivanti ES device event",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+IvantiES\\[(?<pid>\\d+)\\]:\\s+severity=(?<severity>\\S+)\\s+event=(?<event>\\S+)\\s+device=(?<device>\\S+)\\s+user=(?<user>\\S+)\\s+src_ip=(?<src_ip>\\S+)\\s+action=(?<action>\\S+)\\s+status=(?<status>\\S+)\\s+details=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity casing and derive a boolean success flag from status",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity.toUpperCase() : severity"
+          },
+          {
+            "name": "action_success",
+            "value": "status == 'success' ? true : (status == 'failure' ? false : null)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set protocol as syslog for this device management channel and parse timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'syslog'"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

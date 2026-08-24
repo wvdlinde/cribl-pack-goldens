@@ -1,0 +1,138 @@
+{
+  "key": "ncsc_solarwinds_vpn::__extraction__",
+  "sourcetype": "ncsc_solarwinds_vpn",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:36:31.853Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog-style header (timestamp, source host, severity) and isolate the key=value payload for further parsing.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<src_host>\\S+)\\s+SolarWinds-VPN:\\s+\\[(?<severity>\\w+)\\]\\s+(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (EventType, User, SrcIP, DstIP, Port, Protocol, Status, Message, SessionID, Admin, Host, Duration, BytesTransferred) from the payload.",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize extracted KVP fields into consistent standard field names.",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "User ? User : (Admin ? Admin : null)"
+          },
+          {
+            "name": "src_ip",
+            "value": "SrcIP"
+          },
+          {
+            "name": "dst_ip",
+            "value": "DstIP"
+          },
+          {
+            "name": "dst_port",
+            "value": "Port"
+          },
+          {
+            "name": "protocol",
+            "value": "Protocol"
+          },
+          {
+            "name": "action",
+            "value": "Status"
+          },
+          {
+            "name": "message",
+            "value": "Message"
+          },
+          {
+            "name": "session_id",
+            "value": "SessionID"
+          },
+          {
+            "name": "event_type",
+            "value": "EventType"
+          },
+          {
+            "name": "dst_host",
+            "value": "Host"
+          },
+          {
+            "name": "duration",
+            "value": "Duration"
+          },
+          {
+            "name": "bytes_transferred",
+            "value": "BytesTransferred"
+          }
+        ],
+        "remove": [
+          "User",
+          "Admin",
+          "SrcIP",
+          "DstIP",
+          "Port",
+          "Protocol",
+          "Status",
+          "Message",
+          "SessionID",
+          "EventType",
+          "Host",
+          "Duration",
+          "BytesTransferred",
+          "__kvp"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity levels and action outcomes for consistent downstream analytics.",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='INFO' ? 'low' : severity=='WARN' ? 'medium' : severity=='ERROR' ? 'high' : severity=='CRITICAL' ? 'critical' : severity"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action=='SUCCESS' ? 'allowed' : action=='FAILURE' ? 'denied' : action=='BLOCKED' ? 'blocked' : action=='WARNING' ? 'warning' : action"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

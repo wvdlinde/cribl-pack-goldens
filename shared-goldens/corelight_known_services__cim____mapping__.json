@@ -1,0 +1,90 @@
+{
+  "key": "corelight_known_services::cim::__mapping__",
+  "sourcetype": "corelight_known_services",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:49:47.318Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "dest",
+            "value": "host"
+          },
+          {
+            "name": "dvc",
+            "value": "host"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(port_num)"
+          },
+          {
+            "name": "transport",
+            "value": "(port_proto || '').toLowerCase()"
+          },
+          {
+            "name": "app",
+            "value": "Array.isArray(service) ? service.join(',') : String(service || '')"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(ts).getTime()/1000"
+          },
+          {
+            "name": "vendor_product",
+            "value": "vendor_product"
+          },
+          {
+            "name": "action",
+            "value": "action"
+          },
+          {
+            "name": "user",
+            "value": "user"
+          },
+          {
+            "name": "object",
+            "value": "object"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_known_services'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

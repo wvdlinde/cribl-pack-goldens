@@ -1,0 +1,72 @@
+{
+  "key": "bind_dns::__extraction__",
+  "sourcetype": "bind_dns",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:42:34.837Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base BIND DNS log fields: timestamp, process, pid, severity, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{2}-\\w{3}-\\d{4} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}) (?<process>[\\w-]+)(?:\\[(?<pid>\\d+)\\])?: (?<severity>\\w+): (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('transfer of')",
+      "disabled": false,
+      "description": "Extract zone transfer details from xfer-in messages",
+      "conf": {
+        "source": "message",
+        "regex": "/transfer of '(?<zone>[^\\/]+)\\/(?<zone_class>\\w+)' from (?<src_ip>[\\d.]+)#(?<src_port>\\d+): (?<action>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'named' && message && message.indexOf('zone') !== -1",
+      "disabled": false,
+      "description": "Extract zone name from named daemon zone-related messages",
+      "conf": {
+        "source": "message",
+        "regex": "/zone (?<zone>[^\\/:]+)(\\/(?<zone_class>\\w+))?[:,]/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action and protocol fields, set defaults for non-transfer named daemon events",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action ? action : (severity === 'error' ? 'error_event' : (severity === 'notice' ? 'status_event' : 'unknown'))"
+          },
+          {
+            "name": "protocol",
+            "value": "'dns'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'bind_dns'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

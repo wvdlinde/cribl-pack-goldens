@@ -1,0 +1,126 @@
+{
+  "key": "microsoft_defender::cim::__mapping__",
+  "sourcetype": "microsoft_defender",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:33:20.276Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "callerIpAddress || ''"
+          },
+          {
+            "name": "user",
+            "value": "identity && identity.claims && identity.claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'] || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "identity && identity.claims && identity.claims['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'] || ''"
+          },
+          {
+            "name": "action",
+            "value": "resultType == 'Success' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "app",
+            "value": "operationName || ''"
+          },
+          {
+            "name": "category",
+            "value": "category || ''"
+          },
+          {
+            "name": "signature",
+            "value": "resultSignature || ''"
+          },
+          {
+            "name": "severity",
+            "value": "level || ''"
+          },
+          {
+            "name": "duration",
+            "value": "Number(durationMs || 0)"
+          },
+          {
+            "name": "session_id",
+            "value": "correlationId || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "resourceId || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "tenantId || ''"
+          },
+          {
+            "name": "rule",
+            "value": "identity && identity.authorization && identity.authorization.action || ''"
+          },
+          {
+            "name": "message_id",
+            "value": "properties && properties.serviceRequestId || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "object",
+            "value": "properties && properties.entity || ''"
+          },
+          {
+            "name": "dest_nt_domain",
+            "value": "identity && identity.authorization && identity.authorization.evidence && identity.authorization.evidence.role || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Azure Activity Log'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'microsoft_defender'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

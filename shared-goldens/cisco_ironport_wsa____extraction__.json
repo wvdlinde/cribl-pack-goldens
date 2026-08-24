@@ -1,0 +1,91 @@
+{
+  "key": "cisco_ironport_wsa::__extraction__",
+  "sourcetype": "cisco_ironport_wsa",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 528,
+  "updated_at": "2026-08-18T06:22:35.874Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base IronPort WSA access log fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<epoch>\\d+\\.\\d+)\\s+(?<elapsed>\\d+)\\s+(?<src_ip>\\S+)\\s+(?<action_status>\\S+)\\s+(?<bytes>\\d+)\\s+(?<method>\\S+)\\s+(?<url>\\S+)\\s+(?<user>\\S+)\\s+(?<category_policy>\\S+)\\s+(?<status_code>\\d+)\\s+\"(?<unused>[^\"]*)\"\\s+(?<content_type>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Split cache result and HTTP status from TCP_MISS/200 style field",
+      "conf": {
+        "source": "action_status",
+        "regex": "/^(?<cache_result>[A-Z_]+)\\/(?<http_status>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract protocol, destination host, port and path from URL",
+      "conf": {
+        "source": "url",
+        "regex": "/^(?<protocol>https?):\\/\\/(?<dst_host>[^:\\/]+)(:(?<dst_port>\\d+))?(?<path>\\/[^\\s]*)?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive timestamp, action, severity, user, protocol and port normalization",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "Number(epoch)*1000"
+          },
+          {
+            "name": "action",
+            "value": "category_policy.match(/-BLOCK-/) ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "category_policy.match(/Malware_Sites|Phishing/) ? 'critical' : (category_policy.match(/-BLOCK-/) ? 'high' : 'low')"
+          },
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol : (cache_result.match(/SSL/) ? 'https' : 'http')"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : (protocol === 'https' ? 443 : 80)"
+          },
+          {
+            "name": "direction",
+            "value": "'outbound'"
+          }
+        ],
+        "remove": [
+          "unused"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

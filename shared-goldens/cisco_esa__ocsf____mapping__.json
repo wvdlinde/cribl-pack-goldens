@@ -1,0 +1,293 @@
+{
+  "key": "cisco_esa::ocsf::__mapping__",
+  "sourcetype": "cisco_esa",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T12:59:52.191Z",
+  "functions": [
+    {
+      "id": "auto_timestamp",
+      "description": "Extract event occurrence time from email log prefix.",
+      "conf": {
+        "srcField": "_raw",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [
+          {
+            "regex": "/^(\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})/",
+            "strptime": "%a %b %d %H:%M:%S %Y"
+          }
+        ],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 40,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract email log timestamp, level, message details, identifiers, SMTP status, and subject.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})/gm",
+        "regexList": [
+          {
+            "regex": "/^\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4}\\s+(?<log_level>\\w+):/gm"
+          },
+          {
+            "regex": "/^\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4}\\s+\\w+:\\s+(?<event_message>.*)$/gm"
+          },
+          {
+            "regex": "/\\bDCID\\s+(?<dcid>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bMID\\s+(?<mid>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bRID\\s+\\[(?<rid>\\d+)\\]/gm"
+          },
+          {
+            "regex": "/'smtp-status','(?<status_detail>[^']+)'/gm"
+          },
+          {
+            "regex": "/'smtp-status','(?<status_code>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bSubject\\s+'(?<subject>[^']*)'/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set OCSF email activity fields from extracted values.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "message",
+            "value": "subject ? 'Subject: ' + subject : event_message"
+          },
+          {
+            "name": "status_detail",
+            "value": "status_detail ? status_detail : null"
+          },
+          {
+            "name": "status_code",
+            "value": "status_code ? status_code : null"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.event_time",
+            "value": "event_time"
+          },
+          {
+            "name": "unmapped.log_level",
+            "value": "log_level"
+          },
+          {
+            "name": "unmapped.dcid",
+            "value": "dcid"
+          },
+          {
+            "name": "unmapped.mid",
+            "value": "mid"
+          },
+          {
+            "name": "unmapped.rid",
+            "value": "rid"
+          },
+          {
+            "name": "unmapped.subject",
+            "value": "subject"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})/gm",
+        "regexList": [
+          {
+            "regex": "/(?:^|\\s)MID\\s+(?<temp_mid>\\d+)/gm"
+          },
+          {
+            "regex": "/(?:^|\\s)DCID\\s+(?<temp_dcid>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bRID\\s+\\[(?<temp_rid>\\d+)\\]/gm"
+          },
+          {
+            "regex": "/\\('smtp-status','(?<smtp_status>[^']+)'\\)/gm"
+          },
+          {
+            "regex": "/\\bSubject\\s+'(?<temp_subject>[^']*)'/gm"
+          }
+        ]
+      },
+      "id": "regex_extract",
+      "description": "Extract email gateway timestamp, message identifiers, SMTP status, and subject from raw log text."
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "activity_id",
+            "value": "5"
+          },
+          {
+            "name": "protocol_name",
+            "value": "'SMTP'"
+          },
+          {
+            "name": "status_id",
+            "value": "__e.smtp_status && __e.smtp_status.startsWith('250') ? 1 : (__e.smtp_status ? 2 : 0)"
+          },
+          {
+            "name": "status",
+            "value": "__e.smtp_status && __e.smtp_status.startsWith('250') ? 'Success' : (__e.smtp_status ? 'Failure' : 'Unknown')"
+          },
+          {
+            "name": "message_trace_uid",
+            "value": "__e.temp_mid ? __e.temp_mid : null"
+          },
+          {
+            "name": "email",
+            "value": "{}"
+          },
+          {
+            "name": "email.uid",
+            "value": "__e.temp_mid ? __e.temp_mid : null"
+          },
+          {
+            "name": "email.subject",
+            "value": "__e.temp_subject ? __e.temp_subject : null"
+          }
+        ]
+      },
+      "id": "eval",
+      "description": "Populate selected OCSF email activity fields from extracted email gateway values."
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract timestamp, log level, message id, subject, and SMTP status from email activity raw logs.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<event_time>\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})\\s+(?<log_level>\\w+):/gm",
+        "regexList": [
+          {
+            "regex": "/\\bMID\\s+(?<mid>\\d+)/gm"
+          },
+          {
+            "regex": "/\\bSubject\\s+'(?<subject>[^']*)'/gm"
+          },
+          {
+            "regex": "/smtp-status','(?<smtp_status>[^']+)'/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set OCSF Email Activity required fields and observables from extracted email identifiers.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4009"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "direction_id",
+            "value": "0"
+          },
+          {
+            "name": "severity_id",
+            "value": "log_level==='Info'?1:(log_level==='Warning'?3:(log_level==='Error'?4:0))"
+          },
+          {
+            "name": "type_uid",
+            "value": "_raw.indexOf('Message done')>=0?400905:400900"
+          },
+          {
+            "name": "observables",
+            "value": "subject ? [{name:'email.uid',type_id:41},{name:'email.subject',type_id:40}] : (mid ? [{name:'email.uid',type_id:41}] : [])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF metadata fields from email activity raw log.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "'email_activity'"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "_raw ? _raw.substring(0,24) : null"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Cisco Email Security Appliance'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Cisco'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "keep": [
+          "metadata.*"
+        ],
+        "remove": [
+          "_raw",
+          "_time"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,100 @@
+{
+  "key": "citrix_netscaler::__extraction__",
+  "sourcetype": "citrix_netscaler",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:32:32.030Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse the NetScaler syslog header and native event envelope",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<device_host>\\S+)\\s+(?<process>[^\\[]+)\\[(?<process_id>\\d+)\\]:\\s+(?<timestamp>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2}\\s+\\S+)\\s+(?<appliance>\\S+)\\s+(?<ppe>\\S+)\\s+:\\s+(?<partition>\\S+)\\s+(?<facility>\\S+)\\s+(?<event_type>\\S+)\\s+(?<event_id>\\d+)\\s+(?<event_code>\\d+)\\s+:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('Client_ip =')",
+      "disabled": false,
+      "description": "Extract client IP and optional destination virtual server",
+      "conf": {
+        "source": "message",
+        "regex": "/Client_ip\\s*=\\s*(?<src_ip>[0-9A-Fa-f:.]+)(?:(?:\\s+Username\\s*=\\s*\"[^\"]*\")?\\s+Vserver\\s*=\\s*(?<dst_host>[^\\s:]+)(?::(?<dst_port>\\d+))?)?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.includes('Username =') || message.includes('User ='))",
+      "disabled": false,
+      "description": "Extract the authenticated or administrative user",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:Username|User)\\s*=\\s*\"(?<user>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('Reason =')",
+      "disabled": false,
+      "description": "Extract the reported failure or state-change reason",
+      "conf": {
+        "source": "message",
+        "regex": "/Reason\\s*=\\s*\"(?<reason>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract event-family-specific NetScaler attributes",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:Assigned_IP_address\\s*=\\s*(?<assigned_ip>[0-9A-Fa-f:.]+)\\s+Nas_port\\s*=\\s*(?<nas_port>\\d+)|Duration\\s*=\\s*(?<duration>\\d+)\\s+Bytes_sent\\s*=\\s*(?<bytes_sent>\\d+)\\s+Bytes_recv\\s*=\\s*(?<bytes_received>\\d+)|Service\\s*=\\s*\"(?<service>[^\"]*)\"\\s+Monitor\\s*=\\s*\"(?<monitor>[^\"]*)\"\\s+Server_ip\\s*=\\s*(?<dst_ip>[0-9A-Fa-f:.]+)\\s+Server_port\\s*=\\s*(?<server_port>\\d+)|Profile\\s*=\\s*\"(?<profile>[^\"]*)\"\\s+URL\\s*=\\s*\"(?<url>[^\"]*)\"\\s+Action\\s*=\\s*\"(?<reported_action>[^\"]*)\"|Site\\s*=\\s*\"(?<site>[^\"]*)\"\\s+Vserver\\s*=\\s*\"(?<gslb_vserver>[^\"]*)\"|Cipher\\s*=\\s*\"(?<cipher>[^\"]*)\"|Certificate\\s*=\\s*\"(?<certificate>[^\"]*)\"\\s+Days_remaining\\s*=\\s*(?<days_remaining>\\d+)\\s+Vserver\\s*=\\s*(?<certificate_vserver>[^\\s:]+)(?::(?<certificate_vserver_port>\\d+))?|Command\\s*=\\s*\"(?<command>[^\"]*)\"|Old_master\\s*=\\s*\"(?<old_master>[^\"]*)\"\\s+New_master\\s*=\\s*\"(?<new_master>[^\"]*)\")/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action, severity, direction, and protocol",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "event_type === 'AAA_LOGIN_SUCCESS' ? 'success' : event_type === 'AAA_LOGIN_FAIL' || event_type === 'LOGIN_FAILED' || event_type === 'SSL_HANDSHAKE_FAILURE' ? 'failure' : event_type === 'AAATM_SESSION_LIMIT' ? 'deny' : event_type === 'SSLVPN_SESSION_START' ? 'start' : event_type === 'SSLVPN_SESSION_END' ? 'end' : event_type === 'LB_MONITOR_DOWN' || event_type === 'GSLB_SITE_DOWN' ? 'down' : event_type === 'LB_MONITOR_UP' ? 'up' : event_type === 'APPFW_SQL_VIOLATION' || event_type === 'APPFW_XSS_VIOLATION' ? 'blocked' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warning' : event_type === 'CMD_EXECUTED' ? 'executed' : event_type === 'HA_FAILOVER' ? 'failover' : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "event_type === 'APPFW_SQL_VIOLATION' || event_type === 'APPFW_XSS_VIOLATION' || event_type === 'HA_FAILOVER' ? 'high' : event_type === 'AAA_LOGIN_FAIL' || event_type === 'LOGIN_FAILED' || event_type === 'SSL_HANDSHAKE_FAILURE' || event_type === 'AAATM_SESSION_LIMIT' || event_type === 'LB_MONITOR_DOWN' || event_type === 'GSLB_SITE_DOWN' ? 'medium' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warning' : 'informational'"
+          },
+          {
+            "name": "direction",
+            "value": "facility === 'AAA' || facility === 'SSLVPN' || facility === 'APPFW' || facility === 'SSL' ? 'inbound' : 'internal'"
+          },
+          {
+            "name": "protocol",
+            "value": "facility === 'SSL' || facility === 'SSLVPN' || facility === 'APPFW' || facility === 'LB' ? 'tcp' : 'unknown'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

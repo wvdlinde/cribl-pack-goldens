@@ -1,0 +1,106 @@
+{
+  "key": "ivanti_https_request::__extraction__",
+  "sourcetype": "ivanti_https_request",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:11.500Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, source host, and raw KVP body from Ivanti HTTPS request log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<dst_host>\\S+) ivanti_https_request: (?<__kvp_body>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse KVP-formatted body into structured fields (id, severity, user, src_ip, dst_ip, method, url, status_code, bytes, user_agent, session_id, realm, roles, result, reason)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_body",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, action, and message fields; classify src_ip type",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'https'"
+          },
+          {
+            "name": "action",
+            "value": "result === 'success' ? 'allowed' : (result === 'failure' ? 'blocked' : 'unknown')"
+          },
+          {
+            "name": "dst_port",
+            "value": "443"
+          },
+          {
+            "name": "message",
+            "value": "method + ' ' + url + ' -> ' + status_code"
+          },
+          {
+            "name": "src_ip_type",
+            "value": "src_ip && src_ip.match(/:/) ? 'ipv6' : (src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)/) ? 'internal' : 'external')"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip_type === 'internal' ? 'outbound' : 'inbound'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Remove scratch fields used only during parsing",
+      "conf": {
+        "remove": [
+          "__kvp_body"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "bytes",
+        "bytes_note",
+        "dst_ip",
+        "id",
+        "method",
+        "note",
+        "realm",
+        "reason",
+        "result",
+        "roles",
+        "session_id",
+        "severity",
+        "src_ip",
+        "status_code",
+        "url",
+        "user",
+        "user_agent"
+      ]
+    }
+  },
+  "report": null
+}

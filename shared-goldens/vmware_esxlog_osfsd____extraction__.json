@@ -1,0 +1,92 @@
+{
+  "key": "vmware_esxlog_osfsd::__extraction__",
+  "sourcetype": "vmware_esxlog_osfsd",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:19:19.481Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base osfsd log line: timestamp, host, pid, severity, event code, and message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+osfsd\\[(?<pid>\\d+)\\]:\\s+(?:(?<severity>WARNING|ERROR):\\s+)?OSFS(?:-VMFS)?:\\s+(?<event_code>\\d+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Default severity to INFO and classify action based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "severity ? severity : 'INFO'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/Successfully opened volume/) ? 'open' : message.match(/heartbeat update delayed/) ? 'heartbeat_delay' : message.match(/Lock acquired/) ? 'lock_acquired' : message.match(/Failed to acquire lock/) ? 'lock_failed' : message.match(/Closing volume/) ? 'close' : message.match(/latency exceeded threshold/) ? 'latency_warning' : message.match(/Metadata scan completed/) ? 'metadata_scan' : message.match(/Volume open failed/) ? 'open_failed' : message.match(/Lock released/) ? 'lock_released' : message.match(/not responding/) ? 'nfs_unresponsive' : message.match(/Heartbeat lost/) ? 'heartbeat_lost' : message.match(/Unusual lock contention/) ? 'lock_contention' : 'unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/volume\\s+[0-9a-f-]+/)",
+      "disabled": false,
+      "description": "Extract volume UUID from message text",
+      "conf": {
+        "source": "message",
+        "regex": "/volume\\s+(?<volume_uuid>[0-9a-f]{8}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{12})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.match(/\\/vmfs\\/volumes\\//) || message.match(/naa\\./))",
+      "disabled": false,
+      "description": "Extract VMFS file path or physical device identifier from message",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:'(?<file_path>\\/vmfs\\/volumes\\/[^']+)'|(?<device_id>naa\\.[0-9a-f]+))/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/from user/)",
+      "disabled": false,
+      "description": "Extract user responsible for unmount/close request",
+      "conf": {
+        "source": "message",
+        "regex": "/from user (?<user>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/NFS server/)",
+      "disabled": false,
+      "description": "Extract NFS server IP and port from unresponsive NFS server message",
+      "conf": {
+        "source": "message",
+        "regex": "/NFS server (?<src_ip>[0-9.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

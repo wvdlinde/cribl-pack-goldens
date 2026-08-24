@@ -1,0 +1,118 @@
+{
+  "key": "ivanti_mdstat::__extraction__",
+  "sourcetype": "ivanti_mdstat",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:40.793Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (timestamp, host, pid, level) and remaining key=value payload from mdstat log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s(?<host>\\S+)\\smdstat\\[(?<pid>\\d+)\\]:\\s(?<level>\\w+)\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract all key=value pairs (cpu, mem, sessions, user, src_ip, result, reason, action, etc.) from the mdstat message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Convert syslog timestamp to epoch _time (assumes current log year)",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "C.Time.strptime(timestamp + ' 2024', '%b %d %H:%M:%S %Y')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive normalized severity, action, and event_type from mdstat message level and AUTH result",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level=='CRITICAL' ? 'critical' : level=='ERROR' ? 'error' : level=='WARN' ? 'warning' : level=='SECURITY' ? 'critical' : level=='AUTH' ? (result=='failure' ? 'warning' : 'info') : 'info'"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "level=='AUTH' ? (result=='success' ? 'allowed' : 'blocked') : action"
+          },
+          {
+            "name": "event_type",
+            "value": "level.toLowerCase()"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "attempts",
+        "cert_name",
+        "component",
+        "cpu",
+        "days_remaining",
+        "duration_ms",
+        "event",
+        "long_field",
+        "max_sessions",
+        "mem",
+        "msg",
+        "partition",
+        "payload_extra",
+        "policy",
+        "realm",
+        "reason",
+        "result",
+        "retries",
+        "roles",
+        "server",
+        "session_id",
+        "sessions",
+        "sessions_affected",
+        "src_ip",
+        "status",
+        "swap",
+        "target_user",
+        "threshold_pct",
+        "uptime",
+        "usage_pct",
+        "user",
+        "users",
+        "window_sec"
+      ]
+    }
+  },
+  "report": null
+}

@@ -1,0 +1,54 @@
+{
+  "key": "iostat::__extraction__",
+  "sourcetype": "iostat",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:50:43.052Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse iostat key=value log line into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) host=(?<host>\\S+) ip=(?<src_ip>\\S+) iostat device=(?<device>\\S+) tps=(?<tps>[\\d.]*) kB_read\\/s=(?<kb_read_s>[\\d.]*) kB_wrtn\\/s=(?<kb_wrtn_s>[\\d.]*) %util=(?<util_pct>[\\d.]*) await=(?<await>[\\d.]*) svctm=(?<svctm>[\\d.]*) status=(?<status>\\S+)(?: msg=\"(?<message>[^\"]*)\")?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from ISO timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity based on status field",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "status=='CRIT' ? 'critical' : status=='WARN' ? 'warning' : status=='IDLE' ? 'info' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

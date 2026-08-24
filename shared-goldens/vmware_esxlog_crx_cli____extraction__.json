@@ -1,0 +1,100 @@
+{
+  "key": "vmware_esxlog_crx_cli::__extraction__",
+  "sourcetype": "vmware_esxlog_crx_cli",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:22:47.992Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base crx-cli log line into timestamp, host, pid, severity and message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+crx-cli\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/@/)",
+      "disabled": false,
+      "description": "Extract user and source IP/host from 'user@ip' patterns in the message",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<user>[\\w.-]+)@(?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/'/)",
+      "disabled": false,
+      "description": "Extract container name from single-quoted references in the message",
+      "conf": {
+        "source": "message",
+        "regex": "/'(?<container>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/IPv6 address/)",
+      "disabled": false,
+      "description": "Extract destination IPv6 address and port from network attachment messages",
+      "conf": {
+        "source": "message",
+        "regex": "/IPv6 address (?<dst_ip>[0-9a-fA-F:]+) on port (?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !message.match(/@/) && message.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "description": "Extract source IPv4 address from 'from'/'source' phrases when no user@ip pattern present",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:from|source)\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action based on message content, normalize severity, and derive protocol when a destination port is present",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/created successfully/) ? 'create' : message.match(/create container/) ? 'create_request' : message.match(/Removed stopped container/) ? 'delete' : message.match(/stopped gracefully/) ? 'stop' : message.match(/Failed to pull image/) ? 'pull_failed' : message.match(/failed authentication attempts/) ? 'auth_failure' : message.match(/Volume mount/) ? 'mount_failed' : message.match(/exceeded memory/) ? 'resource_limit_exceeded' : message.match(/health check timeout/) ? 'health_check_failed' : message.match(/network attached/) ? 'network_attach' : message.match(/Suspicious container creation/) ? 'suspicious_activity' : message.match(/service restarted/) ? 'service_restart' : message.match(/requested list of running containers/) ? 'list_containers' : message.match(/resource limits/) ? 'start' : 'other'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port ? 'tcp' : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

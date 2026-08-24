@@ -1,0 +1,141 @@
+{
+  "key": "fortigate_adc::__extraction__",
+  "sourcetype": "fortigate_adc",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:20:29.892Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse FortiADC key=value log line into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event _time from epoch eventtime or date+time, and preserve raw action/level for downstream lookups",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "eventtime ? Number(eventtime) : Math.floor(Date.parse(date + 'T' + time + 'Z')/1000)"
+          },
+          {
+            "name": "ftnt_action",
+            "value": "action"
+          },
+          {
+            "name": "ftnt_level",
+            "value": "level"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity to CIM severity/severity_id and Sentinel LogSeverity using golden severity lookups keyed on level",
+      "conf": {
+        "add": [
+          {
+            "name": "__cim_sev",
+            "value": "lookup('ftnt_cim_severity.csv', {ftnt_level: level})"
+          },
+          {
+            "name": "severity",
+            "value": "__cim_sev ? __cim_sev.severity : level"
+          },
+          {
+            "name": "severity_id",
+            "value": "__cim_sev ? __cim_sev.severity_id : null"
+          },
+          {
+            "name": "__csl_sev",
+            "value": "lookup('ftnt_csl_severity.csv', {ftnt_level: level})"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "__csl_sev ? __csl_sev.LogSeverity : null"
+          },
+          {
+            "name": "LogSeverityLabel",
+            "value": "__csl_sev ? __csl_sev.LogSeverityLabel : null"
+          }
+        ],
+        "remove": [
+          "__cim_sev",
+          "__csl_sev"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action to CIM action and enrich with ADC-specific action category/description from golden action lookups",
+      "conf": {
+        "add": [
+          {
+            "name": "__cim_action",
+            "value": "lookup('ftnt_cim_action.csv', {ftnt_action: ftnt_action})"
+          },
+          {
+            "name": "action",
+            "value": "__cim_action ? __cim_action.action : ftnt_action"
+          },
+          {
+            "name": "__event_action",
+            "value": "lookup('ftnt_event_action_info.csv', {action: ftnt_action})"
+          },
+          {
+            "name": "action_category",
+            "value": "__event_action ? __event_action.action_category : null"
+          },
+          {
+            "name": "action_description",
+            "value": "__event_action ? __event_action.description : null"
+          }
+        ],
+        "remove": [
+          "__cim_action",
+          "__event_action"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Determine whether event should be dropped per golden events_drop policy based on type/subtype",
+      "conf": {
+        "add": [
+          {
+            "name": "__drop_lookup",
+            "value": "lookup('ftnt_events_drop.csv', {type: type, subtype: subtype})"
+          },
+          {
+            "name": "drop_event",
+            "value": "__drop_lookup ? __drop_lookup.drop : null"
+          }
+        ],
+        "remove": [
+          "__drop_lookup"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,106 @@
+{
+  "key": "tenable_ad_alerts::__extraction__",
+  "sourcetype": "tenable_ad_alerts",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:38:31.998Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse JSON-formatted Tenable.ad alert events",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive standard timestamp field from ISO8601 timestamp",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize network/user/action fields for downstream mapping",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "source_ip"
+          },
+          {
+            "name": "src_host",
+            "value": "source_host"
+          },
+          {
+            "name": "user",
+            "value": "target_user"
+          },
+          {
+            "name": "message",
+            "value": "description"
+          },
+          {
+            "name": "action",
+            "value": "outcome == 'success' ? 'allowed' : outcome == 'failure' ? 'blocked' : outcome == 'detected' ? 'detected' : outcome"
+          },
+          {
+            "name": "protocol",
+            "value": "'ldap'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify alert category based on indicator_type",
+      "conf": {
+        "add": [
+          {
+            "name": "category",
+            "value": "indicator_type == 'IoA' ? 'Indicator of Attack' : indicator_type == 'IoE' ? 'Indicator of Exposure' : 'Unknown'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "alert_id",
+        "alert_name",
+        "description",
+        "domain",
+        "indicator_type",
+        "mitre_technique",
+        "outcome",
+        "severity",
+        "source_host",
+        "source_ip",
+        "target_object",
+        "target_user",
+        "timestamp"
+      ]
+    }
+  },
+  "report": null
+}

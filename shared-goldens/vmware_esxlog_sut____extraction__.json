@@ -1,0 +1,134 @@
+{
+  "key": "vmware_esxlog_sut::__extraction__",
+  "sourcetype": "vmware_esxlog_sut",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:19:08.984Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract base structure: timestamp, source host, process/service, optional pid, and remaining message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<process>\\w+)(?:\\[(?<pid>\\d+)\\])?:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process == 'Hostd' || process == 'Vpxa'",
+      "disabled": false,
+      "description": "Strip Hostd/Vpxa bracketed metadata: thread/component id, severity, component name, clean message",
+      "conf": {
+        "source": "message",
+        "regex": "/^\\[(?<component_id>\\S+) (?<severity>\\w+) '(?<component>[^']+)'\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process == 'vmkernel'",
+      "disabled": false,
+      "description": "Extract vmkernel cpu/thread id and inline severity token",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<cpu>cpu\\d+):(?<tid>\\d+)\\)(?<severity>\\w+):\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract user, source/destination IPs, ports and related scratch fields from auth/network related messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:User (?<__u1>[\\w.-]+)@(?<__ip1>[0-9.:a-fA-F]+) logged in as (?<__login_as>\\S+))|(?:User (?<__u2>\\S+) logged out)|(?:Failed password for (?:invalid user )?(?<__u3>\\S+) from (?<__ip2>[0-9.:a-fA-F]+) port (?<__port1>\\d+) ssh2)|(?:Accepted (?<__authmethod>\\S+) for (?<__u4>\\S+) from (?<__ip3>[0-9.:a-fA-F]+) port (?<__port2>\\d+) ssh2)|(?:Authentication failed for user (?<__u5>\\S+) from (?<__ip4>[0-9.:a-fA-F]+))|(?:Account (?<__u6>\\S+) locked out after (?<__attempts>\\d+) failed login attempts from (?<__ip5>[0-9.:a-fA-F]+))|(?:User (?<__u7>\\S+) attempted CIM operation (?<__cimop>\\S+) on class (?<__cimclass>\\S+), access denied)|(?:Failed to connect to host (?<__dstip1>[0-9.]+) on port (?<__dstport1>\\d+), connection refused)|(?:Host (?<__affectedhost>\\S+) disconnected from vCenter (?<__dstip2>[0-9.]+), reason: (?<__reason>.+))/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Consolidate scratch fields into clean user/src_ip/dst_ip/dst_port fields, classify action, normalize severity and protocol",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "__u1 ? __u1 : __u2 ? __u2 : __u3 ? __u3 : __u4 ? __u4 : __u5 ? __u5 : __u6 ? __u6 : __u7 ? __u7 : null"
+          },
+          {
+            "name": "src_ip",
+            "value": "__ip1 ? __ip1 : __ip2 ? __ip2 : __ip3 ? __ip3 : __ip4 ? __ip4 : __ip5 ? __ip5 : null"
+          },
+          {
+            "name": "src_port",
+            "value": "__port1 ? __port1 : __port2 ? __port2 : null"
+          },
+          {
+            "name": "dst_ip",
+            "value": "__dstip1 ? __dstip1 : __dstip2 ? __dstip2 : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "__dstport1 ? __dstport1 : null"
+          },
+          {
+            "name": "action",
+            "value": "message.includes('logged in') ? 'login_success' : message.includes('logged out') ? 'logout' : message.startsWith('Failed password') ? 'login_failure' : message.startsWith('Accepted') ? 'login_success' : message.startsWith('Authentication failed') ? 'login_failure' : (message.startsWith('Account') && message.includes('locked out')) ? 'account_locked' : message.includes('CIM operation') ? 'access_denied' : message.startsWith('Failed to connect') ? 'connection_failure' : message.includes('disconnected') ? 'disconnected' : message.includes('Task Created') ? 'task_created' : message.includes('Task Completed') ? 'task_completed' : message.includes('HostSync complete') ? 'sync_complete' : message.includes('Certificate') ? 'certificate_warning' : message.includes('NTP') ? 'ntp_alert' : (message.includes('Cmd') && message.includes('Failed')) ? 'storage_path_failure' : 'other'"
+          },
+          {
+            "name": "protocol",
+            "value": "process == 'sshd' ? 'ssh' : (process == 'Hostd' || process == 'Vpxa') ? 'vmomi' : null"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : message.includes('ALERT') ? 'alert' : message.includes('WARNING') ? 'warning' : 'info'"
+          }
+        ],
+        "remove": [
+          "__u1",
+          "__u2",
+          "__u3",
+          "__u4",
+          "__u5",
+          "__u6",
+          "__u7",
+          "__ip1",
+          "__ip2",
+          "__ip3",
+          "__ip4",
+          "__ip5",
+          "__port1",
+          "__port2",
+          "__dstip1",
+          "__dstip2",
+          "__dstport1",
+          "__login_as",
+          "__authmethod",
+          "__attempts",
+          "__cimop",
+          "__cimclass",
+          "__affectedhost",
+          "__reason"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

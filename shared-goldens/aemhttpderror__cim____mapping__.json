@@ -1,0 +1,122 @@
+{
+  "key": "aemhttpderror::cim::__mapping__",
+  "sourcetype": "aemhttpderror",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:47:24.992Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Web'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Web Activity'"
+          },
+          {
+            "name": "src",
+            "value": "client_ip || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(client_port || 0)"
+          },
+          {
+            "name": "process_id",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "process",
+            "value": "String(tid || '')"
+          },
+          {
+            "name": "severity",
+            "value": "level || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "level=='alert'?1:level=='error'?3:level=='warn'?4:level=='notice'?5:6"
+          },
+          {
+            "name": "signature",
+            "value": "message || ''"
+          },
+          {
+            "name": "user",
+            "value": "(message && message.match(/user\\s+'?([\\w-]+)'?/i)) ? message.match(/user\\s+'?([\\w-]+)'?/i)[1] : ''"
+          },
+          {
+            "name": "url",
+            "value": "(message && message.match(/(\\/[^\\s:]+)/)) ? message.match(/(\\/[^\\s:]+)/)[1] : ''"
+          },
+          {
+            "name": "object",
+            "value": "(message && message.match(/(\\/[^\\s:]+)/)) ? message.match(/(\\/[^\\s:]+)/)[1] : ''"
+          },
+          {
+            "name": "category",
+            "value": "message && message.toLowerCase().indexOf('sql injection')>-1 ? 'attack' : (message && message.toLowerCase().indexOf('authentication')>-1 ? 'authentication' : 'error')"
+          },
+          {
+            "name": "action",
+            "value": "message && message.toLowerCase().indexOf('denied')>-1 ? 'blocked' : (message && message.toLowerCase().indexOf('successful')>-1 ? 'allowed' : '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_product",
+            "value": "'Apache HTTP Server'"
+          },
+          {
+            "name": "app",
+            "value": "'aem'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aemhttpderror'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

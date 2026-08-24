@@ -1,0 +1,71 @@
+{
+  "key": "ncsc_fidelis_endpoint_audit::__extraction__",
+  "sourcetype": "ncsc_fidelis_endpoint_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:37:24.910Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract JSON fields from raw endpoint audit event",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from ISO8601 timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol casing and derive traffic direction from src_ip/dst_ip presence",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : protocol"
+          },
+          {
+            "name": "direction",
+            "value": "dst_ip && src_ip ? 'outbound' : (src_ip && !dst_ip ? 'inbound' : 'unknown')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action into a coarse action_category field while preserving original granular action",
+      "conf": {
+        "add": [
+          {
+            "name": "action_category",
+            "value": "(action=='allow') ? 'allow' : ((action=='deny' || action=='blocked') ? 'deny' : ((action=='alert' || action=='remediate') ? 'alert' : 'other'))"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,194 @@
+{
+  "key": "pan_globalprotect_syslog::xsiam",
+  "sourcetype": "pan_globalprotect_syslog",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:20.816Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "pan_globalprotect_syslog → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'pan globalprotect syslog'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'pan_globalprotect_syslog:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "pan_globalprotect_syslog_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 02:14:33,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693952,2024/01/15 02:14:33,vsys1,gateway-connect,auth,tunnel.1,jsmith,10.45.12.88,US,GlobalProtect-gateway,success,,Windows,5.3.2,0,1,login,connect,192.168.1.100,jsmith@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 03:47:22,PA-3250-DMZ,GLOBALPROTECT,0,2305843009213693953,2024/01/15 03:47:22,vsys2,gateway-disconnect,logout,tunnel.2,mwilliams,172.16.4.55,GB,GlobalProtect-gateway,success,,macOS,5.2.13,0,1,logout,disconnect,10.0.0.50,mwilliams@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 04:03:11,PA-5260-HQ,GLOBALPROTECT,0,2305843009213693954,2024/01/15 04:03:11,vsys1,portal-connect,auth,N/A,badactor,203.0.113.45,CN,GlobalProtect-portal,failure,,Windows,5.1.8,0,5,login,failed-auth,203.0.113.45,badactor@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 05:22:44,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693955,2024/01/15 05:22:44,vsys1,gateway-connect,auth,tunnel.3,rthompson,10.30.5.201,AU,GlobalProtect-gateway,success,,iOS,5.2.8,0,1,login,connect,192.168.10.5,rthompson@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 06:11:09,PA-820-BRANCH,GLOBALPROTECT,0,2305843009213693956,2024/01/15 06:11:09,vsys1,gateway-connect,auth,tunnel.1,lhernandez,172.16.100.22,MX,GlobalProtect-gateway,success,,Android,5.3.0,0,1,login,connect,10.10.1.5,lhernandez@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 06:45:33,PA-5260-HQ,GLOBALPROTECT,0,2305843009213693957,2024/01/15 06:45:33,vsys1,portal-connect,auth,N/A,admin,198.51.100.77,RU,GlobalProtect-portal,failure,,Windows,4.1.13,0,10,login,failed-auth,198.51.100.77,admin@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 07:00:55,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693958,2024/01/15 07:00:55,vsys1,gateway-connect,auth,tunnel.5,agarwal,49.207.61.100,IN,GlobalProtect-gateway,success,,Windows,5.3.2,0,1,login,connect,192.168.1.105,agarwal@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      },
+      {
+        "_raw": "<pan-vpn-log>1,2024-01-15 07:18:42,PA-3250-DMZ,GLOBALPROTECT,0,2305843009213693959,2024/01/15 07:18:42,vsys2,gateway-disconnect,timeout,tunnel.4,kpatel,10.22.3.77,US,GlobalProtect-gateway,success,,macOS,5.3.1,0,1,logout,timeout-disconnect,10.0.0.55,kpatel@corp.local</pan-vpn-log>",
+        "_time": 1784049673.892,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "pan globalprotect syslog",
+        "__product": "Security",
+        "sourcetype": "pan_globalprotect_syslog:xsiam"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "<pan-vpn-log>1,2024-01-15 02:14:33,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693952,2024/01/15 02:14:33,vsys1,gateway-connect,auth,tunnel.1,jsmith,10.45.12.88,US,GlobalProtect-gateway,success,,Windows,5.3.2,0,1,login,connect,192.168.1.100,jsmith@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 03:47:22,PA-3250-DMZ,GLOBALPROTECT,0,2305843009213693953,2024/01/15 03:47:22,vsys2,gateway-disconnect,logout,tunnel.2,mwilliams,172.16.4.55,GB,GlobalProtect-gateway,success,,macOS,5.2.13,0,1,logout,disconnect,10.0.0.50,mwilliams@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 04:03:11,PA-5260-HQ,GLOBALPROTECT,0,2305843009213693954,2024/01/15 04:03:11,vsys1,portal-connect,auth,N/A,badactor,203.0.113.45,CN,GlobalProtect-portal,failure,,Windows,5.1.8,0,5,login,failed-auth,203.0.113.45,badactor@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 05:22:44,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693955,2024/01/15 05:22:44,vsys1,gateway-connect,auth,tunnel.3,rthompson,10.30.5.201,AU,GlobalProtect-gateway,success,,iOS,5.2.8,0,1,login,connect,192.168.10.5,rthompson@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 06:11:09,PA-820-BRANCH,GLOBALPROTECT,0,2305843009213693956,2024/01/15 06:11:09,vsys1,gateway-connect,auth,tunnel.1,lhernandez,172.16.100.22,MX,GlobalProtect-gateway,success,,Android,5.3.0,0,1,login,connect,10.10.1.5,lhernandez@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 06:45:33,PA-5260-HQ,GLOBALPROTECT,0,2305843009213693957,2024/01/15 06:45:33,vsys1,portal-connect,auth,N/A,admin,198.51.100.77,RU,GlobalProtect-portal,failure,,Windows,4.1.13,0,10,login,failed-auth,198.51.100.77,admin@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 07:00:55,PA-5250-CORP,GLOBALPROTECT,0,2305843009213693958,2024/01/15 07:00:55,vsys1,gateway-connect,auth,tunnel.5,agarwal,49.207.61.100,IN,GlobalProtect-gateway,success,,Windows,5.3.2,0,1,login,connect,192.168.1.105,agarwal@corp.local</pan-vpn-log>",
+      "<pan-vpn-log>1,2024-01-15 07:18:42,PA-3250-DMZ,GLOBALPROTECT,0,2305843009213693959,2024/01/15 07:18:42,vsys2,gateway-disconnect,timeout,tunnel.4,kpatel,10.22.3.77,US,GlobalProtect-gateway,success,,macOS,5.3.1,0,1,logout,timeout-disconnect,10.0.0.55,kpatel@corp.local</pan-vpn-log>"
+    ],
+    "sourcetype": "pan_globalprotect_syslog"
+  }
+}

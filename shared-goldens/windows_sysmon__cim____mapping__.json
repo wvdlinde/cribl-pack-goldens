@@ -1,0 +1,167 @@
+{
+  "key": "windows_sysmon::cim::__mapping__",
+  "sourcetype": "windows_sysmon",
+  "dest_format": "cim::__mapping__",
+  "score": 92,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 375,
+  "updated_at": "2026-08-07T09:23:24.171Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'Sysmon'"
+          },
+          {
+            "name": "version",
+            "value": "'15.x'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM (Endpoint / Processes)",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != null && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != 'undefined' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != 'null' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != '-' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != '' ? (/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(outcome) != null && String(outcome) != 'undefined' && String(outcome) != 'null' && String(outcome) != '-' && String(outcome) != '' ? (outcome) : undefined"
+          },
+          {
+            "name": "dest",
+            "value": "(host || hostname) != null && String(host || hostname) != 'undefined' && String(host || hostname) != 'null' && String(host || hostname) != '-' && String(host || hostname) != '' ? (host || hostname) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "user_id",
+            "value": "(user_id) != null && String(user_id) != 'undefined' && String(user_id) != 'null' && String(user_id) != '-' && String(user_id) != '' ? (user_id) : undefined"
+          },
+          {
+            "name": "process",
+            "value": "(command || process) != null && String(command || process) != 'undefined' && String(command || process) != 'null' && String(command || process) != '-' && String(command || process) != '' ? (command || process) : undefined"
+          },
+          {
+            "name": "process_name",
+            "value": "(process_name) != null && String(process_name) != 'undefined' && String(process_name) != 'null' && String(process_name) != '-' && String(process_name) != '' ? (process_name) : undefined"
+          },
+          {
+            "name": "process_path",
+            "value": "(process) != null && String(process) != 'undefined' && String(process) != 'null' && String(process) != '-' && String(process) != '' ? (process) : undefined"
+          },
+          {
+            "name": "process_exec",
+            "value": "(process_name) != null && String(process_name) != 'undefined' && String(process_name) != 'null' && String(process_name) != '-' && String(process_name) != '' ? (process_name) : undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "parent_process_id",
+            "value": "(parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '' ? Number(parent_process_id) : undefined"
+          },
+          {
+            "name": "signature",
+            "value": "(signature) != null && String(signature) != 'undefined' && String(signature) != 'null' && String(signature) != '-' && String(signature) != '' ? (signature) : undefined"
+          },
+          {
+            "name": "object",
+            "value": "(object) != null && String(object) != 'undefined' && String(object) != 'null' && String(object) != '-' && String(object) != '' ? (object) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "((vendor || 'Linux') + ' ' + (product || 'Auditd')) != null && String((vendor || 'Linux') + ' ' + (product || 'Auditd')) != 'undefined' && String((vendor || 'Linux') + ' ' + (product || 'Auditd')) != 'null' && String((vendor || 'Linux') + ' ' + (product || 'Auditd')) != '-' && String((vendor || 'Linux') + ' ' + (product || 'Auditd')) != '' ? ((vendor || 'Linux') + ' ' + (product || 'Auditd')) : undefined"
+          },
+          {
+            "name": "app",
+            "value": "(product || app) != null && String(product || app) != 'undefined' && String(product || app) != 'null' && String(product || app) != '-' && String(product || app) != '' ? (product || app) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'windows_sysmon'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Keep only Splunk CIM (Endpoint / Processes) fields + routing",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "action",
+          "action.*",
+          "status",
+          "status.*",
+          "dest",
+          "dest.*",
+          "user",
+          "user.*",
+          "user_id",
+          "user_id.*",
+          "process",
+          "process.*",
+          "process_name",
+          "process_name.*",
+          "process_path",
+          "process_path.*",
+          "process_exec",
+          "process_exec.*",
+          "process_id",
+          "process_id.*",
+          "parent_process_id",
+          "parent_process_id.*",
+          "signature",
+          "signature.*",
+          "object",
+          "object.*",
+          "vendor_product",
+          "vendor_product.*",
+          "app",
+          "app.*",
+          "_raw"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

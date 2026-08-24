@@ -1,0 +1,74 @@
+{
+  "key": "ms_iis_auto::__extraction__",
+  "sourcetype": "ms_iis_auto",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:41:32.578Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse IIS W3C-style log line into base fields (timestamp, server/client IPs, method, URI, port, user, status codes, timing)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+ \\S+) (?<dst_ip>\\[[0-9a-fA-F:]+\\]|\\S+) (?<http_method>\\S+) (?<uri_stem>\\S+) (?<uri_query>\\S+) (?<dst_port>\\d+) (?<user>\\S+) (?<src_ip>\\[[0-9a-fA-F:]+\\]|\\S+) (?<user_agent>\\S+) (?<referer>\\S+) (?<status>\\d+) (?<substatus>\\d+) (?<win32_status>\\d+) (?<time_taken>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Strip IPv6 brackets from src_ip and dst_ip per IPv6 handling convention",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/^\\[|\\]$/g, '') : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip.replace(/^\\[|\\]$/g, '') : dst_ip"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize user field, protocol, action, and severity based on parsed HTTP status/method",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "uri_query",
+            "value": "uri_query === '-' ? null : uri_query"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "action",
+            "value": "Number(status) >= 400 ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status) >= 500 ? 'high' : Number(status) >= 400 ? 'medium' : 'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

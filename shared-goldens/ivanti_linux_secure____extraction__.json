@@ -1,0 +1,111 @@
+{
+  "key": "ivanti_linux_secure::__extraction__",
+  "sourcetype": "ivanti_linux_secure",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T07:28:02.165Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header: timestamp, host, process, pid, message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s\\d{2}:\\d{2}:\\d{2})\\s(?<dst_host>\\S+)\\s(?<process>[^:\\[]+?)(?:\\[(?<pid>\\d+)\\])?:\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Accepted|Failed)\\s(password|publickey)\\sfor/)",
+      "disabled": false,
+      "description": "Extract SSH Accepted/Failed auth attempts (including invalid user variants)",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<action_raw>Accepted|Failed)\\s(?<auth_method>password|publickey)\\sfor\\s(?:invalid user\\s)?(?<user>\\S+)\\sfrom\\s(?<src_ip>\\S+)\\sport\\s(?<src_port>\\d+)\\sssh2/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Invalid user')",
+      "disabled": false,
+      "description": "Extract SSH invalid-user probe events (no auth outcome)",
+      "conf": {
+        "source": "message",
+        "regex": "/^Invalid user\\s(?<user>\\S+)\\sfrom\\s(?<src_ip>\\S+)\\sport\\s(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('authentication failure')",
+      "disabled": false,
+      "description": "Extract pam_unix authentication failure remote host and user",
+      "conf": {
+        "source": "message",
+        "regex": "/rhost=(?<src_ip>\\S+)\\s+user=(?<user>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process && process.trim()==='sudo'",
+      "disabled": false,
+      "description": "Extract sudo command execution details",
+      "conf": {
+        "source": "message",
+        "regex": "/^\\s*(?<user>\\S+)\\s:\\sTTY=(?<tty>\\S+)\\s;\\sPWD=(?<pwd>\\S+)\\s;\\sUSER=(?<target_user>\\S+)\\s;\\sCOMMAND=(?<command>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Admin login|User authentication) (success|failure)/)",
+      "disabled": false,
+      "description": "Extract Ivanti Admin/VPN server authentication events",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?:Admin login|User authentication)\\s(?<action_raw>success|failure):\\suser=(?<user>\\S+)\\srealm=(?<realm>.*?)\\ssrc=(?<src_ip>\\S+)(?:\\smethod=(?<method>\\S+))?(?:\\sreason=(?<reason>\\S+))?(?:\\sattempts=(?<attempts>\\d+))?(?:\\sauth_method=(?<auth_method>\\S+))?(?:\\ssession_id=(?<session_id>\\S+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action, severity and protocol fields across event types",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action_raw ? (action_raw.toLowerCase()==='accepted' || action_raw.toLowerCase()==='success' ? 'success' : 'failure') : (message && message.match(/Received disconnect/) ? 'disconnect' : (message && message.match(/session opened/) ? 'session_open' : (message && message.match(/New session/) ? 'session_start' : 'info')))"
+          },
+          {
+            "name": "severity",
+            "value": "action==='failure' ? 'medium' : (action==='success' ? 'low' : 'info')"
+          },
+          {
+            "name": "protocol",
+            "value": "'ssh'"
+          }
+        ],
+        "remove": [
+          "action_raw"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

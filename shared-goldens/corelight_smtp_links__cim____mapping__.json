@@ -1,0 +1,86 @@
+{
+  "key": "corelight_smtp_links::cim::__mapping__",
+  "sourcetype": "corelight_smtp_links",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T13:40:26.067Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src",
+            "value": "id.orig_h || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "id.resp_h || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(id.resp_p || 0)"
+          },
+          {
+            "name": "url",
+            "value": "link || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || ''"
+          },
+          {
+            "name": "app",
+            "value": "id.resp_p == 25 ? 'smtp' : (id.resp_p == 587 ? 'smtp-submission' : 'smtp')"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "object",
+            "value": "link || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_smtp_links'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

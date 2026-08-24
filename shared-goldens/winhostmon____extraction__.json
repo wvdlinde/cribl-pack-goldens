@@ -1,0 +1,51 @@
+{
+  "key": "winhostmon::__extraction__",
+  "sourcetype": "winhostmon",
+  "dest_format": "__extraction__",
+  "score": 98,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:45:16.692Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Windows Host Monitor (winhostmon) key=value pairs (space-delimited, double-quoted values) from _raw",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize object type field name and cast numeric disk space fields",
+      "conf": {
+        "add": [
+          {
+            "name": "object_type",
+            "value": "Type"
+          },
+          {
+            "name": "TotalSpaceKB",
+            "value": "TotalSpaceKB ? Number(TotalSpaceKB) : TotalSpaceKB"
+          },
+          {
+            "name": "FreeSpaceKB",
+            "value": "FreeSpaceKB ? Number(FreeSpaceKB) : FreeSpaceKB"
+          }
+        ],
+        "remove": [
+          "Type"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

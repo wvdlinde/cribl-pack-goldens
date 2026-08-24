@@ -1,0 +1,516 @@
+{
+  "key": "palo_alto_traffic::ocsf",
+  "sourcetype": "palo_alto_traffic",
+  "dest_format": "ocsf",
+  "score": 82,
+  "author": "wlinde@cribl.io",
+  "build": 0,
+  "updated_at": "2026-07-10T13:28:13.315Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "palo_alto_traffic to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use2",
+          "generated_time",
+          "src_ip",
+          "dest_ip",
+          "nat_src_ip",
+          "nat_dest_ip",
+          "rule_name",
+          "src_user",
+          "dest_user",
+          "application",
+          "virtual_system",
+          "src_zone",
+          "dest_zone",
+          "inbound_if",
+          "outbound_if",
+          "log_action",
+          "future_use3",
+          "session_id",
+          "repeat_count",
+          "src_port",
+          "dest_port",
+          "nat_src_port",
+          "nat_dest_port",
+          "flags",
+          "protocol",
+          "action",
+          "bytes",
+          "bytes_out",
+          "bytes_in",
+          "packets",
+          "start_time",
+          "duration",
+          "category",
+          "future_use4",
+          "sequence_number",
+          "action_flags",
+          "src_location",
+          "dest_location",
+          "future_use5",
+          "packets_out",
+          "packets_in",
+          "session_end_reason"
+        ]
+      },
+      "description": "Parse PAN-OS CSV traffic log with named columns"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "generated_time || start_time || receive_time || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (generated_time, start_time, receive_time) so _time reflects the source event, not pipeline processing time"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "src_ip && src_ip.startsWith('169.254.')",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop PA management/health check traffic (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action == 'allow' && dst_port == '53'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine allowed DNS queries (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "product",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "version",
+            "value": "'10.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '' ? ('1.4.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'palo_alto_traffic:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "golden-spec",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "actor.user.name",
+        "issue": "OCSF field \"actor.user.name\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "device.hostname",
+        "issue": "OCSF field \"device.hostname\" is defined for this class but empty in the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "dst_endpoint.ip",
+        "issue": "NAT destination IP (post-NAT) is used instead of the original destination IP. Source field 8 (175.16.199.1) is the NAT dst; field 7 is the original src, field 8 is original dst — mapping appears correct here but NAT dst IP (field 10: 175.16.199.1) and NAT src IP (field 9: 192.168.1.63) are entirely dropped and not mapped to nat_dst_endpoint / nat_src_endpoint",
+        "example": "nat_src_endpoint {ip:192.168.1.63} and nat_dst_endpoint {ip:175.16.199.1, port:443} missing from all events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "firewall_rule",
+        "issue": "Security policy/rule name (field 11: new_outbound_from_trust) present in source but not mapped — OCSF Network Activity expects firewall_rule.name",
+        "example": "new_outbound_from_trust present in every raw event, absent from all output events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "app_name / connection_info.boundary_id",
+        "issue": "Application name (field 14: apple-maps, ping, web-browsing, ssl, quic) is present in source but entirely dropped — should map to connection_info.boundary or app field",
+        "example": "apple-maps, ping, web-browsing, ssl, quic all absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "connection_info.direction_id / direction",
+        "issue": "Traffic direction (from-policy / trust→untrust zones) is present and derivable but not mapped to connection_info.direction_id",
+        "example": "Zone pair trust→untrust and action from-policy present in source, missing in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "disposition / disposition_id",
+        "issue": "Firewall action (field 30: allow) is present in source but not mapped to OCSF disposition_id — this is a core OCSF Network Activity field",
+        "example": "action=allow in every raw event; disposition_id absent from all output events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "traffic.packets_in / traffic.packets_out",
+        "issue": "Packet counts (fields 45/46: e.g. 16 pkts_sent, 20 pkts_rcvd for event 1) present in source but not mapped to traffic.packets_in / traffic.packets_out",
+        "example": "pkts_sent=16, pkts_rcvd=20 in event 1; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "traffic.bytes",
+        "issue": "Total bytes (field 29: 7734) present in source but not mapped — only directional bytes mapped",
+        "example": "bytes=7734 in event 1 absent from output traffic object",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "start_time / duration",
+        "issue": "Session start time (field 34: 2018/11/30 15:59:04) and elapsed time (field 35: 586 seconds) present in source but not mapped to OCSF start_time / duration",
+        "example": "start_time=2018/11/30 15:59:04, elapsed=586 in event 1; both absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "high",
+        "field": "connection_info.tcp_flags / end_reason",
+        "issue": "TCP end reason (field 44: tcp-fin, aged-out) and flags (field 28: 0x400053) are present but not mapped",
+        "example": "tcp-fin and 0x400053 in event 1; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "src_endpoint.zone / dst_endpoint.zone",
+        "issue": "Source and destination zones (fields 15/16: trust, untrust) present in source but not mapped to OCSF endpoint zone fields",
+        "example": "src_zone=trust, dst_zone=untrust in every event; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "src_endpoint.interface_uid / dst_endpoint.interface_uid",
+        "issue": "Ingress/egress interface names (fields 17/18: ethernet1/2, ethernet1/1) present in source but not mapped",
+        "example": "inbound_if=ethernet1/2, outbound_if=ethernet1/1 absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "log_time / metadata.logged_time",
+        "issue": "Log receive time (field 2: 2018/11/30 16:09:07) differs from generate time and should populate metadata.logged_time or log_time; only one timestamp is captured",
+        "example": "receive_time=2018/11/30 16:09:07 vs generate_time=2018/11/30 16:09:07 — distinct field dropped",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "device.name / observables",
+        "issue": "Device serial (field 3: 012801096514) and hostname (PA-220) present in source but device object is empty {} — should populate device.name and device.uid",
+        "example": "device:{} in every event; serial=012801096514, hostname=PA-220 present in source",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "dst_endpoint.location.country",
+        "issue": "Destination country (field 42: United States) present in source but not mapped to dst_endpoint.location.country",
+        "example": "dst_location=United States in every event; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "session_uid / connection_info.session_id",
+        "issue": "Session ID (field 33: e.g. 22751) present in source but not mapped",
+        "example": "session_id=22751 in event 1; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "category_name / class_name",
+        "issue": "URL category (field 36: computer-and-internet-info, web-advertisements, any) present in source but not mapped to any OCSF field",
+        "example": "url_category=computer-and-internet-info in event 1; absent from output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "actor.user",
+        "issue": "actor.user is populated as empty {} in every event — should be omitted if no user data exists in source rather than emitting an empty object",
+        "example": "actor:{user:{}} in all events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "severity_id",
+        "issue": "severity_id is hardcoded to 1 (Informational) without mapping from source — acceptable default but not derived from any source field",
+        "example": "severity_id:1 in all events",
+        "pointImpact": 0
+      },
+      {
+        "severity": "low",
+        "field": "activity_id",
+        "issue": "activity_id hardcoded to 1 for all events including end/allow actions — should reflect the subtype (e.g., Traffic End = 6 in OCSF 4001)",
+        "example": "activity_id:1 on all events though PA log type is 'end'",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "actor.user.name",
+      "device.hostname"
+    ],
+    "emptyFields": [
+      "actor.user",
+      "device"
+    ],
+    "summary": "The pipeline correctly maps the core IP/port 5-tuple, protocol, directional byte counts, and timestamp to valid OCSF Network Activity (class 4001) structure. However, the majority of information-rich fields present in the Palo Alto traffic log — firewall action/disposition, application name, NAT endpoints, packet counts, session start/duration, zones, interfaces, end reason, URL category, TCP flags, destination country, device identity, and session ID — are entirely dropped, representing a significant loss of the source data. The output skeleton is structurally valid OCSF but captures less than half of the available telemetry from these logs."
+  }
+}

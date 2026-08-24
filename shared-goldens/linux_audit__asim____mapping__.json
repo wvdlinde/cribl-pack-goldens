@@ -1,0 +1,186 @@
+{
+  "key": "linux_audit::asim::__mapping__",
+  "sourcetype": "linux_audit",
+  "dest_format": "asim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 349,
+  "updated_at": "2026-08-06T11:47:45.604Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Auditd'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Microsoft Sentinel ASIM — Audit Event",
+      "conf": {
+        "add": [
+          {
+            "name": "TimeGenerated",
+            "value": "((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != null && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'undefined' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'null' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '-' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '' ? ((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) : undefined"
+          },
+          {
+            "name": "EventType",
+            "value": "('Set') != null && String('Set') != 'undefined' && String('Set') != 'null' && String('Set') != '-' && String('Set') != '' ? ('Set') : undefined"
+          },
+          {
+            "name": "EventSchema",
+            "value": "('AuditEvent') != null && String('AuditEvent') != 'undefined' && String('AuditEvent') != 'null' && String('AuditEvent') != '-' && String('AuditEvent') != '' ? ('AuditEvent') : undefined"
+          },
+          {
+            "name": "EventSchemaVersion",
+            "value": "('0.1') != null && String('0.1') != 'undefined' && String('0.1') != 'null' && String('0.1') != '-' && String('0.1') != '' ? ('0.1') : undefined"
+          },
+          {
+            "name": "EventResult",
+            "value": "(/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') != null && String(/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') != 'undefined' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') != 'null' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') != '-' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') != '' ? (/deny|drop|block|fail|denied|failure|error/i.test(String(action)) ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "EventSeverity",
+            "value": "(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != null && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != 'undefined' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != 'null' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != '-' && String(severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') != '' ? (severity != null && Number(severity) <= 2 ? 'High' : Number(severity) <= 4 ? 'Medium' : 'Low') : undefined"
+          },
+          {
+            "name": "DvcAction",
+            "value": "(action) != null && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' && String(action) != '' ? (action) : undefined"
+          },
+          {
+            "name": "Operation",
+            "value": "(operation || action) != null && String(operation || action) != 'undefined' && String(operation || action) != 'null' && String(operation || action) != '-' && String(operation || action) != '' ? (operation || action) : undefined"
+          },
+          {
+            "name": "Object",
+            "value": "(object) != null && String(object) != 'undefined' && String(object) != 'null' && String(object) != '-' && String(object) != '' ? (object) : undefined"
+          },
+          {
+            "name": "OldValue",
+            "value": "(old_value) != null && String(old_value) != 'undefined' && String(old_value) != 'null' && String(old_value) != '-' && String(old_value) != '' ? (old_value) : undefined"
+          },
+          {
+            "name": "NewValue",
+            "value": "(new_value) != null && String(new_value) != 'undefined' && String(new_value) != 'null' && String(new_value) != '-' && String(new_value) != '' ? (new_value) : undefined"
+          },
+          {
+            "name": "ActorUsername",
+            "value": "(actor || src_user || user) != null && String(actor || src_user || user) != 'undefined' && String(actor || src_user || user) != 'null' && String(actor || src_user || user) != '-' && String(actor || src_user || user) != '' ? (actor || src_user || user) : undefined"
+          },
+          {
+            "name": "SrcIpAddr",
+            "value": "(src_ip || IpAddress) != null && String(src_ip || IpAddress) != 'undefined' && String(src_ip || IpAddress) != 'null' && String(src_ip || IpAddress) != '-' && String(src_ip || IpAddress) != '' ? (src_ip || IpAddress) : undefined"
+          },
+          {
+            "name": "DvcHostname",
+            "value": "(host || hostname || Computer) != null && String(host || hostname || Computer) != 'undefined' && String(host || hostname || Computer) != 'null' && String(host || hostname || Computer) != '-' && String(host || hostname || Computer) != '' ? (host || hostname || Computer) : undefined"
+          },
+          {
+            "name": "Dvc",
+            "value": "(host || hostname) != null && String(host || hostname) != 'undefined' && String(host || hostname) != 'null' && String(host || hostname) != '-' && String(host || hostname) != '' ? (host || hostname) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "EventProduct",
+            "value": "(product || vendor_product || app) != null && String(product || vendor_product || app) != 'undefined' && String(product || vendor_product || app) != 'null' && String(product || vendor_product || app) != '-' && String(product || vendor_product || app) != '' ? (product || vendor_product || app) : undefined"
+          },
+          {
+            "name": "EventVendor",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'linux_audit'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Keep only Microsoft Sentinel ASIM — Audit Event fields + routing",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "TimeGenerated",
+          "TimeGenerated.*",
+          "EventType",
+          "EventType.*",
+          "EventSchema",
+          "EventSchema.*",
+          "EventSchemaVersion",
+          "EventSchemaVersion.*",
+          "EventResult",
+          "EventResult.*",
+          "EventSeverity",
+          "EventSeverity.*",
+          "DvcAction",
+          "DvcAction.*",
+          "Operation",
+          "Operation.*",
+          "Object",
+          "Object.*",
+          "OldValue",
+          "OldValue.*",
+          "NewValue",
+          "NewValue.*",
+          "ActorUsername",
+          "ActorUsername.*",
+          "SrcIpAddr",
+          "SrcIpAddr.*",
+          "DvcHostname",
+          "DvcHostname.*",
+          "Dvc",
+          "Dvc.*",
+          "EventProduct",
+          "EventProduct.*",
+          "EventVendor",
+          "EventVendor.*"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

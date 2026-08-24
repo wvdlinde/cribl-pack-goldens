@@ -1,0 +1,30 @@
+{
+  "key": "linux_syslog::__optimization__",
+  "sourcetype": "linux_syslog",
+  "dest_format": "__optimization__",
+  "score": 80,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 369,
+  "updated_at": "2026-08-07T06:19:39.160Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "process === 'CRON' || (message && /session (opened|closed) for user/.test(message))",
+      "disabled": true,
+      "final": true,
+      "description": "Drop CRON session noise (enable in Cribl UI to activate)",
+      "conf": {}
+    },
+    {
+      "id": "drop",
+      "filter": "message && /Created slice|Removed slice/.test(message)",
+      "disabled": true,
+      "final": true,
+      "description": "Drop systemd slice creation/removal messages (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

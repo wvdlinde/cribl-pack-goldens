@@ -1,0 +1,628 @@
+{
+  "key": "palo_alto_threat::ocsf::__mapping__",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T12:59:57.209Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "description": "Extract Palo Alto CSV payload from syslog-prefixed raw event.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<host>\\S+)\\s+(?<pan_csv>\\d,[\\s\\S]+)$/gm"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse Palo Alto Threat CSV fields into parsedData.",
+      "filter": "pan_csv != null",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "pan_csv",
+        "dstField": "parsedData",
+        "fields": [
+          "future_use_0",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use_1",
+          "generated_time",
+          "source_ip",
+          "destination_ip",
+          "nat_source_ip",
+          "nat_destination_ip",
+          "rule_name",
+          "source_user",
+          "destination_user",
+          "application",
+          "virtual_system",
+          "source_zone",
+          "destination_zone",
+          "inbound_interface",
+          "outbound_interface",
+          "log_action",
+          "future_use_2",
+          "session_id",
+          "repeat_count",
+          "source_port",
+          "destination_port",
+          "nat_source_port",
+          "nat_destination_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_id",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "source_location",
+          "destination_location",
+          "future_use_3",
+          "content_type",
+          "pcap_id",
+          "file_digest",
+          "cloud",
+          "url_index",
+          "user_agent",
+          "file_type",
+          "x_forwarded_for",
+          "referer",
+          "sender",
+          "subject",
+          "recipient",
+          "report_id",
+          "device_group_hierarchy_level_1",
+          "device_group_hierarchy_level_2",
+          "device_group_hierarchy_level_3",
+          "device_group_hierarchy_level_4",
+          "virtual_system_name",
+          "device_name",
+          "future_use_4",
+          "source_vm_uuid",
+          "destination_vm_uuid",
+          "http_method",
+          "tunnel_id_imsi",
+          "monitor_tag_imei",
+          "parent_session_id",
+          "parent_start_time",
+          "tunnel_type",
+          "threat_category",
+          "content_version",
+          "future_use_5",
+          "sctp_association_id",
+          "payload_protocol_id",
+          "http_headers"
+        ],
+        "keep": [],
+        "remove": [],
+        "overwrite": true,
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "auto_timestamp",
+      "description": "Parse generated_time into OCSF time field.",
+      "conf": {
+        "srcField": "parsedData.generated_time",
+        "dstField": "time",
+        "defaultTimezone": "UTC",
+        "timestamps": [
+          {
+            "regex": "/(\\d{4}\\/\\d{2}\\/\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})/",
+            "strptime": "%Y/%m/%d %H:%M:%S"
+          }
+        ],
+        "timeExpression": "time.getTime() / 1000",
+        "offset": 0,
+        "maxLen": 64,
+        "defaultTime": "now",
+        "earliestDateAllowed": "-420weeks",
+        "latestDateAllowed": "+1week"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF HTTP Activity target schema fields from parsed Palo Alto threat data.",
+      "filter": "parsedData != null",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "message",
+            "value": "parsedData.url_filename ? parsedData.url_filename : _raw"
+          },
+          {
+            "name": "status_code",
+            "value": "parsedData.action ? parsedData.action : null"
+          },
+          {
+            "name": "status_detail",
+            "value": "parsedData.severity ? parsedData.severity : null"
+          },
+          {
+            "name": "unmapped",
+            "value": "parsedData"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract CSV payload from syslog-prefixed Palo Alto threat log.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\S+\\s+(?<csv_payload>\\d+,[\\s\\S]*)$/gm"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse Palo Alto Threat CSV fields into parsedData.",
+      "filter": "csv_payload",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "csv_payload",
+        "dstField": "parsedData",
+        "fields": [
+          "future_use_0",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use_1",
+          "generated_time",
+          "source_ip",
+          "destination_ip",
+          "nat_source_ip",
+          "nat_destination_ip",
+          "rule_name",
+          "source_user",
+          "destination_user",
+          "application",
+          "virtual_system",
+          "source_zone",
+          "destination_zone",
+          "inbound_interface",
+          "outbound_interface",
+          "log_action",
+          "future_use_2",
+          "session_id",
+          "repeat_count",
+          "source_port",
+          "destination_port",
+          "nat_source_port",
+          "nat_destination_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_id",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "source_location",
+          "destination_location",
+          "future_use_3",
+          "content_type",
+          "pcap_id",
+          "file_digest",
+          "cloud",
+          "url_index",
+          "user_agent",
+          "file_type",
+          "x_forwarded_for",
+          "referer",
+          "sender",
+          "subject",
+          "recipient",
+          "report_id",
+          "device_group_hierarchy_level_1",
+          "device_group_hierarchy_level_2",
+          "device_group_hierarchy_level_3",
+          "device_group_hierarchy_level_4",
+          "virtual_system_name",
+          "device_name",
+          "future_use_4",
+          "source_vm_uuid",
+          "destination_vm_uuid",
+          "http_method",
+          "tunnel_id_imsi",
+          "monitor_tag_imei",
+          "parent_session_id",
+          "parent_start_time",
+          "tunnel_type",
+          "threat_category",
+          "content_version",
+          "future_use_5",
+          "sctp_association_id",
+          "payload_protocol_id",
+          "http_headers"
+        ],
+        "keep": [],
+        "remove": [],
+        "overwrite": true,
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "numerify",
+      "description": "Convert parsed port fields to numbers for endpoint and observable mappings.",
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "name.indexOf('port')>=0",
+        "format": "none",
+        "digits": 2
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract URL host, path, and query components from the Palo Alto URL field.",
+      "filter": "parsedData && parsedData.url_filename",
+      "conf": {
+        "source": "parsedData.url_filename",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<url_hostname>[^\\/?#:]+).*$/gm",
+        "regexList": [
+          {
+            "regex": "/^[^\\/?#:]+(?<url_path>\\/[^?#]*)/gm"
+          },
+          {
+            "regex": "/\\?(?<url_query>[^#]*)/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed Palo Alto threat URL fields to OCSF HTTP Activity target fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "activity_id",
+            "value": "parsedData.http_method==='CONNECT'?1:parsedData.http_method==='DELETE'?2:parsedData.http_method==='GET'?3:parsedData.http_method==='HEAD'?4:parsedData.http_method==='OPTIONS'?5:parsedData.http_method==='POST'?6:parsedData.http_method==='PUT'?7:parsedData.http_method==='TRACE'?8:parsedData.http_method==='PATCH'?9:0"
+          },
+          {
+            "name": "status_id",
+            "value": "parsedData.action && (parsedData.action.indexOf('block')>=0 || parsedData.action.indexOf('deny')>=0 || parsedData.action.indexOf('drop')>=0 || parsedData.action.indexOf('reset')>=0) ? 2 : parsedData.action ? 1 : 0"
+          },
+          {
+            "name": "status",
+            "value": "status_id===2?'Failure':status_id===1?'Success':'Unknown'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "parsedData.destination_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "parsedData.destination_port"
+          },
+          {
+            "name": "dst_endpoint.interface_name",
+            "value": "parsedData.outbound_interface"
+          },
+          {
+            "name": "dst_endpoint.type_id",
+            "value": "1"
+          },
+          {
+            "name": "http_request",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "parsedData.http_method && parsedData.http_method!=='N/A' ? parsedData.http_method : null"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "parsedData.user_agent ? parsedData.user_agent : null"
+          },
+          {
+            "name": "http_request.url",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.url.hostname",
+            "value": "url_hostname"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "url_path ? url_path : null"
+          },
+          {
+            "name": "http_request.url.query_string",
+            "value": "url_query ? url_query : null"
+          },
+          {
+            "name": "http_request.url.scheme",
+            "value": "parsedData.destination_port===443 || parsedData.application==='ssl' ? 'https' : parsedData.destination_port===80 || parsedData.application==='web-browsing' ? 'http' : null"
+          },
+          {
+            "name": "http_request.url.url_string",
+            "value": "http_request.url.scheme ? http_request.url.scheme + '://' + parsedData.url_filename : parsedData.url_filename"
+          },
+          {
+            "name": "http_request.url.category_ids",
+            "value": "parsedData.category==='business-and-economy'?[21]:parsedData.category==='informational'?[107]:parsedData.category==='not-defined'?[0]:[99]"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11},{name:'http_request.url',type_id:23},{name:'http_request.url.url_string',type_id:6}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract syslog prefix and Palo Alto CSV payload.",
+      "filter": "true",
+      "conf": {
+        "source": "_raw",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/^(?<syslog_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<reporter_name>\\S+)\\s+(?<pan_payload>\\d+,.*)$/gm"
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse Palo Alto Threat CSV payload into pan object.",
+      "filter": "pan_payload != null",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "pan_payload",
+        "dstField": "pan",
+        "fields": [
+          "future_use_0",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use_1",
+          "generated_time",
+          "source_ip",
+          "destination_ip",
+          "nat_source_ip",
+          "nat_destination_ip",
+          "rule_name",
+          "source_user",
+          "destination_user",
+          "application",
+          "virtual_system",
+          "source_zone",
+          "destination_zone",
+          "inbound_interface",
+          "outbound_interface",
+          "log_action",
+          "future_use_2",
+          "session_id",
+          "repeat_count",
+          "source_port",
+          "destination_port",
+          "nat_source_port",
+          "nat_destination_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_id",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "source_location",
+          "destination_location",
+          "future_use_3",
+          "content_type",
+          "pcap_id",
+          "file_digest",
+          "cloud",
+          "url_index",
+          "user_agent",
+          "file_type",
+          "x_forwarded_for",
+          "referer",
+          "sender",
+          "subject",
+          "recipient",
+          "report_id",
+          "device_group_hierarchy_level_1",
+          "device_group_hierarchy_level_2",
+          "device_group_hierarchy_level_3",
+          "device_group_hierarchy_level_4",
+          "virtual_system_name",
+          "device_name",
+          "future_use_4",
+          "source_vm_uuid",
+          "destination_vm_uuid",
+          "http_method",
+          "tunnel_id_imsi",
+          "monitor_tag_imei",
+          "parent_session_id",
+          "parent_start_time",
+          "tunnel_type",
+          "threat_category",
+          "content_version",
+          "future_use_5",
+          "sctp_association_id",
+          "payload_protocol_id",
+          "http_headers"
+        ],
+        "keep": [],
+        "remove": [],
+        "overwrite": true,
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed Palo Alto fields to target OCSF HTTP Activity schema fields.",
+      "filter": "pan != null",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "pan.severity==='informational'?1:pan.severity==='low'?2:pan.severity==='medium'?3:pan.severity==='high'?4:pan.severity==='critical'?5:pan.severity ? 99 : 0"
+          },
+          {
+            "name": "http_cookies",
+            "value": "[]"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "pan.source_ip"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "pan.source_port"
+          },
+          {
+            "name": "src_endpoint.interface_name",
+            "value": "pan.inbound_interface"
+          },
+          {
+            "name": "src_endpoint.name",
+            "value": "pan.source_zone"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "pan.type + ':' + pan.threat_content_type"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "pan.generated_time || pan.receive_time || syslog_time"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "pan.serial_number"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "pan.content_version"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "reporter_name || pan.device_name"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "pan.serial_number"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "pan.virtual_system"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "pan.source_location && pan.destination_location && pan.source_location.indexOf('192.168.')>=0 ? 3 : null"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "pan.direction==='client-to-server'?2:pan.direction==='server-to-client'?1:0"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "pan.protocol ? pan.protocol.toLowerCase() : null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "pan.protocol==='tcp'?6:pan.protocol==='udp'?17:pan.protocol==='icmp'?1:null"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "pan.session_id"
+          }
+        ],
+        "keep": [
+          "severity_id",
+          "http_cookies",
+          "type_uid",
+          "src_endpoint.*",
+          "metadata.*",
+          "connection_info.*",
+          "__*",
+          "cribl_*"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

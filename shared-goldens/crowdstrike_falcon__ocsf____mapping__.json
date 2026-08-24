@@ -1,0 +1,388 @@
+{
+  "key": "crowdstrike_falcon::ocsf::__mapping__",
+  "sourcetype": "crowdstrike_falcon",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:05.709Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed network activity fields into the target OCSF schema and retain unmapped source attributes.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? timestamp/1000 : (ContextTimeStamp ? ContextTimeStamp*1 : _time)"
+          },
+          {
+            "name": "message",
+            "value": "event_simpleName ? event_simpleName : name"
+          },
+          {
+            "name": "status_id",
+            "value": "0"
+          },
+          {
+            "name": "status_code",
+            "value": "ConnectionFlags"
+          },
+          {
+            "name": "status_detail",
+            "value": "event_simpleName ? event_simpleName : name"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.bytes",
+            "value": "{}"
+          },
+          {
+            "name": "traffic.packets",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped",
+            "value": "{}"
+          },
+          {
+            "name": "unmapped.LocalAddressIP4",
+            "value": "LocalAddressIP4"
+          },
+          {
+            "name": "unmapped.event_simpleName",
+            "value": "event_simpleName"
+          },
+          {
+            "name": "unmapped.ContextTimeStamp",
+            "value": "ContextTimeStamp"
+          },
+          {
+            "name": "unmapped.ConfigStateHash",
+            "value": "ConfigStateHash"
+          },
+          {
+            "name": "unmapped.ConnectionFlags",
+            "value": "ConnectionFlags"
+          },
+          {
+            "name": "unmapped.ContextProcessId",
+            "value": "ContextProcessId"
+          },
+          {
+            "name": "unmapped.RemotePort",
+            "value": "RemotePort"
+          },
+          {
+            "name": "unmapped.aip",
+            "value": "aip"
+          },
+          {
+            "name": "unmapped.ConfigBuild",
+            "value": "ConfigBuild"
+          },
+          {
+            "name": "unmapped.event_platform",
+            "value": "event_platform"
+          },
+          {
+            "name": "unmapped.LocalPort",
+            "value": "LocalPort"
+          },
+          {
+            "name": "unmapped.Entitlements",
+            "value": "Entitlements"
+          },
+          {
+            "name": "unmapped.name",
+            "value": "name"
+          },
+          {
+            "name": "unmapped.EventOrigin",
+            "value": "EventOrigin"
+          },
+          {
+            "name": "unmapped.id",
+            "value": "id"
+          },
+          {
+            "name": "unmapped.Protocol",
+            "value": "Protocol"
+          },
+          {
+            "name": "unmapped.EffectiveTransmissionClass",
+            "value": "EffectiveTransmissionClass"
+          },
+          {
+            "name": "unmapped.aid",
+            "value": "aid"
+          },
+          {
+            "name": "unmapped.RemoteAddressIP4",
+            "value": "RemoteAddressIP4"
+          },
+          {
+            "name": "unmapped.ConnectionDirection",
+            "value": "ConnectionDirection"
+          },
+          {
+            "name": "unmapped.InContext",
+            "value": "InContext"
+          },
+          {
+            "name": "unmapped.timestamp",
+            "value": "timestamp"
+          },
+          {
+            "name": "unmapped.cid",
+            "value": "cid"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "remove": [],
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Create OCSF Network Activity target fields from parsed network connection data.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_simpleName === 'NetworkConnectIP4' ? 1 : 99"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "status",
+            "value": "'Success'"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "0"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "RemoteAddressIP4 ? RemoteAddressIP4 : null"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "RemotePort ? RemotePort*1 : null"
+          },
+          {
+            "name": "observables",
+            "value": "[{name:'dst_endpoint.ip',type_id:2},{name:'dst_endpoint.port',type_id:11}]"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse JSON event from _raw into top-level fields"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "depth": 5,
+        "ignoreFields": [],
+        "filterExpr": "value != null",
+        "format": "none"
+      },
+      "id": "numerify",
+      "description": "Convert numeric string fields to numbers for OCSF mappings"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "400101"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "LocalAddressIP4"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "LocalPort"
+          },
+          {
+            "name": "src_endpoint.uid",
+            "value": "aid"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "event_simpleName"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "timestamp ? timestamp.toString() : ContextTimeStamp ? ContextTimeStamp.toString() : null"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Falcon'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "cid"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'CrowdStrike'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "ConfigBuild"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.ip",
+            "value": "aip"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "aid"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "cid"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          },
+          {
+            "name": "is_src_dst_assignment_known",
+            "value": "true"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info.boundary_id",
+            "value": "LocalAddressIP4===RemoteAddressIP4?1:0"
+          },
+          {
+            "name": "connection_info.direction_id",
+            "value": "LocalAddressIP4===RemoteAddressIP4?4:ConnectionDirection===0?2:ConnectionDirection===1?1:0"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "Protocol===6?'tcp':Protocol===17?'udp':Protocol===1?'icmp':Protocol!=null?Protocol.toString():null"
+          },
+          {
+            "name": "connection_info.protocol_num",
+            "value": "Protocol"
+          },
+          {
+            "name": "connection_info.protocol_ver_id",
+            "value": "4"
+          },
+          {
+            "name": "connection_info.uid",
+            "value": "id"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "LocalAddressIP4",
+          "event_simpleName",
+          "ContextTimeStamp",
+          "ConfigStateHash",
+          "ConnectionFlags",
+          "ContextProcessId",
+          "RemotePort",
+          "aip",
+          "ConfigBuild",
+          "event_platform",
+          "LocalPort",
+          "Entitlements",
+          "name",
+          "EventOrigin",
+          "id",
+          "Protocol",
+          "EffectiveTransmissionClass",
+          "aid",
+          "RemoteAddressIP4",
+          "ConnectionDirection",
+          "InContext",
+          "timestamp",
+          "cid"
+        ]
+      },
+      "id": "eval",
+      "description": "Create OCSF Network Activity target schema fields and remove source-only fields"
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

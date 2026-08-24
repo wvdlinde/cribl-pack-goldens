@@ -1,0 +1,141 @@
+{
+  "key": "cisco_asa::__extraction__",
+  "sourcetype": "cisco_asa",
+  "dest_format": "__extraction__",
+  "score": 85,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:24:30.061Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "_raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/) ? _raw.match(/%(?:ASA|FTD)-(\\d)-\\d+:/)[1] : null"
+          },
+          {
+            "name": "asa_code",
+            "value": "_raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/) ? _raw.match(/%(?:ASA|FTD)-\\S*-(\\d+):/)[1] : null"
+          },
+          {
+            "name": "event_code",
+            "value": "asa_code || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/) ? Date.parse(_raw.match(/^(\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})/)[1]) / 1000 : undefined"
+          },
+          {
+            "name": "host",
+            "value": "_raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/) ? _raw.match(/^\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\s+(\\S+)\\s*:\\s*%(?:ASA|FTD)-/)[1] : undefined"
+          }
+        ]
+      },
+      "description": "Extract severity, message code, timestamp, and device host from the syslog header (%ASA-/%FTD-)"
+    },
+    {
+      "id": "lookup",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "matchMode": "exact",
+        "reloadPeriodSec": 60,
+        "addToEvent": false,
+        "ignoreCase": false,
+        "inFields": [
+          {
+            "eventField": "asa_code",
+            "lookupField": "asa_code"
+          }
+        ],
+        "outFields": [
+          {
+            "lookupField": "regex",
+            "eventField": "__regex"
+          }
+        ],
+        "file": "cisco_asa_parsing.csv"
+      },
+      "description": "Fetch the per-code extraction regex for this code (184 codes)"
+    },
+    {
+      "id": "eval",
+      "filter": "__regex && _raw.match(__regex)",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "groups",
+            "value": "_raw.match(__regex).groups"
+          },
+          {
+            "name": "",
+            "value": "Object.assign(__e, groups)"
+          }
+        ],
+        "remove": [
+          "groups",
+          "__regex"
+        ]
+      },
+      "description": "Apply the code-specific regex and spread its named groups onto the event"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "transport",
+            "value": "transport ? transport.toLowerCase() : (icmp_type != null || icmp_code != null) ? 'icmp' : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || (_raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i) ? _raw.match(/\\b(Deny|Denied|Permit|Permitted|Built|Teardown|Allow|Allowed|Block|Blocked|Reset|Drop|Dropped)\\b/i)[1] : undefined)"
+          },
+          {
+            "name": "user",
+            "value": "src_nt_domain ? src_nt_domain + '\\\\' + (src_user || '') : src_user || src_sg_info || user || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_interface || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_interface || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration_hour != null ? Number(duration_hour) * 3600 + Number(duration_minute) * 60 + Number(duration_second) : undefined"
+          },
+          {
+            "name": "icmp_type",
+            "value": "/icmp/i.test(String(transport)) ? icmp_type : undefined"
+          },
+          {
+            "name": "icmp_code",
+            "value": "/icmp/i.test(String(transport)) ? icmp_code : undefined"
+          }
+        ]
+      },
+      "description": "Alias per-code fields to CIM canonical names + fallback action verb"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from cisco_asa::cim: 28/33 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

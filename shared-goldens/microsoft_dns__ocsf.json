@@ -1,0 +1,733 @@
+{
+  "key": "microsoft_dns::ocsf",
+  "sourcetype": "microsoft_dns",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:12.842Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "microsoft_dns to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<thread_id>\\w+)\\s+(?<log_type>\\w+)\\s+(?<context_id>\\w+)\\s+(?<protocol>UDP|TCP)\\s+(?<direction>Rcv|Snd)\\s+(?<src_ip>[\\d\\.a-fA-F:]+)\\s+(?<xid>[0-9A-Fa-f]+)\\s+(?<qr>[QR])\\s+\\[(?<flags>[^\\]]+)\\]\\s+(?<record_type>\\S+)\\s*(?<remainder>.*)$/"
+      },
+      "description": "Extract base Microsoft DNS debug log fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "flags",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?<rcode>NOERROR|NXDOMAIN|SERVFAIL|REFUSED|FORMERR|NOTIMP)/"
+      },
+      "description": "Extract rcode from flags field"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "qr == 'Q'",
+      "disabled": false,
+      "conf": {
+        "source": "remainder",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<__raw_query>\\([^)]+\\)(?:\\([^)]+\\))*(?:\\(\\d+\\))?)/"
+      },
+      "description": "Extract DNS query name from label-encoded remainder (query packets)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "qr == 'R'",
+      "disabled": false,
+      "conf": {
+        "source": "remainder",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<answer>[\\d\\.a-fA-F:]+)/"
+      },
+      "description": "Extract answer (IP or IPv6) from response packets"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "query_name",
+            "value": "__raw_query ? __raw_query.replace(/\\(\\d+\\)/g, '.').replace(/^\\.|\\.$|\\.(\\.)|\\.$/g, '').replace(/^\\./, '') : ''"
+          },
+          {
+            "name": "direction_label",
+            "value": "direction == 'Rcv' ? 'inbound' : 'outbound'"
+          },
+          {
+            "name": "action",
+            "value": "rcode == 'NXDOMAIN' ? 'blocked' : rcode == 'SERVFAIL' ? 'error' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "rcode == 'NXDOMAIN' ? 'medium' : rcode == 'SERVFAIL' ? 'high' : 'informational'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft DNS'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'microsoft_dns'"
+          },
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime() / 1000"
+          },
+          {
+            "name": "dns_client_port",
+            "value": "xid ? Number('0x' + xid) % 65535 : 0"
+          },
+          {
+            "name": "dns_server_port",
+            "value": "53"
+          },
+          {
+            "name": "dns_server_ip",
+            "value": "direction == 'Snd' ? src_ip : ''"
+          },
+          {
+            "name": "dns_client_ip",
+            "value": "direction == 'Rcv' ? src_ip : ''"
+          },
+          {
+            "name": "parsed_hostname",
+            "value": "_raw ? _raw.split(' ')[0] : ''"
+          }
+        ],
+        "remove": [
+          "__raw_query",
+          "remainder",
+          "flags"
+        ]
+      },
+      "description": "Decode label-encoded query name, normalize fields, derive action and severity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp || _time || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'microsoft dns'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "400101"
+          },
+          {
+            "name": "severity_id",
+            "value": "null"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "dns_client_port ? Number(dns_client_port) : 0"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "direction == 'Snd' ? src_ip : '127.0.0.1'"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dns_server_port)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "_raw ? _raw.length : 0"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "answer ? answer.length : 0"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || 'dns-server'"
+          }
+        ]
+      },
+      "description": "Map canonical fields to OCSF 1.4"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.4.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'microsoft dns'"
+          },
+          {
+            "name": "time",
+            "value": "log_time ? (String(log_time).length == 10 ? Number(log_time) * 1000 : Number(log_time)) : _time * 1000"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'microsoft_dns:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "log_time ? (String(log_time).length == 10 ? Number(log_time) : Number(log_time) / 1000) : _time"
+          }
+        ]
+      },
+      "description": "Map metadata and time fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*"
+        ]
+      },
+      "description": "Keep only OCSF 1.4 fields + routing"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "microsoft_dns_ocsf",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "192.168.1.45",
+          "port": 1
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "UDP"
+        },
+        "traffic": {
+          "bytes_in": 121,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "192.168.1.45"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": ""
+        },
+        "traffic": {
+          "bytes_in": 107,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": ""
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "172.16.5.22",
+          "port": 2
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "UDP"
+        },
+        "traffic": {
+          "bytes_in": 123,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "172.16.5.22"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "10.10.20.150",
+          "port": 3
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "UDP"
+        },
+        "traffic": {
+          "bytes_in": 114,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "10.10.20.150"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "203.0.113.45",
+          "port": 4
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "TCP"
+        },
+        "traffic": {
+          "bytes_in": 129,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "203.0.113.45"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "192.168.10.88",
+          "port": 5
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "UDP"
+        },
+        "traffic": {
+          "bytes_in": 127,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "192.168.10.88"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": ""
+        },
+        "traffic": {
+          "bytes_in": 120,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": ""
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      },
+      {
+        "_time": null,
+        "sourcetype": "microsoft_dns:ocsf",
+        "src_endpoint": {
+          "ip": "10.50.0.200",
+          "port": 6
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1",
+          "port": 53
+        },
+        "connection_info": {
+          "protocol_name": "UDP"
+        },
+        "traffic": {
+          "bytes_in": 133,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "10.50.0.200"
+          }
+        },
+        "device": {
+          "hostname": "dns-server"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft dns"
+          },
+          "version": "1.4.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": null
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-01-15 00:03:12 0D20 PACKET 0000000000A3F1B0 UDP Rcv 192.168.1.45 0001 Q [0001 D NOERROR] A (4)mail(6)google(3)com(0)",
+      "2024-01-15 00:17:45 0D20 PACKET 0000000000B2C3A1 UDP Snd 10.0.0.1 8005 R Q [8081 DR NOERROR] A 142.250.80.5",
+      "2024-01-15 00:32:18 0D20 PACKET 0000000000C4D5E2 UDP Rcv 172.16.5.22 0002 Q [0001 D NOERROR] AAAA (3)www(7)youtube(3)com(0)",
+      "2024-01-15 01:05:33 0D20 PACKET 0000000000D6E7F3 UDP Rcv 10.10.20.150 0003 Q [0001 D NOERROR] MX (5)yahoo(3)com(0)",
+      "2024-01-15 01:22:47 0D20 PACKET 0000000000E8F904 TCP Rcv 203.0.113.45 0004 Q [0001 D NOERROR] ANY (11)suspicious1(4)site(3)net(0)",
+      "2024-01-15 01:45:09 0D20 PACKET 0000000000F1A2B5 UDP Rcv 192.168.10.88 0005 Q [0001 D NOERROR] A (6)update(9)microsoft(3)com(0)",
+      "2024-01-15 02:03:21 0D20 PACKET 000000000012B3C6 UDP Snd 10.0.0.1 8005 R Q [8081 DR NOERROR] AAAA 2607:f8b0:4004:c07::6a",
+      "2024-01-15 02:18:55 0D20 PACKET 000000000023C4D7 UDP Rcv 10.50.0.200 0006 Q [0001 D NOERROR] PTR (3)100(2)10(2)10(7)in-addr(4)arpa(0)"
+    ],
+    "sourcetype": "microsoft_dns"
+  }
+}

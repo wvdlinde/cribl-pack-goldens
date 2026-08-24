@@ -1,0 +1,207 @@
+{
+  "key": "darktrace_alerts::xsiam",
+  "sourcetype": "darktrace_alerts",
+  "dest_format": "xsiam",
+  "score": 100,
+  "part": null,
+  "author": "wvdlinde",
+  "build": 273,
+  "updated_at": "2026-07-16T18:18:32.619Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "darktrace_alerts → Cortex XSIAM passthrough.\nPreserves _raw; XSIAM parses vendor format natively. Tags __sourceIdentifier (+ __vendor/__product when needed)."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Tag XSIAM routing metadata ---"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sourceIdentifier",
+            "value": "'af01292940d7426594d3d3e55ae17ee0'"
+          },
+          {
+            "name": "__vendor",
+            "value": "'darktrace alerts'"
+          },
+          {
+            "name": "__product",
+            "value": "'Security'"
+          }
+        ]
+      },
+      "description": "Tag XSIAM routing metadata (__sourceIdentifier, __vendor, __product)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'darktrace_alerts:xsiam'"
+          }
+        ],
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "host",
+          "source",
+          "sourcetype",
+          "cribl_breaker",
+          "cribl_pipe",
+          "__sourceIdentifier",
+          "__sourceIdentifier",
+          "__sourceidentifier",
+          "__vendor",
+          "__product"
+        ]
+      },
+      "description": "Keep _raw + XSIAM tags + routing fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "darktrace_alerts_xsiam",
+    "destFormat": "xsiam",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
+      {
+        "_raw": "{\"time\":\"2024-01-15T00:03:17Z\",\"device\":\"10.0.1.45\",\"hostname\":\"DESKTOP-HR001\",\"type\":\"Unusual Activity\",\"category\":\"Anomalous Connection\",\"score\":72,\"detail\":\"Device made connection to rare external IP 185.220.101.47 on port 9001\",\"severity\":\"medium\",\"action\":\"alert\",\"model\":\"Anomalous Connection / Rare External Destination\",\"pbid\":100234,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T00:17:42Z\",\"device\":\"172.16.5.23\",\"hostname\":\"SRV-FILE01\",\"type\":\"Data Exfiltration\",\"category\":\"Large Upload\",\"score\":91,\"detail\":\"Unusual large data transfer of 4.7GB to 203.0.113.88 via HTTPS\",\"severity\":\"high\",\"action\":\"block\",\"model\":\"Compromise / Large Upload\",\"pbid\":100235,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T00:34:55Z\",\"device\":\"192.168.10.102\",\"hostname\":\"LAPTOP-DEV07\",\"type\":\"Crypto Mining\",\"category\":\"Suspicious Behavior\",\"score\":85,\"detail\":\"Device communicating with known cryptocurrency mining pool stratum+tcp://pool.minexmr.com:4444\",\"severity\":\"high\",\"action\":\"alert\",\"model\":\"Compromise / Crypto Currency Mining\",\"pbid\":100236,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T01:02:11Z\",\"device\":\"10.10.20.5\",\"hostname\":\"DC-MAIN01\",\"type\":\"Brute Force\",\"category\":\"Authentication\",\"score\":63,\"detail\":\"112 failed Kerberos authentication attempts from single source in 60 seconds\",\"severity\":\"medium\",\"action\":\"alert\",\"model\":\"Device / Authentication Brute Force\",\"pbid\":100237,\"acknowledged\":true}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T01:19:33Z\",\"device\":\"192.168.1.254\",\"hostname\":\"GATEWAY-FW\",\"type\":\"Port Scan\",\"category\":\"Network Scan\",\"score\":78,\"detail\":\"Device scanned 4500 ports on internal subnet 192.168.1.0/24 in under 2 minutes\",\"severity\":\"high\",\"action\":\"alert\",\"model\":\"Network Scan / Port Scan\",\"pbid\":100238,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T01:45:08Z\",\"device\":\"2001:db8::1a2b:3c4d\",\"hostname\":\"IPv6-WS-003\",\"type\":\"Anomalous Connection\",\"category\":\"Rare Protocol\",\"score\":55,\"detail\":\"Device using unusual IPv6 tunneling protocol 6in4 to external destination\",\"severity\":\"low\",\"action\":\"model breach\",\"model\":\"Anomalous Connection / Rare Protocol\",\"pbid\":100239,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T02:08:29Z\",\"device\":\"10.0.50.77\",\"hostname\":\"KIOSK-LOBBY01\",\"type\":\"DNS Exfiltration\",\"category\":\"Data Exfiltration\",\"score\":94,\"detail\":\"DNS queries contain base64-encoded payload totaling 120MB over 6 hours to suspicious domain c2.xfiltrate.net\",\"severity\":\"critical\",\"action\":\"block\",\"model\":\"Exfiltration / DNS Tunnelling\",\"pbid\":100240,\"acknowledged\":false}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      },
+      {
+        "_raw": "{\"time\":\"2024-01-15T02:22:44Z\",\"device\":\"172.16.8.14\",\"hostname\":\"PRINTER-3F\",\"type\":\"Unusual Activity\",\"category\":\"IoT Device Behavior\",\"score\":42,\"detail\":\"Printer device initiating outbound SMTP connections on port 25 to external mail servers\",\"severity\":\"low\",\"action\":\"alert\",\"model\":\"IoT / Unusual IoT Device Behavior\",\"pbid\":100241,\"acknowledged\":true}",
+        "_time": 1784049848.575,
+        "__sourceIdentifier": "af01292940d7426594d3d3e55ae17ee0",
+        "__vendor": "darktrace alerts",
+        "__product": "Security",
+        "sourcetype": "darktrace_alerts:xsiam"
+      }
+    ],
+    "sampleKeys": [
+      "time",
+      "device",
+      "hostname",
+      "type",
+      "category",
+      "score",
+      "detail",
+      "severity",
+      "action",
+      "model",
+      "pbid",
+      "acknowledged"
+    ],
+    "sampleRaw": [
+      "{\"time\":\"2024-01-15T00:03:17Z\",\"device\":\"10.0.1.45\",\"hostname\":\"DESKTOP-HR001\",\"type\":\"Unusual Activity\",\"category\":\"Anomalous Connection\",\"score\":72,\"detail\":\"Device made connection to rare external IP 185.220.101.47 on port 9001\",\"severity\":\"medium\",\"action\":\"alert\",\"model\":\"Anomalous Connection / Rare External Destination\",\"pbid\":100234,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T00:17:42Z\",\"device\":\"172.16.5.23\",\"hostname\":\"SRV-FILE01\",\"type\":\"Data Exfiltration\",\"category\":\"Large Upload\",\"score\":91,\"detail\":\"Unusual large data transfer of 4.7GB to 203.0.113.88 via HTTPS\",\"severity\":\"high\",\"action\":\"block\",\"model\":\"Compromise / Large Upload\",\"pbid\":100235,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T00:34:55Z\",\"device\":\"192.168.10.102\",\"hostname\":\"LAPTOP-DEV07\",\"type\":\"Crypto Mining\",\"category\":\"Suspicious Behavior\",\"score\":85,\"detail\":\"Device communicating with known cryptocurrency mining pool stratum+tcp://pool.minexmr.com:4444\",\"severity\":\"high\",\"action\":\"alert\",\"model\":\"Compromise / Crypto Currency Mining\",\"pbid\":100236,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T01:02:11Z\",\"device\":\"10.10.20.5\",\"hostname\":\"DC-MAIN01\",\"type\":\"Brute Force\",\"category\":\"Authentication\",\"score\":63,\"detail\":\"112 failed Kerberos authentication attempts from single source in 60 seconds\",\"severity\":\"medium\",\"action\":\"alert\",\"model\":\"Device / Authentication Brute Force\",\"pbid\":100237,\"acknowledged\":true}",
+      "{\"time\":\"2024-01-15T01:19:33Z\",\"device\":\"192.168.1.254\",\"hostname\":\"GATEWAY-FW\",\"type\":\"Port Scan\",\"category\":\"Network Scan\",\"score\":78,\"detail\":\"Device scanned 4500 ports on internal subnet 192.168.1.0/24 in under 2 minutes\",\"severity\":\"high\",\"action\":\"alert\",\"model\":\"Network Scan / Port Scan\",\"pbid\":100238,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T01:45:08Z\",\"device\":\"2001:db8::1a2b:3c4d\",\"hostname\":\"IPv6-WS-003\",\"type\":\"Anomalous Connection\",\"category\":\"Rare Protocol\",\"score\":55,\"detail\":\"Device using unusual IPv6 tunneling protocol 6in4 to external destination\",\"severity\":\"low\",\"action\":\"model breach\",\"model\":\"Anomalous Connection / Rare Protocol\",\"pbid\":100239,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T02:08:29Z\",\"device\":\"10.0.50.77\",\"hostname\":\"KIOSK-LOBBY01\",\"type\":\"DNS Exfiltration\",\"category\":\"Data Exfiltration\",\"score\":94,\"detail\":\"DNS queries contain base64-encoded payload totaling 120MB over 6 hours to suspicious domain c2.xfiltrate.net\",\"severity\":\"critical\",\"action\":\"block\",\"model\":\"Exfiltration / DNS Tunnelling\",\"pbid\":100240,\"acknowledged\":false}",
+      "{\"time\":\"2024-01-15T02:22:44Z\",\"device\":\"172.16.8.14\",\"hostname\":\"PRINTER-3F\",\"type\":\"Unusual Activity\",\"category\":\"IoT Device Behavior\",\"score\":42,\"detail\":\"Printer device initiating outbound SMTP connections on port 25 to external mail servers\",\"severity\":\"low\",\"action\":\"alert\",\"model\":\"IoT / Unusual IoT Device Behavior\",\"pbid\":100241,\"acknowledged\":true}"
+    ],
+    "sourcetype": "darktrace_alerts"
+  }
+}

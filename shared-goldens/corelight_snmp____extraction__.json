@@ -1,0 +1,103 @@
+{
+  "key": "corelight_snmp::__extraction__",
+  "sourcetype": "corelight_snmp",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T15:49:26.533Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract JSON fields from Corelight/Zeek SNMP log line",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Pull dotted Zeek conn-tuple fields (id.orig_h/p, id.resp_h/p) directly from _raw since they are not valid JS identifiers after JSON extraction",
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"id\\.orig_h\":\"(?<src_ip>[^\"]+)\",\"id\\.orig_p\":(?<src_port>\\d+),\"id\\.resp_h\":\"(?<dst_ip>[^\"]+)\",\"id\\.resp_p\":(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, protocol, ports, message and user fields",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "ts*1000"
+          },
+          {
+            "name": "protocol",
+            "value": "proto ? proto.toUpperCase() : proto"
+          },
+          {
+            "name": "app_protocol",
+            "value": "'SNMP'"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port)"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          },
+          {
+            "name": "message",
+            "value": "notes ? notes : (display_string ? display_string : '')"
+          },
+          {
+            "name": "user",
+            "value": "username ? username : null"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify SNMP activity into action and severity based on notes, auth status and request patterns",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "notes && notes.match(/scan/) ? 'reconnaissance' : notes && notes.match(/brute-force/) ? 'credential_attack' : notes && notes.match(/flood|DoS/) ? 'dos_attempt' : auth_failed === true ? 'auth_failure' : set_requests > 0 ? 'config_change' : display_string && display_string.match(/trap/) ? 'trap_received' : get_bulk_requests > 0 ? 'bulk_query' : 'query'"
+          },
+          {
+            "name": "severity",
+            "value": "notes && notes.match(/scan|brute-force|flood|DoS/) ? 'high' : auth_failed === true ? 'high' : set_requests > 0 ? 'medium' : display_string && display_string.match(/trap/) ? 'medium' : 'low'"
+          },
+          {
+            "name": "direction",
+            "value": "dst_port === 161 ? 'request' : (dst_port === 162 ? 'trap' : 'other')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

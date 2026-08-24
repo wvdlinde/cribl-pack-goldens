@@ -1,0 +1,85 @@
+{
+  "key": "ivanti_portal_request::__extraction__",
+  "sourcetype": "ivanti_portal_request",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:22:32.313Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header and Ivanti IVE key-value body into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^\\w+\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2}\\s+(?<dst_host>\\S+)\\s+ive\\[(?<pid>\\d+)\\]:\\s+id=(?<event_id>\\S+)\\s+time=\"(?<timestamp>[^\"]+)\"\\s+src=(?<src_ip>\\S+)\\s+port=(?<src_port>\\d+)\\s+user=(?<user>\\S*)\\s+realm=\"(?<realm>[^\"]*)\"\\s+role=\"(?<role>[^\"]*)\"\\s+method=(?<http_method>\\S+)\\s+uri=(?<uri>\\S+)\\s+status=(?<status>\\d+)\\s+bytes=(?<bytes>\\d+)\\s+agent=\"(?<user_agent>[^\"]*)\"\\s+msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize protocol, action, and severity fields based on parsed status/port/message",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "src_port=='443' || src_port=='8443' ? 'https' : 'http'"
+          },
+          {
+            "name": "action",
+            "value": "Number(status) < 400 ? 'allow' : 'deny'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status) >= 500 ? 'error' : (Number(status) >= 400 ? 'warning' : 'info')"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "message && message.match(/Authentication (successful|failed)/)",
+      "disabled": false,
+      "description": "Refine action/classification for authentication-specific events",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/Authentication successful/) ? 'login_success' : 'login_failure'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "agent",
+        "bytes",
+        "id",
+        "method",
+        "msg",
+        "port",
+        "realm",
+        "role",
+        "src",
+        "status",
+        "time",
+        "uri",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}

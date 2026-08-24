@@ -1,0 +1,147 @@
+{
+  "key": "linux_audit::__extraction__",
+  "sourcetype": "linux_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:25:27.303Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse IDP JSON"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp != null && !isNaN(Number(timestamp)) ? Number(timestamp)/1000 : _time"
+          },
+          {
+            "name": "vendor",
+            "value": "'CyberArk'"
+          },
+          {
+            "name": "product",
+            "value": "'Identity'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'cyberark:idp:cim'"
+          }
+        ]
+      },
+      "description": "Set time and vendor metadata"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action != null && String(action) != '' && String(action) != 'null' ? String(action) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action != null && String(action) != '' && String(action) != 'null' ? (/complet|success|done|end/i.test(String(action)) ? 'success' : /initiat|start|begin/i.test(String(action)) ? 'started' : /fail|error|deny|block/i.test(String(action)) ? 'failure' : String(action)) : 'unknown'"
+          },
+          {
+            "name": "user",
+            "value": "username != null && String(username) != '' && String(username) != 'null' ? String(username) : (userId != null && String(userId) != '' && String(userId) != 'null' ? String(userId) : undefined)"
+          },
+          {
+            "name": "src_user",
+            "value": "userId != null && String(userId) != '' && String(userId) != 'null' ? String(userId) : (username != null && String(username) != '' && String(username) != 'null' ? String(username) : undefined)"
+          },
+          {
+            "name": "src",
+            "value": "source != null && String(source) != '' && String(source) != 'null' ? String(source) : undefined"
+          },
+          {
+            "name": "app",
+            "value": "(applicationCode || serviceName) != null && String(applicationCode || serviceName) != '' && String(applicationCode || serviceName) != 'null' ? String(applicationCode || serviceName) : undefined"
+          },
+          {
+            "name": "signature",
+            "value": "message != null && String(message) != '' && String(message) != 'null' ? String(message) : undefined"
+          },
+          {
+            "name": "signature_id",
+            "value": "auditCode != null && String(auditCode) != '' && String(auditCode) != 'null' ? String(auditCode) : undefined"
+          }
+        ]
+      },
+      "description": "Map core CIM fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "object",
+            "value": "(component || serviceName) != null && String(component || serviceName) != '' && String(component || serviceName) != 'null' ? String(component || serviceName) : undefined"
+          },
+          {
+            "name": "object_category",
+            "value": "identityType != null && String(identityType) != '' && String(identityType) != 'null' ? String(identityType) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "actionType != null && String(actionType) != '' && String(actionType) != 'null' ? String(actionType) : undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionId != null && String(sessionId) != '' && String(sessionId) != 'null' ? String(sessionId) : undefined"
+          },
+          {
+            "name": "vendor_account",
+            "value": "tenantId != null && String(tenantId) != '' && String(tenantId) != 'null' ? String(tenantId) : undefined"
+          },
+          {
+            "name": "tenant",
+            "value": "tenantId != null && String(tenantId) != '' && String(tenantId) != 'null' ? String(tenantId) : undefined"
+          },
+          {
+            "name": "cloud_provider",
+            "value": "cloudProvider != null && String(cloudProvider) != '' && String(cloudProvider) != 'null' ? String(cloudProvider) : undefined"
+          },
+          {
+            "name": "event_id",
+            "value": "uuid != null && String(uuid) != '' && String(uuid) != 'null' ? String(uuid) : undefined"
+          },
+          {
+            "name": "uuid",
+            "value": "uuid != null && String(uuid) != '' && String(uuid) != 'null' ? String(uuid) : undefined"
+          }
+        ]
+      },
+      "description": "Map extended CIM fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from linux_audit::cim: 39/39 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

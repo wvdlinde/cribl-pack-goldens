@@ -1,0 +1,530 @@
+{
+  "key": "aws_cloudtrail::cim",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "cim",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-06T08:17:46.170Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse CloudTrail JSON from _raw into top-level fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "eventTime ? new Date(String(eventTime)).getTime() / 1000 : _time"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'aws:cloudtrail'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'AWS CloudTrail'"
+          },
+          {
+            "name": "src",
+            "value": "sourceIPAddress || ''"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "userAgent || ''"
+          },
+          {
+            "name": "command",
+            "value": "eventName || ''"
+          },
+          {
+            "name": "event_id",
+            "value": "eventID || ''"
+          },
+          {
+            "name": "transaction_id",
+            "value": "requestID || ''"
+          },
+          {
+            "name": "vendor_region",
+            "value": "awsRegion || ''"
+          },
+          {
+            "name": "vendor_account",
+            "value": "recipientAccountId || userIdentity.accountId || ''"
+          },
+          {
+            "name": "app",
+            "value": "eventSource ? eventSource.replace('.amazonaws.com','') : ''"
+          },
+          {
+            "name": "dvc",
+            "value": "eventSource || ''"
+          },
+          {
+            "name": "dest",
+            "value": "eventSource == 's3.amazonaws.com' ? (requestParameters.bucketName || eventSource) : eventSource == 'ec2.amazonaws.com' ? (responseElements.instancesSet.items[0].instanceId || requestParameters.instanceId || eventSource) : eventSource || ''"
+          },
+          {
+            "name": "user",
+            "value": "userIdentity.userName || userIdentity.principalId || ''"
+          },
+          {
+            "name": "src_user",
+            "value": "userIdentity.userName || userIdentity.principalId || ''"
+          },
+          {
+            "name": "user_id",
+            "value": "userIdentity.principalId || ''"
+          },
+          {
+            "name": "user_type",
+            "value": "userIdentity.type || ''"
+          },
+          {
+            "name": "user_arn",
+            "value": "userIdentity.arn || ''"
+          },
+          {
+            "name": "access_key",
+            "value": "userIdentity.accessKeyId || ''"
+          },
+          {
+            "name": "object",
+            "value": "eventSource == 's3.amazonaws.com' ? (requestParameters.key || requestParameters.bucketName || '') : eventSource == 'iam.amazonaws.com' ? (requestParameters.userName || responseElements.user.userName || '') : eventSource == 'ec2.amazonaws.com' ? (responseElements.instancesSet.items[0].instanceId || requestParameters.imageId || '') : eventSource == 'cloudwatch.amazonaws.com' ? (requestParameters.logGroupName || '') : ''"
+          },
+          {
+            "name": "object_id",
+            "value": "eventSource == 's3.amazonaws.com' ? (requestParameters.key ? 'arn:aws:s3:::' + requestParameters.bucketName + '/' + requestParameters.key : requestParameters.bucketName ? 'arn:aws:s3:::' + requestParameters.bucketName : '') : eventSource == 'iam.amazonaws.com' ? (responseElements.user.arn || responseElements.user.userId || requestParameters.userName || '') : eventSource == 'ec2.amazonaws.com' ? (responseElements.instancesSet.items[0].instanceId || '') : ''"
+          },
+          {
+            "name": "object_category",
+            "value": "eventSource == 's3.amazonaws.com' ? (requestParameters.key ? 'file' : 'container') : eventSource == 'iam.amazonaws.com' ? 'user' : eventSource == 'ec2.amazonaws.com' ? 'compute' : eventSource == 'cloudwatch.amazonaws.com' ? 'log' : 'other'"
+          },
+          {
+            "name": "action",
+            "value": "eventName == 'ConsoleLogin' ? 'login' : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(eventName)) ? 'created' : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(eventName)) ? 'deleted' : /^(Update|Modify|Set)/.test(String(eventName)) ? 'modified' : /^(Describe|List|Get)/.test(String(eventName)) ? 'read' : 'modified'"
+          },
+          {
+            "name": "change_type",
+            "value": "readOnly === true ? 'read' : /^(Delete|Terminate|Remove|Detach|Disable|Revoke)/.test(String(eventName)) ? 'delete' : /^(Create|Run|Put|Add|Attach|Associate|Enable)/.test(String(eventName)) ? 'create' : /^(Update|Modify|Set)/.test(String(eventName)) ? 'modify' : 'write'"
+          },
+          {
+            "name": "mfa",
+            "value": "additionalEventData.MFAUsed || (userIdentity.sessionContext.attributes.mfaAuthenticated == 'true' ? 'Yes' : userIdentity.sessionContext.attributes.mfaAuthenticated == 'false' ? 'No' : '')"
+          },
+          {
+            "name": "result",
+            "value": "responseElements.ConsoleLogin || (errorCode ? 'failure' : 'success')"
+          },
+          {
+            "name": "status",
+            "value": "errorCode ? 'failure' : 'success'"
+          },
+          {
+            "name": "error_code",
+            "value": "errorCode || ''"
+          },
+          {
+            "name": "error_message",
+            "value": "errorMessage || ''"
+          },
+          {
+            "name": "bytes_in",
+            "value": "additionalEventData.bytesTransferredIn ? Number(additionalEventData.bytesTransferredIn) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "additionalEventData.bytesTransferredOut ? Number(additionalEventData.bytesTransferredOut) : undefined"
+          },
+          {
+            "name": "instance_id",
+            "value": "eventSource == 'ec2.amazonaws.com' ? (responseElements.instancesSet.items[0].instanceId || '') : ''"
+          }
+        ]
+      },
+      "description": "Map CloudTrail fields to CIM"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "eventVersion",
+          "userIdentity",
+          "eventTime",
+          "eventSource",
+          "eventName",
+          "awsRegion",
+          "sourceIPAddress",
+          "userAgent",
+          "requestParameters",
+          "responseElements",
+          "additionalEventData",
+          "requestID",
+          "eventID",
+          "readOnly",
+          "resources",
+          "eventType",
+          "recipientAccountId",
+          "errorCode",
+          "errorMessage",
+          "_raw",
+          "__*"
+        ]
+      },
+      "description": "Remove raw source fields"
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      },
+      "description": "Rebuild _raw as compact JSON of CIM fields"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AwsCloudtrail_CIM",
+    "destFormat": "cim",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"203.0.113.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"PutObject\",\"event_id\":\"a1b2c3d4-e5f6-7890-1234-567890abcdef\",\"transaction_id\":\"F6B84F7F1C9A2EXAMPLE\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"s3\",\"dvc\":\"s3.amazonaws.com\",\"dest\":\"my-example-bucket\",\"user\":\"Alice\",\"src_user\":\"Alice\",\"user_id\":\"AIDACKCEVSQ6C2EXAMPLE\",\"user_type\":\"IAMUser\",\"user_arn\":\"arn:aws:iam::123456789012:user/Alice\",\"access_key\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"object\":\"test_file_1.txt\",\"object_id\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\",\"object_category\":\"file\",\"action\":\"created\",\"change_type\":\"create\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"bytes_in\":1024,\"instance_id\":\"\"}",
+        "_time": 1752159600,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "203.0.113.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "PutObject",
+        "event_id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+        "transaction_id": "F6B84F7F1C9A2EXAMPLE",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "s3",
+        "dvc": "s3.amazonaws.com",
+        "dest": "my-example-bucket",
+        "user": "Alice",
+        "src_user": "Alice",
+        "user_id": "AIDACKCEVSQ6C2EXAMPLE",
+        "user_type": "IAMUser",
+        "user_arn": "arn:aws:iam::123456789012:user/Alice",
+        "access_key": "ASIAV2S7B2Q6CRXEXAMPLE",
+        "object": "test_file_1.txt",
+        "object_id": "arn:aws:s3:::my-example-bucket/test_file_1.txt",
+        "object_category": "file",
+        "action": "created",
+        "change_type": "create",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "bytes_in": 1024,
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"203.0.113.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"GetObject\",\"event_id\":\"b2c3d4e5-f6a7-8901-2345-67890abcdef1\",\"transaction_id\":\"A9E7F6B8C1D23EXAMPLE\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"s3\",\"dvc\":\"s3.amazonaws.com\",\"dest\":\"my-example-bucket\",\"user\":\"Alice\",\"src_user\":\"Alice\",\"user_id\":\"AIDACKCEVSQ6C2EXAMPLE\",\"user_type\":\"IAMUser\",\"user_arn\":\"arn:aws:iam::123456789012:user/Alice\",\"access_key\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"object\":\"test_file_1.txt\",\"object_id\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\",\"object_category\":\"file\",\"action\":\"read\",\"change_type\":\"read\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"bytes_out\":1024,\"instance_id\":\"\"}",
+        "_time": 1752159660,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "203.0.113.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "GetObject",
+        "event_id": "b2c3d4e5-f6a7-8901-2345-67890abcdef1",
+        "transaction_id": "A9E7F6B8C1D23EXAMPLE",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "s3",
+        "dvc": "s3.amazonaws.com",
+        "dest": "my-example-bucket",
+        "user": "Alice",
+        "src_user": "Alice",
+        "user_id": "AIDACKCEVSQ6C2EXAMPLE",
+        "user_type": "IAMUser",
+        "user_arn": "arn:aws:iam::123456789012:user/Alice",
+        "access_key": "ASIAV2S7B2Q6CRXEXAMPLE",
+        "object": "test_file_1.txt",
+        "object_id": "arn:aws:s3:::my-example-bucket/test_file_1.txt",
+        "object_category": "file",
+        "action": "read",
+        "change_type": "read",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "bytes_out": 1024,
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"198.51.100.2\",\"http_user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"command\":\"ConsoleLogin\",\"event_id\":\"c3d4e5f6-a7b8-9012-3456-7890abcdef12\",\"transaction_id\":\"\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"signin\",\"dvc\":\"signin.amazonaws.com\",\"dest\":\"signin.amazonaws.com\",\"user\":\"Bob\",\"src_user\":\"Bob\",\"user_id\":\"AIDAJ4C46EXAMPLER6Z\",\"user_type\":\"IAMUser\",\"user_arn\":\"arn:aws:iam::123456789012:user/Bob\",\"access_key\":\"AKIAIOSFODNN7EXAMPLE\",\"object\":\"\",\"object_id\":\"\",\"object_category\":\"other\",\"action\":\"login\",\"change_type\":\"write\",\"mfa\":\"No\",\"result\":\"Success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"\"}",
+        "_time": 1752159720,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "198.51.100.2",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        "command": "ConsoleLogin",
+        "event_id": "c3d4e5f6-a7b8-9012-3456-7890abcdef12",
+        "transaction_id": "",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "signin",
+        "dvc": "signin.amazonaws.com",
+        "dest": "signin.amazonaws.com",
+        "user": "Bob",
+        "src_user": "Bob",
+        "user_id": "AIDAJ4C46EXAMPLER6Z",
+        "user_type": "IAMUser",
+        "user_arn": "arn:aws:iam::123456789012:user/Bob",
+        "access_key": "AKIAIOSFODNN7EXAMPLE",
+        "object": "",
+        "object_id": "",
+        "object_category": "other",
+        "action": "login",
+        "change_type": "write",
+        "mfa": "No",
+        "result": "Success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"cloudtrail.amazonaws.com\",\"http_user_agent\":\"CloudTrail\",\"command\":\"PutLogEvents\",\"event_id\":\"d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9\",\"transaction_id\":\"D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"cloudwatch\",\"dvc\":\"cloudwatch.amazonaws.com\",\"dest\":\"cloudwatch.amazonaws.com\",\"user\":\"logs.us-east-1.amazonaws.com\",\"src_user\":\"logs.us-east-1.amazonaws.com\",\"user_id\":\"logs.us-east-1.amazonaws.com\",\"user_type\":\"AWSService\",\"user_arn\":\"arn:aws:iam::123456789012:role/AWS-CloudTrail-Logs-Role\",\"access_key\":\"\",\"object\":\"CloudTrail/DefaultLogGroup\",\"object_id\":\"\",\"object_category\":\"log\",\"action\":\"created\",\"change_type\":\"create\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"\"}",
+        "_time": 1752159780,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "cloudtrail.amazonaws.com",
+        "http_user_agent": "CloudTrail",
+        "command": "PutLogEvents",
+        "event_id": "d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9",
+        "transaction_id": "D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "cloudwatch",
+        "dvc": "cloudwatch.amazonaws.com",
+        "dest": "cloudwatch.amazonaws.com",
+        "user": "logs.us-east-1.amazonaws.com",
+        "src_user": "logs.us-east-1.amazonaws.com",
+        "user_id": "logs.us-east-1.amazonaws.com",
+        "user_type": "AWSService",
+        "user_arn": "arn:aws:iam::123456789012:role/AWS-CloudTrail-Logs-Role",
+        "access_key": "",
+        "object": "CloudTrail/DefaultLogGroup",
+        "object_id": "",
+        "object_category": "log",
+        "action": "created",
+        "change_type": "create",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"192.0.2.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"RunInstances\",\"event_id\":\"e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0\",\"transaction_id\":\"E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"ec2\",\"dvc\":\"ec2.amazonaws.com\",\"dest\":\"i-0abcdef1234567890\",\"user\":\"123456789012\",\"src_user\":\"123456789012\",\"user_id\":\"123456789012\",\"user_type\":\"Root\",\"user_arn\":\"arn:aws:iam::123456789012:root\",\"access_key\":\"\",\"object\":\"i-0abcdef1234567890\",\"object_id\":\"i-0abcdef1234567890\",\"object_category\":\"compute\",\"action\":\"created\",\"change_type\":\"create\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"i-0abcdef1234567890\"}",
+        "_time": 1752159840,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "192.0.2.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "RunInstances",
+        "event_id": "e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0",
+        "transaction_id": "E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "ec2",
+        "dvc": "ec2.amazonaws.com",
+        "dest": "i-0abcdef1234567890",
+        "user": "123456789012",
+        "src_user": "123456789012",
+        "user_id": "123456789012",
+        "user_type": "Root",
+        "user_arn": "arn:aws:iam::123456789012:root",
+        "access_key": "",
+        "object": "i-0abcdef1234567890",
+        "object_id": "i-0abcdef1234567890",
+        "object_category": "compute",
+        "action": "created",
+        "change_type": "create",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": "i-0abcdef1234567890"
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"203.0.113.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"CreateUser\",\"event_id\":\"f7g8h9i0-j1k2-l3m4-n5o6-p7q8r9s0t1u2\",\"transaction_id\":\"F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"iam\",\"dvc\":\"iam.amazonaws.com\",\"dest\":\"iam.amazonaws.com\",\"user\":\"Alice\",\"src_user\":\"Alice\",\"user_id\":\"AIDACKCEVSQ6C2EXAMPLE\",\"user_type\":\"IAMUser\",\"user_arn\":\"arn:aws:iam::123456789012:user/Alice\",\"access_key\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"object\":\"NewIAMUser\",\"object_id\":\"arn:aws:iam::123456789012:user/NewIAMUser\",\"object_category\":\"user\",\"action\":\"created\",\"change_type\":\"create\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"\"}",
+        "_time": 1752159900,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "203.0.113.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "CreateUser",
+        "event_id": "f7g8h9i0-j1k2-l3m4-n5o6-p7q8r9s0t1u2",
+        "transaction_id": "F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "iam",
+        "dvc": "iam.amazonaws.com",
+        "dest": "iam.amazonaws.com",
+        "user": "Alice",
+        "src_user": "Alice",
+        "user_id": "AIDACKCEVSQ6C2EXAMPLE",
+        "user_type": "IAMUser",
+        "user_arn": "arn:aws:iam::123456789012:user/Alice",
+        "access_key": "ASIAV2S7B2Q6CRXEXAMPLE",
+        "object": "NewIAMUser",
+        "object_id": "arn:aws:iam::123456789012:user/NewIAMUser",
+        "object_category": "user",
+        "action": "created",
+        "change_type": "create",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"192.0.2.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"TerminateInstances\",\"event_id\":\"g8h9i0j1-k2l3-m4n5-o6p7-q8r9s0t1u2v3\",\"transaction_id\":\"G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"ec2\",\"dvc\":\"ec2.amazonaws.com\",\"dest\":\"ec2.amazonaws.com\",\"user\":\"123456789012\",\"src_user\":\"123456789012\",\"user_id\":\"123456789012\",\"user_type\":\"Root\",\"user_arn\":\"arn:aws:iam::123456789012:root\",\"access_key\":\"\",\"object\":\"\",\"object_id\":\"\",\"object_category\":\"compute\",\"action\":\"deleted\",\"change_type\":\"delete\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"\"}",
+        "_time": 1752159960,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "192.0.2.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "TerminateInstances",
+        "event_id": "g8h9i0j1-k2l3-m4n5-o6p7-q8r9s0t1u2v3",
+        "transaction_id": "G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "ec2",
+        "dvc": "ec2.amazonaws.com",
+        "dest": "ec2.amazonaws.com",
+        "user": "123456789012",
+        "src_user": "123456789012",
+        "user_id": "123456789012",
+        "user_type": "Root",
+        "user_arn": "arn:aws:iam::123456789012:root",
+        "access_key": "",
+        "object": "",
+        "object_id": "",
+        "object_category": "compute",
+        "action": "deleted",
+        "change_type": "delete",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": ""
+      },
+      {
+        "_raw": "{\"vendor_product\":\"AWS CloudTrail\",\"src\":\"203.0.113.1\",\"http_user_agent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"command\":\"DeleteObject\",\"event_id\":\"h9i0j1k2-l3m4-n5o6-p7q8-r9s0t1u2v3w4\",\"transaction_id\":\"H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4\",\"vendor_region\":\"us-east-1\",\"vendor_account\":\"123456789012\",\"app\":\"s3\",\"dvc\":\"s3.amazonaws.com\",\"dest\":\"my-example-bucket\",\"user\":\"Alice\",\"src_user\":\"Alice\",\"user_id\":\"AIDACKCEVSQ6C2EXAMPLE\",\"user_type\":\"IAMUser\",\"user_arn\":\"arn:aws:iam::123456789012:user/Alice\",\"access_key\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"object\":\"test_file_1.txt\",\"object_id\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\",\"object_category\":\"file\",\"action\":\"deleted\",\"change_type\":\"delete\",\"mfa\":\"\",\"result\":\"success\",\"status\":\"success\",\"error_code\":\"\",\"error_message\":\"\",\"instance_id\":\"\"}",
+        "_time": 1752160020,
+        "sourcetype": "aws:cloudtrail",
+        "vendor_product": "AWS CloudTrail",
+        "src": "203.0.113.1",
+        "http_user_agent": "aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws",
+        "command": "DeleteObject",
+        "event_id": "h9i0j1k2-l3m4-n5o6-p7q8-r9s0t1u2v3w4",
+        "transaction_id": "H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4",
+        "vendor_region": "us-east-1",
+        "vendor_account": "123456789012",
+        "app": "s3",
+        "dvc": "s3.amazonaws.com",
+        "dest": "my-example-bucket",
+        "user": "Alice",
+        "src_user": "Alice",
+        "user_id": "AIDACKCEVSQ6C2EXAMPLE",
+        "user_type": "IAMUser",
+        "user_arn": "arn:aws:iam::123456789012:user/Alice",
+        "access_key": "ASIAV2S7B2Q6CRXEXAMPLE",
+        "object": "test_file_1.txt",
+        "object_id": "arn:aws:s3:::my-example-bucket/test_file_1.txt",
+        "object_category": "file",
+        "action": "deleted",
+        "change_type": "delete",
+        "mfa": "",
+        "result": "success",
+        "status": "success",
+        "error_code": "",
+        "error_message": "",
+        "instance_id": ""
+      }
+    ],
+    "sampleKeys": [
+      "eventVersion",
+      "userIdentity",
+      "eventTime",
+      "eventSource",
+      "eventName",
+      "awsRegion",
+      "sourceIPAddress",
+      "userAgent",
+      "requestParameters",
+      "responseElements",
+      "additionalEventData",
+      "requestID",
+      "eventID",
+      "readOnly",
+      "resources",
+      "eventType",
+      "recipientAccountId"
+    ],
+    "sampleRaw": [
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/Alice\",\"accountId\":\"123456789012\",\"accessKeyId\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"userName\":\"Alice\"},\"eventTime\":\"2025-07-10T15:00:00Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"PutObject\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"bucketName\":\"my-example-bucket\",\"X-Amz-Acl\":\"private\",\"key\":\"test_file_1.txt\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredIn\":1024,\"AuthenticationMethod\":\"AuthHeader\"},\"requestID\":\"F6B84F7F1C9A2EXAMPLE\",\"eventID\":\"a1b2c3d4-e5f6-7890-1234-567890abcdef\",\"readOnly\":false,\"resources\":[{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::my-example-bucket\"},{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Object\",\"ARN\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\"}],\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/Alice\",\"accountId\":\"123456789012\",\"accessKeyId\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"userName\":\"Alice\"},\"eventTime\":\"2025-07-10T15:01:00Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"GetObject\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"bucketName\":\"my-example-bucket\",\"key\":\"test_file_1.txt\"},\"responseElements\":null,\"additionalEventData\":{\"SignatureVersion\":\"SigV4\",\"CipherSuite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"bytesTransferredOut\":1024,\"AuthenticationMethod\":\"AuthHeader\"},\"requestID\":\"A9E7F6B8C1D23EXAMPLE\",\"eventID\":\"b2c3d4e5-f6a7-8901-2345-67890abcdef1\",\"readOnly\":true,\"resources\":[{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::my-example-bucket\"},{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Object\",\"ARN\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\"}],\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.09\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDAJ4C46EXAMPLER6Z\",\"arn\":\"arn:aws:iam::123456789012:user/Bob\",\"accountId\":\"123456789012\",\"accessKeyId\":\"AKIAIOSFODNN7EXAMPLE\",\"userName\":\"Bob\",\"sessionContext\":{\"attributes\":{\"mfaAuthenticated\":\"false\",\"creationDate\":\"2025-07-10T14:55:00Z\"},\"sessionIssuer\":{\"type\":\"Root\",\"principalId\":\"123456789012\",\"arn\":\"arn:aws:iam::123456789012:root\",\"accountId\":\"123456789012\",\"userName\":\"Bob\"}}},\"eventTime\":\"2025-07-10T15:02:00Z\",\"eventSource\":\"signin.amazonaws.com\",\"eventName\":\"ConsoleLogin\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"198.51.100.2\",\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36\",\"requestParameters\":null,\"responseElements\":{\"ConsoleLogin\":\"Success\"},\"additionalEventData\":{\"LoginTo\":\"https://console.aws.amazon.com/console/home\",\"MobileVersion\":\"No\",\"MFAUsed\":\"No\"},\"eventID\":\"c3d4e5f6-a7b8-9012-3456-7890abcdef12\",\"eventType\":\"AwsConsoleSignIn\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.05\",\"userIdentity\":{\"type\":\"AWSService\",\"principalId\":\"logs.us-east-1.amazonaws.com\",\"arn\":\"arn:aws:iam::123456789012:role/AWS-CloudTrail-Logs-Role\",\"accountId\":\"123456789012\",\"invokedBy\":\"cloudtrail.amazonaws.com\"},\"eventTime\":\"2025-07-10T15:03:00Z\",\"eventSource\":\"cloudwatch.amazonaws.com\",\"eventName\":\"PutLogEvents\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"cloudtrail.amazonaws.com\",\"userAgent\":\"CloudTrail\",\"requestParameters\":{\"logGroupName\":\"CloudTrail/DefaultLogGroup\",\"logStreamName\":\"123456789012_CloudTrail_us-east-1_20250710T1500Z_EXAMPLE\"},\"responseElements\":{\"nextSequenceToken\":\"496155984639458249051410149021275990213123123213\"},\"requestID\":\"D4E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9\",\"eventID\":\"d4e5f6a7-b8c9-d0e1-f2a3-b4c5d6e7f8a9\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"Root\",\"principalId\":\"123456789012\",\"arn\":\"arn:aws:iam::123456789012:root\",\"accountId\":\"123456789012\"},\"eventTime\":\"2025-07-10T15:04:00Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"RunInstances\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"192.0.2.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"imageId\":\"ami-0abcdef1234567890\",\"instanceType\":\"t2.micro\",\"minCount\":1,\"maxCount\":1},\"responseElements\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0abcdef1234567890\",\"imageId\":\"ami-0abcdef1234567890\",\"instanceType\":\"t2.micro\",\"privateIpAddress\":\"10.0.0.1\",\"state\":{\"code\":0,\"name\":\"pending\"}}]}},\"requestID\":\"E5F6A7B8C9D0E1F2A3B4C5D6E7F8A9B0\",\"eventID\":\"e5f6a7b8-c9d0-e1f2-a3b4-c5d6e7f8a9b0\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/Alice\",\"accountId\":\"123456789012\",\"accessKeyId\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"userName\":\"Alice\"},\"eventTime\":\"2025-07-10T15:05:00Z\",\"eventSource\":\"iam.amazonaws.com\",\"eventName\":\"CreateUser\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"userName\":\"NewIAMUser\"},\"responseElements\":{\"user\":{\"path\":\"/\",\"userName\":\"NewIAMUser\",\"userId\":\"AIDAINTEKCEVSQ6EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/NewIAMUser\",\"createDate\":\"2025-07-10T15:05:00Z\"}},\"requestID\":\"F7G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2\",\"eventID\":\"f7g8h9i0-j1k2-l3m4-n5o6-p7q8r9s0t1u2\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"Root\",\"principalId\":\"123456789012\",\"arn\":\"arn:aws:iam::123456789012:root\",\"accountId\":\"123456789012\"},\"eventTime\":\"2025-07-10T15:06:00Z\",\"eventSource\":\"ec2.amazonaws.com\",\"eventName\":\"TerminateInstances\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"192.0.2.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"instancesSet\":{\"items\":[{\"instanceId\":\"i-0abcdef1234567890\"}]}},\"responseElements\":{\"terminatingInstances\":{\"items\":[{\"instanceId\":\"i-0abcdef1234567890\",\"currentState\":{\"code\":32,\"name\":\"shutting-down\"},\"previousState\":{\"code\":16,\"name\":\"running\"}}]}},\"requestID\":\"G8H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3\",\"eventID\":\"g8h9i0j1-k2l3-m4n5-o6p7-q8r9s0t1u2v3\",\"readOnly\":false,\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}",
+      "{\"eventVersion\":\"1.08\",\"userIdentity\":{\"type\":\"IAMUser\",\"principalId\":\"AIDACKCEVSQ6C2EXAMPLE\",\"arn\":\"arn:aws:iam::123456789012:user/Alice\",\"accountId\":\"123456789012\",\"accessKeyId\":\"ASIAV2S7B2Q6CRXEXAMPLE\",\"userName\":\"Alice\"},\"eventTime\":\"2025-07-10T15:07:00Z\",\"eventSource\":\"s3.amazonaws.com\",\"eventName\":\"DeleteObject\",\"awsRegion\":\"us-east-1\",\"sourceIPAddress\":\"203.0.113.1\",\"userAgent\":\"aws-cli/2.11.1 Python/3.9.13 Linux/5.10.109-106.104.amzn2.x86_64 exe/x86_64.aws\",\"requestParameters\":{\"bucketName\":\"my-example-bucket\",\"key\":\"test_file_1.txt\"},\"responseElements\":null,\"requestID\":\"H9I0J1K2L3M4N5O6P7Q8R9S0T1U2V3W4\",\"eventID\":\"h9i0j1k2-l3m4-n5o6-p7q8-r9s0t1u2v3w4\",\"readOnly\":false,\"resources\":[{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Bucket\",\"ARN\":\"arn:aws:s3:::my-example-bucket\"},{\"accountId\":\"123456789012\",\"type\":\"AWS::S3::Object\",\"ARN\":\"arn:aws:s3:::my-example-bucket/test_file_1.txt\"}],\"eventType\":\"AwsApiCall\",\"recipientAccountId\":\"123456789012\"}"
+    ],
+    "sourcetype": "aws_cloudtrail"
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "key": "f5_bigip_apm::cim::__mapping__",
+  "sourcetype": "f5_bigip_apm",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 454,
+  "updated_at": "2026-08-13T10:27:46.693Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "event_type",
+            "value": "'authentication'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "dvc_id",
+            "value": "host || ''"
+          },
+          {
+            "name": "action",
+            "value": "action == 'allow' || action == 'ALLOW' || action == 'success' ? 'success' : (action == 'deny' || action == 'DENY' || action == 'failure' ? 'failure' : (action || 'unknown'))"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "signature_id",
+            "value": "String(code || '')"
+          },
+          {
+            "name": "message_id",
+            "value": "String(code || '')"
+          },
+          {
+            "name": "signature",
+            "value": "message || ''"
+          },
+          {
+            "name": "severity",
+            "value": "severity_norm || severity || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'emerg' ? 0 : severity == 'alert' ? 1 : severity == 'crit' ? 2 : severity == 'err' ? 3 : severity == 'warning' ? 4 : severity == 'notice' ? 5 : severity == 'info' ? 6 : severity == 'debug' ? 7 : 6"
+          },
+          {
+            "name": "process",
+            "value": "process || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-25)",
+      "conf": {
+        "add": [
+          {
+            "name": "process_id",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "rule",
+            "value": "policy || ''"
+          },
+          {
+            "name": "rule_id",
+            "value": "policy || ''"
+          },
+          {
+            "name": "app",
+            "value": "listener || 'apm'"
+          },
+          {
+            "name": "object",
+            "value": "listener || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "(message || '').match(/session\\s+([0-9a-fA-F]{4,})/) ? (message || '').match(/session\\s+([0-9a-fA-F]{4,})/)[1] : ''"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "(message || '').match(/assigned IP (\\d+\\.\\d+\\.\\d+\\.\\d+)/) ? (message || '').match(/assigned IP (\\d+\\.\\d+\\.\\d+\\.\\d+)/)[1] : ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'F5 BIG-IP APM'"
+          },
+          {
+            "name": "category",
+            "value": "String(code || '').indexOf('014900') == 0 ? 'authentication' : 'access'"
+          },
+          {
+            "name": "authentication_method",
+            "value": "(message || '').indexOf('AD ') >= 0 ? 'AD' : ((message || '').indexOf('LDAP') >= 0 ? 'LDAP' : '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'f5_bigip_apm'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

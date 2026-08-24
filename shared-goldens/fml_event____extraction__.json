@@ -1,0 +1,66 @@
+{
+  "key": "fml_event::__extraction__",
+  "sourcetype": "fml_event",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:01:46.395Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse fml_event syslog-style key=value log into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+fml_event:\\s+id=(?<event_id>\\S+)\\s+type=(?<event_type>\\S+)\\s+severity=(?<severity>\\S+)\\s+src=(?<src_ip>\\S*)\\s+spt=(?<src_port>\\S*)\\s+dst=(?<dst_ip>\\S*)\\s+dpt=(?<dst_port>\\S*)\\s+proto=(?<protocol>\\S*)\\s+action=(?<action>\\S*)\\s+user=(?<user>\\S*)(?:\\s+zone_src=(?<zone_src>\\S*))?(?:\\s+zone_dst=(?<zone_dst>\\S*))?(?:\\s+iface=(?<iface>\\S*))?\\s+msg=\"(?<message>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize severity, action, derive direction and IP version from parsed fields",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_normalized",
+            "value": "severity=='critical' ? 'critical' : severity=='high' ? 'high' : severity=='warning' ? 'medium' : severity=='notice' ? 'low' : 'info'"
+          },
+          {
+            "name": "action_normalized",
+            "value": "(action=='allow' || action=='success') ? 'allow' : (action=='deny' || action=='blocked' || action=='failure') ? 'deny' : 'unknown'"
+          },
+          {
+            "name": "direction",
+            "value": "(zone_src=='untrust' && (zone_dst=='trust' || zone_dst=='dmz')) ? 'inbound' : (zone_src=='trust' && zone_dst=='untrust') ? 'outbound' : (zone_src && zone_dst && zone_src==zone_dst) ? 'internal' : 'unknown'"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') !== -1 ? 'ipv6' : (src_ip ? 'ipv4' : 'unknown')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Set event time from extracted ISO8601 timestamp field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

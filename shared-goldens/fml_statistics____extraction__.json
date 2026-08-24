@@ -1,0 +1,76 @@
+{
+  "key": "fml_statistics::__extraction__",
+  "sourcetype": "fml_statistics",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:38:11.479Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse FortiMail statistics log header fields (date, time, device, subtype, severity, hostname, optional src, and message text)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^date=(?<date>\\S+) time=(?<time>\\S+) device_id=(?<device_id>\\S+) log_id=(?<log_id>\\S+) type=(?<log_type>\\S+) subtype=(?<subtype>\\S+) pri=(?<severity>\\S+) vd=\"(?<vd>[^\"]+)\"(?: itime=(?<itime>\\d+))?(?: hostname=\"(?<hostname>[^\"]+)\")?(?: src=(?<src_ip>\\S+))? msg=\"(?<message>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Split message into a short description and the trailing key=value statistics payload",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<msg_desc>[^:]+):\\s*(?<__msg_kv>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "__msg_kv",
+      "disabled": false,
+      "description": "Extract individual statistic key=value pairs from the msg payload (e.g. total_msg, scanned, usage_pct, etc.)",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__msg_kv",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Build a normalized timestamp from date and time fields",
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "Date.parse(date + 'T' + time + 'Z')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Cleanup scratch fields no longer needed after KVP extraction",
+      "conf": {
+        "add": [],
+        "remove": [
+          "__msg_kv"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

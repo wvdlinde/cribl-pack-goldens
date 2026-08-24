@@ -1,0 +1,22 @@
+{
+  "key": "vmware_esxlog_apiforwarder::__optimization__",
+  "sourcetype": "vmware_esxlog_apiforwarder",
+  "dest_format": "__optimization__",
+  "score": 94,
+  "part": "optimization",
+  "author": "unknown",
+  "build": 529,
+  "updated_at": "2026-08-18T08:14:15.523Z",
+  "functions": [
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "final": true,
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "conf": {}
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

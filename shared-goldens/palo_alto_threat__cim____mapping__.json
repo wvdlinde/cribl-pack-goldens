@@ -1,0 +1,484 @@
+{
+  "key": "palo_alto_threat::cim::__mapping__",
+  "sourcetype": "palo_alto_threat",
+  "dest_format": "cim::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-18T10:21:50.788Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "product",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "version",
+            "value": "'10.x'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM — Network Traffic",
+      "conf": {
+        "add": [
+          {
+            "name": "app",
+            "value": "(app || application || network__application || protocol) != null && String(app || application || network__application || protocol) != 'undefined' && String(app || application || network__application || protocol) != 'null' && String(app || application || network__application || protocol) != '-' && String(app || application || network__application || protocol) != '' ? (app || application || network__application || protocol) : undefined"
+          },
+          {
+            "name": "vendor_action",
+            "value": "(action || event__outcome || act) != null && String(action || event__outcome || act) != 'undefined' && String(action || event__outcome || act) != 'null' && String(action || event__outcome || act) != '-' && String(action || event__outcome || act) != '' ? (action || event__outcome || act) : undefined"
+          },
+          {
+            "name": "channel",
+            "value": "(channel) != null && String(channel) != 'undefined' && String(channel) != 'null' && String(channel) != '-' && String(channel) != '' ? Number(channel) : undefined"
+          },
+          {
+            "name": "dest_interface",
+            "value": "(dest_interface || dest_intf || out_interface || outbound_if || interface_out) != null && String(dest_interface || dest_intf || out_interface || outbound_if || interface_out) != 'undefined' && String(dest_interface || dest_intf || out_interface || outbound_if || interface_out) != 'null' && String(dest_interface || dest_intf || out_interface || outbound_if || interface_out) != '-' && String(dest_interface || dest_intf || out_interface || outbound_if || interface_out) != '' ? (dest_interface || dest_intf || out_interface || outbound_if || interface_out) : undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip) != null && String(dest_ip || dst_ip || destination__ip || server__ip) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip) != '' ? (dest_ip || dst_ip || destination__ip || server__ip) : undefined"
+          },
+          {
+            "name": "dest_mac",
+            "value": "(dest_mac) != null && String(dest_mac) != 'undefined' && String(dest_mac) != 'null' && String(dest_mac) != '-' && String(dest_mac) != '' ? (dest_mac) : undefined"
+          },
+          {
+            "name": "dest_translated_ip",
+            "value": "(dest_translated_ip || nat_dest_ip) != null && String(dest_translated_ip || nat_dest_ip) != 'undefined' && String(dest_translated_ip || nat_dest_ip) != 'null' && String(dest_translated_ip || nat_dest_ip) != '-' && String(dest_translated_ip || nat_dest_ip) != '' ? (dest_translated_ip || nat_dest_ip) : undefined"
+          },
+          {
+            "name": "dest_translated_port",
+            "value": "(dest_translated_port || nat_dest_port) != null && String(dest_translated_port || nat_dest_port) != 'undefined' && String(dest_translated_port || nat_dest_port) != 'null' && String(dest_translated_port || nat_dest_port) != '-' && String(dest_translated_port || nat_dest_port) != '' ? Number(dest_translated_port || nat_dest_port) : undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "(dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) != null && String(dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) != 'undefined' && String(dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) != 'null' && String(dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) != '-' && String(dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) != '' ? (dest_zone || dst_zone || observer__egress__zone || observer__egress_zone) : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "(direction) != null && String(direction) != 'undefined' && String(direction) != 'null' && String(direction) != '-' && String(direction) != '' ? (direction) : undefined"
+          },
+          {
+            "name": "duration",
+            "value": "(duration || event__duration) != null && String(duration || event__duration) != 'undefined' && String(duration || event__duration) != 'null' && String(duration || event__duration) != '-' && String(duration || event__duration) != '' ? Number(duration || event__duration) : undefined"
+          },
+          {
+            "name": "dvc_ip",
+            "value": "(device_ip || dvc_ip || host) != null && String(device_ip || dvc_ip || host) != 'undefined' && String(device_ip || dvc_ip || host) != 'null' && String(device_ip || dvc_ip || host) != '-' && String(device_ip || dvc_ip || host) != '' ? (device_ip || dvc_ip || host) : undefined"
+          },
+          {
+            "name": "dvc_mac",
+            "value": "(dvc_mac) != null && String(dvc_mac) != 'undefined' && String(dvc_mac) != 'null' && String(dvc_mac) != '-' && String(dvc_mac) != '' ? (dvc_mac) : undefined"
+          },
+          {
+            "name": "dvc_zone",
+            "value": "(dvc_zone) != null && String(dvc_zone) != 'undefined' && String(dvc_zone) != 'null' && String(dvc_zone) != '-' && String(dvc_zone) != '' ? (dvc_zone) : undefined"
+          },
+          {
+            "name": "flow_id",
+            "value": "(flow_id || session_id || loguid || connection_id) != null && String(flow_id || session_id || loguid || connection_id) != 'undefined' && String(flow_id || session_id || loguid || connection_id) != 'null' && String(flow_id || session_id || loguid || connection_id) != '-' && String(flow_id || session_id || loguid || connection_id) != '' ? (flow_id || session_id || loguid || connection_id) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "icmp_code",
+            "value": "(icmp_code) != null && String(icmp_code) != 'undefined' && String(icmp_code) != 'null' && String(icmp_code) != '-' && String(icmp_code) != '' && (!transport || /icmp/i.test(String(transport || protocol))) ? (icmp_code) : undefined"
+          },
+          {
+            "name": "icmp_type",
+            "value": "(icmp_type) != null && String(icmp_type) != 'undefined' && String(icmp_type) != 'null' && String(icmp_type) != '-' && String(icmp_type) != '' && (!transport || /icmp/i.test(String(transport || protocol))) ? (icmp_type) : undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || transport || network__transport) != null && String(protocol || transport || network__transport) != 'undefined' && String(protocol || transport || network__transport) != 'null' && String(protocol || transport || network__transport) != '-' && String(protocol || transport || network__transport) != '' ? (protocol || transport || network__transport) : undefined"
+          },
+          {
+            "name": "protocol_version",
+            "value": "(protocol_version) != null && String(protocol_version) != 'undefined' && String(protocol_version) != 'null' && String(protocol_version) != '-' && String(protocol_version) != '' ? (protocol_version) : undefined"
+          },
+          {
+            "name": "response_time",
+            "value": "(response_time) != null && String(response_time) != 'undefined' && String(response_time) != 'null' && String(response_time) != '-' && String(response_time) != '' ? Number(response_time) : undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "(session_id || loguid || flow_id) != null && String(session_id || loguid || flow_id) != 'undefined' && String(session_id || loguid || flow_id) != 'null' && String(session_id || loguid || flow_id) != '-' && String(session_id || loguid || flow_id) != '' ? (session_id || loguid || flow_id) : undefined"
+          },
+          {
+            "name": "src_interface",
+            "value": "(src_interface || src_intf || in_interface || inbound_if || interface_in) != null && String(src_interface || src_intf || in_interface || inbound_if || interface_in) != 'undefined' && String(src_interface || src_intf || in_interface || inbound_if || interface_in) != 'null' && String(src_interface || src_intf || in_interface || inbound_if || interface_in) != '-' && String(src_interface || src_intf || in_interface || inbound_if || interface_in) != '' ? (src_interface || src_intf || in_interface || inbound_if || interface_in) : undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "src_mac",
+            "value": "(src_mac) != null && String(src_mac) != 'undefined' && String(src_mac) != 'null' && String(src_mac) != '-' && String(src_mac) != '' ? (src_mac) : undefined"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "(src_translated_ip || nat_src_ip) != null && String(src_translated_ip || nat_src_ip) != 'undefined' && String(src_translated_ip || nat_src_ip) != 'null' && String(src_translated_ip || nat_src_ip) != '-' && String(src_translated_ip || nat_src_ip) != '' ? (src_translated_ip || nat_src_ip) : undefined"
+          },
+          {
+            "name": "src_translated_port",
+            "value": "(src_translated_port || nat_src_port) != null && String(src_translated_port || nat_src_port) != 'undefined' && String(src_translated_port || nat_src_port) != 'null' && String(src_translated_port || nat_src_port) != '-' && String(src_translated_port || nat_src_port) != '' ? Number(src_translated_port || nat_src_port) : undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "(src_zone || observer__ingress__zone) != null && String(src_zone || observer__ingress__zone) != 'undefined' && String(src_zone || observer__ingress__zone) != 'null' && String(src_zone || observer__ingress__zone) != '-' && String(src_zone || observer__ingress__zone) != '' ? (src_zone || observer__ingress__zone) : undefined"
+          },
+          {
+            "name": "ssid",
+            "value": "(ssid) != null && String(ssid) != 'undefined' && String(ssid) != 'null' && String(ssid) != '-' && String(ssid) != '' ? (ssid) : undefined"
+          },
+          {
+            "name": "tcp_flag",
+            "value": "(tcp_flag || tcp_flags) != null && String(tcp_flag || tcp_flags) != 'undefined' && String(tcp_flag || tcp_flags) != 'null' && String(tcp_flag || tcp_flags) != '-' && String(tcp_flag || tcp_flags) != '' ? (tcp_flag || tcp_flags) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "tos",
+            "value": "(tos) != null && String(tos) != 'undefined' && String(tos) != 'null' && String(tos) != '-' && String(tos) != '' ? (tos) : undefined"
+          },
+          {
+            "name": "ttl",
+            "value": "(ttl) != null && String(ttl) != 'undefined' && String(ttl) != 'null' && String(ttl) != '-' && String(ttl) != '' ? Number(ttl) : undefined"
+          },
+          {
+            "name": "vlan",
+            "value": "(vlan) != null && String(vlan) != 'undefined' && String(vlan) != 'null' && String(vlan) != '-' && String(vlan) != '' ? (vlan) : undefined"
+          },
+          {
+            "name": "wifi",
+            "value": "(wifi) != null && String(wifi) != 'undefined' && String(wifi) != 'null' && String(wifi) != '-' && String(wifi) != '' ? (wifi) : undefined"
+          },
+          {
+            "name": "vendor_account",
+            "value": "(vendor_account || cloud_account || account_id) != null && String(vendor_account || cloud_account || account_id) != 'undefined' && String(vendor_account || cloud_account || account_id) != 'null' && String(vendor_account || cloud_account || account_id) != '-' && String(vendor_account || cloud_account || account_id) != '' ? (vendor_account || cloud_account || account_id) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != null && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != 'undefined' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != 'null' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != '-' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != '' ? (/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) : undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != null && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != 'undefined' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != 'null' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != '-' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != '' ? Number(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) : undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "(bytes_in || destination__bytes) != null && String(bytes_in || destination__bytes) != 'undefined' && String(bytes_in || destination__bytes) != 'null' && String(bytes_in || destination__bytes) != '-' && String(bytes_in || destination__bytes) != '' ? Number(bytes_in || destination__bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "(bytes_out || source__bytes) != null && String(bytes_out || source__bytes) != 'undefined' && String(bytes_out || source__bytes) != 'null' && String(bytes_out || source__bytes) != '-' && String(bytes_out || source__bytes) != '' ? Number(bytes_out || source__bytes) : undefined"
+          },
+          {
+            "name": "dest",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != null && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '' ? (dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "(dest_port || destination__port || dpt || dstport) != null && String(dest_port || destination__port || dpt || dstport) != 'undefined' && String(dest_port || destination__port || dpt || dstport) != 'null' && String(dest_port || destination__port || dpt || dstport) != '-' && String(dest_port || destination__port || dpt || dstport) != '' ? Number(dest_port || destination__port || dpt || dstport) : undefined"
+          },
+          {
+            "name": "dvc",
+            "value": "(host || origin_ip || dvc || device_name) != null && String(host || origin_ip || dvc || device_name) != 'undefined' && String(host || origin_ip || dvc || device_name) != 'null' && String(host || origin_ip || dvc || device_name) != '-' && String(host || origin_ip || dvc || device_name) != '' ? (host || origin_ip || dvc || device_name) : undefined"
+          },
+          {
+            "name": "packets",
+            "value": "(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) != null && String(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) != 'undefined' && String(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) != 'null' && String(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) != '-' && String(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) != '' ? Number(Number(packets || network__packets) || ((Number(packets_in || 0) + Number(packets_out || 0)) || undefined)) : undefined"
+          },
+          {
+            "name": "packets_in",
+            "value": "(packets_in) != null && String(packets_in) != 'undefined' && String(packets_in) != 'null' && String(packets_in) != '-' && String(packets_in) != '' ? Number(packets_in) : undefined"
+          },
+          {
+            "name": "packets_out",
+            "value": "(packets_out) != null && String(packets_out) != 'undefined' && String(packets_out) != 'null' && String(packets_out) != '-' && String(packets_out) != '' ? Number(packets_out) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 46)",
+      "conf": {
+        "add": [
+          {
+            "name": "rule",
+            "value": "(rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) != null && String(rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) != 'undefined' && String(rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) != 'null' && String(rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) != '-' && String(rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) != '' ? (rule_name || rule__name || match_id || parent_rule || rule_id || policy_name || access_group || acl_name || (String(policy_id) != '0' ? policy_id : undefined)) : undefined"
+          },
+          {
+            "name": "src",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "(src_port || source__port || spt || srcport || sport) != null && String(src_port || source__port || spt || srcport || sport) != 'undefined' && String(src_port || source__port || spt || srcport || sport) != 'null' && String(src_port || source__port || spt || srcport || sport) != '-' && String(src_port || source__port || spt || srcport || sport) != '' ? Number(src_port || source__port || spt || srcport || sport) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != null && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != 'undefined' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != 'null' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != '-' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != '' ? (/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != null && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'undefined' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'null' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '-' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '' ? (user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != null && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'undefined' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'null' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '-' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '' ? (vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) : undefined"
+          },
+          {
+            "name": "rule_id",
+            "value": "(rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) != null && String(rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) != 'undefined' && String(rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) != 'null' && String(rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) != '-' && String(rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) != '' ? (rule_id || match_id || (String(policy_id) != '0' ? policy_id : undefined)) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'palo_alto_threat'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only mapped CIM fields before serialization (drop vendor-raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "src_ip",
+          "dest_ip",
+          "src_port",
+          "dest_port",
+          "protocol",
+          "transport",
+          "action",
+          "application",
+          "bytes_in",
+          "bytes_out",
+          "duration",
+          "rule_name",
+          "src_zone",
+          "dest_zone",
+          "host",
+          "log_time",
+          "vendor",
+          "product",
+          "version",
+          "app",
+          "vendor_action",
+          "channel",
+          "dest_interface",
+          "dest_mac",
+          "dest_translated_ip",
+          "dest_translated_port",
+          "direction",
+          "dvc_ip",
+          "dvc_mac",
+          "dvc_zone",
+          "flow_id",
+          "icmp_code",
+          "icmp_type",
+          "process_id",
+          "protocol_version",
+          "response_time",
+          "session_id",
+          "src_interface",
+          "src_mac",
+          "src_translated_ip",
+          "src_translated_port",
+          "ssid",
+          "tcp_flag",
+          "tos",
+          "ttl",
+          "vlan",
+          "wifi",
+          "vendor_account",
+          "bytes",
+          "dest",
+          "dvc",
+          "packets",
+          "packets_in",
+          "packets_out",
+          "rule",
+          "src",
+          "user",
+          "vendor_product",
+          "rule_id",
+          "sourcetype",
+          "_time",
+          "index",
+          "source",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    },
+    {
+      "id": "serialize",
+      "filter": "true",
+      "disabled": false,
+      "description": "Rebuild _raw as compact JSON of CIM fields",
+      "conf": {
+        "type": "json",
+        "dstField": "_raw",
+        "fields": [
+          "!_raw",
+          "!_time",
+          "!index",
+          "!source",
+          "!sourcetype",
+          "!host",
+          "!cribl_breaker",
+          "!cribl_pipe",
+          "!__*",
+          "!cribl*",
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Keep only _raw + Splunk metadata (CIM fields live in _raw)",
+      "conf": {
+        "remove": [
+          "*"
+        ],
+        "keep": [
+          "_raw",
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe"
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,412 @@
+{
+  "key": "carbonblack_edr::ocsf::__mapping__",
+  "sourcetype": "carbonblack_edr",
+  "dest_format": "ocsf::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-07T13:00:44.656Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into src object.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "src",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed event fields into OCSF process activity schema.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "time",
+            "value": "src.event_timestamp ? Date.parse(src.event_timestamp)/1000 : _time"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "message",
+            "value": "src.type ? src.type + (src.hostname ? ' on ' + src.hostname : '') : null"
+          },
+          {
+            "name": "status_code",
+            "value": "src.status"
+          },
+          {
+            "name": "status_detail",
+            "value": "src.status"
+          },
+          {
+            "name": "process",
+            "value": "{}"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "src.cmdline ? src.cmdline : ''"
+          },
+          {
+            "name": "process.created_time",
+            "value": "src.type==='ingress.event.procstart' && src.event_timestamp ? Date.parse(src.event_timestamp)/1000 : null"
+          },
+          {
+            "name": "process.file",
+            "value": "{}"
+          },
+          {
+            "name": "process.file.path",
+            "value": "src.process_path"
+          },
+          {
+            "name": "process.file.name",
+            "value": "src.process_path ? src.process_path.split('\\\\').pop() : null"
+          },
+          {
+            "name": "process.file.ext",
+            "value": "src.process_path && src.process_path.indexOf('.')>=0 ? src.process_path.split('.').pop().toLowerCase() : null"
+          },
+          {
+            "name": "process.file.type_id",
+            "value": "src.process_path && src.process_path.toLowerCase().endsWith('.exe') ? 8 : 1"
+          },
+          {
+            "name": "process.file.hashes",
+            "value": "src.md5 ? [{algorithm_id:1,value:src.md5}] : null"
+          },
+          {
+            "name": "process.name",
+            "value": "src.process_path ? src.process_path.split('\\\\').pop() : null"
+          },
+          {
+            "name": "process.pid",
+            "value": "src.pid"
+          },
+          {
+            "name": "process.uid",
+            "value": "src.process_guid"
+          },
+          {
+            "name": "process.user",
+            "value": "{}"
+          },
+          {
+            "name": "process.user.name",
+            "value": "src.username ? src.username.split('\\\\').pop() : null"
+          },
+          {
+            "name": "process.user.uid",
+            "value": "src.username"
+          },
+          {
+            "name": "process.user.type_id",
+            "value": "src.username ? (src.username.endsWith('$') ? 3 : 1) : null"
+          },
+          {
+            "name": "process.parent_process",
+            "value": "src.parent_pid || src.parent_path ? {pid:src.parent_pid,file:{path:src.parent_path,name:(src.parent_path ? src.parent_path.split('\\\\').pop() : null),type_id:(src.parent_path && src.parent_path.toLowerCase().endsWith('.exe') ? 8 : 1)}} : null"
+          },
+          {
+            "name": "unmapped",
+            "value": "src"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON payload from _raw into event fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract process file name and extension from process_path for OCSF file fields.",
+      "filter": "process_path",
+      "conf": {
+        "source": "process_path",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/(?<tmp_process_file_name>[^\\\\\\\\\\/]+)$/gm",
+        "regexList": [
+          {
+            "regex": "/\\.(?<tmp_process_file_ext>[^\\.\\\\\\\\\\/]+)$/gm"
+          }
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "description": "Extract account name from domain-qualified username.",
+      "filter": "username",
+      "conf": {
+        "source": "username",
+        "iterations": 100,
+        "overwrite": true,
+        "regex": "/(?:.*\\\\\\\\)?(?<tmp_actor_user_name>[^\\\\\\\\]+)$/gm"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed process telemetry fields to OCSF Process Activity schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1007"
+          },
+          {
+            "name": "activity_id",
+            "value": "type==='ingress.event.procstart'?1:0"
+          },
+          {
+            "name": "status_id",
+            "value": "status==='success'?1:(status==='blocked'?2:(status==='failure'||status==='failed'?2:(status?99:0)))"
+          },
+          {
+            "name": "status",
+            "value": "status==='success'?'Success':(status==='blocked'?'Failure':(status==='failure'||status==='failed'?'Failure':(status?'Other':'Unknown')))"
+          },
+          {
+            "name": "injection_type_id",
+            "value": "0"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.cmd_line",
+            "value": "cmdline ? cmdline : ''"
+          },
+          {
+            "name": "actor.process.created_time",
+            "value": "type==='ingress.event.procstart' && event_timestamp ? Date.parse(event_timestamp)/1000 : null"
+          },
+          {
+            "name": "actor.process.file",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.file.name",
+            "value": "tmp_process_file_name"
+          },
+          {
+            "name": "actor.process.file.ext",
+            "value": "tmp_process_file_ext"
+          },
+          {
+            "name": "actor.process.file.path",
+            "value": "process_path"
+          },
+          {
+            "name": "actor.process.file.type_id",
+            "value": "tmp_process_file_ext==='exe'?8:1"
+          },
+          {
+            "name": "actor.process.file.hashes",
+            "value": "md5 ? [{algorithm_id:1,value:md5}] : []"
+          },
+          {
+            "name": "actor.process.name",
+            "value": "tmp_process_file_name && tmp_process_file_name.indexOf('.')>=0 ? tmp_process_file_name.substring(0,tmp_process_file_name.lastIndexOf('.')) : tmp_process_file_name"
+          },
+          {
+            "name": "actor.process.pid",
+            "value": "pid"
+          },
+          {
+            "name": "actor.process.uid",
+            "value": "process_guid"
+          },
+          {
+            "name": "actor.process.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.process.user.name",
+            "value": "tmp_actor_user_name ? tmp_actor_user_name : username"
+          },
+          {
+            "name": "actor.process.user.type_id",
+            "value": "username ? (username.endsWith('$') ? 3 : 1) : 0"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "tmp_actor_user_name ? tmp_actor_user_name : username"
+          },
+          {
+            "name": "actor.user.type_id",
+            "value": "username ? (username.endsWith('$') ? 3 : 1) : 0"
+          },
+          {
+            "name": "observables",
+            "value": "md5 ? [{name:'actor.process.file.name',type_id:7},{name:'actor.process.file.path',type_id:45},{name:'actor.process.name',type_id:9},{name:'actor.process.pid',type_id:15},{name:'actor.process.cmd_line',type_id:13},{name:'actor.process.file.hashes[0].value',type_id:8},{name:'actor.user.name',type_id:4}] : [{name:'actor.process.file.name',type_id:7},{name:'actor.process.file.path',type_id:45},{name:'actor.process.name',type_id:9},{name:'actor.process.pid',type_id:15}]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON from _raw into top-level fields.",
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map parsed endpoint fields to OCSF process activity target schema fields.",
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "device.type_id",
+            "value": "0"
+          },
+          {
+            "name": "device.type",
+            "value": "'unknown'"
+          },
+          {
+            "name": "device.uid",
+            "value": "sensor_id!=null?sensor_id.toString():null"
+          },
+          {
+            "name": "device.hostname",
+            "value": "hostname"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity>=10?6:severity>=9?5:severity>=7?4:severity>=4?3:severity>=2?2:severity===1?1:0"
+          },
+          {
+            "name": "timezone_offset",
+            "value": "event_timestamp && event_timestamp.endsWith('Z') ? 0 : null"
+          },
+          {
+            "name": "launch_type_id",
+            "value": "type==='ingress.event.procstart'?1:0"
+          },
+          {
+            "name": "launch_type",
+            "value": "type==='ingress.event.procstart'?'Spawn':'Unknown'"
+          }
+        ]
+      }
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw",
+        "dstField": "parsed",
+        "overwrite": true
+      },
+      "id": "serde",
+      "description": "Parse JSON event payload from _raw into parsed object"
+    },
+    {
+      "filter": "true",
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "parsed.type==='ingress.event.procstart'?100701:100700"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.log_name",
+            "value": "parsed.type"
+          },
+          {
+            "name": "metadata.original_time",
+            "value": "parsed.event_timestamp"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Ingress Sensor'"
+          },
+          {
+            "name": "metadata.product.uid",
+            "value": "parsed.sensor_id != null ? parsed.sensor_id.toString() : null"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ingress'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'unknown'"
+          },
+          {
+            "name": "metadata.reporter",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.reporter.name",
+            "value": "parsed.hostname"
+          },
+          {
+            "name": "metadata.reporter.uid",
+            "value": "parsed.sensor_id != null ? parsed.sensor_id.toString() : null"
+          },
+          {
+            "name": "metadata.tenant_uid",
+            "value": "parsed.sensor_id != null ? parsed.sensor_id.toString() : null"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.8.0'"
+          }
+        ],
+        "remove": [
+          "_raw",
+          "_time",
+          "parsed"
+        ]
+      },
+      "id": "eval",
+      "description": "Create target OCSF type_uid and metadata fields"
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

@@ -1,0 +1,138 @@
+{
+  "key": "ncsc_replicator_full::cim::__mapping__",
+  "sourcetype": "ncsc_replicator_full",
+  "dest_format": "cim::__mapping__",
+  "score": 93,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 379,
+  "updated_at": "2026-08-07T16:35:25.606Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src == '-' ? '' : ((src || '').match(/^\\[([^\\]]+)\\](?::\\d+)?$/) ? (src || '').match(/^\\[([^\\]]+)\\](?::\\d+)?$/)[1] : (src || '').replace(/:\\d+$/, ''))"
+          },
+          {
+            "name": "src_port",
+            "value": "(src || '').match(/:(\\d+)$/) ? Number((src || '').match(/:(\\d+)$/)[1]) : 0"
+          },
+          {
+            "name": "dest",
+            "value": "dst == '-' ? '' : ((dst || '').match(/^\\[([^\\]]+)\\](?::\\d+)?$/) ? (dst || '').match(/^\\[([^\\]]+)\\](?::\\d+)?$/)[1] : (dst || '').replace(/:\\d+$/, ''))"
+          },
+          {
+            "name": "dest_port",
+            "value": "(dst || '').match(/:(\\d+)$/) ? Number((dst || '').match(/:(\\d+)$/)[1]) : 0"
+          },
+          {
+            "name": "vendor_action",
+            "value": "status || ''"
+          },
+          {
+            "name": "action",
+            "value": "status == 'SUCCESS' ? 'allowed' : (status == 'BLOCKED' || status == 'FAILURE' ? 'blocked' : (status || '').toLowerCase())"
+          },
+          {
+            "name": "app",
+            "value": "(process || '').replace(/\\[\\d+\\]$/, '')"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes || 0)"
+          },
+          {
+            "name": "duration",
+            "value": "Number(duration_ms || 0) / 1000"
+          },
+          {
+            "name": "user",
+            "value": "user == '-' ? '' : (user || '')"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "rule_id",
+            "value": "job_id == '-' ? '' : (job_id || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-21)",
+      "conf": {
+        "add": [
+          {
+            "name": "process",
+            "value": "(process || '').replace(/\\[\\d+\\]$/, '')"
+          },
+          {
+            "name": "process_id",
+            "value": "(process || '').match(/\\[(\\d+)\\]$/) ? (process || '').match(/\\[(\\d+)\\]$/)[1] : ''"
+          },
+          {
+            "name": "signature",
+            "value": "event || ''"
+          },
+          {
+            "name": "object",
+            "value": "dataset == '-' ? '' : (dataset || '')"
+          },
+          {
+            "name": "severity",
+            "value": "(severity || '').toLowerCase()"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 6 : (severity == 'ERROR' ? 5 : (severity == 'WARN' ? 4 : ((severity == 'NOTICE' || severity == 'INFO') ? 3 : 0)))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ncsc_replicator_full'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

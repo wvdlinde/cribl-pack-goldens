@@ -1,0 +1,101 @@
+{
+  "key": "ivanti_ps::__extraction__",
+  "sourcetype": "ivanti_ps",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-10T06:37:38.312Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base syslog structure: timestamp, host, event id, severity, and quoted message body",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<dst_host>\\S+) pulse: (?<event_id>\\S+) (?<severity>\\w+) \"(?<message>.*)\"$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract user and source IP (IPv4 or bracketed IPv6) from message text across auth/vpn/admin/hostchecker events",
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)'[^\"]*?(?:from|src_ip)\\s+(?<src_ip>\\[[0-9a-fA-F:]+\\]|\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract VPN/session identifier when present in message",
+      "conf": {
+        "source": "message",
+        "regex": "/session id:?\\s+(?<session_id>0x[0-9a-fA-F]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Strip enclosing brackets from IPv6 source addresses",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/[\\[\\]]/g, '') : src_ip"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action outcome from message text and normalize severity casing",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message && message.match(/successful/i) ? 'success' : message && message.match(/failed|failure|invalid|locked/i) ? 'failure' : message && message.match(/established/i) ? 'session_start' : message && message.match(/ended/i) ? 'session_end' : message && message.match(/modified/i) ? 'config_change' : message && message.match(/logged into/i) ? 'login' : 'info'"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event category from event id prefix",
+      "conf": {
+        "add": [
+          {
+            "name": "event_category",
+            "value": "event_id && event_id.startsWith('AUT') ? 'authentication' : event_id && event_id.startsWith('NET') ? 'network' : event_id && event_id.startsWith('ADM') ? 'admin' : event_id && event_id.startsWith('HCK') ? 'host_checker' : event_id && event_id.startsWith('SYS') ? 'system' : event_id && event_id.startsWith('CRT') ? 'certificate' : 'other'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}

@@ -1,0 +1,92 @@
+{
+  "key": "messages_log::__extraction__",
+  "sourcetype": "messages_log",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 378,
+  "updated_at": "2026-08-07T14:13:53.542Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract syslog header: timestamp, host, process, pid, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[^\\[:]+)(?:\\[(?<pid>\\d+)\\])?:\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^(Accepted|Failed) \\w+ for/)",
+      "disabled": false,
+      "description": "Extract SSH auth attempts",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<action>Accepted|Failed)\\s+(?<auth_method>\\S+)\\s+for\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>[0-9a-fA-F:.]+)\\s+port\\s+(?<src_port>\\d+)\\s+(?<protocol>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Disconnecting authenticating user')",
+      "disabled": false,
+      "description": "Extract SSH disconnect events",
+      "conf": {
+        "source": "message",
+        "regex": "/^Disconnecting authenticating user\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>[0-9a-fA-F:.]+):\\s+(?<reason>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('FORWARD')",
+      "disabled": false,
+      "description": "Extract firewall FORWARD DROP fields",
+      "conf": {
+        "source": "message",
+        "regex": "/^FORWARD\\s+(?<fw_action>\\S+)\\s+IN=(?<iface_in>\\S*)\\s+OUT=(?<iface_out>\\S*)\\s+SRC=(?<src_ip>\\S+)\\s+DST=(?<dst_ip>\\S+)\\s+LEN=(?<len>\\d+)\\s+PROTO=(?<protocol>\\S+)\\s+SPT=(?<src_port>\\d+)\\s+DPT=(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Authentication')",
+      "disabled": false,
+      "description": "Extract smbd authentication events",
+      "conf": {
+        "source": "message",
+        "regex": "/^Authentication\\s+(?<auth_result>failed|succeeded)\\s+for\\s+user\\s+'(?<user>[^']+)'\\s+from\\s+(?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action field based on process and message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "action ? action : (auth_result==='succeeded' ? 'Accepted' : (auth_result==='failed' ? 'Failed' : (fw_action ? fw_action : undefined)))"
+          },
+          {
+            "name": "severity",
+            "value": "message && message.match(/reject|denied|failure|failed|DROP/i) ? 'high' : (message && message.match(/Accepted|succeeded/i) ? 'info' : 'low')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

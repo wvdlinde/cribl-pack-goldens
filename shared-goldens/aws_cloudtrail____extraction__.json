@@ -1,0 +1,172 @@
+{
+  "key": "aws_cloudtrail::__extraction__",
+  "sourcetype": "aws_cloudtrail",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:24:41.657Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse CloudTrail JSON from _raw into top-level fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"userIdentity\":\\{[^}]*\"type\":\"(?<user_identity_type>[^\"]+)\"[^}]*(?:\"userName\":\"(?<user>[^\"]+)\")?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract nested userIdentity fields via regex from _raw"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"userIdentity\":\\{[^}]*\"arn\":\"(?<user_arn>[^\"]+)\"[^}]*\"accountId\":\"(?<account_id>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract userIdentity ARN and accountId from _raw"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"invokedBy\":\"(?<invoked_by>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract invokedBy for AWSService identity types"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "eventTime"
+          },
+          {
+            "name": "src_ip",
+            "value": "sourceIPAddress"
+          },
+          {
+            "name": "event_source",
+            "value": "eventSource"
+          },
+          {
+            "name": "event_name",
+            "value": "eventName"
+          },
+          {
+            "name": "event_type",
+            "value": "eventType"
+          },
+          {
+            "name": "aws_region",
+            "value": "awsRegion"
+          },
+          {
+            "name": "read_only",
+            "value": "readOnly"
+          },
+          {
+            "name": "request_id",
+            "value": "requestID"
+          },
+          {
+            "name": "event_id",
+            "value": "eventID"
+          },
+          {
+            "name": "event_version",
+            "value": "eventVersion"
+          },
+          {
+            "name": "recipient_account_id",
+            "value": "recipientAccountId"
+          },
+          {
+            "name": "user_agent",
+            "value": "userAgent"
+          },
+          {
+            "name": "user",
+            "value": "user != undefined ? user : (user_identity_type != undefined ? user_identity_type : 'unknown')"
+          },
+          {
+            "name": "action",
+            "value": "eventName != undefined ? eventName : 'unknown'"
+          },
+          {
+            "name": "category",
+            "value": "eventSource == 's3.amazonaws.com' ? 'S3' : eventSource == 'iam.amazonaws.com' ? 'IAM' : eventSource == 'ec2.amazonaws.com' ? 'EC2' : eventSource == 'signin.amazonaws.com' ? 'Authentication' : eventSource == 'lambda.amazonaws.com' ? 'Lambda' : eventSource == 'rds.amazonaws.com' ? 'RDS' : eventSource == 'sns.amazonaws.com' ? 'SNS' : eventSource == 'cloudwatch.amazonaws.com' ? 'CloudWatch' : eventSource == 'cloudformation.amazonaws.com' ? 'CloudFormation' : 'Other'"
+          },
+          {
+            "name": "severity",
+            "value": "eventName == 'ConsoleLogin' ? 'medium' : eventName == 'CreateUser' || eventName == 'DeleteObject' || eventName == 'TerminateInstances' || eventName == 'CreateStack' ? 'high' : readOnly == true ? 'low' : 'medium'"
+          },
+          {
+            "name": "is_read_only",
+            "value": "readOnly == true ? 'true' : 'false'"
+          }
+        ],
+        "remove": [
+          "eventTime",
+          "sourceIPAddress",
+          "eventSource",
+          "eventName",
+          "eventType",
+          "awsRegion",
+          "readOnly",
+          "requestID",
+          "eventID",
+          "eventVersion",
+          "recipientAccountId",
+          "userAgent",
+          "userIdentity"
+        ]
+      },
+      "description": "Map CloudTrail fields to normalized field names and derive action/severity/category"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp || undefined"
+          }
+        ]
+      },
+      "description": "Alias captured timestamp field(s) to log_time (timestamp) so _time reflects the source event, not pipeline processing time"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from aws_cloudtrail::cim: 82/82 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}

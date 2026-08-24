@@ -1,0 +1,23 @@
+{
+  "key": "o365_management_activity::__extraction__",
+  "sourcetype": "o365_management_activity",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 488,
+  "updated_at": "2026-08-17T12:49:52.964Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}

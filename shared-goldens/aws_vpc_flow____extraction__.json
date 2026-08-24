@@ -1,0 +1,32 @@
+{
+  "key": "aws_vpc_flow::__extraction__",
+  "sourcetype": "aws_vpc_flow",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "extraction-golden-migration",
+  "build": 0,
+  "updated_at": "2026-07-15T17:25:35.547Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__ocsf",
+            "value": "JSON.parse(_raw)"
+          }
+        ]
+      },
+      "description": "Parse OCSF JSON from _raw"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "good",
+    "summary": "Extraction migrated from aws_vpc_flow::cim: 67/67 source values reach output.",
+    "scoreSource": "valueCoverage"
+  }
+}
