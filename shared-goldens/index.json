@@ -11901,6 +11901,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "github_audit::cim#authentication::__mapping__",
+      "sourcetype": "github_audit",
+      "dest_format": "cim#authentication::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-08-25T12:28:38.493Z",
+      "path": "shared-goldens/github_audit__cim#authentication____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
