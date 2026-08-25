@@ -11910,7 +11910,7 @@
       "part": "mapping",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-08-25T12:28:38.493Z",
+      "updated_at": "2026-08-25T12:28:56.944Z",
       "path": "shared-goldens/github_audit__cim#authentication____mapping__.json",
       "report": {
         "score": 100,
