@@ -11916,6 +11916,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "f5_bigip_asm::__extraction__",
+      "sourcetype": "f5_bigip_asm",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 593,
+      "updated_at": "2026-08-25T13:30:29.889Z",
+      "path": "shared-goldens/f5_bigip_asm____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
