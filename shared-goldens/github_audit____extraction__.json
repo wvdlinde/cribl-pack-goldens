@@ -1,0 +1,66 @@
+{
+  "key": "github_audit::__extraction__",
+  "sourcetype": "github_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-08-25T12:28:35.231Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "@timestamp",
+        "_document_id",
+        "action",
+        "active",
+        "actor",
+        "actor_id",
+        "actor_is_bot",
+        "actor_location",
+        "audit_log_stream_enabled",
+        "audit_log_stream_id",
+        "audit_log_stream_sink",
+        "audit_log_stream_sink_details",
+        "business",
+        "business_id",
+        "created_at",
+        "device",
+        "forked_repository",
+        "login_method",
+        "logout_reason",
+        "message",
+        "name",
+        "operation_type",
+        "org",
+        "org_id",
+        "public_repo",
+        "repo",
+        "repo_id",
+        "repository",
+        "repository_public",
+        "request_access_security_header",
+        "request_category",
+        "secrets_updated",
+        "team",
+        "user",
+        "user_agent",
+        "user_id",
+        "visibility"
+      ]
+    }
+  },
+  "report": null
+}
