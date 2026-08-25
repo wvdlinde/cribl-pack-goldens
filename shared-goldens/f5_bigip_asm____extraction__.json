@@ -1,0 +1,80 @@
+{
+  "key": "f5_bigip_asm::__extraction__",
+  "sourcetype": "f5_bigip_asm",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 593,
+  "updated_at": "2026-08-25T13:30:29.889Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header (priority, timestamp, host) and isolate the ASM key-value payload into a scratch field",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<syslog_priority>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+ASM:(?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract the F5 ASM comma-separated key=value payload into individual fields",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to standard schema (src_ip, dst_ip, dst_port, user, action) and clean up scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "ip_client"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dest_ip"
+          },
+          {
+            "name": "dst_port",
+            "value": "dest_port"
+          },
+          {
+            "name": "user",
+            "value": "username == 'N/A' ? null : username"
+          },
+          {
+            "name": "action",
+            "value": "request_status == 'blocked' ? 'blocked' : (request_status == 'passed' ? 'allowed' : request_status)"
+          },
+          {
+            "name": "message",
+            "value": "violations != '' ? violations : 'No violation'"
+          }
+        ],
+        "remove": [
+          "__kvp"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
