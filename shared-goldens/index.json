@@ -11931,6 +11931,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "f5_bigip_asm::cim#network::__mapping__",
+      "sourcetype": "f5_bigip_asm",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 593,
+      "updated_at": "2026-08-25T13:30:55.456Z",
+      "path": "shared-goldens/f5_bigip_asm__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
