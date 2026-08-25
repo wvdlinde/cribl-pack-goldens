@@ -11886,6 +11886,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "github_audit::__extraction__",
+      "sourcetype": "github_audit",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-08-25T12:28:35.231Z",
+      "path": "shared-goldens/github_audit____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
