@@ -1,0 +1,342 @@
+{
+  "key": "sap_audit::ocsf#cloud_audit::__mapping__",
+  "sourcetype": "sap_audit",
+  "dest_format": "ocsf#cloud_audit::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 601,
+  "updated_at": "2026-08-26T14:02:04.187Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'SAP'"
+          },
+          {
+            "name": "product",
+            "value": "'Security Audit Log'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → OCSF 1.4 API Activity",
+      "conf": {
+        "add": [
+          {
+            "name": "api",
+            "value": "(((api_operation) != null && String(api_operation) != 'undefined' && String(api_operation) != 'null' && String(api_operation) != '-' && String(api_operation) != '') || ((cloud_service) != null && String(cloud_service) != 'undefined' && String(cloud_service) != 'null' && String(cloud_service) != '-' && String(cloud_service) != '') || ((request_id) != null && String(request_id) != 'undefined' && String(request_id) != 'null' && String(request_id) != '-' && String(request_id) != '')) ? {} : undefined"
+          },
+          {
+            "name": "api.service",
+            "value": "(((cloud_service) != null && String(cloud_service) != 'undefined' && String(cloud_service) != 'null' && String(cloud_service) != '-' && String(cloud_service) != '')) ? {} : undefined"
+          },
+          {
+            "name": "api.request",
+            "value": "(((request_id) != null && String(request_id) != 'undefined' && String(request_id) != 'null' && String(request_id) != '-' && String(request_id) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '') || ((user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '') || ((user_uid) != null && String(user_uid) != 'undefined' && String(user_uid) != 'null' && String(user_uid) != '-' && String(user_uid) != '') || ((user_account) != null && String(user_account) != 'undefined' && String(user_account) != 'null' && String(user_account) != '-' && String(user_account) != '') || ((credential_uid) != null && String(credential_uid) != 'undefined' && String(credential_uid) != 'null' && String(credential_uid) != '-' && String(credential_uid) != '') || ((mfa_used) != null && String(mfa_used) != 'undefined' && String(mfa_used) != 'null' && String(mfa_used) != '-' && String(mfa_used) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '') || ((user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '') || ((user_uid) != null && String(user_uid) != 'undefined' && String(user_uid) != 'null' && String(user_uid) != '-' && String(user_uid) != '') || ((user_account) != null && String(user_account) != 'undefined' && String(user_account) != 'null' && String(user_account) != '-' && String(user_account) != '') || ((credential_uid) != null && String(credential_uid) != 'undefined' && String(credential_uid) != 'null' && String(credential_uid) != '-' && String(credential_uid) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user.account",
+            "value": "(((user_account) != null && String(user_account) != 'undefined' && String(user_account) != 'null' && String(user_account) != '-' && String(user_account) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.session",
+            "value": "(((mfa_used) != null && String(mfa_used) != 'undefined' && String(mfa_used) != 'null' && String(mfa_used) != '-' && String(mfa_used) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_host) != null && String(src_host) != 'undefined' && String(src_host) != 'null' && String(src_host) != '-' && String(src_host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(((user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '')) ? {} : undefined"
+          },
+          {
+            "name": "cloud",
+            "value": "(((cloud_region) != null && String(cloud_region) != 'undefined' && String(cloud_region) != 'null' && String(cloud_region) != '-' && String(cloud_region) != '') || ((cloud_account) != null && String(cloud_account) != 'undefined' && String(cloud_account) != 'null' && String(cloud_account) != '-' && String(cloud_account) != '') || ((cloud_provider || 'AWS') != null && String(cloud_provider || 'AWS') != 'undefined' && String(cloud_provider || 'AWS') != 'null' && String(cloud_provider || 'AWS') != '-' && String(cloud_provider || 'AWS') != '')) ? {} : undefined"
+          },
+          {
+            "name": "cloud.account",
+            "value": "(((cloud_account) != null && String(cloud_account) != 'undefined' && String(cloud_account) != 'null' && String(cloud_account) != '-' && String(cloud_account) != '')) ? {} : undefined"
+          },
+          {
+            "name": "resource",
+            "value": "(((resource_name) != null && String(resource_name) != 'undefined' && String(resource_name) != 'null' && String(resource_name) != '-' && String(resource_name) != '') || ((resource_type) != null && String(resource_type) != 'undefined' && String(resource_type) != 'null' && String(resource_type) != '-' && String(resource_type) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "(((event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '') || (('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '') || ((vendor_product || 'CloudTrail') != null && String(vendor_product || 'CloudTrail') != 'undefined' && String(vendor_product || 'CloudTrail') != 'null' && String(vendor_product || 'CloudTrail') != '-' && String(vendor_product || 'CloudTrail') != '') || ((vendor_name || 'AWS') != null && String(vendor_name || 'AWS') != 'undefined' && String(vendor_name || 'AWS') != 'null' && String(vendor_name || 'AWS') != '-' && String(vendor_name || 'AWS') != '') || ((event_version) != null && String(event_version) != 'undefined' && String(event_version) != 'null' && String(event_version) != '-' && String(event_version) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((vendor_product || 'CloudTrail') != null && String(vendor_product || 'CloudTrail') != 'undefined' && String(vendor_product || 'CloudTrail') != 'null' && String(vendor_product || 'CloudTrail') != '-' && String(vendor_product || 'CloudTrail') != '') || ((vendor_name || 'AWS') != null && String(vendor_name || 'AWS') != 'undefined' && String(vendor_name || 'AWS') != 'null' && String(vendor_name || 'AWS') != '-' && String(vendor_name || 'AWS') != '') || ((event_version) != null && String(event_version) != 'undefined' && String(event_version) != 'null' && String(event_version) != '-' && String(event_version) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3 : 6) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) != null && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) != 'undefined' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) != 'null' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) != '-' && String(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) != '' ? Number(/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99)) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) != null && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) != 'undefined' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) != 'null' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) != '-' && String((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) != '' ? Number((/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 3002 : 6003) * 100 + (/^(ConsoleLogin|AssumeRole|GetSessionToken|GetFederationToken|AssumeRoleWithSAML|AssumeRoleWithWebIdentity)$/.test(String(api_operation)) ? 1 : (api_operation == null ? 0 : /(^|\\.)(Create|Insert|Run|Put|Add|Attach|Associate|Enable)/i.test(String(api_operation)) ? 1 : /(^|\\.)(Delete|Terminate|Remove|Detach|Disable|Revoke)/i.test(String(api_operation)) ? 4 : /(^|\\.)(Update|Modify|Set|Patch)/i.test(String(api_operation)) ? 3 : /(^|\\.)(Describe|List|Get|Search)|(Describe|List|Get|Search)$/i.test(String(api_operation)) ? 2 : 99))) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(outcome == 'failure' ? 3 : 1) != null && String(outcome == 'failure' ? 3 : 1) != 'undefined' && String(outcome == 'failure' ? 3 : 1) != 'null' && String(outcome == 'failure' ? 3 : 1) != '-' && String(outcome == 'failure' ? 3 : 1) != '' ? Number(outcome == 'failure' ? 3 : 1) : undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != null && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != 'undefined' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != 'null' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != '-' && String(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) != '' ? Number(outcome == 'failure' ? 2 : outcome == 'success' ? 1 : 0) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(outcome == 'failure' ? 'Failure' : 'Success') != null && String(outcome == 'failure' ? 'Failure' : 'Success') != 'undefined' && String(outcome == 'failure' ? 'Failure' : 'Success') != 'null' && String(outcome == 'failure' ? 'Failure' : 'Success') != '-' && String(outcome == 'failure' ? 'Failure' : 'Success') != '' ? (outcome == 'failure' ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "api.operation",
+            "value": "(api_operation) != null && String(api_operation) != 'undefined' && String(api_operation) != 'null' && String(api_operation) != '-' && String(api_operation) != '' ? (api_operation) : undefined"
+          },
+          {
+            "name": "api.service.name",
+            "value": "(cloud_service) != null && String(cloud_service) != 'undefined' && String(cloud_service) != 'null' && String(cloud_service) != '-' && String(cloud_service) != '' ? (cloud_service) : undefined"
+          },
+          {
+            "name": "api.request.uid",
+            "value": "(request_id) != null && String(request_id) != 'undefined' && String(request_id) != 'null' && String(request_id) != '-' && String(request_id) != '' ? (request_id) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '' ? (user) : undefined"
+          },
+          {
+            "name": "actor.user.type",
+            "value": "(user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '' ? (user_type) : undefined"
+          },
+          {
+            "name": "actor.user.uid",
+            "value": "(user_uid) != null && String(user_uid) != 'undefined' && String(user_uid) != 'null' && String(user_uid) != '-' && String(user_uid) != '' ? (user_uid) : undefined"
+          },
+          {
+            "name": "actor.user.account.uid",
+            "value": "(user_account) != null && String(user_account) != 'undefined' && String(user_account) != 'null' && String(user_account) != '-' && String(user_account) != '' ? (user_account) : undefined"
+          },
+          {
+            "name": "actor.user.credential_uid",
+            "value": "(credential_uid) != null && String(credential_uid) != 'undefined' && String(credential_uid) != 'null' && String(credential_uid) != '-' && String(credential_uid) != '' ? (credential_uid) : undefined"
+          },
+          {
+            "name": "actor.session.is_mfa",
+            "value": "(mfa_used) != null && String(mfa_used) != 'undefined' && String(mfa_used) != 'null' && String(mfa_used) != '-' && String(mfa_used) != '' ? (mfa_used) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.hostname",
+            "value": "(src_host) != null && String(src_host) != 'undefined' && String(src_host) != 'null' && String(src_host) != '-' && String(src_host) != '' ? (src_host) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '' ? (user_agent) : undefined"
+          },
+          {
+            "name": "cloud.region",
+            "value": "(cloud_region) != null && String(cloud_region) != 'undefined' && String(cloud_region) != 'null' && String(cloud_region) != '-' && String(cloud_region) != '' ? (cloud_region) : undefined"
+          },
+          {
+            "name": "cloud.account.uid",
+            "value": "(cloud_account) != null && String(cloud_account) != 'undefined' && String(cloud_account) != 'null' && String(cloud_account) != '-' && String(cloud_account) != '' ? (cloud_account) : undefined"
+          },
+          {
+            "name": "cloud.provider",
+            "value": "(cloud_provider || 'AWS') != null && String(cloud_provider || 'AWS') != 'undefined' && String(cloud_provider || 'AWS') != 'null' && String(cloud_provider || 'AWS') != '-' && String(cloud_provider || 'AWS') != '' ? (cloud_provider || 'AWS') : undefined"
+          },
+          {
+            "name": "resource.name",
+            "value": "(resource_name) != null && String(resource_name) != 'undefined' && String(resource_name) != 'null' && String(resource_name) != '-' && String(resource_name) != '' ? (resource_name) : undefined"
+          },
+          {
+            "name": "resource.type",
+            "value": "(resource_type) != null && String(resource_type) != 'undefined' && String(resource_type) != 'null' && String(resource_type) != '-' && String(resource_type) != '' ? (resource_type) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '' ? (event_uid) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '' ? ('1.4.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(vendor_product || 'CloudTrail') != null && String(vendor_product || 'CloudTrail') != 'undefined' && String(vendor_product || 'CloudTrail') != 'null' && String(vendor_product || 'CloudTrail') != '-' && String(vendor_product || 'CloudTrail') != '' ? (vendor_product || 'CloudTrail') : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor_name || 'AWS') != null && String(vendor_name || 'AWS') != 'undefined' && String(vendor_name || 'AWS') != 'null' && String(vendor_name || 'AWS') != '-' && String(vendor_name || 'AWS') != '' ? (vendor_name || 'AWS') : undefined"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "(event_version) != null && String(event_version) != 'undefined' && String(event_version) != 'null' && String(event_version) != '-' && String(event_version) != '' ? (event_version) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'sap_audit'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "class",
+        "client",
+        "date",
+        "host",
+        "mandt",
+        "msgid",
+        "msgno",
+        "report",
+        "suname",
+        "tcode",
+        "terminal",
+        "text",
+        "time",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}
