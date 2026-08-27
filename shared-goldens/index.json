@@ -11976,6 +11976,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "microsoft_dns::__extraction__",
+      "sourcetype": "microsoft_dns",
+      "dest_format": "__extraction__",
+      "score": 92,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 625,
+      "updated_at": "2026-08-27T16:31:44.180Z",
+      "path": "shared-goldens/microsoft_dns____extraction__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
