@@ -12006,6 +12006,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "infoblox_dns::cim#dns::__mapping__",
+      "sourcetype": "infoblox_dns",
+      "dest_format": "cim#dns::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 625,
+      "updated_at": "2026-08-27T16:32:18.219Z",
+      "path": "shared-goldens/infoblox_dns__cim#dns____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
