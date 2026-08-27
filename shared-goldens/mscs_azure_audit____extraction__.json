@@ -1,0 +1,66 @@
+{
+  "key": "mscs_azure_audit::__extraction__",
+  "sourcetype": "mscs_azure_audit",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 625,
+  "updated_at": "2026-08-27T16:27:43.799Z",
+  "functions": [
+    {
+      "id": "serde",
+      "description": "Try JSON parse",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "authorization",
+        "caller",
+        "channels",
+        "claims",
+        "correlationid",
+        "correlationid",
+        "description",
+        "eventdataid",
+        "eventdataid",
+        "eventname",
+        "eventname",
+        "eventsource",
+        "eventsource",
+        "eventtimestamp",
+        "eventtimestamp",
+        "httprequest",
+        "httprequest",
+        "id",
+        "level",
+        "operationid",
+        "operationid",
+        "operationname",
+        "operationname",
+        "properties",
+        "resourcegroupname",
+        "resourcegroupname",
+        "resourceprovidername",
+        "resourceprovidername",
+        "resourceuri",
+        "resourceuri",
+        "status",
+        "submissiontimestamp",
+        "submissiontimestamp",
+        "subscriptionid",
+        "subscriptionid",
+        "substatus",
+        "substatus"
+      ]
+    }
+  },
+  "report": null
+}
