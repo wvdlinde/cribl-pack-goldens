@@ -11946,6 +11946,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "mscs_azure_audit::__extraction__",
+      "sourcetype": "mscs_azure_audit",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 625,
+      "updated_at": "2026-08-27T16:27:43.799Z",
+      "path": "shared-goldens/mscs_azure_audit____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
