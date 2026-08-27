@@ -12021,6 +12021,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "carbonblack_edr::cim#endpoint::__mapping__",
+      "sourcetype": "carbonblack_edr",
+      "dest_format": "cim#endpoint::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 625,
+      "updated_at": "2026-08-27T16:33:52.306Z",
+      "path": "shared-goldens/carbonblack_edr__cim#endpoint____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
