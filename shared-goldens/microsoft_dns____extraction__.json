@@ -1,0 +1,83 @@
+{
+  "key": "microsoft_dns::__extraction__",
+  "sourcetype": "microsoft_dns",
+  "dest_format": "__extraction__",
+  "score": 92,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 625,
+  "updated_at": "2026-08-27T16:31:44.180Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Microsoft DNS debug log line into structured fields",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s+\\d{1,2}:\\d{2}:\\d{2})\\s+(?<thread_id>\\S+)\\s+(?<context>\\S+)\\s+(?<packet_id>\\S+)\\s+(?<protocol>UDP|TCP)\\s+(?<direction_raw>Snd|Rcv)\\s+(?<ip>\\S+)\\s+(?<port>\\d+)\\s+(?<flags>\\S+)\\s+(?<query_type>\\S+)\\s+\\[(?<xid>\\S+)\\s+(?<query_flags>\\S+)\\s+(?<response_code>\\S+)\\]\\s+(?<record_type>\\S+)\\s+(?<query_name_raw>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive timestamp, direction, src/dst ip/port, action, severity, and decode query name",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          },
+          {
+            "name": "direction",
+            "value": "direction_raw=='Snd' ? 'outbound' : 'inbound'"
+          },
+          {
+            "name": "src_ip",
+            "value": "direction_raw=='Rcv' ? ip : null"
+          },
+          {
+            "name": "dst_ip",
+            "value": "direction_raw=='Snd' ? ip : null"
+          },
+          {
+            "name": "src_port",
+            "value": "direction_raw=='Rcv' ? port : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "direction_raw=='Snd' ? port : null"
+          },
+          {
+            "name": "action",
+            "value": "response_code=='NOERROR' ? 'allowed' : 'error'"
+          },
+          {
+            "name": "severity",
+            "value": "response_code=='NOERROR' ? 'info' : 'warning'"
+          },
+          {
+            "name": "query_name",
+            "value": "query_name_raw.replace(/\\(\\d+\\)/g, '.').replace(/\\.$/, '').replace(/^\\./, '')"
+          }
+        ],
+        "remove": [
+          "direction_raw",
+          "query_name_raw",
+          "ip",
+          "port"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
