@@ -1,0 +1,359 @@
+{
+  "key": "zscaler_web::cim#web_proxy::__mapping__",
+  "sourcetype": "zscaler_web",
+  "dest_format": "cim#web_proxy::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 625,
+  "updated_at": "2026-08-27T16:28:41.703Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'cim'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Web'"
+          },
+          {
+            "name": "src",
+            "value": "ClientIP || src_ip || src"
+          },
+          {
+            "name": "dest",
+            "value": "dhost || destinationhost || dst || dest_ip || serverip"
+          },
+          {
+            "name": "http_method",
+            "value": "requestMethod || requestmethod || http_method"
+          },
+          {
+            "name": "url",
+            "value": "url || request"
+          },
+          {
+            "name": "url_domain",
+            "value": "hostname || dhost"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "useragent || requestClientApplication"
+          },
+          {
+            "name": "http_user_agent_length",
+            "value": "Number(String(useragent || requestClientApplication || '').length)"
+          },
+          {
+            "name": "http_referrer",
+            "value": "refererURL"
+          },
+          {
+            "name": "http_content_type",
+            "value": "contenttype"
+          },
+          {
+            "name": "action",
+            "value": "(action || act || '').toLowerCase() == 'allowed' ? 'allowed' : (action || act || '').toLowerCase() == 'blocked' ? 'blocked' : (action || act || '')"
+          },
+          {
+            "name": "status",
+            "value": "String(status || http_status || outcome || '')"
+          },
+          {
+            "name": "user",
+            "value": "user || suser"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-26)",
+      "conf": {
+        "add": [
+          {
+            "name": "bytes_in",
+            "value": "Number(bytes_in || __e['in'] || responsesize || 0)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(bytes_out || out || requestsize || 0)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(transactionsize || 0)"
+          },
+          {
+            "name": "category",
+            "value": "cat || urlcategory || url_category"
+          },
+          {
+            "name": "app",
+            "value": "app || appname"
+          },
+          {
+            "name": "vendor_product",
+            "value": "vendor_product"
+          },
+          {
+            "name": "duration",
+            "value": "Number(clienttranstime || 0)"
+          },
+          {
+            "name": "response_time",
+            "value": "Number(servertranstime || 0)"
+          },
+          {
+            "name": "site",
+            "value": "location"
+          },
+          {
+            "name": "error_code",
+            "value": "reason"
+          },
+          {
+            "name": "url_length",
+            "value": "Number(String(url || request || '').length)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'zscaler_web'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "app",
+        "appclass",
+        "appname",
+        "appproto",
+        "apprulename",
+        "bwthrottle",
+        "cat",
+        "clientip",
+        "clientpublicip",
+        "clienttranstime",
+        "cn1",
+        "cn1label",
+        "contenttype",
+        "cs1",
+        "cs1label",
+        "cs2",
+        "cs2label",
+        "cs3",
+        "cs3label",
+        "cs4",
+        "cs4label",
+        "cs5",
+        "cs5label",
+        "cs6",
+        "cs6label",
+        "datetime",
+        "department",
+        "destinationhost",
+        "destinationservicename",
+        "devicehostname",
+        "devicemodel",
+        "devicename",
+        "deviceostype",
+        "deviceosversion",
+        "deviceowner",
+        "devtime",
+        "devtimeformat",
+        "dhost",
+        "dlpdict",
+        "dlpdictionaries",
+        "dlpeng",
+        "dlpengine",
+        "dlphit",
+        "dlphtct",
+        "dlpid",
+        "dlpmd5",
+        "dst",
+        "dstbytes",
+        "event_id",
+        "eviceowner",
+        "externalid",
+        "fileclass",
+        "fileext",
+        "filename",
+        "filetype",
+        "filetype",
+        "hostname",
+        "in",
+        "keyprotectiontype",
+        "location",
+        "malwareclass",
+        "malwaretype",
+        "md5",
+        "mobappcat",
+        "mobappname",
+        "mobdevtype",
+        "out",
+        "outcome",
+        "pagerisk",
+        "policy",
+        "product",
+        "protocol",
+        "realm",
+        "reason",
+        "recordid",
+        "referer",
+        "refererurl",
+        "reqmethod",
+        "request",
+        "requestclientapplication",
+        "requestcontext",
+        "requestmethod",
+        "requestmethod",
+        "requestsize",
+        "respcode",
+        "responsesize",
+        "riskscore",
+        "role",
+        "rt",
+        "rulelabel",
+        "ruletype",
+        "serverip",
+        "servertranstime",
+        "sourcehost",
+        "sourcetranslatedaddress",
+        "spriv",
+        "src",
+        "srcbytes",
+        "srcpostnat",
+        "ssldec",
+        "status",
+        "suser",
+        "threatcategory",
+        "threatclass",
+        "threatname",
+        "transactionsize",
+        "tz",
+        "unscannabletype",
+        "uploadfilename",
+        "uploadfilesubtype",
+        "uploadfiletype",
+        "url",
+        "urlcategory",
+        "urlclass",
+        "urlfilterrulename",
+        "urlsupercategory",
+        "user",
+        "useragent",
+        "usrname",
+        "vendor",
+        "zscalernssweblogdlpdictionaries",
+        "zscalernssweblogurlclass"
+      ]
+    }
+  },
+  "report": null
+}
