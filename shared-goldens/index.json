@@ -11991,6 +11991,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "zeek_conn::cim#network::__mapping__",
+      "sourcetype": "zeek_conn",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 625,
+      "updated_at": "2026-08-27T16:32:08.344Z",
+      "path": "shared-goldens/zeek_conn__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
