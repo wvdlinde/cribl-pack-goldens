@@ -12036,6 +12036,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "fortinet_fortigate::ocsf#network::__mapping__",
+      "sourcetype": "fortinet_fortigate",
+      "dest_format": "ocsf#network::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 644,
+      "updated_at": "2026-08-28T13:31:02.535Z",
+      "path": "shared-goldens/fortinet_fortigate__ocsf#network____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
