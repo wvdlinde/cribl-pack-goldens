@@ -13416,6 +13416,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vsansystem::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_vsansystem",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:51:43.848Z",
+      "path": "shared-goldens/vmware_esxlog_vsansystem__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
