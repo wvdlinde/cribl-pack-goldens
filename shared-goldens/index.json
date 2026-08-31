@@ -14271,6 +14271,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_generic_icmp_tunnels::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_generic_icmp_tunnels",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:30:27.651Z",
+      "path": "shared-goldens/corelight_generic_icmp_tunnels__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
