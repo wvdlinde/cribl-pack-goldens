@@ -1,0 +1,202 @@
+{
+  "key": "sysmon_deploy_log::commonsecuritylog::__mapping__",
+  "sourcetype": "sysmon_deploy_log",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:29:54.042Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'commonsecuritylog'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'CommonSecurityLog'"
+          },
+          {
+            "name": "event_type",
+            "value": "'SysmonDeploy'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "_time ? new Date(_time*1000).toISOString() : timestamp"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'Sysmon Deployment'"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "version || ''"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "action || ''"
+          },
+          {
+            "name": "Activity",
+            "value": "action == 'install' ? 'Software Install' : action == 'uninstall' ? 'Software Uninstall' : action == 'config_update' ? 'Configuration Update' : action == 'driver_load' ? 'Driver Load' : action == 'service_check' ? 'Service Health Check' : (action || 'Unknown Activity')"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "DeviceName",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "status || ''"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "user || ''"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "severity == 'CRITICAL' ? 10 : severity == 'ERROR' ? 7 : severity == 'WARN' ? 4 : severity == 'INFO' ? 2 : 0"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'sysmon_deploy_log'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "config_file",
+        "config_hash",
+        "current_version",
+        "detail",
+        "duration_ms",
+        "error",
+        "exit_code",
+        "host",
+        "payload_size_bytes",
+        "pid",
+        "previous_version",
+        "required_version",
+        "service_state",
+        "sha256",
+        "share",
+        "src_ip",
+        "status",
+        "target_version",
+        "targets",
+        "user",
+        "version"
+      ]
+    }
+  },
+  "report": null
+}
