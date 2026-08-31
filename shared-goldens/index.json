@@ -14511,6 +14511,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "jira_security::commonsecuritylog::__mapping__",
+      "sourcetype": "jira_security",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T14:00:00.295Z",
+      "path": "shared-goldens/jira_security__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
