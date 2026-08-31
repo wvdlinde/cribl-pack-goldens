@@ -14346,6 +14346,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_protocol::cim#network::__mapping__",
+      "sourcetype": "ivanti_protocol",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:39:21.067Z",
+      "path": "shared-goldens/ivanti_protocol__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
