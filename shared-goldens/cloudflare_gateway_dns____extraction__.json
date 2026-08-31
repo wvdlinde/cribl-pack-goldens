@@ -1,0 +1,56 @@
+{
+  "key": "cloudflare_gateway_dns::__extraction__",
+  "sourcetype": "cloudflare_gateway_dns",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:18:55.162Z",
+  "functions": [
+    {
+      "id": "comment",
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"cloudflare_gateway_dns\" (ndjson)."
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse JSON",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "action",
+        "allowed",
+        "application",
+        "cn",
+        "colo",
+        "datetime",
+        "deviceid",
+        "devicename",
+        "dnsquerytype",
+        "matchedcategorynames",
+        "matchedindicatorfeeds",
+        "matchedrulenames",
+        "policyid",
+        "policyname",
+        "protocol",
+        "queryname",
+        "querytype",
+        "resolvedip",
+        "resolverdecision",
+        "sourceip",
+        "useremail"
+      ]
+    }
+  },
+  "report": null
+}
