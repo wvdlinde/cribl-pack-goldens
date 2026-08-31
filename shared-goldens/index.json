@@ -12111,6 +12111,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "http_fpc_metadata::cim#web_proxy::__mapping__",
+      "sourcetype": "http_fpc_metadata",
+      "dest_format": "cim#web_proxy::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:06:26.723Z",
+      "path": "shared-goldens/http_fpc_metadata__cim#web_proxy____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
