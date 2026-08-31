@@ -14061,6 +14061,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_osfsd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_osfsd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:57:07.821Z",
+      "path": "shared-goldens/vmware_esxlog_osfsd__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
