@@ -12651,6 +12651,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_localcli::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_localcli",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:46:50.283Z",
+      "path": "shared-goldens/vmware_esxlog_localcli__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
