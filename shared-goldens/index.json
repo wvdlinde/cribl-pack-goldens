@@ -12831,6 +12831,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_top::cim#network::__mapping__",
+      "sourcetype": "ivanti_top",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:08:46.456Z",
+      "path": "shared-goldens/ivanti_top__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
