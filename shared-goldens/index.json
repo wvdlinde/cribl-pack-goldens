@@ -13281,6 +13281,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "nginx_plus_access::cim#web_proxy::__mapping__",
+      "sourcetype": "nginx_plus_access",
+      "dest_format": "cim#web_proxy::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:45:39.714Z",
+      "path": "shared-goldens/nginx_plus_access__cim#web_proxy____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
