@@ -1,0 +1,110 @@
+{
+  "key": "pan_globalprotect_csv::__extraction__",
+  "sourcetype": "pan_globalprotect_csv",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:24:16.374Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse PAN GlobalProtect CSV log into named fields",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "_f1",
+          "receive_time",
+          "serial",
+          "log_type",
+          "event_subtype",
+          "_f6",
+          "generated_time",
+          "user",
+          "vsys",
+          "hostname",
+          "os_info",
+          "src_ip",
+          "public_ip",
+          "dst_host",
+          "location",
+          "tunnel_type",
+          "event_id",
+          "stage",
+          "auth_method",
+          "result",
+          "error_code",
+          "error_message",
+          "_f23",
+          "portal",
+          "seq_no",
+          "status_flags",
+          "connect_method",
+          "os_version",
+          "gp_client_version",
+          "__const_priority",
+          "repeat_count"
+        ],
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive event _time from receive_time field",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "strptime(receive_time, '%Y/%m/%d %H:%M:%S')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize action and severity based on login/tunnel result, classify event category",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result=='success' ? 'allowed' : (result=='failure' ? 'blocked' : 'unknown')"
+          },
+          {
+            "name": "severity",
+            "value": "result=='failure' ? (error_code=='99' || error_code=='7' ? 'high' : 'medium') : 'informational'"
+          },
+          {
+            "name": "event_category",
+            "value": "event_subtype && event_subtype.match(/login|portal-auth/) ? 'authentication' : (event_subtype && event_subtype.match(/tunnel-connect|tunnel-disconnect/) ? 'session' : (event_subtype=='hip-check' ? 'compliance' : 'other'))"
+          },
+          {
+            "name": "message",
+            "value": "error_message ? error_message : event_subtype"
+          }
+        ],
+        "remove": [
+          "_f1",
+          "_f6",
+          "_f23",
+          "__const_priority"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
