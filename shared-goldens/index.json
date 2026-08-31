@@ -12291,6 +12291,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cloudflare_gateway_dns::__extraction__",
+      "sourcetype": "cloudflare_gateway_dns",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:18:55.162Z",
+      "path": "shared-goldens/cloudflare_gateway_dns____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
