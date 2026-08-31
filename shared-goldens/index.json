@@ -13476,6 +13476,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_sc_vuln::commonsecuritylog::__mapping__",
+      "sourcetype": "tenable_sc_vuln",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:58:05.119Z",
+      "path": "shared-goldens/tenable_sc_vuln__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
