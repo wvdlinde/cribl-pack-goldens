@@ -14151,6 +14151,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_globalprotect_csv::__extraction__",
+      "sourcetype": "pan_globalprotect_csv",
+      "dest_format": "__extraction__",
+      "score": 91,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:24:16.374Z",
+      "path": "shared-goldens/pan_globalprotect_csv____extraction__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
