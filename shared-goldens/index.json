@@ -14166,6 +14166,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_settingsd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_settingsd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:24:47.522Z",
+      "path": "shared-goldens/vmware_esxlog_settingsd__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
