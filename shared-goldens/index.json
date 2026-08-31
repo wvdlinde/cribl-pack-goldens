@@ -12531,6 +12531,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_ztna::cim#network::__mapping__",
+      "sourcetype": "ncsc_cloudflare_ztna",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:32:42.776Z",
+      "path": "shared-goldens/ncsc_cloudflare_ztna__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
