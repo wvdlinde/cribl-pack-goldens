@@ -13296,6 +13296,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_sentry_sentry::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_sentry_sentry",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:45:53.713Z",
+      "path": "shared-goldens/ivanti_sentry_sentry__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
