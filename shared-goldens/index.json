@@ -12201,6 +12201,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "citrix_netscaler_syslog::cim#network::__mapping__",
+      "sourcetype": "citrix_netscaler_syslog",
+      "dest_format": "cim#network::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:11:11.752Z",
+      "path": "shared-goldens/citrix_netscaler_syslog__cim#network____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
