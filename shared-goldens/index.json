@@ -13731,6 +13731,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_messages::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_messages",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:24:21.169Z",
+      "path": "shared-goldens/ivanti_messages__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
