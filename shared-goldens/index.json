@@ -12591,6 +12591,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "json::cim#network::__mapping__",
+      "sourcetype": "json",
+      "dest_format": "cim#network::__mapping__",
+      "score": 95,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:39:02.985Z",
+      "path": "shared-goldens/json__cim#network____mapping__.json",
+      "report": {
+        "score": 95,
+        "band": "good"
+      }
     }
   ]
 }
