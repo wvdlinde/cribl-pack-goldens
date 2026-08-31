@@ -12606,6 +12606,21 @@
         "score": 95,
         "band": "good"
       }
+    },
+    {
+      "key": "json::commonsecuritylog::__mapping__",
+      "sourcetype": "json",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:41:29.544Z",
+      "path": "shared-goldens/json__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
