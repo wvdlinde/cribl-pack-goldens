@@ -12366,6 +12366,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "hypori::cim#network::__mapping__",
+      "sourcetype": "hypori",
+      "dest_format": "cim#network::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:22:18.912Z",
+      "path": "shared-goldens/hypori__cim#network____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
