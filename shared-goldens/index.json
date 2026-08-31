@@ -13521,6 +13521,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_elb_accesslog::__optimization__",
+      "sourcetype": "aws_elb_accesslog",
+      "dest_format": "__optimization__",
+      "score": 96,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:00:50.868Z",
+      "path": "shared-goldens/aws_elb_accesslog____optimization__.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
