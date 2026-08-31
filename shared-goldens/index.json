@@ -12411,6 +12411,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmw_syslog::Syslog::__mapping__",
+      "sourcetype": "vmw_syslog",
+      "dest_format": "Syslog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:24:17.145Z",
+      "path": "shared-goldens/vmw_syslog__Syslog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
