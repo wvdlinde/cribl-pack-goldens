@@ -13701,6 +13701,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_certactivity::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_certactivity",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:20:57.131Z",
+      "path": "shared-goldens/ivanti_certactivity__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
