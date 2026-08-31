@@ -14556,6 +14556,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_crx_cli::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_crx_cli",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T14:11:08.146Z",
+      "path": "shared-goldens/vmware_esxlog_crx_cli__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
