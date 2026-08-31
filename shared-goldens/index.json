@@ -13836,6 +13836,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_syslog::__optimization__",
+      "sourcetype": "tenable_syslog",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:33:25.837Z",
+      "path": "shared-goldens/tenable_syslog____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
