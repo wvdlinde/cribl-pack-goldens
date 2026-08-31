@@ -12351,6 +12351,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cloudflare_gateway_dns::__optimization__",
+      "sourcetype": "cloudflare_gateway_dns",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:21:12.217Z",
+      "path": "shared-goldens/cloudflare_gateway_dns____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
