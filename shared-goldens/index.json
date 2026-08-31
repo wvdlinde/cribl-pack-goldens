@@ -12966,6 +12966,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "trendmicro_interscan::commonsecuritylog::__mapping__",
+      "sourcetype": "trendmicro_interscan",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:23:30.019Z",
+      "path": "shared-goldens/trendmicro_interscan__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
