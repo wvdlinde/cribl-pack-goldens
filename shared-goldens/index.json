@@ -12756,6 +12756,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ldap::cim#authentication::__mapping__",
+      "sourcetype": "corelight_ldap",
+      "dest_format": "cim#authentication::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:02:17.963Z",
+      "path": "shared-goldens/corelight_ldap__cim#authentication____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
