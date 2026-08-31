@@ -14160,7 +14160,7 @@
       "part": "extraction",
       "author": "unknown",
       "build": 648,
-      "updated_at": "2026-08-31T13:26:04.402Z",
+      "updated_at": "2026-08-31T13:27:10.033Z",
       "path": "shared-goldens/pan_globalprotect_csv____extraction__.json",
       "report": {
         "score": 91,
