@@ -14106,6 +14106,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "f5_bigip_ltm_ssl_error::commonsecuritylog::__mapping__",
+      "sourcetype": "f5_bigip_ltm_ssl_error",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:03:30.768Z",
+      "path": "shared-goldens/f5_bigip_ltm_ssl_error__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
