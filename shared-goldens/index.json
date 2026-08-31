@@ -13956,6 +13956,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_sc_admin::commonsecuritylog::__mapping__",
+      "sourcetype": "tenable_sc_admin",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:45:26.841Z",
+      "path": "shared-goldens/tenable_sc_admin__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
