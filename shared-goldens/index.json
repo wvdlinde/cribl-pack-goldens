@@ -12261,6 +12261,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_nsx::cim#network::__mapping__",
+      "sourcetype": "vmware_nsx",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:18:30.174Z",
+      "path": "shared-goldens/vmware_nsx__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
