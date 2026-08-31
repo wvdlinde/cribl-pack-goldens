@@ -1,0 +1,89 @@
+{
+  "key": "vmware_esxlog_vsansystem::__extraction__",
+  "sourcetype": "vmware_esxlog_vsansystem",
+  "dest_format": "__extraction__",
+  "score": 94,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:48:36.553Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract timestamp, source host, pid, severity, component and message from vSAN Vsansystem log line",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Vsansystem\\[(?<pid>\\d+)\\]:\\s+(?<severity>INFO|WARNING|ERROR|CRITICAL):\\s+(?<component>[A-Za-z]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "description": "Extract IPv4 address referenced in message as src_ip",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !src_ip && message.match(/[0-9a-fA-F]{1,4}:[0-9a-fA-F:]{2,}/)",
+      "disabled": false,
+      "description": "Extract IPv6 address referenced in message as src_ip when no IPv4 found",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{1,4})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/(port|:)\\s*\\d{2,5}/)",
+      "disabled": false,
+      "description": "Extract destination port number when referenced in message (e.g. peer IP:port or 'on port N')",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:port\\s+|:)(?<dst_port>\\d{2,5})\\b/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive action and protocol classification from severity and component",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "severity=='CRITICAL' ? 'alert' : severity=='ERROR' ? 'failure' : severity=='WARNING' ? 'warning' : 'success'"
+          },
+          {
+            "name": "protocol",
+            "value": "component=='RDT' ? 'tcp' : null"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
