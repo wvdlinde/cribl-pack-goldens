@@ -1,0 +1,211 @@
+{
+  "key": "vmware_esxlog_vmauthd::commonsecuritylog::__mapping__",
+  "sourcetype": "vmware_esxlog_vmauthd",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:02:12.023Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'3002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'3'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "timestamp ? new Date(timestamp).toISOString() : new Date(_time * 1000).toISOString()"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'ESXi'"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "(message || '').indexOf('AUTHENTICATION FAILED') > -1 ? 'vmauthd:auth_failed' : ((message || '').indexOf('Login succeeded') > -1 ? 'vmauthd:login_success' : ((message || '').indexOf('Connection accepted') > -1 ? 'vmauthd:connection_accepted' : ((message || '').indexOf('Connection refused') > -1 ? 'vmauthd:connection_refused' : 'vmauthd:event')))"
+          },
+          {
+            "name": "Activity",
+            "value": "(message || '').indexOf('AUTHENTICATION FAILED') > -1 ? 'Login Failed' : ((message || '').indexOf('Login succeeded') > -1 ? 'Login Succeeded' : ((message || '').indexOf('Connection accepted') > -1 ? 'Connection Accepted' : ((message || '').indexOf('Connection refused') > -1 ? 'Connection Refused' : 'VMAuthd Event')))"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "Protocol",
+            "value": "(protocol || 'TCP').toUpperCase()"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "'vmauthd'"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "action || (fail_reason ? 'failure' : 'success')"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "user || ''"
+          },
+          {
+            "name": "DestinationUserName",
+            "value": "user || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-20)",
+      "conf": {
+        "add": [
+          {
+            "name": "DeviceName",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "String(severity || '').match(/^\\d+$/) ? String(severity) : (fail_reason ? '7' : '3')"
+          },
+          {
+            "name": "RequestURL",
+            "value": "auth_pipe || ''"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "String(dst_host || '').match(/^\\d+\\.\\d+\\.\\d+\\.\\d+$/) ? dst_host : ''"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "pid ? 'vmauthd/' + String(pid) : 'vmauthd'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware_esxlog_vmauthd'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
