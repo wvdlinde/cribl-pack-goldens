@@ -14256,6 +14256,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "sysmon_deploy_log::commonsecuritylog::__mapping__",
+      "sourcetype": "sysmon_deploy_log",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:29:54.042Z",
+      "path": "shared-goldens/sysmon_deploy_log__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
