@@ -12546,6 +12546,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "trellixtie_syslog::__extraction__",
+      "sourcetype": "trellixtie_syslog",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:35:48.436Z",
+      "path": "shared-goldens/trellixtie_syslog____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
