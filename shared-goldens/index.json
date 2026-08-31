@@ -13221,6 +13221,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "email_fpc_metadata::commonsecuritylog::__mapping__",
+      "sourcetype": "email_fpc_metadata",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:41:20.943Z",
+      "path": "shared-goldens/email_fpc_metadata__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
