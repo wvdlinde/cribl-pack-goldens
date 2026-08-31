@@ -12801,6 +12801,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ldap_search::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_ldap_search",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:03:40.856Z",
+      "path": "shared-goldens/corelight_ldap_search__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
