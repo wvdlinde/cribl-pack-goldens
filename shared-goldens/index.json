@@ -12306,6 +12306,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_cloudtrail::AWSCloudTrail::__mapping__",
+      "sourcetype": "aws_cloudtrail",
+      "dest_format": "AWSCloudTrail::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:19:42.717Z",
+      "path": "shared-goldens/aws_cloudtrail__AWSCloudTrail____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
