@@ -12171,6 +12171,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ssl::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_ssl",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:10:04.845Z",
+      "path": "shared-goldens/corelight_ssl__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
