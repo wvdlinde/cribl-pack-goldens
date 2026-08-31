@@ -12996,6 +12996,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_core_mifs::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_core_mifs",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:25:08.080Z",
+      "path": "shared-goldens/ivanti_core_mifs__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
