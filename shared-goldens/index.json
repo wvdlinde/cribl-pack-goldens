@@ -13641,6 +13641,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_vpn::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_vpn",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:14:54.009Z",
+      "path": "shared-goldens/corelight_vpn__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
