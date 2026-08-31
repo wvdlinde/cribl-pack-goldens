@@ -12456,6 +12456,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_gateway_http::__optimization__",
+      "sourcetype": "ncsc_cloudflare_gateway_http",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:27:09.596Z",
+      "path": "shared-goldens/ncsc_cloudflare_gateway_http____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
