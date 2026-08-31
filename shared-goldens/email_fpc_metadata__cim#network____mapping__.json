@@ -1,0 +1,237 @@
+{
+  "key": "email_fpc_metadata::cim#network::__mapping__",
+  "sourcetype": "email_fpc_metadata",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:40:00.004Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "src",
+            "value": "src_ip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "app",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "direction",
+            "value": "direction"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action"
+          },
+          {
+            "name": "action",
+            "value": "disposition == 'allowed' ? 'allowed' : (disposition == 'blocked' || disposition == 'denied' ? 'blocked' : disposition)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(size_bytes || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "sensor"
+          },
+          {
+            "name": "session_id",
+            "value": "session_id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-19)",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "sender"
+          },
+          {
+            "name": "transport",
+            "value": "http_method ? 'tcp' : ''"
+          },
+          {
+            "name": "vendor_account",
+            "value": "vendor_action"
+          },
+          {
+            "name": "flow_id",
+            "value": "event_id"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'email_fpc_metadata'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "attachment_hash",
+        "attachment_name",
+        "direction",
+        "disposition",
+        "dkim",
+        "dmarc",
+        "dst_ip",
+        "dst_port",
+        "event_id",
+        "http_method",
+        "mime_type",
+        "protocol",
+        "reason",
+        "recipient",
+        "sender",
+        "sensor",
+        "session_id",
+        "severity",
+        "size_bytes",
+        "spf",
+        "src_ip",
+        "src_port",
+        "status",
+        "status_code",
+        "subject",
+        "threat_name",
+        "url",
+        "user_agent"
+      ]
+    }
+  },
+  "report": null
+}
