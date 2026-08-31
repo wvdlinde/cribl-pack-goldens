@@ -1,0 +1,89 @@
+{
+  "key": "ivanti_top::__extraction__",
+  "sourcetype": "ivanti_top",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:05:33.841Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base Ivanti log structure: timestamp, host, event code, message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<dst_host>\\S+) : (?<event_code>[A-Z]+\\d+): (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/'[^']+'/)",
+      "disabled": false,
+      "description": "Extract the first single-quoted username/entity from the message",
+      "conf": {
+        "source": "message",
+        "regex": "/'(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('from ')",
+      "disabled": false,
+      "description": "Extract source IP (IPv4 or IPv6) following 'from' in the message",
+      "conf": {
+        "source": "message",
+        "regex": "/from (?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('assigned IP')",
+      "disabled": false,
+      "description": "Extract assigned VPN IP address when a tunnel is established",
+      "conf": {
+        "source": "message",
+        "regex": "/assigned IP (?<assigned_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, severity, and category based on event code and message content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.includes('authentication successful') ? 'success' : message.includes('failed') ? 'failure' : message.includes('established') ? 'connect' : message.includes('terminated') ? 'disconnect' : (message.includes('blocked') || message.includes('denied')) ? 'blocked' : (message.includes('modified') || message.includes('saved') || message.includes('initiated')) ? 'admin_action' : 'info'"
+          },
+          {
+            "name": "severity",
+            "value": "event_code.match(/^SEC/) ? 'high' : (event_code.match(/^AUT/) && message.includes('failed')) ? 'medium' : (event_code.match(/^NHC/)) ? 'medium' : 'low'"
+          },
+          {
+            "name": "category",
+            "value": "event_code.match(/^AUT/) ? 'authentication' : event_code.match(/^VPN/) ? 'vpn' : event_code.match(/^SEC/) ? 'security' : event_code.match(/^SYS/) ? 'system' : event_code.match(/^ADM/) ? 'administration' : event_code.match(/^NHC/) ? 'host_checker' : 'other'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
