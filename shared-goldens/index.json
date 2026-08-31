@@ -12426,6 +12426,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_firewall::cim#network::__mapping__",
+      "sourcetype": "ncsc_cloudflare_firewall",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:26:52.383Z",
+      "path": "shared-goldens/ncsc_cloudflare_firewall__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
