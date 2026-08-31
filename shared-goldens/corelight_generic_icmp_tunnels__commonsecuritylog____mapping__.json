@@ -1,0 +1,237 @@
+{
+  "key": "corelight_generic_icmp_tunnels::commonsecuritylog::__mapping__",
+  "sourcetype": "corelight_generic_icmp_tunnels",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:30:27.651Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'CommonSecurityLog'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'NetworkTraffic'"
+          },
+          {
+            "name": "event_type",
+            "value": "'corelight_generic_icmp_tunnels'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "ts ? new Date(Number(ts) * 1000).toISOString() : (timestamp ? new Date(timestamp).toISOString() : new Date(Number(_time || 0) * 1000).toISOString())"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "'Corelight'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'Zeek'"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "'generic_icmp_tunnels'"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "detection && detection != 'none' ? 'icmp_tunnel:' + detection : 'icmp_tunnel:observed'"
+          },
+          {
+            "name": "Activity",
+            "value": "detection && detection != 'none' ? 'ICMP Tunnel Detected' : 'ICMP Traffic Observed'"
+          },
+          {
+            "name": "SourceIP",
+            "value": "__e['id.orig_h'] || ''"
+          },
+          {
+            "name": "SourcePort",
+            "value": "Number(__e['id.orig_p'] || 0)"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "__e['id.resp_h'] || ''"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "Number(__e['id.resp_p'] || 0)"
+          },
+          {
+            "name": "Protocol",
+            "value": "(protocol || 'icmp').toUpperCase()"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "protocol == 'icmp6' || is_ipv6 ? 'ICMPv6' : 'ICMP'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-22)",
+      "conf": {
+        "add": [
+          {
+            "name": "DeviceAction",
+            "value": "action || (notice ? 'alert' : 'log')"
+          },
+          {
+            "name": "SentBytes",
+            "value": "Number(payload_len || 0)"
+          },
+          {
+            "name": "ReceivedBytes",
+            "value": "direction == 'inbound' ? Number(payload_len || 0) : 0"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "severity == 'critical' ? '10' : (severity == 'high' ? '8' : (severity == 'medium' ? '5' : (severity == 'low' ? '3' : '1')))"
+          },
+          {
+            "name": "DeviceName",
+            "value": "session_id || uid || 'corelight-sensor'"
+          },
+          {
+            "name": "SourceTranslatedAddress",
+            "value": "__e['id.orig_h'] || ''"
+          },
+          {
+            "name": "DestinationTranslatedAddress",
+            "value": "__e['id.resp_h'] || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_generic_icmp_tunnels'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "_path",
+        "detection",
+        "icmp_code",
+        "icmp_type",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "notice",
+        "payload_entropy",
+        "payload_len",
+        "proto",
+        "seq",
+        "severity",
+        "ts",
+        "tunnel_score",
+        "uid"
+      ]
+    }
+  },
+  "report": null
+}
