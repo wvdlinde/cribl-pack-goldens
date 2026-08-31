@@ -13446,6 +13446,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vsansystem::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_vsansystem",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:53:33.419Z",
+      "path": "shared-goldens/vmware_esxlog_vsansystem__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
