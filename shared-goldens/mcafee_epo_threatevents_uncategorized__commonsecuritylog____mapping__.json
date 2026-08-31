@@ -1,0 +1,228 @@
+{
+  "key": "mcafee_epo_threatevents_uncategorized::commonsecuritylog::__mapping__",
+  "sourcetype": "mcafee_epo_threatevents_uncategorized",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:51:37.918Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'102'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'2'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "rt"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "vendor"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "product"
+          },
+          {
+            "name": "DeviceVersion",
+            "value": "product_version"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "String(signature_id || '')"
+          },
+          {
+            "name": "Activity",
+            "value": "name"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src"
+          },
+          {
+            "name": "SourcePort",
+            "value": "Number(spt || 0)"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "dst"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "Number(dpt || 0)"
+          },
+          {
+            "name": "Protocol",
+            "value": "proto"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "act"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-18)",
+      "conf": {
+        "add": [
+          {
+            "name": "SourceUserName",
+            "value": "suser"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "String(severity || '')"
+          },
+          {
+            "name": "DeviceName",
+            "value": "dvchost"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'mcafee_epo_threatevents_uncategorized'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "cef",
+      "keys": [
+        "act",
+        "cat",
+        "cn1",
+        "cn1label",
+        "cn2",
+        "cn2label",
+        "cs1",
+        "cs1label",
+        "cs2",
+        "cs2label",
+        "dpt",
+        "dst",
+        "dvc",
+        "dvchost",
+        "filepath",
+        "fname",
+        "outcome",
+        "proto",
+        "reason",
+        "rt",
+        "spt",
+        "src",
+        "suser",
+        "threatname"
+      ]
+    }
+  },
+  "report": null
+}
