@@ -1,0 +1,101 @@
+{
+  "key": "bluecoat_proxysg_access_syslog::__extraction__",
+  "sourcetype": "bluecoat_proxysg_access_syslog",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:28:56.023Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse Bluecoat ProxySG access log fields from _raw",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<time_taken>\\d+) (?<src_ip>\\S+) (?<user>\\S+) (?<user_group>\\S+) (?<action>\\S+) (?<status_code>\\d+) (?<dst_ip>\\S+) (?<method>\\S+) (?<content_type>\\S+) (?<protocol>\\S+) (?<dst_host>\\S+) (?<dst_port>\\d+) (?<uri_path>\\S+) (?<uri_query>\\S+) \"(?<user_agent>[^\"]*)\" (?<bytes_sent>\\d+) (?<bytes_received>\\d+) (?<threat>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize placeholder values and numeric fields",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user==='-' ? null : user"
+          },
+          {
+            "name": "user_group",
+            "value": "user_group==='-' ? null : user_group"
+          },
+          {
+            "name": "threat",
+            "value": "threat==='-' ? null : threat"
+          },
+          {
+            "name": "uri_query",
+            "value": "uri_query==='-' ? null : uri_query"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          },
+          {
+            "name": "status_code",
+            "value": "Number(status_code)"
+          },
+          {
+            "name": "time_taken",
+            "value": "Number(time_taken)"
+          },
+          {
+            "name": "bytes_sent",
+            "value": "Number(bytes_sent)"
+          },
+          {
+            "name": "bytes_received",
+            "value": "Number(bytes_received)"
+          }
+        ],
+        "remove": []
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action, protocol, and severity for reporting",
+      "conf": {
+        "add": [
+          {
+            "name": "action_norm",
+            "value": "action.match(/DENIED/) ? 'blocked' : (action==='OBSERVED' ? 'observed' : (action==='TCP_TUNNELED' ? 'tunneled' : 'allowed'))"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol.toLowerCase()"
+          },
+          {
+            "name": "severity",
+            "value": "threat ? 'high' : (status_code>=500 ? 'medium' : (status_code>=400 ? 'low' : 'info'))"
+          }
+        ],
+        "remove": []
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
