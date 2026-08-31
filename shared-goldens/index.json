@@ -13236,6 +13236,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "nginx_plus_access::__extraction__",
+      "sourcetype": "nginx_plus_access",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:43:44.223Z",
+      "path": "shared-goldens/nginx_plus_access____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
