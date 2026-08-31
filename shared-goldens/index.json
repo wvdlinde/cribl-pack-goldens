@@ -13116,6 +13116,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "linux_secure::cim#authentication::__mapping__",
+      "sourcetype": "linux_secure",
+      "dest_format": "cim#authentication::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:36:44.454Z",
+      "path": "shared-goldens/linux_secure__cim#authentication____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
