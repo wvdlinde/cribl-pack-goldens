@@ -12726,6 +12726,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "citrix_netscaler_appfw_cef::cim#network::__mapping__",
+      "sourcetype": "citrix_netscaler_appfw_cef",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:56:24.823Z",
+      "path": "shared-goldens/citrix_netscaler_appfw_cef__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
