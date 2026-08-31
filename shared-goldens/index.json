@@ -12621,6 +12621,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_ldap::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_ldap",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:43:12.378Z",
+      "path": "shared-goldens/ivanti_ldap__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
