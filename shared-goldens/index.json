@@ -12951,6 +12951,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_system_csv::__extraction__",
+      "sourcetype": "pan_system_csv",
+      "dest_format": "__extraction__",
+      "score": 93,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:23:23.755Z",
+      "path": "shared-goldens/pan_system_csv____extraction__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
