@@ -1,0 +1,195 @@
+{
+  "key": "cisco_ironport_wsa::commonsecuritylog::__mapping__",
+  "sourcetype": "cisco_ironport_wsa",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:15:13.651Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'cisco_ironport_wsa_proxy'"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip"
+          },
+          {
+            "name": "DestinationIP",
+            "value": "dst_host"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "Protocol",
+            "value": "protocol"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "app_protocol"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "action || acl_action || acl_decision || ''"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "user"
+          },
+          {
+            "name": "SentBytes",
+            "value": "Number(bytes || 0)"
+          },
+          {
+            "name": "ReceivedBytes",
+            "value": "Number(bytes_out || 0)"
+          },
+          {
+            "name": "RequestURL",
+            "value": "url"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "String(status_code || http_status || '')"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "String(status_code || http_status || '')"
+          },
+          {
+            "name": "Activity",
+            "value": "policy_name ? policy_name.split('-')[1] || policy_name : 'Web Request'"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "String(severity || risk_score || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-16)",
+      "conf": {
+        "add": [
+          {
+            "name": "LogSeverity",
+            "value": "String(severity || risk_score || '')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_ironport_wsa'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
