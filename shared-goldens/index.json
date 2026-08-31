@@ -12216,6 +12216,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ironport_wsa::cim#network::__mapping__",
+      "sourcetype": "cisco_ironport_wsa",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:13:43.107Z",
+      "path": "shared-goldens/cisco_ironport_wsa__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
