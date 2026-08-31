@@ -1,0 +1,264 @@
+{
+  "key": "tenable_syslog::cim#network::__mapping__",
+  "sourcetype": "tenable_syslog",
+  "dest_format": "cim#network::__mapping__",
+  "score": 93,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T12:33:14.126Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_host || dns_name || dst_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "user",
+            "value": "user || target_user || new_user || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "session_id || ''"
+          },
+          {
+            "name": "flow_id",
+            "value": "scan_id ? String(scan_id) : ''"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "action",
+            "value": "(action || '').indexOf('fail') > -1 || (action || '').indexOf('denied') > -1 ? 'blocked' : ((action || '').indexOf('success') > -1 ? 'allowed' : 'unknown')"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-23)",
+      "conf": {
+        "add": [
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "app",
+            "value": "process || 'Tenable'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "process ? 'Tenable ' + process : 'Tenable SecurityCenter'"
+          },
+          {
+            "name": "rule",
+            "value": "plugin_name || scan_name || indicator || ''"
+          },
+          {
+            "name": "rule_id",
+            "value": "plugin_id ? String(plugin_id) : ''"
+          },
+          {
+            "name": "dest_zone",
+            "value": "repository || domain || ''"
+          },
+          {
+            "name": "vendor_account",
+            "value": "auth_method || ''"
+          },
+          {
+            "name": "packets",
+            "value": "Number(attempts || 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'tenable_syslog'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "affected_accounts",
+        "attempts",
+        "auth_method",
+        "component",
+        "cpu_pct",
+        "disk_free_gb",
+        "dns_name",
+        "domain",
+        "error",
+        "feed_version",
+        "format",
+        "indicator",
+        "ip",
+        "low",
+        "mem_pct",
+        "msg",
+        "new_user",
+        "new_value",
+        "old_value",
+        "plugin_id",
+        "plugin_name",
+        "plugins_updated",
+        "policy",
+        "port",
+        "protocol",
+        "report_name",
+        "repository",
+        "role",
+        "scan_id",
+        "scan_name",
+        "session_id",
+        "setting",
+        "severity",
+        "size_kb",
+        "src_ip",
+        "target_dc",
+        "target_user",
+        "targets",
+        "type",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}
