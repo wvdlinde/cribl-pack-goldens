@@ -13011,6 +13011,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_system_csv::cim#network::__mapping__",
+      "sourcetype": "pan_system_csv",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:27:43.797Z",
+      "path": "shared-goldens/pan_system_csv__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
