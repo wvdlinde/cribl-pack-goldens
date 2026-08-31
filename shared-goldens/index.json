@@ -14211,6 +14211,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_globalprotect_csv::__optimization__",
+      "sourcetype": "pan_globalprotect_csv",
+      "dest_format": "__optimization__",
+      "score": 95,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:26:47.140Z",
+      "path": "shared-goldens/pan_globalprotect_csv____optimization__.json",
+      "report": {
+        "score": 95,
+        "band": "good"
+      }
     }
   ]
 }
