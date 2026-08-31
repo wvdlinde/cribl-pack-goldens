@@ -1,0 +1,144 @@
+{
+  "key": "pan_system_csv::__extraction__",
+  "sourcetype": "pan_system_csv",
+  "dest_format": "__extraction__",
+  "score": 93,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:23:23.755Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract PAN-OS SYSTEM log CSV fields from _raw",
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial",
+          "log_type",
+          "subtype",
+          "future_use2",
+          "generated_time",
+          "vsys",
+          "eventid",
+          "object",
+          "future_use3",
+          "future_use4",
+          "module",
+          "severity",
+          "message",
+          "seqno",
+          "actionflags",
+          "flags1",
+          "flags2",
+          "flags3",
+          "flags4",
+          "vsys_name",
+          "dst_host",
+          "future_use5",
+          "future_use6",
+          "generated_time_ms"
+        ],
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, severity, and clean up unused scratch fields",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(generated_time_ms.replace(/\\//g,'-')+'Z')/1000"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity==='informational' ? 'info' : severity"
+          }
+        ],
+        "remove": [
+          "future_use1",
+          "future_use2",
+          "future_use3",
+          "future_use4",
+          "future_use5",
+          "future_use6",
+          "flags1",
+          "flags2",
+          "flags3",
+          "flags4",
+          "actionflags"
+        ]
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/logged (in|out)/)",
+      "disabled": false,
+      "description": "Extract user, src_ip, protocol from login/logout messages",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:User|Admin) (?<user>\\S+) logged (?:in via \\S+ from|out from \\S+ session originating) (?<src_ip>[\\d.]+)(?: using (?<protocol>\\S+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/[Ff]ail/)",
+      "disabled": false,
+      "description": "Extract user, src_ip, protocol from failed authentication/login messages",
+      "conf": {
+        "source": "message",
+        "regex": "/for user (?<user>\\S+) from (?<src_ip>[\\d.]+)(?: using (?<protocol>\\S+))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!user && message && message.match(/by user/)",
+      "disabled": false,
+      "description": "Extract user from generic administrative action messages",
+      "conf": {
+        "source": "message",
+        "regex": "/by user (?<user>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action based on message severity/content",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/[Ff]ail|down|expire|exceeded/) ? 'alert' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
