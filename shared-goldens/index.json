@@ -13566,6 +13566,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ise::commonsecuritylog::__mapping__",
+      "sourcetype": "cisco_ise",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:08:42.637Z",
+      "path": "shared-goldens/cisco_ise__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
