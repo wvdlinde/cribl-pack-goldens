@@ -13491,6 +13491,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_elb_accesslog::__extraction__",
+      "sourcetype": "aws_elb_accesslog",
+      "dest_format": "__extraction__",
+      "score": 90,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:00:14.894Z",
+      "path": "shared-goldens/aws_elb_accesslog____extraction__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
