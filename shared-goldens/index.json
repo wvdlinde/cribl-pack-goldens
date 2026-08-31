@@ -12381,6 +12381,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "hypori::commonsecuritylog::__mapping__",
+      "sourcetype": "hypori",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:23:14.140Z",
+      "path": "shared-goldens/hypori__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
