@@ -13911,6 +13911,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_sut::__optimization__",
+      "sourcetype": "vmware_esxlog_sut",
+      "dest_format": "__optimization__",
+      "score": 98,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:39:29.614Z",
+      "path": "shared-goldens/vmware_esxlog_sut____optimization__.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
