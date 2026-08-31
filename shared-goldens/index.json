@@ -13806,6 +13806,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_suricata_enriched::cim#network::__mapping__",
+      "sourcetype": "corelight_suricata_enriched",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:33:05.565Z",
+      "path": "shared-goldens/corelight_suricata_enriched__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
