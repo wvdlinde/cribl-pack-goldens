@@ -12186,6 +12186,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_dns::cim#dns::__mapping__",
+      "sourcetype": "corelight_dns",
+      "dest_format": "cim#dns::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:10:25.546Z",
+      "path": "shared-goldens/corelight_dns__cim#dns____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
