@@ -13131,6 +13131,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "stream_dns::cim#network::__mapping__",
+      "sourcetype": "stream_dns",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:37:02.510Z",
+      "path": "shared-goldens/stream_dns__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
