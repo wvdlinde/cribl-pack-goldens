@@ -1,0 +1,123 @@
+{
+  "key": "trellixtie_syslog::__extraction__",
+  "sourcetype": "trellixtie_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:35:48.436Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header and CEF header fields from raw event",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]+)\\|(?<product>[^|]+)\\|(?<product_version>[^|]+)\\|(?<signature_id>[^|]+)\\|(?<name>[^|]+)\\|(?<severity>[^|]+)\\|(?<extension>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs from CEF extension field",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "extension",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize IPs, host, user, action, and message fields from CEF extension data",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "typeof src !== 'undefined' ? src : null"
+          },
+          {
+            "name": "dst_ip",
+            "value": "typeof dst !== 'undefined' ? dst : null"
+          },
+          {
+            "name": "dst_host",
+            "value": "typeof dhost !== 'undefined' ? dhost : host"
+          },
+          {
+            "name": "user",
+            "value": "typeof suser !== 'undefined' ? suser : null"
+          },
+          {
+            "name": "action",
+            "value": "typeof act !== 'undefined' ? act.toLowerCase() : null"
+          },
+          {
+            "name": "message",
+            "value": "typeof name !== 'undefined' ? name : null"
+          },
+          {
+            "name": "outcome",
+            "value": "typeof outcome !== 'undefined' ? outcome : null"
+          }
+        ],
+        "remove": [
+          "act",
+          "dhost",
+          "suser",
+          "pri",
+          "name"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity level based on CEF numeric severity",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_label",
+            "value": "severity >= 8 ? 'critical' : severity >= 6 ? 'high' : severity >= 4 ? 'medium' : 'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "cef",
+      "keys": [
+        "act",
+        "cn1",
+        "cn1label",
+        "cn2",
+        "cn2label",
+        "cnt",
+        "cs1",
+        "cs1label",
+        "cs2",
+        "cs2label",
+        "cs3",
+        "cs3label",
+        "dhost",
+        "dst",
+        "filehash",
+        "fname",
+        "outcome",
+        "reason",
+        "src",
+        "suser"
+      ]
+    }
+  },
+  "report": null
+}
