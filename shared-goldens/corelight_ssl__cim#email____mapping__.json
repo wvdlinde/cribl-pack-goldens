@@ -1,0 +1,330 @@
+{
+  "key": "corelight_ssl::cim#email::__mapping__",
+  "sourcetype": "corelight_ssl",
+  "dest_format": "cim#email::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:09:31.283Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'corelight ssl'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM — Email",
+      "conf": {
+        "add": [
+          {
+            "name": "delay",
+            "value": "(delay) != null && String(delay) != 'undefined' && String(delay) != 'null' && String(delay) != '-' && String(delay) != '' ? Number(delay) : undefined"
+          },
+          {
+            "name": "duration",
+            "value": "(duration || event__duration) != null && String(duration || event__duration) != 'undefined' && String(duration || event__duration) != 'null' && String(duration || event__duration) != '-' && String(duration || event__duration) != '' ? Number(duration || event__duration) : undefined"
+          },
+          {
+            "name": "file_hash",
+            "value": "(file_hash || hash || md5 || sha256) != null && String(file_hash || hash || md5 || sha256) != 'undefined' && String(file_hash || hash || md5 || sha256) != 'null' && String(file_hash || hash || md5 || sha256) != '-' && String(file_hash || hash || md5 || sha256) != '' ? (file_hash || hash || md5 || sha256) : undefined"
+          },
+          {
+            "name": "file_name",
+            "value": "(file_name || filename || file) != null && String(file_name || filename || file) != 'undefined' && String(file_name || filename || file) != 'null' && String(file_name || filename || file) != '-' && String(file_name || filename || file) != '' ? (file_name || filename || file) : undefined"
+          },
+          {
+            "name": "file_size",
+            "value": "(file_size || size) != null && String(file_size || size) != 'undefined' && String(file_size || size) != 'null' && String(file_size || size) != '-' && String(file_size || size) != '' ? Number(file_size || size) : undefined"
+          },
+          {
+            "name": "internal_message_id",
+            "value": "(internal_message_id || mid) != null && String(internal_message_id || mid) != 'undefined' && String(internal_message_id || mid) != 'null' && String(internal_message_id || mid) != '-' && String(internal_message_id || mid) != '' ? (internal_message_id || mid) : undefined"
+          },
+          {
+            "name": "message_id",
+            "value": "(message_id || mid) != null && String(message_id || mid) != 'undefined' && String(message_id || mid) != 'null' && String(message_id || mid) != '-' && String(message_id || mid) != '' ? (message_id || mid) : undefined"
+          },
+          {
+            "name": "message_info",
+            "value": "(message_info) != null && String(message_info) != 'undefined' && String(message_info) != 'null' && String(message_info) != '-' && String(message_info) != '' ? (message_info) : undefined"
+          },
+          {
+            "name": "orig_dest",
+            "value": "(orig_dest) != null && String(orig_dest) != 'undefined' && String(orig_dest) != 'null' && String(orig_dest) != '-' && String(orig_dest) != '' ? (orig_dest) : undefined"
+          },
+          {
+            "name": "orig_recipient",
+            "value": "(orig_recipient) != null && String(orig_recipient) != 'undefined' && String(orig_recipient) != 'null' && String(orig_recipient) != '-' && String(orig_recipient) != '' ? (orig_recipient) : undefined"
+          },
+          {
+            "name": "orig_src",
+            "value": "(orig_src) != null && String(orig_src) != 'undefined' && String(orig_src) != 'null' && String(orig_src) != '-' && String(orig_src) != '' ? (orig_src) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || transport || network__transport) != null && String(protocol || transport || network__transport) != 'undefined' && String(protocol || transport || network__transport) != 'null' && String(protocol || transport || network__transport) != '-' && String(protocol || transport || network__transport) != '' ? (protocol || transport || network__transport) : undefined"
+          },
+          {
+            "name": "process",
+            "value": "(command || process || process_name) != null && String(command || process || process_name) != 'undefined' && String(command || process || process_name) != 'null' && String(command || process || process_name) != '-' && String(command || process || process_name) != '' ? (command || process || process_name) : undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "recipient_status",
+            "value": "(recipient_status) != null && String(recipient_status) != 'undefined' && String(recipient_status) != 'null' && String(recipient_status) != '-' && String(recipient_status) != '' ? (recipient_status) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "response_time",
+            "value": "(response_time) != null && String(response_time) != 'undefined' && String(response_time) != 'null' && String(response_time) != '-' && String(response_time) != '' ? Number(response_time) : undefined"
+          },
+          {
+            "name": "retries",
+            "value": "(retries) != null && String(retries) != 'undefined' && String(retries) != 'null' && String(retries) != '-' && String(retries) != '' ? Number(retries) : undefined"
+          },
+          {
+            "name": "return_addr",
+            "value": "(return_addr || return_path) != null && String(return_addr || return_path) != 'undefined' && String(return_addr || return_path) != 'null' && String(return_addr || return_path) != '-' && String(return_addr || return_path) != '' ? (return_addr || return_path) : undefined"
+          },
+          {
+            "name": "size",
+            "value": "(size || file_size || bytes) != null && String(size || file_size || bytes) != 'undefined' && String(size || file_size || bytes) != 'null' && String(size || file_size || bytes) != '-' && String(size || file_size || bytes) != '' ? Number(size || file_size || bytes) : undefined"
+          },
+          {
+            "name": "status_code",
+            "value": "(status_code || status) != null && String(status_code || status) != 'undefined' && String(status_code || status) != 'null' && String(status_code || status) != '-' && String(status_code || status) != '' ? (status_code || status) : undefined"
+          },
+          {
+            "name": "subject",
+            "value": "(subject) != null && String(subject) != 'undefined' && String(subject) != 'null' && String(subject) != '-' && String(subject) != '' ? (subject) : undefined"
+          },
+          {
+            "name": "url",
+            "value": "(url || url_filename || request_url) != null && String(url || url_filename || request_url) != 'undefined' && String(url || url_filename || request_url) != 'null' && String(url || url_filename || request_url) != '-' && String(url || url_filename || request_url) != '' ? (url || url_filename || request_url) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != null && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'undefined' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'null' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '-' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '' ? (user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) : undefined"
+          },
+          {
+            "name": "xdelay",
+            "value": "(xdelay) != null && String(xdelay) != 'undefined' && String(xdelay) != 'null' && String(xdelay) != '-' && String(xdelay) != '' ? (xdelay) : undefined"
+          },
+          {
+            "name": "xref",
+            "value": "(xref) != null && String(xref) != 'undefined' && String(xref) != 'null' && String(xref) != '-' && String(xref) != '' ? (xref) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "(/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) != null && String(/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) != 'undefined' && String(/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) != 'null' && String(/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) != '-' && String(/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) != '' ? (/deny|drop|block|reset|denied/i.test(String(action || event__outcome)) ? 'blocked' : /quarantin/i.test(String(action || event__outcome)) ? 'quarantined' : /bounce/i.test(String(action || event__outcome)) ? 'bounced' : /defer/i.test(String(action || event__outcome)) ? 'deferred' : /deliver|queue|done|accept|allow|success/i.test(String(action || event__outcome)) ? 'delivered' : String(action || event__outcome || 'unknown')) : undefined"
+          },
+          {
+            "name": "dest",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != null && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '' ? (dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) : undefined"
+          },
+          {
+            "name": "src",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "recipient",
+            "value": "(recipient || dest_user || to) != null && String(recipient || dest_user || to) != 'undefined' && String(recipient || dest_user || to) != 'null' && String(recipient || dest_user || to) != '-' && String(recipient || dest_user || to) != '' ? (recipient || dest_user || to) : undefined"
+          },
+          {
+            "name": "recipient_domain",
+            "value": "(recipient_domain) != null && String(recipient_domain) != 'undefined' && String(recipient_domain) != 'null' && String(recipient_domain) != '-' && String(recipient_domain) != '' ? (recipient_domain) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "recipient_count",
+            "value": "(recipient_count) != null && String(recipient_count) != 'undefined' && String(recipient_count) != 'null' && String(recipient_count) != '-' && String(recipient_count) != '' ? Number(recipient_count) : undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "(src_user || user || sender || SubjectUserName) != null && String(src_user || user || sender || SubjectUserName) != 'undefined' && String(src_user || user || sender || SubjectUserName) != 'null' && String(src_user || user || sender || SubjectUserName) != '-' && String(src_user || user || sender || SubjectUserName) != '' ? (src_user || user || sender || SubjectUserName) : undefined"
+          },
+          {
+            "name": "src_user_domain",
+            "value": "(src_user_domain || sender_domain) != null && String(src_user_domain || sender_domain) != 'undefined' && String(src_user_domain || sender_domain) != 'null' && String(src_user_domain || sender_domain) != '-' && String(src_user_domain || sender_domain) != '' ? (src_user_domain || sender_domain) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != null && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'undefined' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'null' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '-' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '' ? (vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) : undefined"
+          },
+          {
+            "name": "filter_action",
+            "value": "(filter_action) != null && String(filter_action) != 'undefined' && String(filter_action) != 'null' && String(filter_action) != '-' && String(filter_action) != '' ? (filter_action) : undefined"
+          },
+          {
+            "name": "filter_score",
+            "value": "(filter_score) != null && String(filter_score) != 'undefined' && String(filter_score) != 'null' && String(filter_score) != '-' && String(filter_score) != '' ? Number(filter_score) : undefined"
+          },
+          {
+            "name": "signature",
+            "value": "(signature || threat_id || message || signature_name) != null && String(signature || threat_id || message || signature_name) != 'undefined' && String(signature || threat_id || message || signature_name) != 'null' && String(signature || threat_id || message || signature_name) != '-' && String(signature || threat_id || message || signature_name) != '' ? (signature || threat_id || message || signature_name) : undefined"
+          },
+          {
+            "name": "signature_extra",
+            "value": "(signature_extra) != null && String(signature_extra) != 'undefined' && String(signature_extra) != 'null' && String(signature_extra) != '-' && String(signature_extra) != '' ? (signature_extra) : undefined"
+          },
+          {
+            "name": "signature_id",
+            "value": "(signature_id || event_code || threat_id || EventID) != null && String(signature_id || event_code || threat_id || EventID) != 'undefined' && String(signature_id || event_code || threat_id || EventID) != 'null' && String(signature_id || event_code || threat_id || EventID) != '-' && String(signature_id || event_code || threat_id || EventID) != '' ? (signature_id || event_code || threat_id || EventID) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ssl'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "cert_chain_fuids",
+        "cipher",
+        "client_cert_chain_fuids",
+        "curve",
+        "established",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "issuer",
+        "ja3",
+        "ja3s",
+        "not_valid_after",
+        "not_valid_before",
+        "resp_certificate_sha1",
+        "resumed",
+        "server_name",
+        "subject",
+        "ts",
+        "uid",
+        "validation_status",
+        "version"
+      ]
+    }
+  },
+  "report": null
+}
