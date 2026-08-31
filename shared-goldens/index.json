@@ -12501,6 +12501,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "bluecoat_proxysg_access_syslog::cim#network::__mapping__",
+      "sourcetype": "bluecoat_proxysg_access_syslog",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:31:25.940Z",
+      "path": "shared-goldens/bluecoat_proxysg_access_syslog__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
