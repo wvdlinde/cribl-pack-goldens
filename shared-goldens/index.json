@@ -13386,6 +13386,21 @@
         "score": 94,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_reporter::cim#network::__mapping__",
+      "sourcetype": "corelight_reporter",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:50:21.783Z",
+      "path": "shared-goldens/corelight_reporter__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
