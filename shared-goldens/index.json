@@ -12576,6 +12576,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_snmp::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_snmp",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:38:13.755Z",
+      "path": "shared-goldens/corelight_snmp__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
