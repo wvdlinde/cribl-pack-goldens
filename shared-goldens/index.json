@@ -13026,6 +13026,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_system_csv::__optimization__",
+      "sourcetype": "pan_system_csv",
+      "dest_format": "__optimization__",
+      "score": 97,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:27:55.738Z",
+      "path": "shared-goldens/pan_system_csv____optimization__.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
