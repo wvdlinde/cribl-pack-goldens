@@ -12711,6 +12711,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_http::__extraction__",
+      "sourcetype": "ncsc_cloudflare_http",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:55:24.120Z",
+      "path": "shared-goldens/ncsc_cloudflare_http____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
