@@ -12876,6 +12876,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_servicestatus::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_servicestatus",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:11:18.122Z",
+      "path": "shared-goldens/ivanti_servicestatus__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
