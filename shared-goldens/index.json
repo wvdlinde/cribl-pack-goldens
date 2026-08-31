@@ -14046,6 +14046,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_dlpevents::commonsecuritylog::__mapping__",
+      "sourcetype": "mcafee_epo_dlpevents",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:51:30.645Z",
+      "path": "shared-goldens/mcafee_epo_dlpevents__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
