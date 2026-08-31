@@ -12471,6 +12471,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_gateway_http::commonsecuritylog::__mapping__",
+      "sourcetype": "ncsc_cloudflare_gateway_http",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:28:08.295Z",
+      "path": "shared-goldens/ncsc_cloudflare_gateway_http__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
