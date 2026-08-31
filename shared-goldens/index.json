@@ -13341,6 +13341,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "nginx_plus_access::commonsecuritylog::__mapping__",
+      "sourcetype": "nginx_plus_access",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:46:25.902Z",
+      "path": "shared-goldens/nginx_plus_access__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
