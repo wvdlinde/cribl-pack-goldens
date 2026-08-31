@@ -13086,6 +13086,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_secure::__extraction__",
+      "sourcetype": "ivanti_secure",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:34:41.192Z",
+      "path": "shared-goldens/ivanti_secure____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
