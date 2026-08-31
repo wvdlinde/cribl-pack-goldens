@@ -13146,6 +13146,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "clearswift_email_syslog::Syslog::__mapping__",
+      "sourcetype": "clearswift_email_syslog",
+      "dest_format": "Syslog::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:37:02.950Z",
+      "path": "shared-goldens/clearswift_email_syslog__Syslog____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
