@@ -13251,6 +13251,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_sentry_sentry::cim#network::__mapping__",
+      "sourcetype": "ivanti_sentry_sentry",
+      "dest_format": "cim#network::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:43:51.969Z",
+      "path": "shared-goldens/ivanti_sentry_sentry__cim#network____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
