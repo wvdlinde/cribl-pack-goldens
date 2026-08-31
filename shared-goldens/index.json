@@ -12846,6 +12846,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_servicestatus::cim#network::__mapping__",
+      "sourcetype": "ivanti_servicestatus",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:09:26.359Z",
+      "path": "shared-goldens/ivanti_servicestatus__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
