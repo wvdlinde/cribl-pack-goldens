@@ -13101,6 +13101,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "clearswift_email_syslog::cim#network::__mapping__",
+      "sourcetype": "clearswift_email_syslog",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:36:16.899Z",
+      "path": "shared-goldens/clearswift_email_syslog__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
