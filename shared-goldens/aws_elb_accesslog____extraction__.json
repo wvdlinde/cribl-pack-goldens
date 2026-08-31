@@ -1,0 +1,129 @@
+{
+  "key": "aws_elb_accesslog::__extraction__",
+  "sourcetype": "aws_elb_accesslog",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T12:00:14.894Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse AWS ALB access log space-delimited fields (quoted groups kept intact, IPv6 brackets tolerated)",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<listener_type>\\S+)\\s+(?<timestamp>\\S+)\\s+(?<elb_name>\\S+)\\s+(?:(?<src_ip>\\[[^\\]]+\\]|[^\\s:]+):(?<src_port>\\d+)|-)\\s+(?:(?<dst_ip>\\[[^\\]]+\\]|[^\\s:]+):(?<dst_port>\\d+)|-)\\s+(?<request_processing_time>\\S+)\\s+(?<target_processing_time>\\S+)\\s+(?<response_processing_time>\\S+)\\s+(?<elb_status_code>\\S+)\\s+(?<target_status_code>\\S+)\\s+(?<bytes_in>\\d+)\\s+(?<bytes_out>\\d+)\\s+\"(?<http_request>[^\"]*)\"\\s+\"(?<user_agent>[^\"]*)\"\\s+(?<ssl_cipher>\\S+)\\s+(?<ssl_protocol>\\S+)\\s+(?<target_group_arn>\\S+)\\s+\"(?<trace_id>[^\"]*)\"\\s+\"(?<domain_name>[^\"]*)\"\\s+\"(?<chosen_cert_arn>[^\"]*)\"\\s+(?<matched_rule_priority>\\S+)\\s+(?<request_creation_time>\\S+)\\s+\"(?<actions_executed>[^\"]*)\"\\s+\"(?<redirect_url>[^\"]*)\"\\s+\"(?<error_reason>[^\"]*)\"\\s+\"(?<target_list>[^\"]*)\"\\s+\"(?<target_status_code_list>[^\"]*)\"\\s+\"(?<classification>[^\"]*)\"\\s+\"(?<classification_reason>[^\"]*)\"/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "http_request && http_request != '-'",
+      "disabled": false,
+      "description": "Split the quoted HTTP request line into method, URL and version",
+      "conf": {
+        "source": "http_request",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<http_method>\\S+)\\s+(?<url>\\S+)\\s+(?<http_version>\\S+)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "url && url != '-'",
+      "disabled": false,
+      "description": "Break the request URL into scheme, host, port, path and query",
+      "conf": {
+        "source": "url",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<url_scheme>[a-zA-Z0-9]+):\\/\\/(?<dst_host>\\[[^\\]]+\\]|[^:\\/?]+)(?::(?<url_port>\\d+))?(?<uri_path>\\/[^?\\s]*)?(?:\\?(?<uri_query>\\S*))?$/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize IPs, protocol, action, severity, timestamp and numeric fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/^\\[|\\]$/g, '') : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip.replace(/^\\[|\\]$/g, '') : dst_ip"
+          },
+          {
+            "name": "dst_host",
+            "value": "dst_host ? dst_host.replace(/^\\[|\\]$/g, '') : dst_host"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app_protocol",
+            "value": "listener_type == 'h2' ? 'https' : (listener_type == 'grpcs' ? 'https' : listener_type)"
+          },
+          {
+            "name": "status_code",
+            "value": "elb_status_code != '-' ? Number(elb_status_code) : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "duration_ms",
+            "value": "Math.round((Number(request_processing_time) > 0 ? Number(request_processing_time) : 0) * 1000 + (Number(target_processing_time) > 0 ? Number(target_processing_time) : 0) * 1000 + (Number(response_processing_time) > 0 ? Number(response_processing_time) : 0) * 1000)"
+          },
+          {
+            "name": "action",
+            "value": "status_code === undefined ? 'unknown' : (status_code < 400 ? 'allowed' : (status_code == 401 || status_code == 403 ? 'blocked' : (status_code < 500 ? 'failed' : 'error')))"
+          },
+          {
+            "name": "severity",
+            "value": "status_code === undefined ? 'medium' : (status_code >= 500 ? 'high' : (status_code == 401 || status_code == 403 ? 'medium' : (status_code >= 400 ? 'low' : 'informational')))"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|127\\.|fd|fe80:)/i) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "message",
+            "value": "http_request && http_request != '-' ? http_request + ' -> ' + elb_status_code : 'ALB request status ' + elb_status_code"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
