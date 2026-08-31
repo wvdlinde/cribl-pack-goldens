@@ -13686,6 +13686,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "citrix_netscaler_appfw::commonsecuritylog::__mapping__",
+      "sourcetype": "citrix_netscaler_appfw",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:20:56.940Z",
+      "path": "shared-goldens/citrix_netscaler_appfw__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
