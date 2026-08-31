@@ -12141,6 +12141,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ssl::cim#email::__mapping__",
+      "sourcetype": "corelight_ssl",
+      "dest_format": "cim#email::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:09:31.283Z",
+      "path": "shared-goldens/corelight_ssl__cim#email____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
