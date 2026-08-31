@@ -1,0 +1,299 @@
+{
+  "key": "infoblox_dns::ASimDnsActivityLogs::__mapping__",
+  "sourcetype": "infoblox_dns",
+  "dest_format": "ASimDnsActivityLogs::__mapping__",
+  "score": 91,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T09:55:46.954Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'ASimDnsActivityLogs'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'DnsActivity'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Query'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "_time ? new Date(_time * 1000).toISOString() : (timestamp ? new Date(timestamp).toISOString() : new Date().toISOString())"
+          },
+          {
+            "name": "EventStartTime",
+            "value": "_time ? new Date(_time * 1000).toISOString() : (timestamp ? new Date(timestamp).toISOString() : new Date().toISOString())"
+          },
+          {
+            "name": "EventEndTime",
+            "value": "_time ? new Date(_time * 1000).toISOString() : (timestamp ? new Date(timestamp).toISOString() : new Date().toISOString())"
+          },
+          {
+            "name": "DnsQuery",
+            "value": "q_target || r_target || ''"
+          },
+          {
+            "name": "DnsQueryTypeName",
+            "value": "(q_type || r_type || '').toUpperCase()"
+          },
+          {
+            "name": "DnsQueryClassName",
+            "value": "(r_class || 'IN').toUpperCase()"
+          },
+          {
+            "name": "DnsQueryClass",
+            "value": "(r_class || 'IN').toUpperCase() == 'IN' ? 1 : ((r_class || '').toUpperCase() == 'CH' ? 3 : ((r_class || '').toUpperCase() == 'HS' ? 4 : ((r_class || '').toUpperCase() == 'ANY' ? 255 : 0)))"
+          },
+          {
+            "name": "DnsResponseCode",
+            "value": "(r_code || '').toUpperCase() == 'NOERROR' ? 0 : ((r_code || '').toUpperCase() == 'FORMERR' ? 1 : ((r_code || '').toUpperCase() == 'SERVFAIL' ? 2 : ((r_code || '').toUpperCase() == 'NXDOMAIN' ? 3 : ((r_code || '').toUpperCase() == 'NOTIMP' ? 4 : ((r_code || '').toUpperCase() == 'REFUSED' ? 5 : 0)))))"
+          },
+          {
+            "name": "EventResultDetails",
+            "value": "r_code ? String(r_code).toUpperCase() : 'NA'"
+          },
+          {
+            "name": "EventResult",
+            "value": "!r_code || String(r_code).toUpperCase() == 'NOERROR' ? 'Success' : 'Failure'"
+          },
+          {
+            "name": "DnsResponseName",
+            "value": "r_data || ''"
+          },
+          {
+            "name": "SrcIpAddr",
+            "value": "src_ip || client || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-30)",
+      "conf": {
+        "add": [
+          {
+            "name": "SrcPortNumber",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "DstIpAddr",
+            "value": "dst_ip || server || ''"
+          },
+          {
+            "name": "DstPortNumber",
+            "value": "Number(dst_port || 53)"
+          },
+          {
+            "name": "NetworkProtocol",
+            "value": "(transport || protocol || 'UDP').toUpperCase()"
+          },
+          {
+            "name": "NetworkProtocolVersion",
+            "value": "ip_version ? String(ip_version).toUpperCase() : ''"
+          },
+          {
+            "name": "DnsFlags",
+            "value": "q_flags || r_flags || ''"
+          },
+          {
+            "name": "DnsFlagsRecursionDesired",
+            "value": "String(q_flags || r_flags || '').indexOf('+') > -1"
+          },
+          {
+            "name": "DvcHostname",
+            "value": "server || ''"
+          },
+          {
+            "name": "Dvc",
+            "value": "server || dst_ip || ''"
+          },
+          {
+            "name": "SrcHostname",
+            "value": "client && String(client).match(/[a-zA-Z]/) ? client : ''"
+          },
+          {
+            "name": "DstDomain",
+            "value": "zone || ''"
+          },
+          {
+            "name": "DvcAction",
+            "value": "action || ''"
+          },
+          {
+            "name": "DvcOriginalAction",
+            "value": "action || ''"
+          },
+          {
+            "name": "EventOriginalSeverity",
+            "value": "severity || vendor_severity || ''"
+          },
+          {
+            "name": "EventSeverity",
+            "value": "(severity || vendor_severity || 'info').toLowerCase() == 'info' ? 'Informational' : ((severity || vendor_severity || '').toLowerCase() == 'warning' ? 'Medium' : ((severity || vendor_severity || '').toLowerCase() == 'error' ? 'High' : 'Informational'))"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 31-40)",
+      "conf": {
+        "add": [
+          {
+            "name": "EventOriginalType",
+            "value": "q_status || q_response || 'query'"
+          },
+          {
+            "name": "EventSubType",
+            "value": "q_response || r_code ? 'response' : 'request'"
+          },
+          {
+            "name": "SrcProcessName",
+            "value": "process || 'named'"
+          },
+          {
+            "name": "SrcProcessId",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "EventMessage",
+            "value": "message || ''"
+          },
+          {
+            "name": "EventVendor",
+            "value": "'Infoblox'"
+          },
+          {
+            "name": "EventProduct",
+            "value": "'NIOS'"
+          },
+          {
+            "name": "EventType",
+            "value": "'Query'"
+          },
+          {
+            "name": "EventCount",
+            "value": "1"
+          },
+          {
+            "name": "EventSchemaVersion",
+            "value": "'0.1.7'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'infoblox_dns'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
