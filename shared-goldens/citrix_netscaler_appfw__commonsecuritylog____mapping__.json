@@ -1,0 +1,189 @@
+{
+  "key": "citrix_netscaler_appfw::commonsecuritylog::__mapping__",
+  "sourcetype": "citrix_netscaler_appfw",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 90,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T12:20:56.940Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'NetScaler AppFW Security Event'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "_time ? new Date(_time*1000).toISOString() : (timestamp ? new Date(timestamp*1000).toISOString() : null)"
+          },
+          {
+            "name": "DeviceName",
+            "value": "ns_hostname"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "appfw_event_type"
+          },
+          {
+            "name": "Activity",
+            "value": "action"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "action"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip"
+          },
+          {
+            "name": "SourcePort",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "DestinationPort",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "Protocol",
+            "value": "protocol"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "severity == 'CRITICAL' ? 10 : severity == 'ERROR' ? 8 : severity == 'HIGH' ? 7 : severity == 'WARNING' ? 5 : 0"
+          },
+          {
+            "name": "RequestURL",
+            "value": "url"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "http_method ? 'HTTP' : ''"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "'Citrix'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'NetScaler AppFW'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'citrix_netscaler_appfw'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "field",
+        "field_len",
+        "size",
+        "status",
+        "threat_index"
+      ]
+    }
+  },
+  "report": null
+}
