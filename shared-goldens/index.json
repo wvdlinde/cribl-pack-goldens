@@ -12096,6 +12096,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "palo_alto_threat::cim#network::__mapping__",
+      "sourcetype": "palo_alto_threat",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:00:50.021Z",
+      "path": "shared-goldens/palo_alto_threat__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
