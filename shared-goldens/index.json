@@ -13176,6 +13176,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "stream_dns::ASimDnsActivityLogs::__mapping__",
+      "sourcetype": "stream_dns",
+      "dest_format": "ASimDnsActivityLogs::__mapping__",
+      "score": 98,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:37:55.379Z",
+      "path": "shared-goldens/stream_dns__ASimDnsActivityLogs____mapping__.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
