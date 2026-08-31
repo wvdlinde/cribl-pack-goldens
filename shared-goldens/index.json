@@ -13206,6 +13206,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "email_fpc_metadata::cim#network::__mapping__",
+      "sourcetype": "email_fpc_metadata",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:40:00.004Z",
+      "path": "shared-goldens/email_fpc_metadata__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
