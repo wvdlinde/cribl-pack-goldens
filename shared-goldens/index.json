@@ -13926,6 +13926,21 @@
         "score": 98,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_hastatus::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_hastatus",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:41:13.924Z",
+      "path": "shared-goldens/ivanti_hastatus__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
