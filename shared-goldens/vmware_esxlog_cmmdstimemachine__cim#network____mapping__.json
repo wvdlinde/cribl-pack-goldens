@@ -1,0 +1,215 @@
+{
+  "key": "vmware_esxlog_cmmdstimemachine::cim#network::__mapping__",
+  "sourcetype": "vmware_esxlog_cmmdstimemachine",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:32:08.377Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "dest_ip",
+            "value": "/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(String(dst_host || '')) ? dst_host : ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "String(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "String(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "protocol_version",
+            "value": "String(src_ip || dst_host || '').indexOf(':') > -1 ? 'ipv6' : (src_ip || /^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(String(dst_host || '')) ? 'ipv4' : '')"
+          },
+          {
+            "name": "process_id",
+            "value": "pid ? Number(pid) : undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "node_uuid || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "action",
+            "value": "/ERROR|CRITICAL|Failed|unable to reach|timeout|partition|degraded/i.test(String(message || '') + String(severity || '')) ? 'blocked' : 'allowed'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-21)",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "String(severity || '').toUpperCase()"
+          },
+          {
+            "name": "rule",
+            "value": "String(message || '').match(/^\\[TimeMachine\\]\\s*(?:INFO|WARNING|ERROR|CRITICAL)?:?\\s*([A-Za-z ]{3,40})/) ? String(message || '').match(/^\\[TimeMachine\\]\\s*(?:INFO|WARNING|ERROR|CRITICAL)?:?\\s*([A-Za-z ]{3,40})/)[1].trim() : ''"
+          },
+          {
+            "name": "app",
+            "value": "'cmmdstimemachine'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'VMware ESXi'"
+          },
+          {
+            "name": "flow_id",
+            "value": "node_uuid ? String(node_uuid) : ''"
+          },
+          {
+            "name": "duration",
+            "value": "String(message || '').match(/clock skew of (\\d+)ms/) ? Number(String(message || '').match(/clock skew of (\\d+)ms/)[1]) / 1000 : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware_esxlog_cmmdstimemachine'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
