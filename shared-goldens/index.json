@@ -12231,6 +12231,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ironport_wsa::commonsecuritylog::__mapping__",
+      "sourcetype": "cisco_ironport_wsa",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:15:13.651Z",
+      "path": "shared-goldens/cisco_ironport_wsa__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
