@@ -1,0 +1,318 @@
+{
+  "key": "ncsc_cloudflare_gateway_http::cim#web_proxy::__mapping__",
+  "sourcetype": "ncsc_cloudflare_gateway_http",
+  "dest_format": "cim#web_proxy::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:26:58.009Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "src",
+            "value": "SourceIP || sourceip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "DestinationIP || destinationip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(DestinationPort || destinationport || 0)"
+          },
+          {
+            "name": "action",
+            "value": "(Action || action) == 'block' ? 'blocked' : (Action || action) == 'allow' ? 'allowed' : (Action || action)"
+          },
+          {
+            "name": "http_method",
+            "value": "HTTPMethod || httpmethod || ''"
+          },
+          {
+            "name": "status",
+            "value": "String(HTTPStatusCode || httpstatuscode || '')"
+          },
+          {
+            "name": "url",
+            "value": "URL || url || ''"
+          },
+          {
+            "name": "url_domain",
+            "value": "HTTPHost || httphost || ''"
+          },
+          {
+            "name": "uri_path",
+            "value": "(URL || url || '').replace(/^https?:\\/\\/[^\\/]+/,'')"
+          },
+          {
+            "name": "uri_query",
+            "value": "(URL || url || '').indexOf('?') > -1 ? (URL || url).split('?')[1] : ''"
+          },
+          {
+            "name": "url_length",
+            "value": "Number((URL || url || '').length)"
+          },
+          {
+            "name": "http_referrer",
+            "value": "Referer || referer || ''"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "UserAgent || useragent || ''"
+          },
+          {
+            "name": "http_user_agent_length",
+            "value": "Number((UserAgent || useragent || '').length)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-21)",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "Email || email || UserID || userid || ''"
+          },
+          {
+            "name": "category",
+            "value": "(CategoryNames || categorynames || []).join(',')"
+          },
+          {
+            "name": "app",
+            "value": "(ApplicationNames || applicationnames || []).join(',')"
+          },
+          {
+            "name": "http_content_type",
+            "value": "FileInfo && FileInfo.files && FileInfo.files[0] && FileInfo.files[0].content_type ? FileInfo.files[0].content_type : ''"
+          },
+          {
+            "name": "error_code",
+            "value": "BlockedFileReason || blockedfilereason || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Cloudflare Gateway'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ncsc_cloudflare_gateway_http'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "accountid",
+        "accountid",
+        "action",
+        "action",
+        "appcontrolinfo",
+        "appcontrolinfo",
+        "applicationids",
+        "applicationids",
+        "applicationnames",
+        "applicationnames",
+        "applicationstatuses",
+        "applicationstatuses",
+        "blockedfilehash",
+        "blockedfilehash",
+        "blockedfilename",
+        "blockedfilename",
+        "blockedfilereason",
+        "blockedfilereason",
+        "blockedfilesize",
+        "blockedfilesize",
+        "blockedfiletype",
+        "blockedfiletype",
+        "categoryids",
+        "categoryids",
+        "categorynames",
+        "categorynames",
+        "datetime",
+        "datetime",
+        "destinationip",
+        "destinationip",
+        "destinationipcontinentcode",
+        "destinationipcontinentcode",
+        "destinationipcountrycode",
+        "destinationipcountrycode",
+        "destinationport",
+        "destinationport",
+        "deviceid",
+        "deviceid",
+        "devicename",
+        "devicename",
+        "downloadedfilenames",
+        "downloadedfilenames",
+        "downloadmatcheddlpprofileentries",
+        "downloadmatcheddlpprofileentries",
+        "downloadmatcheddlpprofiles",
+        "downloadmatcheddlpprofiles",
+        "email",
+        "email",
+        "fileinfo",
+        "fileinfo",
+        "forensiccopystatus",
+        "forensiccopystatus",
+        "httphost",
+        "httphost",
+        "httpmethod",
+        "httpmethod",
+        "httpstatuscode",
+        "httpstatuscode",
+        "httpversion",
+        "httpversion",
+        "isisolated",
+        "isisolated",
+        "policyid",
+        "policyid",
+        "policyname",
+        "policyname",
+        "quarantined",
+        "quarantined",
+        "redirecttargeturi",
+        "redirecttargeturi",
+        "referer",
+        "referer",
+        "registrationid",
+        "registrationid",
+        "requestid",
+        "requestid",
+        "sessionid",
+        "sessionid",
+        "sourceinternalip",
+        "sourceinternalip",
+        "sourceip",
+        "sourceip",
+        "sourceipcontinentcode",
+        "sourceipcontinentcode",
+        "sourceipcountrycode",
+        "sourceipcountrycode",
+        "sourceport",
+        "sourceport",
+        "untrustedcertificateaction",
+        "untrustedcertificateaction",
+        "uploadedfilenames",
+        "uploadedfilenames",
+        "uploadmatcheddlpprofileentries",
+        "uploadmatcheddlpprofileentries",
+        "uploadmatcheddlpprofiles",
+        "uploadmatcheddlpprofiles",
+        "url",
+        "url",
+        "useragent",
+        "useragent",
+        "userid",
+        "userid"
+      ]
+    }
+  },
+  "report": null
+}
