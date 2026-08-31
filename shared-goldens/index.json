@@ -13581,6 +13581,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_known_hosts::cim#network::__mapping__",
+      "sourcetype": "corelight_known_hosts",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:12:47.637Z",
+      "path": "shared-goldens/corelight_known_hosts__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
