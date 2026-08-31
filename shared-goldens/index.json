@@ -14541,6 +14541,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_elasticsearch_log::commonsecuritylog::__mapping__",
+      "sourcetype": "ivanti_elasticsearch_log",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T14:07:24.580Z",
+      "path": "shared-goldens/ivanti_elasticsearch_log__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
