@@ -14286,6 +14286,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_cmmdstimemachine::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_cmmdstimemachine",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:32:08.377Z",
+      "path": "shared-goldens/vmware_esxlog_cmmdstimemachine__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
