@@ -13266,6 +13266,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_https_request::cim#network::__mapping__",
+      "sourcetype": "ivanti_https_request",
+      "dest_format": "cim#network::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:45:22.048Z",
+      "path": "shared-goldens/ivanti_https_request__cim#network____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
