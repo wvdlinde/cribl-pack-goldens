@@ -13941,6 +13941,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_backup_check::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_backup_check",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:45:25.720Z",
+      "path": "shared-goldens/vmware_esxlog_backup_check__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
