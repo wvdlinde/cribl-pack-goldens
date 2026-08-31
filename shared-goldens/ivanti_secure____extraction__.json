@@ -1,0 +1,130 @@
+{
+  "key": "ivanti_secure::__extraction__",
+  "sourcetype": "ivanti_secure",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:34:41.192Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog-style header (timestamp, host, module tag) and capture remaining key=value payload for KVP parsing",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) ivanti-secure\\[(?<module>\\w+)\\]: (?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "description": "Extract key=value pairs (id, severity, src, dst, dport, proto, user, realm, roles, vpn, msg) from the remainder of the log line",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize field names to standard schema (src_ip, dst_ip, dst_port, protocol, message) and clean up scratch/raw kvp fields",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "dst_port",
+            "value": "dport"
+          },
+          {
+            "name": "protocol",
+            "value": "proto"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "event_id",
+            "value": "id"
+          }
+        ],
+        "remove": [
+          "src",
+          "dst",
+          "dport",
+          "proto",
+          "msg",
+          "id",
+          "__kvp"
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify action based on message content (success, failure, blocked, connect, disconnect, info)",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/successful/i) ? 'success' : message.match(/failed|locked/i) ? 'failure' : message.match(/blocked|deny/i) ? 'blocked' : message.match(/established/i) ? 'connect' : message.match(/terminated/i) ? 'disconnect' : 'info'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive _time from timestamp field and determine traffic direction based on src_ip range",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^10\\.|^192\\.168\\.|^172\\.16\\./) ? 'outbound' : (dst_ip && dst_ip.match(/^10\\.|^192\\.168\\.|^172\\.16\\./) ? 'inbound' : 'unknown')"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "dport",
+        "dst",
+        "id",
+        "msg",
+        "proto",
+        "realm",
+        "roles",
+        "severity",
+        "src",
+        "user",
+        "vpn"
+      ]
+    }
+  },
+  "report": null
+}
