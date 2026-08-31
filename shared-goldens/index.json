@@ -12960,7 +12960,7 @@
       "part": "extraction",
       "author": "unknown",
       "build": 648,
-      "updated_at": "2026-08-31T11:26:18.691Z",
+      "updated_at": "2026-08-31T11:28:17.827Z",
       "path": "shared-goldens/pan_system_csv____extraction__.json",
       "report": {
         "score": 93,
