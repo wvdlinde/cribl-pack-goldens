@@ -1,0 +1,231 @@
+{
+  "key": "ivanti_vpp::commonsecuritylog::__mapping__",
+  "sourcetype": "ivanti_vpp",
+  "dest_format": "commonsecuritylog::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:47:15.028Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'3002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'3'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "TimeGenerated",
+            "value": "timestamp ? new Date(timestamp).toISOString() : new Date((_time || Date.now()/1000) * 1000).toISOString()"
+          },
+          {
+            "name": "DeviceVendor",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "DeviceProduct",
+            "value": "'Connect Secure'"
+          },
+          {
+            "name": "DeviceEventClassID",
+            "value": "String(msg_id || '')"
+          },
+          {
+            "name": "Activity",
+            "value": "msg_id == 'AUT22653' ? 'Authentication Successful' : msg_id == 'AUT22674' ? 'Authentication Failed' : msg_id == 'AUT22691' ? 'Account Locked' : msg_id == 'SYS30012' ? 'Administrator Login' : msg_id == 'SYS31450' ? 'Configuration Change' : msg_id == 'CRT40021' ? 'Certificate Validation Failed' : msg_id == 'VPN10045' ? 'VPN Tunnel Established' : 'Ivanti Event'"
+          },
+          {
+            "name": "SourceIP",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "SourceTranslatedAddress",
+            "value": "assigned_ip || ''"
+          },
+          {
+            "name": "SourceUserName",
+            "value": "user || ''"
+          },
+          {
+            "name": "DestinationUserName",
+            "value": "console ? (user || '') : ''"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "action || outcome || ''"
+          },
+          {
+            "name": "Protocol",
+            "value": "(protocol || '').toUpperCase()"
+          },
+          {
+            "name": "ApplicationProtocol",
+            "value": "(console || protocol || '').toUpperCase()"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-17)",
+      "conf": {
+        "add": [
+          {
+            "name": "DeviceName",
+            "value": "host || ''"
+          },
+          {
+            "name": "LogSeverity",
+            "value": "(severity || '').toUpperCase() == 'CRIT' ? '9' : (severity || '').toUpperCase() == 'ERROR' ? '7' : (severity || '').toUpperCase() == 'WARN' ? '5' : (severity || '').toUpperCase() == 'INFO' ? '2' : '3'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_vpp'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "admin",
+        "assigned_ip",
+        "attempt",
+        "cert_serial",
+        "change_id",
+        "console",
+        "cpu_pct",
+        "current_sessions",
+        "lock_duration",
+        "max_licensed",
+        "mem_pct",
+        "method",
+        "msg",
+        "node_active",
+        "node_standby",
+        "outcome",
+        "policy",
+        "proto",
+        "protocol",
+        "realm",
+        "reason",
+        "session",
+        "session_duration",
+        "src",
+        "status",
+        "target_user",
+        "threshold_exceeded",
+        "uptime",
+        "uri",
+        "user",
+        "window"
+      ]
+    }
+  },
+  "report": null
+}
