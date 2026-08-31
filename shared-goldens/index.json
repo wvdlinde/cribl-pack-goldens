@@ -14226,6 +14226,21 @@
         "score": 95,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_generic_icmp_tunnels::__optimization__",
+      "sourcetype": "corelight_generic_icmp_tunnels",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:28:30.624Z",
+      "path": "shared-goldens/corelight_generic_icmp_tunnels____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
