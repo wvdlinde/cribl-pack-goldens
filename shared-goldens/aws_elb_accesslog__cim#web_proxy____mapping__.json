@@ -1,0 +1,275 @@
+{
+  "key": "aws_elb_accesslog::cim#web_proxy::__mapping__",
+  "sourcetype": "aws_elb_accesslog",
+  "dest_format": "cim#web_proxy::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T12:00:26.801Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'aws elb accesslog'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM — Web",
+      "conf": {
+        "add": [
+          {
+            "name": "app",
+            "value": "(app || application || network__application || protocol) != null && String(app || application || network__application || protocol) != 'undefined' && String(app || application || network__application || protocol) != 'null' && String(app || application || network__application || protocol) != '-' && String(app || application || network__application || protocol) != '' ? (app || application || network__application || protocol) : undefined"
+          },
+          {
+            "name": "cached",
+            "value": "(cached) != null && String(cached) != 'undefined' && String(cached) != 'null' && String(cached) != '-' && String(cached) != '' ? (cached) : undefined"
+          },
+          {
+            "name": "category",
+            "value": "(category || url_category || threat_category) != null && String(category || url_category || threat_category) != 'undefined' && String(category || url_category || threat_category) != 'null' && String(category || url_category || threat_category) != '-' && String(category || url_category || threat_category) != '' ? (category || url_category || threat_category) : undefined"
+          },
+          {
+            "name": "cookie",
+            "value": "(cookie) != null && String(cookie) != 'undefined' && String(cookie) != 'null' && String(cookie) != '-' && String(cookie) != '' ? (cookie) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "(dest_port || destination__port || dpt || dstport) != null && String(dest_port || destination__port || dpt || dstport) != 'undefined' && String(dest_port || destination__port || dpt || dstport) != 'null' && String(dest_port || destination__port || dpt || dstport) != '-' && String(dest_port || destination__port || dpt || dstport) != '' ? Number(dest_port || destination__port || dpt || dstport) : undefined"
+          },
+          {
+            "name": "duration",
+            "value": "(duration || event__duration) != null && String(duration || event__duration) != 'undefined' && String(duration || event__duration) != 'null' && String(duration || event__duration) != '-' && String(duration || event__duration) != '' ? Number(duration || event__duration) : undefined"
+          },
+          {
+            "name": "response_time",
+            "value": "(response_time) != null && String(response_time) != 'undefined' && String(response_time) != 'null' && String(response_time) != '-' && String(response_time) != '' ? Number(response_time) : undefined"
+          },
+          {
+            "name": "site",
+            "value": "(site || url_domain) != null && String(site || url_domain) != 'undefined' && String(site || url_domain) != 'null' && String(site || url_domain) != '-' && String(site || url_domain) != '' ? (site || url_domain) : undefined"
+          },
+          {
+            "name": "uri_path",
+            "value": "(uri_path || uri || path) != null && String(uri_path || uri || path) != 'undefined' && String(uri_path || uri || path) != 'null' && String(uri_path || uri || path) != '-' && String(uri_path || uri || path) != '' ? (uri_path || uri || path) : undefined"
+          },
+          {
+            "name": "uri_query",
+            "value": "(uri_query || query) != null && String(uri_query || query) != 'undefined' && String(uri_query || query) != 'null' && String(uri_query || query) != '-' && String(uri_query || query) != '' ? (uri_query || query) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != null && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != 'undefined' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != 'null' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != '-' && String(/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) != '' ? (/deny|drop|block|reset|denied|failure|failed|deleted/i.test(String(action || event__outcome)) ? 'blocked' : /accept|allow|permit|built|teardown|close|timeout|success|created|allowed/i.test(String(action || event__outcome)) ? 'allowed' : String(action || event__outcome || 'unknown')) : undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != null && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != 'undefined' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != 'null' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != '-' && String(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) != '' ? Number(Number(bytes || network__bytes) || ((Number(bytes_in || destination__bytes || 0) + Number(bytes_out || source__bytes || 0)) || undefined)) : undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "(bytes_in || destination__bytes) != null && String(bytes_in || destination__bytes) != 'undefined' && String(bytes_in || destination__bytes) != 'null' && String(bytes_in || destination__bytes) != '-' && String(bytes_in || destination__bytes) != '' ? Number(bytes_in || destination__bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "(bytes_out || source__bytes) != null && String(bytes_out || source__bytes) != 'undefined' && String(bytes_out || source__bytes) != 'null' && String(bytes_out || source__bytes) != '-' && String(bytes_out || source__bytes) != '' ? Number(bytes_out || source__bytes) : undefined"
+          },
+          {
+            "name": "dest",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != null && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '' ? (dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "http_content_type",
+            "value": "(http_content_type || content_type) != null && String(http_content_type || content_type) != 'undefined' && String(http_content_type || content_type) != 'null' && String(http_content_type || content_type) != '-' && String(http_content_type || content_type) != '' ? (http_content_type || content_type) : undefined"
+          },
+          {
+            "name": "http_method",
+            "value": "(http_method || method || request_method) != null && String(http_method || method || request_method) != 'undefined' && String(http_method || method || request_method) != 'null' && String(http_method || method || request_method) != '-' && String(http_method || method || request_method) != '' ? (http_method || method || request_method) : undefined"
+          },
+          {
+            "name": "http_referrer",
+            "value": "(http_referrer || referrer || referer) != null && String(http_referrer || referrer || referer) != 'undefined' && String(http_referrer || referrer || referer) != 'null' && String(http_referrer || referrer || referer) != '-' && String(http_referrer || referrer || referer) != '' ? (http_referrer || referrer || referer) : undefined"
+          },
+          {
+            "name": "http_referrer_domain",
+            "value": "(http_referrer_domain) != null && String(http_referrer_domain) != 'undefined' && String(http_referrer_domain) != 'null' && String(http_referrer_domain) != '-' && String(http_referrer_domain) != '' ? (http_referrer_domain) : undefined"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "(http_user_agent || user_agent) != null && String(http_user_agent || user_agent) != 'undefined' && String(http_user_agent || user_agent) != 'null' && String(http_user_agent || user_agent) != '-' && String(http_user_agent || user_agent) != '' ? (http_user_agent || user_agent) : undefined"
+          },
+          {
+            "name": "http_user_agent_length",
+            "value": "(http_user_agent_length) != null && String(http_user_agent_length) != 'undefined' && String(http_user_agent_length) != 'null' && String(http_user_agent_length) != '-' && String(http_user_agent_length) != '' ? Number(http_user_agent_length) : undefined"
+          },
+          {
+            "name": "src",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(status || http_status || outcome) != null && String(status || http_status || outcome) != 'undefined' && String(status || http_status || outcome) != 'null' && String(status || http_status || outcome) != '-' && String(status || http_status || outcome) != '' ? (status || http_status || outcome) : undefined"
+          },
+          {
+            "name": "url",
+            "value": "(url || url_filename || request_url) != null && String(url || url_filename || request_url) != 'undefined' && String(url || url_filename || request_url) != 'null' && String(url || url_filename || request_url) != '-' && String(url || url_filename || request_url) != '' ? (url || url_filename || request_url) : undefined"
+          },
+          {
+            "name": "url_domain",
+            "value": "(url_domain || site || dest) != null && String(url_domain || site || dest) != 'undefined' && String(url_domain || site || dest) != 'null' && String(url_domain || site || dest) != '-' && String(url_domain || site || dest) != '' ? (url_domain || site || dest) : undefined"
+          },
+          {
+            "name": "url_length",
+            "value": "(url_length) != null && String(url_length) != 'undefined' && String(url_length) != 'null' && String(url_length) != '-' && String(url_length) != '' ? Number(url_length) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != null && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'undefined' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'null' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '-' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '' ? (user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != null && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'undefined' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'null' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '-' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '' ? (vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) : undefined"
+          },
+          {
+            "name": "storage_name",
+            "value": "(storage_name) != null && String(storage_name) != 'undefined' && String(storage_name) != 'null' && String(storage_name) != '-' && String(storage_name) != '' ? (storage_name) : undefined"
+          },
+          {
+            "name": "operation",
+            "value": "(operation || api_operation) != null && String(operation || api_operation) != 'undefined' && String(operation || api_operation) != 'null' && String(operation || api_operation) != '-' && String(operation || api_operation) != '' ? (operation || api_operation) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "error_code",
+            "value": "(error_code) != null && String(error_code) != 'undefined' && String(error_code) != 'null' && String(error_code) != '-' && String(error_code) != '' ? (error_code) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws_elb_accesslog'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
