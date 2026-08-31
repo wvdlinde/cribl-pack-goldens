@@ -1,0 +1,84 @@
+{
+  "key": "vmware_esxlog_vsantraceurgent::__extraction__",
+  "sourcetype": "vmware_esxlog_vsantraceurgent",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:17:01.744Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse RFC5424 syslog envelope: priority, timestamp, host, and vSAN trace message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>1 (?<timestamp>\\S+) (?<host>[^\\s]+) Vsantraceurgent - - - vsantrace: (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract vSAN subsystem/module name and detail text from the message",
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<module>[A-Za-z][A-Za-z ]*?):\\s*(?<detail>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|[0-9a-fA-F]+:[0-9a-fA-F:]+/)",
+      "disabled": false,
+      "description": "Extract peer/source IPv4 or IPv6 address (and optional port) from message text when present",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[0-9a-fA-F]{1,4}:){2,7}[0-9a-fA-F]{0,4})(?::(?<src_port>\\d{2,5}))?/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive numeric syslog severity, human-readable severity label, and normalized action from module/detail text",
+      "conf": {
+        "add": [
+          {
+            "name": "severity_num",
+            "value": "Number(pri) % 8"
+          },
+          {
+            "name": "severity",
+            "value": "severity_num === 2 ? 'critical' : severity_num === 3 ? 'error' : severity_num === 4 ? 'warning' : severity_num === 5 ? 'notice' : severity_num === 6 ? 'info' : 'unknown'"
+          },
+          {
+            "name": "action",
+            "value": "detail && detail.match(/rejected|blocking|Unauthorized|violation/) ? 'blocked' : detail && detail.match(/completed successfully|resolving|initiated|reconnect attempt/) ? 'recovering' : detail && detail.match(/lost quorum|inaccessible|data loss|stalled|failure|PDL/) ? 'degraded' : 'informational'"
+          },
+          {
+            "name": "protocol",
+            "value": "module === 'RDT' ? 'vsan-rdt' : module && module.startsWith('DOM') ? 'vsan-dom' : module === 'CMMDS' ? 'vsan-cmmds' : module === 'LSOM' ? 'vsan-lsom' : module === 'CLOM' ? 'vsan-clom' : 'vsan'"
+          }
+        ],
+        "remove": [
+          "pri"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
