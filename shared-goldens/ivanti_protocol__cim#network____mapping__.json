@@ -1,0 +1,235 @@
+{
+  "key": "ivanti_protocol::cim#network::__mapping__",
+  "sourcetype": "ivanti_protocol",
+  "dest_format": "cim#network::__mapping__",
+  "score": 93,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T13:39:21.067Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || '').toLowerCase() || undefined"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || '').toLowerCase() || undefined"
+          },
+          {
+            "name": "protocol_version",
+            "value": "src_ip_version ? String(src_ip_version) : (src_ip && src_ip.indexOf(':') > -1 ? 'ipv6' : 'ipv4')"
+          },
+          {
+            "name": "action",
+            "value": "(action || '').toLowerCase() == 'deny' || (action || '').toLowerCase() == 'denied' || (action || '').toLowerCase() == 'block' ? 'blocked' : ((action || '').toLowerCase() == 'allow' || (action || '').toLowerCase() == 'permit' ? 'allowed' : ((action || '').toLowerCase() || (message && /fail|denied|timeout/i.test(message) ? 'blocked' : 'allowed')))"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "user",
+            "value": "user && user != '-' ? user : undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "session_id && session_id != '-' ? String(session_id) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-23)",
+      "conf": {
+        "add": [
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "dvc_ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "app",
+            "value": "vpn || 'ive'"
+          },
+          {
+            "name": "rule",
+            "value": "vpn || undefined"
+          },
+          {
+            "name": "rule_id",
+            "value": "event_id ? String(event_id) : undefined"
+          },
+          {
+            "name": "vendor_account",
+            "value": "realm || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "realm || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Ivanti Connect Secure'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_protocol'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "dst",
+        "id",
+        "msg",
+        "port",
+        "realm",
+        "roles",
+        "sessionid",
+        "severity",
+        "src",
+        "user",
+        "vpn"
+      ]
+    }
+  },
+  "report": null
+}
