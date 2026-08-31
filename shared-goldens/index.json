@@ -14466,6 +14466,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_threatevents_uncategorized::commonsecuritylog::__mapping__",
+      "sourcetype": "mcafee_epo_threatevents_uncategorized",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:51:37.918Z",
+      "path": "shared-goldens/mcafee_epo_threatevents_uncategorized__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
