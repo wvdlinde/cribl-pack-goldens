@@ -1,0 +1,256 @@
+{
+  "key": "corelight_dns::cim#dns::__mapping__",
+  "sourcetype": "corelight_dns",
+  "dest_format": "cim#dns::__mapping__",
+  "score": 92,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T10:10:25.546Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'corelight dns'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM — Network Resolution (DNS)",
+      "conf": {
+        "add": [
+          {
+            "name": "additional_answer_count",
+            "value": "(additional_answer_count) != null && String(additional_answer_count) != 'undefined' && String(additional_answer_count) != 'null' && String(additional_answer_count) != '-' && String(additional_answer_count) != '' ? Number(additional_answer_count) : undefined"
+          },
+          {
+            "name": "authority_answer_count",
+            "value": "(authority_answer_count) != null && String(authority_answer_count) != 'undefined' && String(authority_answer_count) != 'null' && String(authority_answer_count) != '-' && String(authority_answer_count) != '' ? Number(authority_answer_count) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "(dest_port || destination__port || dpt || dstport) != null && String(dest_port || destination__port || dpt || dstport) != 'undefined' && String(dest_port || destination__port || dpt || dstport) != 'null' && String(dest_port || destination__port || dpt || dstport) != '-' && String(dest_port || destination__port || dpt || dstport) != '' ? Number(dest_port || destination__port || dpt || dstport) : undefined"
+          },
+          {
+            "name": "duration",
+            "value": "(duration || event__duration) != null && String(duration || event__duration) != 'undefined' && String(duration || event__duration) != 'null' && String(duration || event__duration) != '-' && String(duration || event__duration) != '' ? Number(duration || event__duration) : undefined"
+          },
+          {
+            "name": "name",
+            "value": "(name || query || dns_query) != null && String(name || query || dns_query) != 'undefined' && String(name || query || dns_query) != 'null' && String(name || query || dns_query) != '-' && String(name || query || dns_query) != '' ? (name || query || dns_query) : undefined"
+          },
+          {
+            "name": "query_type",
+            "value": "(query_type || qtype || qtype_name) != null && String(query_type || qtype || qtype_name) != 'undefined' && String(query_type || qtype || qtype_name) != 'null' && String(query_type || qtype || qtype_name) != '-' && String(query_type || qtype || qtype_name) != '' ? (query_type || qtype || qtype_name) : undefined"
+          },
+          {
+            "name": "record_type",
+            "value": "(record_type || query_type || qtype_name) != null && String(record_type || query_type || qtype_name) != 'undefined' && String(record_type || query_type || qtype_name) != 'null' && String(record_type || query_type || qtype_name) != '-' && String(record_type || query_type || qtype_name) != '' ? (record_type || query_type || qtype_name) : undefined"
+          },
+          {
+            "name": "response_time",
+            "value": "(response_time) != null && String(response_time) != 'undefined' && String(response_time) != 'null' && String(response_time) != '-' && String(response_time) != '' ? Number(response_time) : undefined"
+          },
+          {
+            "name": "src",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "(src_port || source__port || spt || srcport || sport) != null && String(src_port || source__port || spt || srcport || sport) != 'undefined' && String(src_port || source__port || spt || srcport || sport) != 'null' && String(src_port || source__port || spt || srcport || sport) != '-' && String(src_port || source__port || spt || srcport || sport) != '' ? Number(src_port || source__port || spt || srcport || sport) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != null && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != 'undefined' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != 'null' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != '-' && String(/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) != '' ? (/^(6|tcp)$/i.test(String(transport || protocol || network__transport)) ? 'tcp' : /^(17|udp)$/i.test(String(transport || protocol || network__transport)) ? 'udp' : /^(1|icmp)$/i.test(String(transport || protocol || network__transport)) ? 'icmp' : /^(58|ipv6-icmp)$/i.test(String(transport || protocol || network__transport)) ? 'ipv6-icmp' : /^(2|igmp)$/i.test(String(transport || protocol || network__transport)) ? 'igmp' : /^(47|gre)$/i.test(String(transport || protocol || network__transport)) ? 'gre' : /^(50|esp)$/i.test(String(transport || protocol || network__transport)) ? 'esp' : /^(51|ah)$/i.test(String(transport || protocol || network__transport)) ? 'ah' : (transport || protocol || network__transport || undefined)) : undefined"
+          },
+          {
+            "name": "transaction_id",
+            "value": "(transaction_id || dns_id) != null && String(transaction_id || dns_id) != 'undefined' && String(transaction_id || dns_id) != 'null' && String(transaction_id || dns_id) != '-' && String(transaction_id || dns_id) != '' ? Number(transaction_id || dns_id) : undefined"
+          },
+          {
+            "name": "ttl",
+            "value": "(ttl) != null && String(ttl) != 'undefined' && String(ttl) != 'null' && String(ttl) != '-' && String(ttl) != '' ? Number(ttl) : undefined"
+          },
+          {
+            "name": "answer",
+            "value": "(answer || dns_answer || answers) != null && String(answer || dns_answer || answers) != 'undefined' && String(answer || dns_answer || answers) != 'null' && String(answer || dns_answer || answers) != '-' && String(answer || dns_answer || answers) != '' ? (answer || dns_answer || answers) : undefined"
+          },
+          {
+            "name": "answer_count",
+            "value": "(answer_count) != null && String(answer_count) != 'undefined' && String(answer_count) != 'null' && String(answer_count) != '-' && String(answer_count) != '' ? Number(answer_count) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "dest",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != null && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '' ? (dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) : undefined"
+          },
+          {
+            "name": "message_type",
+            "value": "(message_type || dns_message_type) != null && String(message_type || dns_message_type) != 'undefined' && String(message_type || dns_message_type) != 'null' && String(message_type || dns_message_type) != '-' && String(message_type || dns_message_type) != '' ? (message_type || dns_message_type) : undefined"
+          },
+          {
+            "name": "query",
+            "value": "(query || dns_query || question || name) != null && String(query || dns_query || question || name) != 'undefined' && String(query || dns_query || question || name) != 'null' && String(query || dns_query || question || name) != '-' && String(query || dns_query || question || name) != '' ? (query || dns_query || question || name) : undefined"
+          },
+          {
+            "name": "query_count",
+            "value": "(query_count) != null && String(query_count) != 'undefined' && String(query_count) != 'null' && String(query_count) != '-' && String(query_count) != '' ? Number(query_count) : undefined"
+          },
+          {
+            "name": "reply_code_id",
+            "value": "(reply_code_id || rcode_id) != null && String(reply_code_id || rcode_id) != 'undefined' && String(reply_code_id || rcode_id) != 'null' && String(reply_code_id || rcode_id) != '-' && String(reply_code_id || rcode_id) != '' ? (reply_code_id || rcode_id) : undefined"
+          },
+          {
+            "name": "reply_code",
+            "value": "(reply_code || rcode || dns_rcode) != null && String(reply_code || rcode || dns_rcode) != 'undefined' && String(reply_code || rcode || dns_rcode) != 'null' && String(reply_code || rcode || dns_rcode) != '-' && String(reply_code || rcode || dns_rcode) != '' ? (reply_code || rcode || dns_rcode) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != null && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'undefined' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'null' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '-' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '' ? (vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_dns'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "aa",
+        "answers",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "proto",
+        "qclass",
+        "qclass_name",
+        "qtype",
+        "qtype_name",
+        "query",
+        "ra",
+        "rcode",
+        "rcode_name",
+        "rd",
+        "rejected",
+        "rtt",
+        "tc",
+        "trans_id",
+        "ts",
+        "ttls",
+        "uid",
+        "z"
+      ]
+    }
+  },
+  "report": null
+}
