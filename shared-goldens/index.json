@@ -13986,6 +13986,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_backup_check::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_backup_check",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:47:45.114Z",
+      "path": "shared-goldens/vmware_esxlog_backup_check__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
