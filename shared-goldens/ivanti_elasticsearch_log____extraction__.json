@@ -1,0 +1,112 @@
+{
+  "key": "ivanti_elasticsearch_log::__extraction__",
+  "sourcetype": "ivanti_elasticsearch_log",
+  "dest_format": "__extraction__",
+  "score": 90,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T14:05:18.097Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header, Elasticsearch log level, component, node and message",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[A-Za-z_-]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<log_level>[A-Z]+)\\s*\\]\\[(?<component>[^\\]]+)\\]\\s+\\[(?<node_name>[^\\]]+)\\]\\s+(?<message>.*)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract user/principal, source IP:port, ES action and index from the message body",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:principal|user)\\s+\\[(?<user>[^\\]]+)\\]|from\\s+\\[(?<__src>(?:::ffff:)?(?:\\d{1,3}\\.){3}\\d{1,3})(?::(?<src_port>\\d+))?\\]|action\\s+\\[(?<es_action>[^\\]]+)\\]|(?:index|indices)\\s+\\[+(?<index_name>[^\\]\\[]+)\\]/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('watermark') > -1",
+      "disabled": false,
+      "description": "Extract disk watermark details for allocation warnings",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/watermark\\s+\\[(?<disk_watermark>[^\\]]+)\\]\\s+exceeded[\\s\\S]*?free:\\s+(?<disk_free>[^\\[]+)\\[(?<disk_free_pct>[^\\]]+)\\]/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('[gc]')",
+      "disabled": false,
+      "description": "Extract JVM GC metrics",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^\\[gc\\]\\[(?<gc_type>\\w+)\\]\\[(?<gc_seq>\\d+)\\]\\[(?<gc_count>\\d+)\\]\\s+duration\\s+\\[(?<gc_duration>[^\\]]+)\\]/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize IPv6-mapped source IP, severity, action and event classification; set _time",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          },
+          {
+            "name": "src_ip",
+            "value": "__src ? __src.replace(/^::ffff:/, '') : null"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "__src ? (__src.indexOf('::ffff:') === 0 ? 6 : 4) : null"
+          },
+          {
+            "name": "protocol",
+            "value": "message && /SSL\\/TLS|handshake/i.test(message) ? 'tls' : 'tcp'"
+          },
+          {
+            "name": "severity",
+            "value": "log_level === 'ERROR' ? 'high' : (log_level === 'WARN' ? 'medium' : (log_level === 'INFO' ? 'informational' : 'low'))"
+          },
+          {
+            "name": "action",
+            "value": "message && /denied|rejected|handshake failed/i.test(message) ? 'blocked' : (message && /authentication failure|authentication failed/i.test(message) ? 'failure' : (message && /authenticated successfully|completed __e['with'] state \\[SUCCESS\\]/i.test(message) ? 'success' : 'allowed'))"
+          },
+          {
+            "name": "vendor",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "product",
+            "value": "'Elasticsearch'"
+          }
+        ],
+        "remove": [
+          "__src"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
