@@ -12051,6 +12051,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "infoblox_dns::ASimDnsActivityLogs::__mapping__",
+      "sourcetype": "infoblox_dns",
+      "dest_format": "ASimDnsActivityLogs::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T09:55:46.954Z",
+      "path": "shared-goldens/infoblox_dns__ASimDnsActivityLogs____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
