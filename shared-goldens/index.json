@@ -13506,6 +13506,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_elb_accesslog::cim#web_proxy::__mapping__",
+      "sourcetype": "aws_elb_accesslog",
+      "dest_format": "cim#web_proxy::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:00:26.801Z",
+      "path": "shared-goldens/aws_elb_accesslog__cim#web_proxy____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
