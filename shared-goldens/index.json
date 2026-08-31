@@ -12636,6 +12636,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_snmpd::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_snmpd",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:45:01.801Z",
+      "path": "shared-goldens/vmware_esxlog_snmpd__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
