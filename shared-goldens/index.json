@@ -14391,6 +14391,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_solidcoreevents::commonsecuritylog::__mapping__",
+      "sourcetype": "mcafee_epo_solidcoreevents",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:45:14.350Z",
+      "path": "shared-goldens/mcafee_epo_solidcoreevents__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
