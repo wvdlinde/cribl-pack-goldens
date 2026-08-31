@@ -12681,6 +12681,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "fml_spam::__optimization__",
+      "sourcetype": "fml_spam",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:51:31.592Z",
+      "path": "shared-goldens/fml_spam____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
