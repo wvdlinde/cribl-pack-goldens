@@ -13461,6 +13461,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_cmmdstimemachinedump::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_cmmdstimemachinedump",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:54:02.217Z",
+      "path": "shared-goldens/vmware_esxlog_cmmdstimemachinedump__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
