@@ -14481,6 +14481,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_fidelis_assets::commonsecuritylog::__mapping__",
+      "sourcetype": "ncsc_fidelis_assets",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T13:54:17.024Z",
+      "path": "shared-goldens/ncsc_fidelis_assets__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
