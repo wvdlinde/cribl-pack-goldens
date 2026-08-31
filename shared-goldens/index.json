@@ -12900,7 +12900,7 @@
       "part": "extraction",
       "author": "unknown",
       "build": 648,
-      "updated_at": "2026-08-31T11:17:01.744Z",
+      "updated_at": "2026-08-31T11:18:19.136Z",
       "path": "shared-goldens/vmware_esxlog_vsantraceurgent____extraction__.json",
       "report": {
         "score": 90,
