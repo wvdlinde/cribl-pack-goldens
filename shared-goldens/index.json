@@ -13596,6 +13596,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_known_hosts::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_known_hosts",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:13:11.734Z",
+      "path": "shared-goldens/corelight_known_hosts__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
