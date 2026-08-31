@@ -12126,6 +12126,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "http_fpc_metadata::commonsecuritylog::__mapping__",
+      "sourcetype": "http_fpc_metadata",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:07:17.488Z",
+      "path": "shared-goldens/http_fpc_metadata__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
