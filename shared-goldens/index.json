@@ -13371,6 +13371,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vsansystem::__extraction__",
+      "sourcetype": "vmware_esxlog_vsansystem",
+      "dest_format": "__extraction__",
+      "score": 94,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:48:36.553Z",
+      "path": "shared-goldens/vmware_esxlog_vsansystem____extraction__.json",
+      "report": {
+        "score": 94,
+        "band": "good"
+      }
     }
   ]
 }
