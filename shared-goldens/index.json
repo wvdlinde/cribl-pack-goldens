@@ -12246,6 +12246,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_cloudtrail::ocsf#cloud_audit::__mapping__",
+      "sourcetype": "aws_cloudtrail",
+      "dest_format": "ocsf#cloud_audit::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:18:22.757Z",
+      "path": "shared-goldens/aws_cloudtrail__ocsf#cloud_audit____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
