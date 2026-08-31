@@ -1,0 +1,98 @@
+{
+  "key": "nginx_plus_access::__extraction__",
+  "sourcetype": "nginx_plus_access",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 648,
+  "updated_at": "2026-08-31T11:43:44.223Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse nginx plus access log base fields (client IP, user, timestamp, request line, status, bytes, referer, user agent, upstream timing/addr)",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+) - (?<user>\\S+) \\[(?<timestamp>[^\\]]+)\\] \"(?<http_method>\\S+) (?<url>\\S+) (?<http_version>[^\"]+)\" (?<status>\\d+) (?<bytes>\\d+) \"(?<referer>[^\"]*)\" \"(?<user_agent>[^\"]*)\" \"-\" rt=(?<request_time>\\S+) uct=\"(?<upstream_connect_time>[^\"]*)\" uht=\"(?<upstream_header_time>[^\"]*)\" urt=\"(?<upstream_response_time>[^\"]*)\" us=\"(?<upstream_status>[^\"]*)\" ua=\"(?<upstream_addr>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "upstream_addr && upstream_addr !== '-'",
+      "disabled": false,
+      "description": "Split upstream address into destination IP and port when present",
+      "conf": {
+        "source": "upstream_addr",
+        "regex": "/^(?<dst_ip>[^:]+):(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize user field, cast numeric fields, set protocol",
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes)"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : null"
+          },
+          {
+            "name": "protocol",
+            "value": "'http'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive action and severity from HTTP status code",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status >= 400 ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "status >= 500 ? 'high' : status >= 400 ? 'medium' : 'low'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "rt",
+        "ua",
+        "uct",
+        "uht",
+        "urt",
+        "us"
+      ]
+    }
+  },
+  "report": null
+}
