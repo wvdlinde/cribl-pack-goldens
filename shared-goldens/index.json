@@ -13401,6 +13401,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_reporter::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_reporter",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T11:50:44.888Z",
+      "path": "shared-goldens/corelight_reporter__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
