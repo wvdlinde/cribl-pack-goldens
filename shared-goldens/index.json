@@ -12276,6 +12276,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_cloudtrail::cim#change::__mapping__",
+      "sourcetype": "aws_cloudtrail",
+      "dest_format": "cim#change::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T10:18:50.967Z",
+      "path": "shared-goldens/aws_cloudtrail__cim#change____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
