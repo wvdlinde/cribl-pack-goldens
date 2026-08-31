@@ -13896,6 +13896,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_hastatus::cim#network::__mapping__",
+      "sourcetype": "ivanti_hastatus",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:38:55.856Z",
+      "path": "shared-goldens/ivanti_hastatus__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
