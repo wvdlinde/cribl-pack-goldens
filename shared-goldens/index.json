@@ -14001,6 +14001,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "symantec_email_cloud_atp::__optimization__",
+      "sourcetype": "symantec_email_cloud_atp",
+      "dest_format": "__optimization__",
+      "score": 90,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 648,
+      "updated_at": "2026-08-31T12:49:03.969Z",
+      "path": "shared-goldens/symantec_email_cloud_atp____optimization__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
