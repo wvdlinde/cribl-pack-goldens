@@ -15345,6 +15345,21 @@
         "score": 88,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ldap::ocsf",
+      "sourcetype": "corelight_ldap",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:55:45.556Z",
+      "path": "shared-goldens/corelight_ldap__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
