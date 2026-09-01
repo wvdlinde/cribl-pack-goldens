@@ -16200,6 +16200,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_certactivity::ocsf",
+      "sourcetype": "ivanti_certactivity",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:01:07.155Z",
+      "path": "shared-goldens/ivanti_certactivity__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
