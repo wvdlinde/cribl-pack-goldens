@@ -1,0 +1,315 @@
+{
+  "key": "ivanti_miclient_access::ocsf",
+  "sourcetype": "ivanti_miclient_access",
+  "dest_format": "ocsf",
+  "score": 84,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:03:01.566Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<syslog_timestamp>\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+(?<host>\\S+)\\s+MICLIENT\\[(?<event_id>\\w+)\\]:\\s+(?<timestamp>[\\d-]+\\s[\\d:]+)\\s+-\\s+ic\\s+-\\s+\\[(?<src_ip>[^\\]]*)\\]\\s+(?<user>\\S*?)\\((?<user_group>[^)]*)\\)\\[(?<realm>[^\\]]*)\\]\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header, event id, MICLIENT timestamp, src_ip, user, group, realm and message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Session established')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/client version (?<client_version>[\\d.]+), VPN tunnel mode (?<tunnel_mode>[\\w-]+), assigned IP (?<dst_ip>[\\d.:a-fA-F]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract client version, VPN tunnel mode and assigned dst_ip for session start events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Session terminated')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/duration (?<session_duration>[\\d:]+), bytes sent (?<bytes_sent>\\d+) bytes received (?<bytes_received>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract session duration and byte counters for session termination events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/authentication failed/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/reason: (?<reason>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract failure reason for failed authentication events"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/Primary authentication successful/) ? 'login_success' : message.match(/Primary authentication failed/) ? 'login_failure' : message.match(/Secondary authentication successful/) ? 'secondary_auth_success' : message.match(/Session established/) ? 'session_start' : message.match(/Session terminated/) ? 'session_end' : message.match(/heartbeat missed/) ? 'heartbeat_missed' : message.match(/Host Checker policy violation/) ? 'policy_violation' : message.match(/Suspicious activity detected/) ? 'suspicious_activity' : message.match(/Certificate expiration warning/) ? 'cert_expiration_warning' : 'unknown'"
+          },
+          {
+            "name": "severity_num",
+            "value": "Number(priority) % 8"
+          },
+          {
+            "name": "severity",
+            "value": "severity_num==0 ? 'emergency' : severity_num==1 ? 'alert' : severity_num==2 ? 'critical' : severity_num==3 ? 'error' : severity_num==4 ? 'warning' : severity_num==5 ? 'notice' : severity_num==6 ? 'informational' : 'debug'"
+          },
+          {
+            "name": "protocol",
+            "value": "'vpn'"
+          },
+          {
+            "name": "direction",
+            "value": "action=='login_success' || action=='login_failure' || action=='secondary_auth_success' || action=='session_start' ? 'inbound' : action=='session_end' ? 'outbound' : 'unknown'"
+          }
+        ],
+        "remove": [
+          "severity_num"
+        ]
+      },
+      "description": "Classify action, severity, protocol and direction based on parsed message and syslog priority"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes_sent || 0)"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "Number(bytes_received || 0)"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || ''"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? Number(new Date(timestamp)) : Number(new Date(_time))"
+          },
+          {
+            "name": "activity_id",
+            "value": "action == 'authentication_success' || action == 'session_established' ? 1 : (action == 'authentication_failed' || action == 'session_terminated' ? 2 : 0)"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(severity || 0)"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "client_version || ''"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_miclient_access'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2001\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"db8\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"85a3\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"8a2e\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"370\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"7334\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
