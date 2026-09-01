@@ -15450,6 +15450,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_splunkd::ocsf",
+      "sourcetype": "ivanti_splunkd",
+      "dest_format": "ocsf",
+      "score": 85,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:56:30.400Z",
+      "path": "shared-goldens/ivanti_splunkd__ocsf.json",
+      "report": {
+        "score": 85,
+        "band": "good"
+      }
     }
   ]
 }
