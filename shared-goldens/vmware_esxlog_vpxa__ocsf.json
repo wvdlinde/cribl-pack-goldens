@@ -1,0 +1,303 @@
+{
+  "key": "vmware_esxlog_vpxa::ocsf",
+  "sourcetype": "vmware_esxlog_vpxa",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:00:29.687Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<esx_host>\\S+)\\s+Vpxa\\[(?<pid>\\d+)\\]:\\s+\\[Originator@6876\\s+sub=(?<sub_component>\\S+)\\s+opID=(?<op_id>\\S+)\\s+user=(?<user>\\S+)\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base VPXA log structure: timestamp, host, pid, sub-component, opID, user, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.includes('host ') || message.includes('from '))",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:host |from )(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3}|\\[[0-9a-fA-F:]+\\])/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract source/destination IP address (IPv4 or bracketed IPv6) referenced in message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('port=')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/port=(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract destination port from message when present"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('target=')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/target=(?<dst_host>[^\\s,]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract destination host for relocation/task target references"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.match(/^ERROR:/) ? 'error' : message.match(/^WARNING:/) ? 'warning' : message.match(/^INFO:/) ? 'info' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/failed|Failed|Unauthorized/) ? 'failure' : message.match(/succeeded|successfully|completed successfully/) ? 'success' : message.match(/blocked/) ? 'blocked' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.match(/TCP/) ? 'tcp' : message.match(/SOAP|API/) ? 'http' : null"
+          }
+        ]
+      },
+      "description": "Classify severity and action based on message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(timestamp).getTime()/1000"
+          }
+        ]
+      },
+      "description": "Convert ISO8601 timestamp string to epoch seconds for _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "time",
+            "value": "_time ? Math.round(Number(_time) * 1000) : (timestamp ? Date.parse(timestamp) : Date.now())"
+          },
+          {
+            "name": "activity_id",
+            "value": "(String(action || '').toLowerCase() == 'failure' || String(action || '').toLowerCase() == 'failed' || String(action || '').toLowerCase() == 'blocked' || String(action || '').toLowerCase() == 'deny') ? 5 : (String(action || '').toLowerCase() == 'close' || String(action || '').toLowerCase() == 'closed' ? 2 : 1)"
+          },
+          {
+            "name": "type_uid",
+            "value": "4001 * 100 + ((String(action || '').toLowerCase() == 'failure' || String(action || '').toLowerCase() == 'failed' || String(action || '').toLowerCase() == 'blocked' || String(action || '').toLowerCase() == 'deny') ? 5 : (String(action || '').toLowerCase() == 'close' || String(action || '').toLowerCase() == 'closed' ? 2 : 1))"
+          },
+          {
+            "name": "severity_id",
+            "value": "String(severity || '').toUpperCase() == 'ERROR' ? 4 : (String(severity || '').toUpperCase() == 'WARNING' ? 3 : (String(severity || '').toUpperCase() == 'CRITICAL' ? 5 : 1))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "esx_host && /^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(esx_host) ? esx_host : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol ? String(protocol).toLowerCase() : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user && user != '-' ? String(user).split('@')[0] : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "esx_host || ''"
+          },
+          {
+            "name": "_value",
+            "value": "(user && user != '-') ? (String(user) + ']') : undefined"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'ESXi vpxa'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'VMware'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:Vpxa'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
