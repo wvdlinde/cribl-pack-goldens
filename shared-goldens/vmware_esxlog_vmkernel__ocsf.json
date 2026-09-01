@@ -1,0 +1,161 @@
+{
+  "key": "vmware_esxlog_vmkernel::ocsf",
+  "sourcetype": "vmware_esxlog_vmkernel",
+  "dest_format": "ocsf",
+  "score": 88,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:59:52.277Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+vmkernel:\\s+cpu(?<cpu_id>\\d+):(?<pid>\\d+)\\)(?:(?<severity>WARNING|ALERT):\\s*)?(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base vmkernel log structure: timestamp, host, cpu id, pid, optional severity keyword, and message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract first IPv4 address found in the message body (source/target/remote host reference)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"user '\") !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract username from authorization/authentication related messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<subsystem>\\w+):\\s*(?:(?<func_name>\\w+):\\s*)?(?<line_number>\\d+):/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract vmkernel subsystem tag, function name, and internal source line number from the message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /\\d{1,3}(?:\\.\\d{1,3}){3}:\\d+/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\d{1,3}\\.){3}\\d{1,3}:(?<target_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract target/destination port from an IP:PORT reference in the message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('.vmx') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/\\/(?<vm_name>[^\\/]+)\\/[^\\/]+\\.vmx/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract VM name from a vmfs volume path referencing a .vmx file"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu3\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu7\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu1\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu5\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu2\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu4\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"cpu6\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"78%\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
