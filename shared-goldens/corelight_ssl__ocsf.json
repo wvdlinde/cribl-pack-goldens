@@ -1,0 +1,363 @@
+{
+  "key": "corelight_ssl::ocsf",
+  "sourcetype": "corelight_ssl",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:52:47.401Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.indexOf('{') > 0 ? _raw.slice(_raw.indexOf('{')) : _raw"
+          }
+        ]
+      },
+      "description": "Strip RFC5424 syslog header to isolate JSON payload"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse Corelight/Zeek JSON log"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__e['id.orig_h'] || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "__e['id.orig_p'] || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "__e['id.resp_h'] || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "__e['id.resp_p'] || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "ts || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Zeek'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ssl'"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p"
+        ]
+      },
+      "description": "Normalize Zeek dotted fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'corelight ssl'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "email",
+            "value": "(((mail_from || sender || from || envelope_from) != null && String(mail_from || sender || from || envelope_from) != 'undefined' && String(mail_from || sender || from || envelope_from) != 'null' && String(mail_from || sender || from || envelope_from) != '-' && String(mail_from || sender || from || envelope_from) != '') || (((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != null && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != 'undefined' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != 'null' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != '-' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != '') || ((subject || mail_subject || msg_subject) != null && String(subject || mail_subject || msg_subject) != 'undefined' && String(subject || mail_subject || msg_subject) != 'null' && String(subject || mail_subject || msg_subject) != '-' && String(subject || mail_subject || msg_subject) != '') || ((message_id || msg_id || message_uid || mid) != null && String(message_id || msg_id || message_uid || mid) != 'undefined' && String(message_id || msg_id || message_uid || mid) != 'null' && String(message_id || msg_id || message_uid || mid) != '-' && String(message_id || msg_id || message_uid || mid) != '') || ((smtp_from || envelope_from) != null && String(smtp_from || envelope_from) != 'undefined' && String(smtp_from || envelope_from) != 'null' && String(smtp_from || envelope_from) != '-' && String(smtp_from || envelope_from) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || client_ip || sender_ip) != null && String(src_ip || client_ip || sender_ip) != 'undefined' && String(src_ip || client_ip || sender_ip) != 'null' && String(src_ip || client_ip || sender_ip) != '-' && String(src_ip || client_ip || sender_ip) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || server_ip) != null && String(dest_ip || server_ip) != 'undefined' && String(dest_ip || server_ip) != 'null' && String(dest_ip || server_ip) != '-' && String(dest_ip || server_ip) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "(((event_uid || message_id) != null && String(event_uid || message_id) != 'undefined' && String(event_uid || message_id) != 'null' && String(event_uid || message_id) != '-' && String(event_uid || message_id) != '') || (('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(4009) != null && String(4009) != 'undefined' && String(4009) != 'null' && String(4009) != '-' && String(4009) != '' ? Number(4009) : undefined"
+          },
+          {
+            "name": "category_uid",
+            "value": "(4) != null && String(4) != 'undefined' && String(4) != 'null' && String(4) != '-' && String(4) != '' ? Number(4) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) != null && String(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) != 'undefined' && String(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) != 'null' && String(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) != '-' && String(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) != '' ? Number(/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0) : undefined"
+          },
+          {
+            "name": "direction_id",
+            "value": "(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) != null && String(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) != 'undefined' && String(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) != 'null' && String(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) != '-' && String(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) != '' ? Number(/outbound|egress|sent/i.test(String(direction || action || event_type)) ? 2 : /inbound|ingress|receiv|incoming/i.test(String(direction || action || event_type)) ? 1 : (direction == null ? 0 : 99)) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) != null && String(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) != 'undefined' && String(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) != 'null' && String(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) != '-' && String(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) != '' ? Number(400900 + (/scan|antiviru|malware/i.test(String(action || event_type)) ? 3 : /outbound|sent|relay|deliver/i.test(String(direction || action || event_type)) ? 1 : /inbound|receiv|incoming/i.test(String(direction || action || event_type)) ? 2 : 0)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) != null && String(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) != 'undefined' && String(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) != 'null' && String(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) != '-' && String(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) != '' ? Number(/malware|phish|spam|virus|block|quarantin|reject|threat/i.test(String(disposition || action || verdict || category)) ? 3 : 1) : undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) != null && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) != 'undefined' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) != 'null' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) != '-' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) != '' ? Number(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') != null && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') != 'undefined' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') != 'null' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') != '-' && String(/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') != '' ? (/reject|block|quarantin|fail|defer|bounce|denied/i.test(String(disposition || action || verdict)) ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "email.from",
+            "value": "(mail_from || sender || from || envelope_from) != null && String(mail_from || sender || from || envelope_from) != 'undefined' && String(mail_from || sender || from || envelope_from) != 'null' && String(mail_from || sender || from || envelope_from) != '-' && String(mail_from || sender || from || envelope_from) != '' ? (mail_from || sender || from || envelope_from) : undefined"
+          },
+          {
+            "name": "email.to",
+            "value": "((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != null && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != 'undefined' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != 'null' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != '-' && String((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) != '' ? ((rcpt_to || recipient || to) != null ? [String(rcpt_to || recipient || to)] : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 Email Activity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "email.subject",
+            "value": "(subject || mail_subject || msg_subject) != null && String(subject || mail_subject || msg_subject) != 'undefined' && String(subject || mail_subject || msg_subject) != 'null' && String(subject || mail_subject || msg_subject) != '-' && String(subject || mail_subject || msg_subject) != '' ? (subject || mail_subject || msg_subject) : undefined"
+          },
+          {
+            "name": "email.message_uid",
+            "value": "(message_id || msg_id || message_uid || mid) != null && String(message_id || msg_id || message_uid || mid) != 'undefined' && String(message_id || msg_id || message_uid || mid) != 'null' && String(message_id || msg_id || message_uid || mid) != '-' && String(message_id || msg_id || message_uid || mid) != '' ? (message_id || msg_id || message_uid || mid) : undefined"
+          },
+          {
+            "name": "email.smtp_from",
+            "value": "(smtp_from || envelope_from) != null && String(smtp_from || envelope_from) != 'undefined' && String(smtp_from || envelope_from) != 'null' && String(smtp_from || envelope_from) != '-' && String(smtp_from || envelope_from) != '' ? (smtp_from || envelope_from) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || client_ip || sender_ip) != null && String(src_ip || client_ip || sender_ip) != 'undefined' && String(src_ip || client_ip || sender_ip) != 'null' && String(src_ip || client_ip || sender_ip) != '-' && String(src_ip || client_ip || sender_ip) != '' ? (src_ip || client_ip || sender_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || server_ip) != null && String(dest_ip || server_ip) != 'undefined' && String(dest_ip || server_ip) != 'null' && String(dest_ip || server_ip) != '-' && String(dest_ip || server_ip) != '' ? (dest_ip || server_ip) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || text) != null && String(message || msg || text) != 'undefined' && String(message || msg || text) != 'null' && String(message || msg || text) != '-' && String(message || msg || text) != '' ? (message || msg || text) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(event_uid || message_id) != null && String(event_uid || message_id) != 'undefined' && String(event_uid || message_id) != 'null' && String(event_uid || message_id) != '-' && String(event_uid || message_id) != '' ? (event_uid || message_id) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '' ? (product || vendor_product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '' ? (vendor || vendor_name) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ssl'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__*"
+        ]
+      },
+      "description": "Keep mapped CIM fields + all extracted source fields before serialization"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"tlsv12\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
