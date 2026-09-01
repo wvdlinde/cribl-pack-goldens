@@ -1,0 +1,107 @@
+{
+  "key": "corelight_http::__extraction__",
+  "sourcetype": "corelight_http",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T10:02:05.845Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Strip RFC5424 syslog header to isolate JSON payload",
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.indexOf('{') > 0 ? _raw.slice(_raw.indexOf('{')) : _raw"
+          }
+        ]
+      }
+    },
+    {
+      "id": "serde",
+      "description": "Parse Corelight/Zeek JSON log",
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Normalize Zeek dotted fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__e['id.orig_h'] || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "__e['id.orig_p'] || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "__e['id.resp_h'] || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "__e['id.resp_p'] || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "ts || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Zeek'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'corelight_http'"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "host",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "method",
+        "request_body_len",
+        "resp_fuids",
+        "resp_mime_types",
+        "response_body_len",
+        "status_code",
+        "status_msg",
+        "tags",
+        "trans_depth",
+        "ts",
+        "uid",
+        "uri",
+        "user_agent",
+        "username",
+        "version"
+      ]
+    }
+  },
+  "report": null
+}
