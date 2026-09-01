@@ -1,0 +1,222 @@
+{
+  "key": "corelight_generic_icmp_tunnels::cim#network::__mapping__",
+  "sourcetype": "corelight_generic_icmp_tunnels",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:39:14.699Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "__e['id.orig_h'] || ''"
+          },
+          {
+            "name": "src",
+            "value": "__e['id.orig_h'] || ''"
+          },
+          {
+            "name": "dest_ip",
+            "value": "__e['id.resp_h'] || ''"
+          },
+          {
+            "name": "dest",
+            "value": "__e['id.resp_h'] || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(__e['id.orig_p'] || 0)"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(__e['id.resp_p'] || 0)"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || 'icmp').toLowerCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || 'icmp').toLowerCase()"
+          },
+          {
+            "name": "protocol_version",
+            "value": "is_ipv6 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "icmp_type",
+            "value": "Number(icmp_type || 0)"
+          },
+          {
+            "name": "icmp_code",
+            "value": "String(icmp_code === undefined ? '' : icmp_code)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(payload_len || 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-24)",
+      "conf": {
+        "add": [
+          {
+            "name": "bytes_out",
+            "value": "Number(payload_len || 0)"
+          },
+          {
+            "name": "flow_id",
+            "value": "uid || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "session_id || uid || ''"
+          },
+          {
+            "name": "action",
+            "value": "action || (notice ? 'blocked' : 'allowed')"
+          },
+          {
+            "name": "vendor_action",
+            "value": "detection || 'none'"
+          },
+          {
+            "name": "rule",
+            "value": "detection && detection != 'none' ? detection : ''"
+          },
+          {
+            "name": "direction",
+            "value": "direction || ''"
+          },
+          {
+            "name": "app",
+            "value": "(protocol || 'icmp').toLowerCase() == 'icmp6' ? 'icmpv6' : 'icmp'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Zeek'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_generic_icmp_tunnels'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}
