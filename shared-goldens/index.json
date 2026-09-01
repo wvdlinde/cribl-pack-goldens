@@ -1989,7 +1989,7 @@
       "part": "mapping",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-09-01T11:57:35.320Z",
+      "updated_at": "2026-09-01T11:57:48.079Z",
       "path": "shared-goldens/citrix_netscaler_appfw__commonsecuritylog____mapping__.json",
       "report": {
         "score": 100,
