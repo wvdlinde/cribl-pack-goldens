@@ -1,0 +1,307 @@
+{
+  "key": "vmware_esxlog_vsand::ocsf",
+  "sourcetype": "vmware_esxlog_vsand",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:52.814Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<__ts>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[a-zA-Z0-9_\\-]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<subsystem>[^\\]]+)\\]\\s+(?<log_level>[A-Z]+):\\s+(?<message>.*)$/"
+      },
+      "description": "Parse vSAN daemon syslog header: timestamp, host, process, pid, subsystem, severity, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:::)?[0-9a-fA-F]{0,4})/"
+      },
+      "description": "Extract IPv4/IPv6 address and device/disk identifiers from the message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(?:disk|device|volume)\\s/i.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:device|disk|volume)\\s+(?<device>(?:naa\\.[0-9a-zA-Z]+|mpx\\.[^\\s,]+|vsan[^\\s,]*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))/i"
+      },
+      "description": "Extract storage device / disk / object identifiers"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? Date.parse(__ts)/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "severity",
+            "value": "log_level=='CRITICAL' ? 'critical' : (log_level=='ERROR' ? 'high' : (log_level=='WARNING' ? 'medium' : 'low'))"
+          },
+          {
+            "name": "protocol",
+            "value": "'vsan'"
+          },
+          {
+            "name": "action",
+            "value": "message && /access denied|denied|unauthorized|quarantin|rate limiting/i.test(message) ? 'blocked' : (message && /fail|corrupt|absent|unreachable|unresponsive/i.test(message) ? 'failure' : 'success')"
+          },
+          {
+            "name": "event_type",
+            "value": "message && /Unauthorized|Suspicious|rogue actor/i.test(message) ? 'security' : (log_level=='INFO' ? 'operational' : 'health')"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi vSAN'"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':')>-1 ? 6 : 4) : null"
+          }
+        ],
+        "remove": [
+          "__ts"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action, and derive event classification"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity: Traffic'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "6"
+          },
+          {
+            "name": "type_uid",
+            "value": "400106"
+          },
+          {
+            "name": "severity_id",
+            "value": "(log_level || severity || '').toUpperCase() == 'ERROR' ? 4 : ((log_level || severity || '').toUpperCase() == 'WARNING' ? 3 : ((log_level || severity || '').toUpperCase() == 'INFO' ? 1 : 0))"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? new Date(timestamp).getTime() : Math.round(Number(_time || 0) * 1000)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_host && /^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(String(dst_host)) ? dst_host : ''"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "device.hostname",
+            "value": "device || ''"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'VMware'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'VMware ESXi'"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:vsand'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"87%\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
