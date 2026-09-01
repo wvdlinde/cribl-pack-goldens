@@ -15945,6 +15945,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tanium::ocsf",
+      "sourcetype": "tanium",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:37.902Z",
+      "path": "shared-goldens/tanium__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
