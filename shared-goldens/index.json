@@ -14670,6 +14670,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_http::__extraction__",
+      "sourcetype": "corelight_http",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:02:05.845Z",
+      "path": "shared-goldens/corelight_http____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
