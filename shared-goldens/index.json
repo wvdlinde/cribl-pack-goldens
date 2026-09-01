@@ -13950,6 +13950,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_sc_admin::cim#network::__mapping__",
+      "sourcetype": "tenable_sc_admin",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:15.896Z",
+      "path": "shared-goldens/tenable_sc_admin__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
