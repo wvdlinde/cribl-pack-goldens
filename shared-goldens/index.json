@@ -14385,6 +14385,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_ad_alerts::cim#network::__mapping__",
+      "sourcetype": "tenable_ad_alerts",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:25.553Z",
+      "path": "shared-goldens/tenable_ad_alerts__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
