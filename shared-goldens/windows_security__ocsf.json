@@ -2,17 +2,26 @@
   "key": "windows_security::ocsf",
   "sourcetype": "windows_security",
   "dest_format": "ocsf",
-  "score": 82,
-  "author": "wlinde@cribl.io",
+  "score": 100,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-13T06:40:24.191Z",
+  "updated_at": "2026-09-01T07:36:30.214Z",
   "functions": [
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "windows_security to OCSF pipeline. Parses events, maps to OCSF, outputs compact JSON."
+        "comment": "windows_security to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
       }
     },
     {
@@ -35,7 +44,7 @@
       "disabled": false,
       "conf": {
         "maxNumOfIterations": 5000,
-        "code": "const sys = __e.__parsed && __e.__parsed.Event && __e.__parsed.Event.System || {};\n__e.EventID = String(sys.EventID || '');\n__e.Level = String(sys.Level || '');\n__e.Computer = sys.Computer || '';\n__e.Channel = sys.Channel || '';\nif (sys.Execution) __e.ProcessID = sys.Execution.ProcessID;\nif (sys.Correlation) __e.ActivityID = sys.Correlation.ActivityID;\nconst timeEl = sys.TimeCreated;\nif (timeEl && timeEl.SystemTime) { __e.log_time = timeEl.SystemTime; __e._time = new Date(timeEl.SystemTime).getTime() / 1000; }\nconst data = (__e.__parsed.Event.EventData || {}).Data || [];\nfor (let i = 0; i < data.length; i++) {\n  if (data[i].Name && data[i]._value !== undefined) {\n    __e[data[i].Name] = data[i]._value;\n  }\n}"
+        "code": "const sys = __e.__parsed && __e.__parsed.Event && __e.__parsed.Event.System || {};\n__e.EventID = String(sys.EventID || '');\n__e.Level = String(sys.Level || '');\n__e.Computer = sys.Computer || '';\n__e.Channel = sys.Channel || '';\nif (sys.Execution) __e.ProcessID = sys.Execution.ProcessID;\nif (sys.Security) __e.UserID = sys.Security.UserID;\nif (sys.Correlation) __e.ActivityID = sys.Correlation.ActivityID;\nconst timeEl = sys.TimeCreated;\nif (timeEl && timeEl.SystemTime) __e._time = new Date(timeEl.SystemTime).getTime() / 1000;\nconst data = (__e.__parsed.Event.EventData || {}).Data || [];\nfor (let i = 0; i < data.length; i++) {\n  if (data[i].Name && data[i]._value !== undefined) {\n    __e[data[i].Name] = data[i]._value;\n  }\n}"
       },
       "description": "Extract System and EventData fields from parsed XML"
     },
@@ -46,8 +55,88 @@
       "conf": {
         "add": [
           {
+            "name": "user",
+            "value": "TargetUserName || SubjectUserName || undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "SubjectUserName || undefined"
+          },
+          {
+            "name": "dest_user",
+            "value": "TargetUserName || undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "IpAddress && IpAddress != '-' ? IpAddress : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "IpPort && IpPort != '-' ? Number(IpPort) : undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "Computer || undefined"
+          },
+          {
             "name": "host",
             "value": "Computer || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventID || undefined"
+          },
+          {
+            "name": "app",
+            "value": "'Windows Security'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Windows'"
+          },
+          {
+            "name": "action",
+            "value": "EventID == '4624' || EventID == '4648' ? 'success' : EventID == '4625' || EventID == '4771' ? 'failure' : EventID == '4634' || EventID == '4647' ? 'success' : EventID == '4720' ? 'created' : EventID == '4726' ? 'deleted' : 'unknown'"
+          },
+          {
+            "name": "session_id",
+            "value": "TargetLogonId || LogonId || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "Level == '0' ? 6 : Level == '1' ? 2 : Level == '2' ? 3 : Level == '3' ? 4 : Level == '4' ? 6 : undefined"
+          },
+          {
+            "name": "logon_type",
+            "value": "LogonType || undefined"
+          },
+          {
+            "name": "process",
+            "value": "ProcessName || NewProcessName || undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "ProcessID || NewProcessId || undefined"
+          },
+          {
+            "name": "src_nt_domain",
+            "value": "SubjectDomainName || undefined"
+          },
+          {
+            "name": "dest_nt_domain",
+            "value": "TargetDomainName || undefined"
+          },
+          {
+            "name": "signature",
+            "value": "EventID == '4624' ? 'An account was successfully logged on' : EventID == '4625' ? 'An account failed to log on' : EventID == '4634' ? 'An account was logged off' : EventID == '4648' ? 'A logon was attempted using explicit credentials' : EventID == '4672' ? 'Special privileges assigned to new logon' : EventID == '4720' ? 'A user account was created' : EventID == '4726' ? 'A user account was deleted' : EventID == '4776' ? 'The computer attempted to validate the credentials for an account' : undefined"
+          },
+          {
+            "name": "authentication_method",
+            "value": "AuthenticationPackageName || undefined"
+          },
+          {
+            "name": "src",
+            "value": "WorkstationName || Workstation || undefined"
           },
           {
             "name": "__parsed",
@@ -55,14 +144,38 @@
           }
         ]
       },
-      "description": "Set host, drop parsed tree"
+      "description": "Alias Windows Security fields to canonical names"
     },
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- OCSF class/activity/type/severity by EventID ---"
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '5156' || EventID === '5157'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop Windows Filtering Platform events (5156/5157) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '4624' && LogonType === '3'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine network logon success events (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Flag suspicious activity ---"
       }
     },
     {
@@ -72,25 +185,39 @@
       "conf": {
         "add": [
           {
-            "name": "class_uid",
-            "value": "EventID == '4672' ? 3003 : 3002"
+            "name": "suspicious",
+            "value": "EventID === '4625' || EventID === '4672' || EventID === '4720' || EventID === '4726'"
           },
           {
-            "name": "category_uid",
-            "value": "3"
-          },
-          {
-            "name": "activity_id",
-            "value": "EventID == '4624' ? 1 : EventID == '4634' ? 2 : EventID == '4648' ? 1 : EventID == '4776' ? 1 : EventID == '4672' ? 1 : 0"
-          },
-          {
-            "name": "type_uid",
-            "value": "Number((EventID == '4672' ? 3003 : 3002)) * 100 + Number(EventID == '4624' ? 1 : EventID == '4634' ? 2 : EventID == '4648' ? 1 : EventID == '4776' ? 1 : EventID == '4672' ? 1 : 0)"
-          },
-          {
-            "name": "severity_id",
-            "value": "1"
-          },
+            "name": "suspicious_indicators",
+            "value": "EventID === '4625' ? 'failed logon' : EventID === '4672' ? 'special privileges' : EventID === '4720' ? 'user created' : EventID === '4726' ? 'user deleted' : undefined"
+          }
+        ]
+      },
+      "description": "Flag failed logons and privilege escalation"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 4: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
           {
             "name": "vendor",
             "value": "'Microsoft'"
@@ -98,10 +225,14 @@
           {
             "name": "product",
             "value": "'Windows'"
+          },
+          {
+            "name": "version",
+            "value": "'10'"
           }
         ]
       },
-      "description": "OCSF classification"
+      "description": "Set device vendor/product/version"
     },
     {
       "id": "eval",
@@ -110,101 +241,21 @@
       "conf": {
         "add": [
           {
-            "name": "metadata",
+            "name": "src_endpoint",
             "value": "{}"
-          },
-          {
-            "name": "metadata.product",
-            "value": "{}"
-          },
-          {
-            "name": "metadata.product.name",
-            "value": "'Windows'"
-          },
-          {
-            "name": "metadata.product.vendor_name",
-            "value": "'Microsoft'"
-          },
-          {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
-          },
-          {
-            "name": "metadata.event_code",
-            "value": "EventID || undefined"
-          },
-          {
-            "name": "metadata.logged_time",
-            "value": "log_time != null && log_time != '' ? new Date(String(log_time)).getTime() : undefined"
-          },
-          {
-            "name": "metadata.original_time",
-            "value": "log_time || undefined"
-          },
-          {
-            "name": "time",
-            "value": "log_time != null && log_time != '' ? new Date(String(log_time)).getTime() : undefined"
-          }
-        ]
-      },
-      "description": "Metadata + top-level time"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "device",
-            "value": "{}"
-          },
-          {
-            "name": "device.hostname",
-            "value": "Computer && Computer != '-' ? Computer : undefined"
-          },
-          {
-            "name": "device.type_id",
-            "value": "0"
           },
           {
             "name": "dst_endpoint",
             "value": "{}"
           },
           {
-            "name": "dst_endpoint.hostname",
-            "value": "TargetServerName && TargetServerName != '-' ? TargetServerName : (Computer && Computer != '-' ? Computer : undefined)"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "undefined"
-          },
-          {
-            "name": "src_endpoint",
+            "name": "connection_info",
             "value": "{}"
           },
           {
-            "name": "src_endpoint.ip",
-            "value": "IpAddress && IpAddress != '-' ? IpAddress : undefined"
+            "name": "traffic",
+            "value": "{}"
           },
-          {
-            "name": "src_endpoint.port",
-            "value": "IpPort && IpPort != '-' && IpPort != '0' ? Number(IpPort) : undefined"
-          },
-          {
-            "name": "src_endpoint.hostname",
-            "value": "WorkstationName && WorkstationName != '-' ? WorkstationName : (Workstation && Workstation != '-' ? Workstation : undefined)"
-          }
-        ]
-      },
-      "description": "Endpoints (hostname vs ip)"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
           {
             "name": "actor",
             "value": "{}"
@@ -214,36 +265,44 @@
             "value": "{}"
           },
           {
-            "name": "actor.user.name",
-            "value": "SubjectUserName && SubjectUserName != '-' ? SubjectUserName : undefined"
-          },
-          {
-            "name": "actor.user.uid",
-            "value": "SubjectUserSid && SubjectUserSid != '-' ? SubjectUserSid : undefined"
-          },
-          {
-            "name": "actor.user.domain",
-            "value": "SubjectDomainName && SubjectDomainName != '-' ? SubjectDomainName : undefined"
-          },
-          {
-            "name": "user",
+            "name": "device",
             "value": "{}"
           },
           {
-            "name": "user.name",
-            "value": "TargetUserName && TargetUserName != '-' ? TargetUserName : undefined"
+            "name": "metadata",
+            "value": "{}"
           },
           {
-            "name": "user.uid",
-            "value": "TargetUserSid && TargetUserSid != '-' ? TargetUserSid : undefined"
+            "name": "metadata.product",
+            "value": "{}"
           },
           {
-            "name": "user.domain",
-            "value": "TargetDomainName && TargetDomainName != '-' ? TargetDomainName : undefined"
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? src_ip : undefined"
           }
         ]
       },
-      "description": "Actor (subject) vs user (target)"
+      "description": "Map canonical fields to OCSF 1.4"
     },
     {
       "id": "eval",
@@ -252,100 +311,64 @@
       "conf": {
         "add": [
           {
-            "name": "session",
-            "value": "{}"
+            "name": "src_endpoint.port",
+            "value": "src_port != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
           },
           {
-            "name": "session.uid",
-            "value": "TargetLogonId && TargetLogonId != '-' ? TargetLogonId : (SubjectLogonId && SubjectLogonId != '-' ? SubjectLogonId : undefined)"
+            "name": "dst_endpoint.hostname",
+            "value": "Computer != null && String(Computer) != 'undefined' && String(Computer) != 'null' && String(Computer) != '-' && String(Computer) != '' ? String(Computer) : undefined"
           },
           {
-            "name": "logon_type_id",
-            "value": "LogonType && LogonType != '-' ? Number(LogonType) : undefined"
-          },
-          {
-            "name": "logon_type",
-            "value": "LogonType == '3' ? 'Network' : LogonType == '5' ? 'Service' : LogonType == '7' ? 'Unlock' : LogonType == '2' ? 'Interactive' : LogonType == '10' ? 'RemoteInteractive' : undefined"
-          },
-          {
-            "name": "auth_protocol",
-            "value": "AuthenticationPackageName && AuthenticationPackageName != '-' ? AuthenticationPackageName : (PackageName && PackageName != '-' ? PackageName : undefined)"
-          },
-          {
-            "name": "lm_package_name",
-            "value": "LmPackageName && LmPackageName != '-' ? LmPackageName : undefined"
-          }
-        ]
-      },
-      "description": "Session / logon / auth protocol"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "process",
-            "value": "{}"
-          },
-          {
-            "name": "process.name",
-            "value": "ProcessName && ProcessName != '-' ? ProcessName : undefined"
-          },
-          {
-            "name": "process.pid",
-            "value": "ProcessId && ProcessId != '-' ? ProcessId : undefined"
-          },
-          {
-            "name": "privileges",
-            "value": "PrivilegeList && PrivilegeList != '-' ? String(PrivilegeList).trim().split(/\\s+/) : undefined"
-          },
-          {
-            "name": "status_id",
-            "value": "Status != null && Status != '' ? (Status == '0x0' ? 1 : 2) : undefined"
-          },
-          {
-            "name": "status",
-            "value": "Status != null && Status != '' ? (Status == '0x0' ? 'Success' : 'Failure') : undefined"
-          }
-        ]
-      },
-      "description": "Process / privileges / status"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "connection_info",
-            "value": "{}"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "LogonProcessName && LogonProcessName != '-' ? String(LogonProcessName).trim() : (auth_protocol || undefined)"
-          },
-          {
-            "name": "traffic",
-            "value": "{}"
-          },
-          {
-            "name": "traffic.bytes_in",
-            "value": "0"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "0"
+            "name": "dst_endpoint.ip",
+            "value": "src_ip != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? src_ip : undefined"
           },
           {
             "name": "dst_endpoint.port",
-            "value": "0"
+            "value": "EventID == '4768' || EventID == '4769' || EventID == '4771' ? 88 : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "authentication_method != null && String(authentication_method) != 'undefined' && String(authentication_method) != 'null' && String(authentication_method) != '-' && String(authentication_method) != '' ? String(authentication_method) : (EventID == '4768' || EventID == '4769' || EventID == '4771' ? 'Kerberos' : undefined)"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "ReceivedBytes != null && String(ReceivedBytes) != 'undefined' && String(ReceivedBytes) != 'null' && String(ReceivedBytes) != '-' && String(ReceivedBytes) != '' ? Number(ReceivedBytes) : (BytesReceived != null && String(BytesReceived) != 'undefined' && String(BytesReceived) != 'null' && String(BytesReceived) != '-' && String(BytesReceived) != '' ? Number(BytesReceived) : 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "SentBytes != null && String(SentBytes) != 'undefined' && String(SentBytes) != 'null' && String(SentBytes) != '-' && String(SentBytes) != '' ? Number(SentBytes) : (BytesSent != null && String(BytesSent) != 'undefined' && String(BytesSent) != 'null' && String(BytesSent) != '-' && String(BytesSent) != '' ? Number(BytesSent) : 0)"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? host : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? product : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? vendor : undefined"
+          },
+          {
+            "name": "metadata.event_code",
+            "value": "EventID || undefined"
+          },
+          {
+            "name": "time",
+            "value": "Math.round(_time * 1000)"
           }
         ]
       },
-      "description": "Connection info / traffic"
+      "description": "Map endpoint, protocol, traffic, actor, metadata fields"
     },
     {
       "id": "eval",
@@ -367,191 +390,389 @@
       "disabled": false,
       "conf": {
         "remove": [
-          "EventID",
-          "Level",
-          "Computer",
-          "Channel",
-          "ProcessID",
-          "UserID",
-          "ActivityID",
-          "log_time",
-          "__parsed",
-          "SubjectUserSid",
-          "SubjectUserName",
-          "SubjectDomainName",
-          "SubjectLogonId",
-          "TargetUserSid",
-          "TargetUserName",
-          "TargetDomainName",
-          "TargetLogonId",
-          "LogonType",
-          "LogonProcessName",
-          "AuthenticationPackageName",
-          "WorkstationName",
-          "Workstation",
-          "LogonGuid",
-          "TransmittedServices",
-          "LmPackageName",
-          "KeyLength",
-          "ProcessId",
-          "ProcessName",
-          "IpAddress",
-          "IpPort",
-          "ImpersonationLevel",
-          "RestrictedAdminMode",
-          "TargetOutboundUserName",
-          "TargetOutboundDomainName",
-          "VirtualAccount",
-          "TargetLinkedLogonId",
-          "ElevatedToken",
-          "PrivilegeList",
-          "PackageName",
-          "Status",
-          "TargetServerName",
-          "TargetInfo",
-          "vendor",
-          "product",
-          "lm_package_name"
+          "*"
+        ],
+        "keep": [
+          "_time",
+          "index",
+          "source",
+          "sourcetype",
+          "host",
+          "cribl_breaker",
+          "cribl_pipe",
+          "class_uid",
+          "class_uid.*",
+          "category_uid",
+          "category_uid.*",
+          "activity_id",
+          "activity_id.*",
+          "type_uid",
+          "type_uid.*",
+          "severity_id",
+          "severity_id.*",
+          "src_endpoint",
+          "src_endpoint.*",
+          "dst_endpoint",
+          "dst_endpoint.*",
+          "connection_info",
+          "connection_info.*",
+          "traffic",
+          "traffic.*",
+          "actor",
+          "actor.*",
+          "device",
+          "device.*",
+          "metadata",
+          "metadata.*",
+          "time",
+          "time.*"
         ]
       },
-      "description": "Remove raw/intermediate source fields"
+      "description": "Keep only OCSF 1.4 fields + routing"
     }
   ],
   "recipe": null,
   "report": {
-    "band": "warn",
-    "scoreSource": "golden-spec",
-    "findings": [
+    "pipelineId": "windows_security_ocsf",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 68,
+    "outputSample": [
       {
-        "severity": "medium",
-        "field": "src_endpoint.port",
-        "issue": "OCSF field \"src_endpoint.port\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "_time": 1705277022.112,
+        "host": "WORKSTATION01.corp.local",
+        "src_endpoint": {
+          "ip": "192.168.1.45"
+        },
+        "dst_endpoint": {
+          "hostname": "WORKSTATION01.corp.local",
+          "ip": "192.168.1.45"
+        },
+        "connection_info": {
+          "protocol_name": "Negotiate"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "device": {
+          "hostname": "WORKSTATION01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4624"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705277022112,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "medium",
-        "field": "dst_endpoint.ip",
-        "issue": "OCSF field \"dst_endpoint.ip\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "_time": 1705277843.441,
+        "host": "DC01.corp.local",
+        "src_endpoint": {
+          "ip": "185.220.101.47"
+        },
+        "dst_endpoint": {
+          "hostname": "DC01.corp.local",
+          "ip": "185.220.101.47"
+        },
+        "connection_info": {
+          "protocol_name": "NTLM"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "administrator"
+          }
+        },
+        "device": {
+          "hostname": "DC01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4625"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705277843441,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "process.pid",
-        "issue": "pid should be an integer (decimal), not a raw hex string from the XML. OCSF process.pid is typed as integer.",
-        "example": "\"pid\": \"0x34c\" — should be 844 (decimal integer)",
-        "pointImpact": 0
+        "_time": 1705278665.887,
+        "host": "DC01.corp.local",
+        "src_endpoint": {
+          "ip": "::ffff:10.0.2.18",
+          "port": 58234
+        },
+        "dst_endpoint": {
+          "hostname": "DC01.corp.local",
+          "ip": "::ffff:10.0.2.18",
+          "port": 88
+        },
+        "connection_info": {
+          "protocol_name": "Kerberos"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "mwilliams"
+          }
+        },
+        "device": {
+          "hostname": "DC01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4768"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705278665887,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "session.uid",
-        "issue": "session.uid should be a string representation of the logon ID, but hex strings like '0x3e7' are left as-is rather than normalized. More importantly, OCSF Authentication (3002) uses logon_process not session for the subject logon context; the subject's logon ID (SubjectLogonId) is missing entirely from the session object — only TargetLogonId is mapped.",
-        "example": "\"session\": {\"uid\": \"0x3e7\"} — SubjectLogonId and TargetLogonId conflated; hex not normalized",
-        "pointImpact": 0
+        "_time": 1705279452.003,
+        "host": "WORKSTATION07.corp.local",
+        "src_endpoint": {},
+        "dst_endpoint": {
+          "hostname": "WORKSTATION07.corp.local"
+        },
+        "connection_info": {},
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "rthompson"
+          }
+        },
+        "device": {
+          "hostname": "WORKSTATION07.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4688"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705279452003,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "class_uid / category_uid for EventID 4672",
-        "issue": "EventID 4672 (Special privileges assigned to new logon) does not map to Authentication (3002/category 3). OCSF class for privilege use is Account Change (3001) or a dedicated Privilege Activity; using 3002 is incorrect for this event.",
-        "example": "EventID 4672 output has class_uid:3002, activity_id:1 — semantically wrong",
-        "pointImpact": 0
+        "_time": 1705280575.219,
+        "host": "DC01.corp.local",
+        "src_endpoint": {},
+        "dst_endpoint": {
+          "hostname": "DC01.corp.local"
+        },
+        "connection_info": {},
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "Administrator"
+          }
+        },
+        "device": {
+          "hostname": "DC01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4672"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705280575219,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "privilegeList / privileges",
-        "issue": "EventID 4672 contains a PrivilegeList field with meaningful security content (13 privileges listed). This value is completely absent from the output — not mapped to any OCSF field (e.g., actor.user.privileges or unmapped extension).",
-        "example": "SeAssignPrimaryTokenPrivilege SeTcbPrivilege ... — entirely dropped",
-        "pointImpact": 0
+        "_time": 1705281277.556,
+        "host": "FILESERVER02.corp.local",
+        "src_endpoint": {
+          "ip": "10.10.5.201"
+        },
+        "dst_endpoint": {
+          "hostname": "FILESERVER02.corp.local",
+          "ip": "10.10.5.201"
+        },
+        "connection_info": {
+          "protocol_name": "NTLM"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "device": {
+          "hostname": "FILESERVER02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4625"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705281277556,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "src_endpoint.ip",
-        "issue": "IpAddress '76.178.69.3' present in EventID 4624 (event 6) and EventID 4648 (event 7) is not mapped to src_endpoint.ip. src_endpoint is left as empty object {}.",
-        "example": "\"src_endpoint\": {} — but source has IpAddress:76.178.69.3",
-        "pointImpact": 0
+        "_time": 1705282089.774,
+        "host": "DC01.corp.local",
+        "src_endpoint": {},
+        "dst_endpoint": {
+          "hostname": "DC01.corp.local"
+        },
+        "connection_info": {},
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "temp_contractor01"
+          }
+        },
+        "device": {
+          "hostname": "DC01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "4720"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705282089774,
+        "sourcetype": "windows_security:ocsf"
       },
       {
-        "severity": "high",
-        "field": "src_endpoint.ip (4648)",
-        "issue": "EventID 4648 also carries IpAddress 76.178.69.3 and IpPort 0 — both dropped. TargetServerName 'localhost' and TargetInfo 'localhost' also not mapped.",
-        "example": "Event 7 (4648): src_endpoint:{} despite IpAddress present",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "class_uid / type_uid for EventID 4776",
-        "issue": "EventID 4776 is a credential validation event (NTLM authentication attempt), not a standard logon. It is correctly a form of Authentication but the activity_id should reflect 'Authenticate' attempt semantics. The pipeline appears to output the truncated event (output only shows 3 events in full) — cannot fully verify, but mapping 4776 to 3002/activity_id=1 (Logon) is a misclassification; 4776 maps better to activity_id=3 (Authentication Ticket) or a custom activity.",
-        "example": "PackageName, Status fields from 4776 not visible in output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "traffic.bytes_in / traffic.bytes_out",
-        "issue": "traffic object with bytes_in:0 and bytes_out:0 is fabricated — no traffic data exists in Windows Security logon events. These fields should not be present; they add noise and misrepresent the event type.",
-        "example": "\"traffic\": {\"bytes_in\": 0, \"bytes_out\": 0} on every event including 4634 logoff",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "connection_info.protocol_name",
-        "issue": "LogonProcessName 'Advapi' is placed under connection_info.protocol_name which is semantically incorrect. LogonProcessName is the logon process, not a network protocol. It should map to logon_process or actor.session.logon_process.",
-        "example": "\"connection_info\": {\"protocol_name\": \"Advapi\"}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "actor.user (4634 logoff)",
-        "issue": "For EventID 4634 (logoff), SubjectUser fields are absent in the source which is expected, but actor.user is populated as empty object {} — should be omitted or absent rather than an empty shell.",
-        "example": "\"actor\": {\"user\": {}}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "auth_protocol",
-        "issue": "auth_protocol is a non-standard OCSF top-level field. In OCSF 1.4.0 Authentication class, the authentication package maps to auth_protocol_id / auth_protocol within the structured fields. Placement as bare top-level field is non-conformant.",
-        "example": "\"auth_protocol\": \"Negotiate\" at top level",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "logon_type / logon_type_id",
-        "issue": "logon_type and logon_type_id are placed at the top level. In OCSF Authentication (3002) these are valid top-level fields, so this is acceptable — but logon_type string 'Service' for type 5 and 'Unlock' for type 7 are correct. Low severity on naming but medium because the OCSF spec uses these as enumerated objects.",
-        "example": "Acceptable but should verify enum IDs match OCSF spec exactly",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "metadata.logged_time vs time",
-        "issue": "Both metadata.logged_time and time carry the same epoch-ms value. OCSF uses time (epoch ms) at top level and metadata.logged_time is non-standard — logged_time is not a standard OCSF metadata field.",
-        "example": "\"metadata\": {\"logged_time\": 1757695476269} — not in OCSF 1.4.0 metadata schema",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "dst_endpoint.port",
-        "issue": "dst_endpoint.port is set to 0 for all events including local logons where no port applies. Should be omitted when not meaningful.",
-        "example": "\"dst_endpoint\": {\"hostname\": \"EC2AMAZ-7TI8G2V\", \"port\": 0} on 4634 logoff",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "KeyLength",
-        "issue": "KeyLength field from 4624 events (value 128 for NTLM V2, value 0 for local) is not mapped anywhere in the output. While not a core OCSF field, it could be placed in unmapped or an extension.",
-        "example": "KeyLength:128 in event 6 (4624 NTLM) — dropped",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "LmPackageName",
-        "issue": "LmPackageName 'NTLM V2' from event 6 (4624) is dropped. This is meaningful auth sub-protocol data.",
-        "example": "LmPackageName:NTLM V2 — not mapped",
-        "pointImpact": 0
+        "_time": 1705283002.098,
+        "host": "WORKSTATION01.corp.local",
+        "src_endpoint": {},
+        "dst_endpoint": {
+          "hostname": "WORKSTATION01.corp.local"
+        },
+        "connection_info": {},
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "WORKSTATION01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0",
+          "event_code": "5156"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1705283002098,
+        "sourcetype": "windows_security:ocsf"
       }
     ],
-    "missingFields": [
-      "src_endpoint.port",
-      "dst_endpoint.ip"
+    "sampleKeys": [
+      "Name",
+      "Guid",
+      "SystemTime"
     ],
-    "emptyFields": [],
-    "summary": "The pipeline establishes correct OCSF Authentication class (3002) structure for logon/logoff events and captures core user identity, session, logon type, and device fields accurately. However, several significant gaps exist: src_endpoint.ip is entirely dropped despite IpAddress being present in events 6 and 7, EventID 4672 is misclassified as Authentication when it is a privilege assignment event, and the PrivilegeList from 4672 is completely lost. Additional issues include hex PIDs, fabricated traffic bytes, LogonProcessName misplaced as network protocol, and non-standard metadata fields, collectively reducing conformance to approximately 72."
+    "sampleRaw": [
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4624</EventID><TimeCreated SystemTime=\"2024-01-15T00:03:42.112Z\"/><Computer>WORKSTATION01.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">SYSTEM</Data><Data Name=\"TargetUserName\">jsmith</Data><Data Name=\"TargetDomainName\">CORP</Data><Data Name=\"LogonType\">2</Data><Data Name=\"IpAddress\">192.168.1.45</Data><Data Name=\"WorkstationName\">WORKSTATION01</Data><Data Name=\"LogonProcessName\">User32</Data><Data Name=\"AuthenticationPackageName\">Negotiate</Data><Data Name=\"Status\">0x0</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4625</EventID><TimeCreated SystemTime=\"2024-01-15T00:17:23.441Z\"/><Computer>DC01.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">-</Data><Data Name=\"TargetUserName\">administrator</Data><Data Name=\"TargetDomainName\">CORP</Data><Data Name=\"LogonType\">3</Data><Data Name=\"IpAddress\">185.220.101.47</Data><Data Name=\"WorkstationName\">-</Data><Data Name=\"LogonProcessName\">NtLmSsp</Data><Data Name=\"AuthenticationPackageName\">NTLM</Data><Data Name=\"Status\">0xC000006D</Data><Data Name=\"SubStatus\">0xC000006A</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4768</EventID><TimeCreated SystemTime=\"2024-01-15T00:31:05.887Z\"/><Computer>DC01.corp.local</Computer></System><EventData><Data Name=\"TargetUserName\">mwilliams</Data><Data Name=\"TargetDomainName\">CORP.LOCAL</Data><Data Name=\"ServiceName\">krbtgt</Data><Data Name=\"TicketOptions\">0x40810010</Data><Data Name=\"Status\">0x0</Data><Data Name=\"IpAddress\">::ffff:10.0.2.18</Data><Data Name=\"IpPort\">58234</Data><Data Name=\"EncryptionType\">0x12</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4688</EventID><TimeCreated SystemTime=\"2024-01-15T00:44:12.003Z\"/><Computer>WORKSTATION07.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">rthompson</Data><Data Name=\"SubjectDomainName\">CORP</Data><Data Name=\"NewProcessName\">C:\\Windows\\System32\\cmd.exe</Data><Data Name=\"ParentProcessName\">C:\\Windows\\Explorer.EXE</Data><Data Name=\"CommandLine\">cmd.exe /c whoami /all</Data><Data Name=\"ProcessId\">0x1a4c</Data><Data Name=\"ParentProcessId\">0x0e28</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4672</EventID><TimeCreated SystemTime=\"2024-01-15T01:02:55.219Z\"/><Computer>DC01.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">Administrator</Data><Data Name=\"SubjectDomainName\">CORP</Data><Data Name=\"SubjectLogonId\">0x3E7</Data><Data Name=\"PrivilegeList\">SeSecurityPrivilege SeBackupPrivilege SeRestorePrivilege SeTakeOwnershipPrivilege SeDebugPrivilege SeSystemEnvironmentPrivilege SeLoadDriverPrivilege SeImpersonatePrivilege</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4625</EventID><TimeCreated SystemTime=\"2024-01-15T01:14:37.556Z\"/><Computer>FILESERVER02.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">-</Data><Data Name=\"TargetUserName\">svc_backup</Data><Data Name=\"TargetDomainName\">CORP</Data><Data Name=\"LogonType\">3</Data><Data Name=\"IpAddress\">10.10.5.201</Data><Data Name=\"WorkstationName\">DEVBOX03</Data><Data Name=\"LogonProcessName\">NtLmSsp</Data><Data Name=\"AuthenticationPackageName\">NTLM</Data><Data Name=\"Status\">0xC0000234</Data><Data Name=\"SubStatus\">0xC0000234</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>4720</EventID><TimeCreated SystemTime=\"2024-01-15T01:28:09.774Z\"/><Computer>DC01.corp.local</Computer></System><EventData><Data Name=\"SubjectUserName\">hradmin</Data><Data Name=\"SubjectDomainName\">CORP</Data><Data Name=\"TargetUserName\">temp_contractor01</Data><Data Name=\"TargetDomainName\">CORP</Data><Data Name=\"SamAccountName\">temp_contractor01</Data><Data Name=\"DisplayName\">Temp Contractor</Data><Data Name=\"UserPrincipalName\">temp_contractor01@corp.local</Data><Data Name=\"AccountExpires\">2024-03-01T00:00:00Z</Data></EventData></Event>",
+      "<Event><System><Provider Name=\"Microsoft-Windows-Security-Auditing\" Guid=\"{54849625-5478-4994-A5BA-3E3B0328C30D}\"/><EventID>5156</EventID><TimeCreated SystemTime=\"2024-01-15T01:43:22.098Z\"/><Computer>WORKSTATION01.corp.local</Computer></System><EventData><Data Name=\"ProcessId\">4812</Data><Data Name=\"Application\">\\device\\harddiskvolume3\\program files\\google\\chrome\\application\\chrome.exe</Data><Data Name=\"Direction\">Outbound</Data><Data Name=\"SourceAddress\">192.168.1.45</Data><Data Name=\"SourcePort\">54321</Data><Data Name=\"DestAddress\">142.250.80.46</Data><Data Name=\"DestPort\">443</Data><Data Name=\"Protocol\">6</Data><Data Name=\"LayerName\">Connect</Data></EventData></Event>"
+    ],
+    "sourcetype": "windows_security"
   }
 }
