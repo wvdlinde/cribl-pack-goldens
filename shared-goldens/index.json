@@ -15165,6 +15165,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_gateway_http::ocsf",
+      "sourcetype": "ncsc_cloudflare_gateway_http",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:54:31.795Z",
+      "path": "shared-goldens/ncsc_cloudflare_gateway_http__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
