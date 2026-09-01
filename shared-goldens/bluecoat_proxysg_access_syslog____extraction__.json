@@ -2,92 +2,152 @@
   "key": "bluecoat_proxysg_access_syslog::__extraction__",
   "sourcetype": "bluecoat_proxysg_access_syslog",
   "dest_format": "__extraction__",
-  "score": 90,
+  "score": 91,
   "part": "extraction",
-  "author": "unknown",
-  "build": 648,
-  "updated_at": "2026-08-31T10:28:56.023Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T11:57:06.763Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Parse Bluecoat ProxySG access log fields from _raw",
+      "description": "Parse BlueCoat ProxySG space-delimited access log line",
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<time_taken>\\d+) (?<src_ip>\\S+) (?<user>\\S+) (?<user_group>\\S+) (?<action>\\S+) (?<status_code>\\d+) (?<dst_ip>\\S+) (?<method>\\S+) (?<content_type>\\S+) (?<protocol>\\S+) (?<dst_host>\\S+) (?<dst_port>\\d+) (?<uri_path>\\S+) (?<uri_query>\\S+) \"(?<user_agent>[^\"]*)\" (?<bytes_sent>\\d+) (?<bytes_received>\\d+) (?<threat>\\S+)$/",
         "iterations": 1,
-        "overwrite": false
+        "overwrite": false,
+        "regex": "/^(?<__date>\\d{4}-\\d{2}-\\d{2})\\s+(?<__time>\\d{2}:\\d{2}:\\d{2})\\s+(?<time_taken>\\d+)\\s+(?<src_ip>\\S+)\\s+(?<user>\\S+)\\s+(?<auth_group>\\S+)\\s+(?<proxy_action>\\S+)\\s+(?<status>\\d+)\\s+(?<dst_ip>\\S+)\\s+(?<http_method>\\S+)\\s+(?<content_type>\\S+)\\s+(?<protocol>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<dst_port>\\d+)\\s+(?<uri_path>\\S+)\\s+(?<uri_query>\\S+)\\s+\"(?<http_user_agent>[^\"]*)\"\\s+(?<bytes_out>\\d+)\\s+(?<bytes_in>\\d+)\\s+(?<virus_id>\\S+)\\s*$/"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "__date && __time",
+      "disabled": false,
+      "description": "Derive event timestamp from date and time fields",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Math.floor(new Date(__date + 'T' + __time + 'Z').getTime()/1000)"
+          },
+          {
+            "name": "timestamp",
+            "value": "__date + ' ' + __time"
+          }
+        ],
+        "remove": [
+          "__date",
+          "__time"
+        ]
       }
     },
     {
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Normalize placeholder values and numeric fields",
+      "description": "Normalize placeholder '-' values to null and cast numerics",
       "conf": {
         "add": [
           {
             "name": "user",
-            "value": "user==='-' ? null : user"
+            "value": "(user === '-' || user === 'anonymous') ? null : user"
           },
           {
-            "name": "user_group",
-            "value": "user_group==='-' ? null : user_group"
+            "name": "auth_group",
+            "value": "auth_group === '-' ? null : auth_group"
           },
           {
-            "name": "threat",
-            "value": "threat==='-' ? null : threat"
+            "name": "content_type",
+            "value": "content_type === '-' ? null : content_type"
+          },
+          {
+            "name": "uri_path",
+            "value": "uri_path === '-' ? null : uri_path"
           },
           {
             "name": "uri_query",
-            "value": "uri_query==='-' ? null : uri_query"
+            "value": "uri_query === '-' ? null : uri_query"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "(http_user_agent === '-' || http_user_agent === '') ? null : http_user_agent"
+          },
+          {
+            "name": "virus_id",
+            "value": "virus_id === '-' ? null : virus_id"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
           },
           {
             "name": "dst_port",
             "value": "Number(dst_port)"
           },
           {
-            "name": "status_code",
-            "value": "Number(status_code)"
+            "name": "bytes_in",
+            "value": "Number(bytes_in)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(bytes_out)"
           },
           {
             "name": "time_taken",
             "value": "Number(time_taken)"
           },
           {
-            "name": "bytes_sent",
-            "value": "Number(bytes_sent)"
-          },
-          {
-            "name": "bytes_received",
-            "value": "Number(bytes_received)"
+            "name": "bytes",
+            "value": "Number(bytes_in) + Number(bytes_out)"
           }
-        ],
-        "remove": []
+        ]
       }
     },
     {
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Classify action, protocol, and severity for reporting",
+      "description": "Classify action, protocol, severity, url and direction",
       "conf": {
         "add": [
           {
-            "name": "action_norm",
-            "value": "action.match(/DENIED/) ? 'blocked' : (action==='OBSERVED' ? 'observed' : (action==='TCP_TUNNELED' ? 'tunneled' : 'allowed'))"
+            "name": "action",
+            "value": "proxy_action === 'TCP_DENIED' ? 'blocked' : (proxy_action ? 'allowed' : null)"
           },
           {
             "name": "protocol",
-            "value": "protocol.toLowerCase()"
+            "value": "protocol ? protocol.toLowerCase() : null"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "url",
+            "value": "protocol && dst_host ? protocol.toLowerCase() + '://' + dst_host + (uri_path ? uri_path : '') + (uri_query ? '?' + uri_query : '') : null"
           },
           {
             "name": "severity",
-            "value": "threat ? 'high' : (status_code>=500 ? 'medium' : (status_code>=400 ? 'low' : 'info'))"
+            "value": "virus_id ? 'high' : (Number(status) >= 500 ? 'medium' : (Number(status) >= 400 ? 'low' : 'informational'))"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 6 : 4"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|fe80:)/) ? 'outbound' : 'inbound'"
+          },
+          {
+            "name": "vendor",
+            "value": "'Blue Coat'"
+          },
+          {
+            "name": "product",
+            "value": "'ProxySG'"
           }
-        ],
-        "remove": []
+        ]
       }
     }
   ],
