@@ -1,0 +1,316 @@
+{
+  "key": "aemhttpderror::ocsf",
+  "sourcetype": "aemhttpderror",
+  "dest_format": "ocsf",
+  "score": 86,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:58:11.249Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{2}\\.\\d{2}\\.\\d{4} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}) \\*(?<severity>\\w+)\\* \\[(?<src_ip>[^\\s\\[\\]]*)\\]?\\s\\[(?<epoch_ms>\\d+)\\]\\s(?<method>\\w+)\\s(?<url>\\S+)\\sHTTP\\/(?<http_version>[\\d.]+)\\]\\s(?<logger>\\S+)\\s(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse AEM HTTPD error log line into timestamp, severity, src_ip, epoch_ms, HTTP method/url/version, logger class and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"user '\") > -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user name from login-related messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /HTTP\\s\\d{3}/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/HTTP\\s(?<http_status>\\d{3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract HTTP status code embedded in the message text"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? (severity.toLowerCase()==='warn' ? 'warning' : severity.toLowerCase()) : severity"
+          },
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/Blocked|Malformed/i) ? 'blocked' : message.match(/failed|invalid credentials/i) ? 'failure' : message.match(/expired/i) ? 'denied' : message.match(/timeout/i) ? 'timeout' : message.match(/successfully|served/i) ? 'success' : 'unknown'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip && src_ip.length>0 ? src_ip : null"
+          }
+        ]
+      },
+      "description": "Normalize severity, set protocol, and classify action based on message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity: Traffic'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : 6)"
+          },
+          {
+            "name": "type_uid",
+            "value": "4001 * 100 + ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : 6))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toUpperCase() == 'ERROR' ? 4 : ((severity || '').toUpperCase() == 'WARN' ? 3 : ((severity || '').toUpperCase() == 'FATAL' ? 5 : ((severity || '').toUpperCase() == 'DEBUG' ? 1 : 1)))"
+          },
+          {
+            "name": "time",
+            "value": "Number(epoch_ms || (_time ? _time * 1000 : 0))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(http_status || 0) >= 400 ? 443 : 80"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || (http_version || '')).toString().toLowerCase().indexOf('https') > -1 ? 'https' : 'http'"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "logger || ''"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'Adobe Experience Manager'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Adobe'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-17)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aemhttpderror'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"*warn*\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"*info*\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"*error*\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2001\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"db8\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
