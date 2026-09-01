@@ -14625,6 +14625,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_dns::ocsf#dns::__mapping__",
+      "sourcetype": "corelight_dns",
+      "dest_format": "ocsf#dns::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T09:39:35.279Z",
+      "path": "shared-goldens/corelight_dns__ocsf#dns____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
