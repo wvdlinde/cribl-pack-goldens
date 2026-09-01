@@ -15135,6 +15135,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aemrequest::ocsf",
+      "sourcetype": "aemrequest",
+      "dest_format": "ocsf",
+      "score": 86,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:54:22.843Z",
+      "path": "shared-goldens/aemrequest__ocsf.json",
+      "report": {
+        "score": 86,
+        "band": "good"
+      }
     }
   ]
 }
