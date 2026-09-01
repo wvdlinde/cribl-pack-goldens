@@ -14250,6 +14250,21 @@
         "score": 94,
         "band": "good"
       }
+    },
+    {
+      "key": "fml_event::cim#network::__mapping__",
+      "sourcetype": "fml_event",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:43.724Z",
+      "path": "shared-goldens/fml_event__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
