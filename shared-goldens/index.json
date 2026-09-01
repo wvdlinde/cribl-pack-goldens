@@ -13800,6 +13800,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_envoy::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_envoy",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:33.898Z",
+      "path": "shared-goldens/vmware_esxlog_envoy__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
