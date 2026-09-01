@@ -11495,14 +11495,14 @@
       "key": "vcenter_syslog::Syslog::__mapping__",
       "sourcetype": "vcenter_syslog",
       "dest_format": "Syslog::__mapping__",
-      "score": 93,
+      "score": 96,
       "part": "mapping",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T10:32:09.311Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T11:57:10.541Z",
       "path": "shared-goldens/vcenter_syslog__Syslog____mapping__.json",
       "report": {
-        "score": 93,
+        "score": 96,
         "band": "good"
       }
     },
