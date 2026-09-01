@@ -1,0 +1,369 @@
+{
+  "key": "vmware_esxlog_hostdcgiserver::ocsf",
+  "sourcetype": "vmware_esxlog_hostdcgiserver",
+  "dest_format": "ocsf",
+  "score": 94,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:00:23.555Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+\\[Originator@(?<originator>\\d+)\\s+sub=(?<sub_component>[^\\s\\]]+)(?:\\s+(?<log_level>warning|error|critical|verbose|info))?(?:\\s+opID=(?<op_id>[^\\s\\]]+))?\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse ESXi hostd-cgi-server syslog header (timestamp, host, process, pid, Originator context)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\\s/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<http_method>[A-Z]+)\\s+(?<uri_path>\\S+)\\s+HTTP\\/(?<http_version>[\\d.]+)\\s+(?<status_code>\\d{3})\\s+(?<status_message>[A-Za-z ]+?)(?:\\s+size=(?<bytes>\\d+))?\\s+client=(?<src_ip>\\[[0-9a-fA-F:]+\\]|[0-9a-fA-F:.]+)(?:\\s+responseTime=(?<response_time_ms>\\d+)ms)?\\s*$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse HTTP request lines (method, uri, status, client, bytes, response time)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !src_ip",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:^(?<__inline_level>warning|error|critical):\\s*)?(?:.*?user\\s+'(?<user>[^']+)')?(?:.*?\\b(?:from|by|client|Client|with client)\\s+\\[?(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9a-fA-F]{0,4}(?::[0-9a-fA-F]{0,4}){2,7})\\]?(?::(?<src_port>\\d{1,5}))?)?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract inline severity prefix, username and client IP/port from non-HTTP messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !user && /User\\s+'/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/User\\s+'(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract username from 'User <name> authenticated' style messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "severity",
+            "value": "log_level ? log_level.toLowerCase() : (__inline_level ? __inline_level.toLowerCase() : 'info')"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/[\\[\\]]/g,'') : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_port",
+            "value": "443"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app",
+            "value": "'https'"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes ? Number(bytes) : undefined"
+          },
+          {
+            "name": "status_code",
+            "value": "status_code ? Number(status_code) : undefined"
+          },
+          {
+            "name": "response_time_ms",
+            "value": "response_time_ms ? Number(response_time_ms) : undefined"
+          },
+          {
+            "name": "pid",
+            "value": "pid ? Number(pid) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "status_code ? (Number(status_code) < 400 ? 'success' : 'failure') : (/successful|successfully|accepted|authenticated/i.test(message) ? 'success' : (/fail|reject|invalid|unable|error|unsupported|traversal|brute/i.test(message) ? 'failure' : 'info'))"
+          },
+          {
+            "name": "event_type",
+            "value": "/authentic|login|token/i.test(message) ? 'authentication' : (status_code ? 'http_request' : (/ssl|certificate|cipher/i.test(message) ? 'tls' : (/connection/i.test(message) ? 'connection' : 'other')))"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? (/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)/.test(src_ip) ? 'inbound_internal' : 'inbound') : undefined"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          }
+        ],
+        "remove": [
+          "__inline_level"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action, protocol, numerics and IPv6 formatting"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action || '').toLowerCase() == 'closed' || (action || '').toLowerCase() == 'close' ? 2 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'accepted' || (action || '').toLowerCase() == 'success' || (action || '').toLowerCase() == 'allowed' ? 1 : 6)))"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + ((action || '').toLowerCase() == 'closed' || (action || '').toLowerCase() == 'close' ? 2 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'accepted' || (action || '').toLowerCase() == 'success' || (action || '').toLowerCase() == 'allowed' ? 1 : 6))))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(log_level || severity || '').toLowerCase() == 'critical' ? 5 : ((log_level || severity || '').toLowerCase() == 'error' ? 4 : ((log_level || severity || '').toLowerCase() == 'warning' ? 3 : ((log_level || severity || '').toLowerCase() == 'debug' ? 1 : 2)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || 'tcp').toLowerCase()"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(direction || '').toLowerCase() == 'inbound' ? Number(bytes || 0) : 0"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(direction || '').toLowerCase() == 'outbound' ? Number(bytes || 0) : 0"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "device.hostname",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'VMware ESXi hostd-cgi-server'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'VMware'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round(Number(_time || 0) * 1000)"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-20)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:hostdCgiServer'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"hostd-cgi-0a3f]\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"default]\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
