@@ -12485,14 +12485,14 @@
       "key": "vmware_esxlog_localcli::__extraction__",
       "sourcetype": "vmware_esxlog_localcli",
       "dest_format": "__extraction__",
-      "score": 93,
+      "score": 95,
       "part": "extraction",
-      "author": "unknown",
-      "build": 529,
-      "updated_at": "2026-08-18T07:51:37.758Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:31.890Z",
       "path": "shared-goldens/vmware_esxlog_localcli____extraction__.json",
       "report": {
-        "score": 93,
+        "score": 95,
         "band": "good"
       }
     },
