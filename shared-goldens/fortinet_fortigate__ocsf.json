@@ -2,17 +2,26 @@
   "key": "fortinet_fortigate::ocsf",
   "sourcetype": "fortinet_fortigate",
   "dest_format": "ocsf",
-  "score": 88,
-  "author": "wlinde@cribl.io",
+  "score": 100,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-10T12:54:24.104Z",
+  "updated_at": "2026-09-01T07:36:17.440Z",
   "functions": [
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "fortinet_fortigate to OCSF pipeline."
+        "comment": "fortinet_fortigate to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 1: Parse raw events ---"
       }
     },
     {
@@ -60,7 +69,236 @@
         "maxNumOfIterations": 5000,
         "code": "for (const key of Object.keys(__e)) {\n  if (key.startsWith(\"FTNTFGT\")) {\n    const clean = key.slice(7);\n    if (!__e[clean]) __e[clean] = __e[key];\n    delete __e[key];\n  }\n}"
       },
-      "description": "Strip FTNTFGT prefix"
+      "description": "Strip FTNTFGT prefix from FortiGate vendor fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || src || srcaddr || srcip || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || dst || dstaddr || dstip || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || spt || srcport || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || dpt || dstport || undefined"
+          },
+          {
+            "name": "__proto_raw",
+            "value": "String(transport || protocol || proto || \"\")"
+          },
+          {
+            "name": "transport",
+            "value": "__proto_raw == '6' ? 'tcp' : __proto_raw == '17' ? 'udp' : __proto_raw == '1' ? 'icmp' : __proto_raw == '58' ? 'ipv6-icmp' : __proto_raw == '47' ? 'gre' : __proto_raw == '50' ? 'esp' : __proto_raw == '51' ? 'ah' : __proto_raw == '132' ? 'sctp' : (__proto_raw || undefined)"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || proto || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action || act || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "event_code || logid || undefined"
+          },
+          {
+            "name": "message",
+            "value": "type ? (subtype ? String(type) + ':' + String(subtype) : String(type)) : (msg || undefined)"
+          },
+          {
+            "name": "log_time",
+            "value": "eventtime ? Number(String(eventtime).substring(0,13)) : (date && time ? Date.parse(String(date) + 'T' + String(time)) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "level == 'emergency' || level == 'alert' ? 1 : level == 'critical' ? 2 : level == 'error' ? 3 : level == 'warning' ? 4 : level == 'notice' ? 5 : level == 'information' ? 6 : (severity || undefined)"
+          },
+          {
+            "name": "host",
+            "value": "host || devname || devid || undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || __e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "app",
+            "value": "app || service || appcat || undefined"
+          },
+          {
+            "name": "application",
+            "value": "app || service || undefined"
+          },
+          {
+            "name": "service",
+            "value": "service || undefined"
+          },
+          {
+            "name": "src_zone",
+            "value": "(srcintfrole && srcintfrole != 'undefined' ? srcintfrole : srcintf) || undefined"
+          },
+          {
+            "name": "dest_zone",
+            "value": "(dstintfrole && dstintfrole != 'undefined' ? dstintfrole : dstintf) || undefined"
+          },
+          {
+            "name": "src_interface",
+            "value": "srcintf || undefined"
+          },
+          {
+            "name": "dest_interface",
+            "value": "dstintf || undefined"
+          },
+          {
+            "name": "src_country",
+            "value": "srccountry || undefined"
+          },
+          {
+            "name": "dest_country",
+            "value": "dstcountry || undefined"
+          },
+          {
+            "name": "policy_id",
+            "value": "policyid || undefined"
+          },
+          {
+            "name": "policy_name",
+            "value": "policyname || poluuid || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "sessionid || externalId || identifier || undefined"
+          },
+          {
+            "name": "sent_bytes",
+            "value": "out || sentbyte || undefined"
+          },
+          {
+            "name": "rcvd_bytes",
+            "value": "__e['in'] || rcvdbyte || undefined"
+          },
+          {
+            "name": "sent_pkts",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "rcvd_pkts",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "src_mac",
+            "value": "srcmac || mastersrcmac || undefined"
+          },
+          {
+            "name": "dest_mac",
+            "value": "dstmac || masterdstmac || undefined"
+          },
+          {
+            "name": "device_ip",
+            "value": "device_ip || undefined"
+          },
+          {
+            "name": "nat_disposition",
+            "value": "trandisp || undefined"
+          },
+          {
+            "name": "src_translated_ip",
+            "value": "trandisp == 'dnat' ? undefined : (transip || tranip || natip || undefined)"
+          },
+          {
+            "name": "src_translated_port",
+            "value": "trandisp == 'dnat' ? undefined : (tranport || natport || undefined)"
+          },
+          {
+            "name": "dest_translated_ip",
+            "value": "trandisp == 'dnat' ? (tranip || undefined) : undefined"
+          },
+          {
+            "name": "dest_translated_port",
+            "value": "trandisp == 'dnat' ? (tranport || undefined) : undefined"
+          },
+          {
+            "name": "vdom",
+            "value": "vd || vdom || undefined"
+          },
+          {
+            "name": "duration",
+            "value": "duration || undefined"
+          },
+          {
+            "name": "packets_in",
+            "value": "rcvdpkt || undefined"
+          },
+          {
+            "name": "packets_out",
+            "value": "sentpkt || undefined"
+          },
+          {
+            "name": "dev_id",
+            "value": "devid || undefined"
+          },
+          {
+            "name": "os",
+            "value": "osname || undefined"
+          },
+          {
+            "name": "os_version",
+            "value": "srcswversion || osversion || undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_src",
+          "__proto_raw",
+          "__cef_ext",
+          "__cef_vendor",
+          "__cef_product",
+          "__cef_version",
+          "__cef_id",
+          "__cef_name",
+          "__cef_severity"
+        ]
+      },
+      "description": "Normalize CEF/FortiGate field names to standard"
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "src_ip && dst_ip && src_ip === dst_ip",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop local loopback traffic (src=dst) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'accept' && application === 'PING'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop health check / keepalive PING traffic (enable in Cribl UI to activate)",
+      "final": true
     },
     {
       "id": "comment",
@@ -71,46 +309,12 @@
       }
     },
     {
-      "id": "eval",
+      "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "add": [
-          {
-            "name": "__proto_raw",
-            "value": "String(proto || '')"
-          },
-          {
-            "name": "__transport",
-            "value": "__proto_raw == '6' ? 'tcp' : __proto_raw == '17' ? 'udp' : __proto_raw == '1' ? 'icmp' : __proto_raw == '58' ? 'ipv6-icmp' : __proto_raw == '47' ? 'gre' : __proto_raw == '50' ? 'esp' : __proto_raw == '51' ? 'ah' : __proto_raw == '132' ? 'sctp' : (__proto_raw || undefined)"
-          },
-          {
-            "name": "__act",
-            "value": "String(action || '')"
-          },
-          {
-            "name": "__activity_id",
-            "value": "__act == 'accept' ? 1 : __act == 'close' ? 2 : __act == 'client-rst' || __act == 'server-rst' || __act == 'timeout' ? 2 : __act == 'deny' || __act == 'block' || __act == 'ip-conn' ? 6 : 5"
-          },
-          {
-            "name": "__direction_id",
-            "value": "subtype == 'forward' ? 2 : subtype == 'local' ? 1 : 0"
-          },
-          {
-            "name": "__level",
-            "value": "String(level || '')"
-          },
-          {
-            "name": "__severity_id",
-            "value": "__level == 'emergency' ? 6 : __level == 'alert' || __level == 'critical' ? 5 : __level == 'error' ? 4 : __level == 'warning' ? 3 : __level == 'notice' ? 3 : __level == 'information' || __level == 'info' ? 2 : __level == 'debug' ? 1 : 2"
-          },
-          {
-            "name": "__logtime",
-            "value": "eventtime ? Number(String(eventtime).substring(0,13)) : undefined"
-          }
-        ]
-      },
-      "description": "Compute normalized derived values"
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
+      }
     },
     {
       "id": "eval",
@@ -119,90 +323,20 @@
       "conf": {
         "add": [
           {
-            "name": "class_uid",
-            "value": "4001"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
-          },
-          {
-            "name": "activity_id",
-            "value": "Number(__activity_id)"
-          },
-          {
-            "name": "type_uid",
-            "value": "Number(4001 * 100 + __activity_id)"
-          },
-          {
-            "name": "severity_id",
-            "value": "Number(__severity_id)"
-          },
-          {
-            "name": "sourcetype",
-            "value": "'fortinet_fortigate:ocsf'"
-          },
-          {
-            "name": "host",
-            "value": "devname || devid || undefined"
-          },
-          {
-            "name": "time",
-            "value": "(__logtime) != null ? Number(__logtime) : undefined"
-          },
-          {
-            "name": "_time",
-            "value": "(__logtime) != null ? Number(__logtime) / 1000 : _time"
-          }
-        ]
-      },
-      "description": "Set OCSF core fields"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "metadata",
-            "value": "{}"
-          },
-          {
-            "name": "metadata.product",
-            "value": "{}"
-          },
-          {
-            "name": "metadata.product.name",
-            "value": "'FortiGate'"
-          },
-          {
-            "name": "metadata.product.vendor_name",
+            "name": "vendor",
             "value": "'Fortinet'"
           },
           {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
+            "name": "product",
+            "value": "'FortiGate'"
           },
           {
-            "name": "metadata.log_name",
-            "value": "logid || undefined"
-          },
-          {
-            "name": "device",
-            "value": "{}"
-          },
-          {
-            "name": "device.hostname",
-            "value": "devname || undefined"
-          },
-          {
-            "name": "device.uid",
-            "value": "devid || undefined"
+            "name": "version",
+            "value": "'7.x'"
           }
         ]
       },
-      "description": "Metadata + device"
+      "description": "Set device vendor/product/version"
     },
     {
       "id": "eval",
@@ -215,265 +349,17 @@
             "value": "{}"
           },
           {
-            "name": "src_endpoint.ip",
-            "value": "srcip || undefined"
-          },
-          {
-            "name": "src_endpoint.port",
-            "value": "srcport != null && String(srcport) != '' ? Number(srcport) : undefined"
-          },
-          {
-            "name": "src_endpoint.mac",
-            "value": "srcmac || mastersrcmac || undefined"
-          },
-          {
-            "name": "src_endpoint.interface_uid",
-            "value": "srcintf || undefined"
-          },
-          {
             "name": "dst_endpoint",
             "value": "{}"
           },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "dstip || undefined"
-          },
-          {
-            "name": "dst_endpoint.port",
-            "value": "dstport != null && String(dstport) != '' ? Number(dstport) : undefined"
-          },
-          {
-            "name": "dst_endpoint.mac",
-            "value": "dstmac || masterdstmac || undefined"
-          },
-          {
-            "name": "dst_endpoint.interface_uid",
-            "value": "dstintf || undefined"
-          }
-        ]
-      },
-      "description": "Endpoints base"
-    },
-    {
-      "id": "eval",
-      "filter": "srccountry && srccountry != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "src_endpoint.location",
-            "value": "{}"
-          },
-          {
-            "name": "src_endpoint.location.country",
-            "value": "srccountry"
-          }
-        ]
-      },
-      "description": "src location"
-    },
-    {
-      "id": "eval",
-      "filter": "dstcountry && dstcountry != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "dst_endpoint.location",
-            "value": "{}"
-          },
-          {
-            "name": "dst_endpoint.location.country",
-            "value": "dstcountry"
-          }
-        ]
-      },
-      "description": "dst location"
-    },
-    {
-      "id": "eval",
-      "filter": "osname && osname != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "src_endpoint.os",
-            "value": "{}"
-          },
-          {
-            "name": "src_endpoint.os.name",
-            "value": "osname"
-          },
-          {
-            "name": "src_endpoint.os.version",
-            "value": "srcswversion || undefined"
-          }
-        ]
-      },
-      "description": "src os"
-    },
-    {
-      "id": "eval",
-      "filter": "dstosname && dstosname != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "dst_endpoint.os",
-            "value": "{}"
-          },
-          {
-            "name": "dst_endpoint.os.name",
-            "value": "dstosname"
-          },
-          {
-            "name": "dst_endpoint.os.version",
-            "value": "dstswversion || undefined"
-          }
-        ]
-      },
-      "description": "dst os"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
           {
             "name": "connection_info",
             "value": "{}"
           },
           {
-            "name": "connection_info.protocol_name",
-            "value": "__transport || undefined"
-          },
-          {
-            "name": "connection_info.protocol_num",
-            "value": "__proto_raw != '' ? Number(__proto_raw) : undefined"
-          },
-          {
-            "name": "connection_info.direction_id",
-            "value": "Number(__direction_id)"
-          },
-          {
-            "name": "connection_info.direction",
-            "value": "__direction_id == 2 ? 'Outbound' : __direction_id == 1 ? 'Inbound' : 'Unknown'"
-          },
-          {
-            "name": "connection_info.uid",
-            "value": "sessionid != null && String(sessionid) != '' ? String(sessionid) : undefined"
-          }
-        ]
-      },
-      "description": "connection_info"
-    },
-    {
-      "id": "eval",
-      "filter": "service && service != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "connection_info.service",
-            "value": "{}"
-          },
-          {
-            "name": "connection_info.service.name",
-            "value": "service"
-          }
-        ]
-      },
-      "description": "service name"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
             "name": "traffic",
             "value": "{}"
           },
-          {
-            "name": "traffic.bytes_in",
-            "value": "rcvdbyte != null && String(rcvdbyte) != '' ? Number(rcvdbyte) : undefined"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "sentbyte != null && String(sentbyte) != '' ? Number(sentbyte) : undefined"
-          },
-          {
-            "name": "traffic.packets_in",
-            "value": "rcvdpkt != null && String(rcvdpkt) != '' ? Number(rcvdpkt) : undefined"
-          },
-          {
-            "name": "traffic.packets_out",
-            "value": "sentpkt != null && String(sentpkt) != '' ? Number(sentpkt) : undefined"
-          },
-          {
-            "name": "duration",
-            "value": "duration != null && String(duration) != '' ? Number(duration) : undefined"
-          },
-          {
-            "name": "app_name",
-            "value": "app || service || undefined"
-          },
-          {
-            "name": "disposition",
-            "value": "__act == 'accept' ? 'Allowed' : __act == 'deny' || __act == 'block' ? 'Blocked' : __act == 'close' || __act == 'client-rst' || __act == 'server-rst' || __act == 'timeout' ? 'Teardown' : __act || undefined"
-          }
-        ]
-      },
-      "description": "traffic + disposition"
-    },
-    {
-      "id": "eval",
-      "filter": "policyid != null && String(policyid) != ''",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "firewall_rule",
-            "value": "{}"
-          },
-          {
-            "name": "firewall_rule.uid",
-            "value": "String(policyid)"
-          },
-          {
-            "name": "firewall_rule.name",
-            "value": "policyname && policyname != '' ? policyname : (policytype || undefined)"
-          }
-        ]
-      },
-      "description": "firewall_rule"
-    },
-    {
-      "id": "eval",
-      "filter": "trandisp == 'dnat' && tranip",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "dst_endpoint.translated_ip",
-            "value": "tranip || undefined"
-          },
-          {
-            "name": "dst_endpoint.translated_port",
-            "value": "tranport != null && String(tranport) != '' ? Number(tranport) : undefined"
-          }
-        ]
-      },
-      "description": "NAT translation (dnat)"
-    },
-    {
-      "id": "eval",
-      "filter": "(user && user != '') || (unauthuser && unauthuser != '')",
-      "disabled": false,
-      "conf": {
-        "add": [
           {
             "name": "actor",
             "value": "{}"
@@ -483,12 +369,120 @@
             "value": "{}"
           },
           {
-            "name": "actor.user.name",
-            "value": "(user && user != '') ? user : unauthuser"
+            "name": "device",
+            "value": "{}"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
           }
         ]
       },
-      "description": "actor.user only when present"
+      "description": "Map canonical fields → OCSF 1.4"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'fortinet_fortigate:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
     },
     {
       "id": "eval",
@@ -530,11 +524,6 @@
           "device.*",
           "metadata",
           "metadata.*",
-          "firewall_rule",
-          "firewall_rule.*",
-          "duration",
-          "app_name",
-          "disposition",
           "time",
           "time.*"
         ]
@@ -543,168 +532,5 @@
     }
   ],
   "recipe": null,
-  "report": {
-    "band": "warn",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"root\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"dnat\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"lan\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"noop\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"high\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"low\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "metadata.logged_time / time",
-        "issue": "OCSF requires 'time' as a top-level integer epoch milliseconds field representing the event timestamp. The pipeline emits both a top-level '_time' (fractional seconds, 1757600388.419) and 'time' (raw eventtime integer 1757600388419 ms). The OCSF 'time' field should be the event time in ms epoch at top level — the value itself is correct (ms epoch) but '_time' is a Cribl-internal field and should not be the authoritative timestamp object; this is acceptable but the dual presence is confusing. More critically, 'metadata.logged_time' (the log receipt time) is absent despite source having syslog header timestamp.",
-        "example": "\"_time\": 1757600388.419 (Cribl internal) vs \"time\": 1757600388419 (correct ms epoch) — metadata.logged_time missing",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "firewall_rule.name",
-        "issue": "The 'policyname' field from the source is mapped to 'firewall_rule.name' but is populated with the 'policytype' value ('policy') instead of the actual policy name. When policyname is empty string in source, falling back to policytype string 'policy' is misleading. The 'policyname' field when present (e.g., empty string) should result in absence or null, not substitution with policytype.",
-        "example": "Source: policyname=\"\", policytype=\"policy\" → output: firewall_rule.name=\"policy\" (should be absent or empty)",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "connection_info.direction_id",
-        "issue": "direction_id is hardcoded to 2 (Outbound) for all forward subtype events regardless of actual traffic direction. FortiGate subtype='local' should yield direction_id=1 (Inbound to device) not 2. Event 3 (subtype=local, proto=17) has __direction_id=1 which is correct in the intermediate field but the final output object was truncated in the sample so cannot fully verify propagation, but events 1 and 2 (subtype=forward) both show direction_id=2 without evaluating srcintfrole/dstintfrole for actual direction.",
-        "example": "Event 1 subtype=forward srcintfrole=undefined dstintfrole=undefined → direction_id=2 assumed without basis",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "unmapped intermediate fields (__kvp_src, __proto_raw, __act, __activity_id, __direction_id, __level, __severity_id, __logtime, __transport)",
-        "issue": "Multiple internal pipeline working fields prefixed with '__' are present in the final output events. These should be cleaned up/removed before output. They pollute the OCSF event with non-schema fields.",
-        "example": "\"__kvp_src\": \"<13>Sep 11...\", \"__proto_raw\": \"6\", \"__act\": \"close\", \"__transport\": \"tcp\" all present in output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "_raw",
-        "issue": "The original raw log string is stored in '__kvp_src' (a non-standard field) rather than being dropped or stored in 'metadata.original_time' / unmapped_data. For OCSF output the raw string should either be removed or placed in an unmapped/raw bucket, not a double-underscore field.",
-        "example": "\"__kvp_src\": \"<13>Sep 11 14:19:38 cribl date=2025-09-11...\"",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "src_endpoint.hw_info.mac / src_endpoint.mac",
-        "issue": "OCSF 4001 (Network Activity) places MAC under src_endpoint.hw_info.mac not src_endpoint.mac. The pipeline uses 'src_endpoint.mac' which is not a valid OCSF field path for Network Activity class.",
-        "example": "\"src_endpoint\": { \"mac\": \"DM:nU:60:Ab:6p:0P\" } should be src_endpoint.hw_info.mac",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "dst_endpoint.translated_ip / dst_endpoint.translated_port",
-        "issue": "OCSF Network Activity class uses 'dst_endpoint.intermediate_ips' or a dedicated translated NAT object. 'translated_ip' and 'translated_port' are not standard OCSF dst_endpoint sub-fields.",
-        "example": "\"dst_endpoint\": { \"translated_ip\": \"192.168.216.161\", \"translated_port\": 443 }",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "disposition",
-        "issue": "OCSF 4001 does not have a top-level 'disposition' field; disposition belongs under 'verdict' or as 'action' with 'action_id'. Using free-text 'disposition' at top level is non-conformant.",
-        "example": "\"disposition\": \"Teardown\" / \"disposition\": \"Blocked\" — should use action/action_id",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "app_name",
-        "issue": "'app_name' is not a top-level OCSF Network Activity field. Application information should go under 'connection_info.service.name' (already mapped) or 'app' object. Having it duplicated as a raw top-level 'app_name' is non-conformant.",
-        "example": "\"app_name\": \"HTTPS\" at top level (already present in connection_info.service.name)",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "src_endpoint.os",
-        "issue": "OCSF places OS info under src_endpoint.hw_info or as a separate device object, not directly as src_endpoint.os. 'src_endpoint.os' is not a valid OCSF path for the Network Activity class endpoint object.",
-        "example": "\"src_endpoint\": { \"os\": { \"name\": \"Windows\", \"version\": \"10\" } }",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "severity_id / severity",
-        "issue": "severity_id=3 is mapped but the companion 'severity' string field (e.g., 'Medium') is absent. OCSF requires both severity_id (int) and severity (string label).",
-        "example": "\"severity_id\": 3 present but \"severity\": \"Medium\" missing",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "category_name / class_name",
-        "issue": "OCSF requires 'category_name' (e.g., 'Network Activity') and 'class_name' (e.g., 'Network Activity') alongside category_uid and class_uid. Both string label fields are absent from output.",
-        "example": "class_uid=4001 present but class_name absent; category_uid=4 present but category_name absent",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "type_name",
-        "issue": "type_uid is present but the companion 'type_name' string (e.g., 'Network Activity: Traffic') is absent. OCSF requires this string label.",
-        "example": "\"type_uid\": 400102 present but \"type_name\" missing",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "metadata.uid",
-        "issue": "Source provides 'logid' and 'sessionid' which could serve as event UID in metadata.uid, but this field is absent.",
-        "example": "logid=0000000013, sessionid=996051795 not mapped to metadata.uid",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "connection_info.uid",
-        "issue": "sessionid is correctly mapped to connection_info.uid as a string, but OCSF specifies this should be a string UUID/identifier — value is acceptable but sessionid is more naturally a session identifier; minor concern.",
-        "example": "\"uid\": \"996051795\" — acceptable but verify OCSF intent",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "src_endpoint.interface_uid",
-        "issue": "The source interface name is 'REDACTED' (sanitized for sample), which is a content issue not a mapping issue. However, OCSF uses 'interface_name' not 'interface_uid' for named interfaces; 'interface_uid' is for opaque IDs.",
-        "example": "\"interface_uid\": \"REDACTED\" — should likely be interface_name",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "traffic.bytes (wanin/wanout/lanin/lanout)",
-        "issue": "Source contains wanin, wanout, lanin, lanout byte counters that are not mapped anywhere in the output. These could enrich the traffic object or unmapped_data.",
-        "example": "wanin=4965 wanout=2532 lanin=2777 lanout=4950 absent from output",
-        "pointImpact": 0
-      }
-    ],
-    "missingFields": [],
-    "emptyFields": [],
-    "summary": "The pipeline produces a recognizable OCSF Network Activity (4001) skeleton with correct class/category/type UIDs, accurate timestamp in ms epoch, and reasonable endpoint/traffic/connection_info mapping. However, it leaves numerous internal working fields (__kvp_src, __proto_raw, __act, etc.) in the final output, omits required OCSF string label companions (class_name, category_name, type_name, severity), uses non-standard field paths for MAC addresses and OS info, misuses firewall_rule.name by substituting policytype for empty policyname, and places disposition as a free-text top-level field instead of action/action_id. These structural and schema-conformance gaps reduce the score significantly despite the core data being largely present."
-  }
+  "report": null
 }
