@@ -2,44 +2,44 @@
   "key": "f5_bigip_ltm_ssl_error::__extraction__",
   "sourcetype": "f5_bigip_ltm_ssl_error",
   "dest_format": "__extraction__",
-  "score": 91,
+  "score": 93,
   "part": "extraction",
   "author": "push",
   "build": 0,
-  "updated_at": "2026-08-18T10:22:28.298Z",
+  "updated_at": "2026-09-01T07:36:59.872Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Parse F5 BIG-IP LTM SSL syslog header and inner message",
+      "description": "Parse syslog header (priority, timestamp, host, severity, process, pid, error code) and isolate the LTM message text",
       "conf": {
         "source": "_raw",
-        "regex": "/^<(?<priority>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<severity>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<msg_id>[\\d:]+):\\s+(?<message>.*)$/",
+        "regex": "/^<(?<pri>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<severity>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<error_code>[\\d:]+):\\s+(?<message>.*)$/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && (message.match(/for TCP/) || message.match(/from peer/))",
+      "filter": "message && message.includes('->')",
       "disabled": false,
-      "description": "Extract src/dst IP:port and error reason from TCP/peer SSL handshake or alert messages",
+      "description": "Extract source/destination IP and port pairs (supports IPv4 and IPv6) from arrow-style connection messages",
       "conf": {
         "source": "message",
-        "regex": "/(?:for TCP|from peer)\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[0-9a-fA-F\\.:]+):(?<dst_port>\\d+)(?:[:\\s]+(?<ssl_error_reason>.+))?$/",
+        "regex": "/(?:for\\s+(?<network_protocol>TCP|UDP)\\s+)?(?<src_ip>[0-9a-fA-F:.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[0-9a-fA-F:.]+):(?<dst_port>\\d+)/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/attack detected from/)",
+      "filter": "message && message.match(/SSL renegotiation attack/)",
       "disabled": false,
-      "description": "Extract source and target virtual server details from SSL renegotiation attack messages",
+      "description": "Extract source IP/port and target virtual server for SSL renegotiation attack detections",
       "conf": {
         "source": "message",
-        "regex": "/attack detected from\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s+to virtual server\\s+(?<dst_host>\\S+),\\s*(?<ssl_error_reason>.+)$/",
+        "regex": "/SSL renegotiation attack detected from (?<src_ip>[0-9a-fA-F:.]+):(?<src_port>\\d+) to virtual server (?<virtual_server>\\S+)/",
         "iterations": 1,
         "overwrite": false
       }
@@ -48,10 +48,10 @@
       "id": "regex_extract",
       "filter": "message && message.match(/Client certificate not provided/)",
       "disabled": false,
-      "description": "Extract source and destination pool from missing client certificate messages",
+      "description": "Extract source IP/port and target pool for missing mutual TLS client certificate events",
       "conf": {
         "source": "message",
-        "regex": "/from\\s+(?<src_ip>[0-9a-fA-F\\.:]+):(?<src_port>\\d+)\\s+to pool\\s+(?<dst_pool>\\S+)$/",
+        "regex": "/Client certificate not provided for mutual TLS connection from (?<src_ip>[0-9a-fA-F:.]+):(?<src_port>\\d+) to pool (?<pool>\\S+)/",
         "iterations": 1,
         "overwrite": false
       }
@@ -60,30 +60,24 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Normalize action and protocol fields based on message content",
+      "description": "Normalize protocol, classify action outcome, and standardize severity naming",
       "conf": {
         "add": [
-          {
-            "name": "action",
-            "value": "message.match(/succeeded/) ? 'allowed' : (message.match(/failed|error|attack|not provided|dropped/) ? 'blocked' : 'unknown')"
-          },
           {
             "name": "protocol",
-            "value": "'tls'"
-          }
-        ]
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "description": "Derive event time from syslog timestamp",
-      "conf": {
-        "add": [
+            "value": "message.match(/\\bTCP\\b/) ? 'tcp' : message.match(/\\bUDP\\b/) ? 'udp' : 'tcp'"
+          },
           {
-            "name": "_time",
-            "value": "C.Time.parse(timestamp, 'MMM d HH:mm:ss')"
+            "name": "action",
+            "value": "message.match(/failed/i) ? 'failure' : message.match(/succeeded/i) ? 'success' : message.match(/alert received/i) ? 'alert' : message.match(/attack detected/i) ? 'blocked' : message.match(/not provided/i) ? 'denied' : 'error'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='crit' ? 'critical' : severity=='err' ? 'error' : severity=='warning' ? 'warning' : severity=='notice' ? 'info' : severity"
           }
         ]
       }
