@@ -15660,6 +15660,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "microsoft_iis_accesslog::ocsf",
+      "sourcetype": "microsoft_iis_accesslog",
+      "dest_format": "ocsf",
+      "score": 80,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:57:37.690Z",
+      "path": "shared-goldens/microsoft_iis_accesslog__ocsf.json",
+      "report": {
+        "score": 80,
+        "band": "warn"
+      }
     }
   ]
 }
