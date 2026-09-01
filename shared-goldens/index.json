@@ -16440,6 +16440,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_known_names::ocsf",
+      "sourcetype": "corelight_known_names",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:02:59.272Z",
+      "path": "shared-goldens/corelight_known_names__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
