@@ -1,0 +1,293 @@
+{
+  "key": "ivanti_messages::ocsf",
+  "sourcetype": "ivanti_messages",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:01:31.046Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+\\s+(?<host>\\S+)\\s+ive:\\s+(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})\\s+\\[(?<module>\\w+)\\]\\s+(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s+-\\s+(?<severity>\\w+)\\s+-\\s+(?<code>\\w+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header and Ivanti ICS/ISAC common log structure into host, timestamp, module, process, pid, severity, code and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module === 'AUT'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?:Primary|Secondary) authentication (?<auth_result>successful|failed) for (?<user>[^\\/]+)\\/(?<realm>\\S+)(?: via (?<auth_method>\\S+))? from (?<src_ip>\\[?[0-9a-fA-F:.]+\\]?)(?:, reason: (?<reason>.*))?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract authentication event fields (user, realm, auth method, result, source IP) from AUT module messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module === 'NWC'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^VPN tunnel (?<vpn_action>established|terminated) for user (?<user>\\S+)(?: from (?<src_ip>\\[?[0-9a-fA-F:.]+\\]?))?(?:, session id (?<session_id>\\S+))?(?:, duration (?<duration>\\S+))?(?:, bytes tx=(?<bytes_tx>\\d+) rx=(?<bytes_rx>\\d+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract VPN tunnel establishment/termination fields (user, src_ip, session id, duration, byte counts) from NWC module messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module === 'ADM' || module === 'SEC' || module === 'HCK'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:Administrator (?<admin_user>\\S+) modified (?<admin_action>.*))|(?:Failed login attempt to admin console for account (?<failed_user>\\S+) from (?<failed_src_ip>[^,]+), (?<failed_reason>.*))|(?:Possible brute force attack detected: (?<brute_count>\\d+) failed logins for account (?<brute_user>\\S+) from (?<brute_src_ip>\\S+) within (?<brute_window>\\d+) seconds)|(?:Host Checker policy \"(?<hc_policy>[^\"]+)\" failed for user (?<hc_user>\\S+) from (?<hc_src_ip>[^,]+), (?<hc_reason>.*))|(?:Malware signature detected in uploaded file \"(?<mal_file>[^\"]+)\" from user (?<mal_user>\\S+), (?<mal_detail>.*))|(?:Session hijack detection triggered for session id (?<hijack_session>\\S+), source IP mismatch (?<hijack_src_ip>\\S+) vs (?<hijack_dst_ip>\\S+))/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract fields from admin, security and host checker event messages (admin actions, failed console logins, brute force, host checker failures, malware detection, session hijack)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/successful|established/) ? 'allow' : message.match(/failed|Failed|terminated|blocked|detected|brute force|hijack/) ? 'deny' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "module=='NWC' ? 'vpn' : module=='AUT' ? 'auth' : module=='ADM' ? 'admin' : module=='SEC' ? 'security' : module=='HCK' ? 'hostchecker' : module=='SYS' ? 'system' : 'other'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/^\\[|\\]$/g,'') : (failed_src_ip ? failed_src_ip : (brute_src_ip ? brute_src_ip : (hc_src_ip ? hc_src_ip : (hijack_src_ip ? hijack_src_ip : undefined))))"
+          }
+        ]
+      },
+      "description": "Normalize action and protocol/category fields based on module and message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || brute_src_ip || ''"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "Number(bytes_rx || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes_tx || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || admin_user || brute_user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || ''"
+          },
+          {
+            "name": "time",
+            "value": "Number(_time) ? Number(_time)*1000 : Date.parse(timestamp)"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity=='Critical'?5:severity=='Warning'?3:severity=='Notice'?2:severity=='Info'?1:0"
+          },
+          {
+            "name": "activity_id",
+            "value": "vpn_action=='established'?1:vpn_action=='terminated'?2:0"
+          },
+          {
+            "name": "type_uid",
+            "value": "4001*100 + (vpn_action=='established'?1:vpn_action=='terminated'?2:0)"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'Ivanti Connect Secure'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.0.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_messages'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
