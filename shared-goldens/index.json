@@ -15390,6 +15390,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "juniper_junos_firewall::ocsf",
+      "sourcetype": "juniper_junos_firewall",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:55:49.151Z",
+      "path": "shared-goldens/juniper_junos_firewall__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
