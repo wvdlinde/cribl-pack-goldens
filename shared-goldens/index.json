@@ -15405,6 +15405,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_envoy_access::ocsf",
+      "sourcetype": "vmware_esxlog_envoy_access",
+      "dest_format": "ocsf",
+      "score": 90,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:56:11.328Z",
+      "path": "shared-goldens/vmware_esxlog_envoy_access__ocsf.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
