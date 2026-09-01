@@ -14895,6 +14895,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_mi::__optimization__",
+      "sourcetype": "ivanti_mi",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T11:35:39.139Z",
+      "path": "shared-goldens/ivanti_mi____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
