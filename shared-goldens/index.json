@@ -16095,6 +16095,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "delinea_app::ocsf",
+      "sourcetype": "delinea_app",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:00:35.750Z",
+      "path": "shared-goldens/delinea_app__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
