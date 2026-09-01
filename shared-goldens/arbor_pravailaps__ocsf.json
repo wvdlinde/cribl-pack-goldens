@@ -1,0 +1,314 @@
+{
+  "key": "arbor_pravailaps::ocsf",
+  "sourcetype": "arbor_pravailaps",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:02:07.717Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+(?<process>[\\w_]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header (timestamp, host, process, pid) and isolate KVP message body"
+    },
+    {
+      "id": "serde",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      },
+      "description": "Extract key=value pairs (with quoted values) from the message body into individual fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp + ' UTC') / 1000"
+          }
+        ]
+      },
+      "description": "Derive standardized timestamp field for downstream time-based processing"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : protocol"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toUpperCase() : action"
+          },
+          {
+            "name": "event_category",
+            "value": "event_type && event_type.match(/^Attack/) ? 'attack' : (event_type === 'LoginSuccess' || event_type === 'LoginFailure') ? 'authentication' : (event_type === 'ThresholdExceeded' || event_type === 'BlackholeTriggered') ? 'security_alert' : (event_type === 'SystemHealthCheck') ? 'system' : 'admin'"
+          }
+        ]
+      },
+      "description": "Normalize severity, protocol, and action fields for consistent downstream mapping"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toUpperCase()"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "Number(total_bytes_dropped || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(total_packets_dropped || 0)"
+          },
+          {
+            "name": "time",
+            "value": "Date.parse(timestamp || _time) || Number(_time)*1000"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 5 : severity == 'WARNING' ? 3 : severity == 'INFO' ? 1 : 0"
+          },
+          {
+            "name": "activity_id",
+            "value": "action == 'MITIGATING' ? 1 : action == 'CLEARED' ? 2 : action == 'ESCALATE' ? 3 : action == 'ALERT' ? 4 : action == 'APPLIED' ? 5 : 0"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + (action == 'MITIGATING' ? 1 : action == 'CLEARED' ? 2 : action == 'ESCALATE' ? 3 : action == 'ALERT' ? 4 : action == 'APPLIED' ? 5 : 0)"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Arbor Networks'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Pravail APS'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'arbor:pravailaps'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "src_endpoint.ip",
+        "issue": "source value present but \"src_endpoint.ip\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.protocol_name",
+        "issue": "source value present but \"connection_info.protocol_name\" is empty in output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "src_endpoint.ip",
+      "connection_info.protocol_name"
+    ],
+    "emptyFields": [
+      "src_endpoint.ip",
+      "connection_info.protocol_name"
+    ],
+    "summary": "Deterministic live preview completed."
+  }
+}
