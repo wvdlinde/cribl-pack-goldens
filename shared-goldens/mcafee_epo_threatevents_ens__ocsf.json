@@ -1,0 +1,341 @@
+{
+  "key": "mcafee_epo_threatevents_ens::ocsf",
+  "sourcetype": "mcafee_epo_threatevents_ens",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:00:17.079Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]*)\\|(?<product>[^|]*)\\|(?<product_version>[^|]*)\\|(?<signature_id>[^|]*)\\|(?<event_name>[^|]*)\\|(?<cef_severity>[^|]*)\\|/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF header (version, vendor, product, signature id, name, severity)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\\brt=(?<__rt>.+?)\\s+src=(?<src_ip>\\S+)\\s+dst=(?<dest_ip>\\S+)(?:\\s+dpt=(?<dest_port>\\d+))?(?:\\s+proto=(?<__proto>\\S+))?\\s+dhost=(?<dest_host>\\S+)\\s+suser=(?<__suser>\\S*)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF extension common/network keys (rt, src, dst, dpt, proto, dhost, suser)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/cs1=(?<__cs1>.*?)\\s+cs1Label=(?<__cs1_label>\\S+)(?:\\s+cs2=(?<__cs2>.*?)\\s+cs2Label=(?<__cs2_label>\\S+))?(?:\\s+cs3=(?<__cs3>.*?)\\s+cs3Label=(?<__cs3_label>\\S+))?\\s+cn1=(?<threat_severity>\\d+)\\s+cn1Label=\\S+\\s+act=(?<action_raw>.+?)(?=\\s+cs\\d=|\\s+sha256=|\\s*$)(?:\\s+cs4=(?<__cs4>.*?)\\s+cs4Label=(?<__cs4_label>\\S+))?(?:\\s+cs5=(?<__cs5>.*?)\\s+cs5Label=(?<__cs5_label>\\S+))?(?:\\s+sha256=(?<file_hash>[0-9a-fA-F]+))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF custom string/number pairs, act and sha256"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "__suser && __suser.length > 0 ? __suser : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "__proto ? __proto.toLowerCase() : undefined"
+          },
+          {
+            "name": "file_path",
+            "value": "(__cs1_label || '') == 'FilePath' ? __cs1 : undefined"
+          },
+          {
+            "name": "url",
+            "value": "(__cs1_label || '') == 'URL' ? __cs1 : undefined"
+          },
+          {
+            "name": "threat_name",
+            "value": "(__cs1_label || '') == 'ThreatName' ? __cs1 : ((__cs2_label || '') == 'ThreatName' ? __cs2 : undefined)"
+          },
+          {
+            "name": "threat_type",
+            "value": "(__cs3_label || '') == 'ThreatType' ? __cs3 : undefined"
+          },
+          {
+            "name": "rule_name",
+            "value": "(__cs2_label || '') == 'RuleName' ? __cs2 : ((__cs4_label || '') == 'RuleName' ? __cs4 : undefined)"
+          },
+          {
+            "name": "signature_name",
+            "value": "(__cs2_label || '') == 'SignatureName' ? __cs2 : undefined"
+          },
+          {
+            "name": "detection_method",
+            "value": "(__cs4_label || '') == 'AnalyzerDetectionMethod' ? __cs4 : undefined"
+          },
+          {
+            "name": "agent_version",
+            "value": "(__cs5_label || '') == 'ProductVersion' ? __cs5 : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action_raw ? (action_raw.match(/Blocked|Denied|Quarantin|Delet|Clean/i) ? 'blocked' : (action_raw.match(/Allow|Excluded/i) ? 'allowed' : 'unknown')) : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(threat_severity) >= 8 ? 'critical' : (Number(threat_severity) >= 6 ? 'high' : (Number(threat_severity) >= 4 ? 'medium' : (Number(threat_severity) >= 1 ? 'low' : 'informational')))"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 6 : 4"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|fe80:|::1)/) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "timestamp",
+            "value": "__rt"
+          },
+          {
+            "name": "_time",
+            "value": "__rt && strptime(__rt, '%b %d %Y %H:%M:%S') ? strptime(__rt, '%b %d %Y %H:%M:%S').getTime() / 1000 : _time"
+          },
+          {
+            "name": "message",
+            "value": "event_name"
+          }
+        ],
+        "remove": [
+          "__*",
+          "action_raw"
+        ]
+      },
+      "description": "Map labeled custom strings to semantic fields, normalize action/protocol/severity, set _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'deleted' || (action || '').toLowerCase() == 'quarantined' ? 5 : 1"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'deleted' || (action || '').toLowerCase() == 'quarantined' ? 5 : 1)"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(threat_severity || cef_severity || severity || 0) >= 9 ? 5 : (Number(threat_severity || cef_severity || severity || 0) >= 7 ? 4 : (Number(threat_severity || cef_severity || severity || 0) >= 4 ? 3 : (Number(threat_severity || cef_severity || severity || 0) >= 1 ? 2 : 1)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dest_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dest_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "dest_host || ''"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? Math.round(new Date(timestamp).getTime()) : Math.round(Number(_time || 0) * 1000)"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'ePolicy Orchestrator'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'McAfee'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'McAfee:ePO:ThreatEvents:ENS'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
