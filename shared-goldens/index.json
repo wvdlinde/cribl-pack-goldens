@@ -15300,6 +15300,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_device_posture::ocsf",
+      "sourcetype": "ncsc_cloudflare_device_posture",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:55:22.614Z",
+      "path": "shared-goldens/ncsc_cloudflare_device_posture__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
