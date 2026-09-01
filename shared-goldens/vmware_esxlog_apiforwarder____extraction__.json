@@ -2,21 +2,45 @@
   "key": "vmware_esxlog_apiforwarder::__extraction__",
   "sourcetype": "vmware_esxlog_apiforwarder",
   "dest_format": "__extraction__",
-  "score": 91,
+  "score": 94,
   "part": "extraction",
-  "author": "unknown",
-  "build": 529,
-  "updated_at": "2026-08-18T08:11:51.145Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:40:17.032Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Parse base syslog-style structure: timestamp, host, pid, optional severity tag, and message body",
+      "description": "Parse ESXi apiforwarder syslog header: timestamp, host, process, pid, optional severity, message",
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\S+)\\s(?<dst_host>\\S+)\\sApiforwarder\\[(?<pid>\\d+)\\]:\\s(?:(?<severity>\\w+):\\s)?(?<message>.*)$/",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[A-Za-z_]+)\\[(?<pid>\\d+)\\]:\\s+(?:(?<severity>critical|error|warning|notice|info|debug):\\s*)?(?<message>.*)$/",
         "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract client IP (IPv4 or IPv6) and port from message body",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9A-Fa-f:]*:[0-9A-Fa-f]*):(?<src_port>\\d{1,5})\\b/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract user, request path and latency details when present",
+      "conf": {
+        "source": "message",
+        "regex": "/(?:\\[user=(?<user>[^\\]]+)\\]|for user '(?<user_quoted>[^']+)')|request to (?<uri_path>\\/\\S*)|(?<duration_ms>\\d+)ms elapsed|\\((?<failure_count>\\d+) attempts in (?<failure_window>\\d+)s\\)|reason='(?<reason>[^']+)'/",
+        "iterations": 5,
         "overwrite": false
       }
     },
@@ -24,75 +48,73 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Default severity to info when not explicitly tagged, and set protocol to tcp",
+      "description": "Normalize user, severity, action, protocol and event classification",
       "conf": {
         "add": [
+          {
+            "name": "user",
+            "value": "user ? user : (user_quoted ? user_quoted : null)"
+          },
           {
             "name": "vendor_severity",
             "value": "severity || undefined"
           },
           {
             "name": "severity",
-            "value": "severity ? severity : 'info'"
+            "value": "severity ? severity.toLowerCase() : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/^Accepted connection/) ? 'allowed' : (message.match(/^Forwarding request/) ? 'forwarded' : (message.match(/Rejected connection/) ? 'blocked' : (message.match(/Authentication failed|authentication failures/i) ? 'failure' : (message.match(/Connection reset/i) ? 'reset' : 'other'))))"
+          },
+          {
+            "name": "event_type",
+            "value": "message.match(/^Accepted connection/) ? 'connection_accepted' : (message.match(/^Forwarding request/) ? 'request_forwarded' : (message.match(/Rejected connection/) ? 'connection_rejected' : (message.match(/Repeated authentication failures/i) ? 'auth_brute_force' : (message.match(/Authentication failed/i) ? 'auth_failure' : (message.match(/Slow response/i) ? 'slow_response' : (message.match(/Connection reset/i) ? 'connection_reset' : 'other'))))))"
           },
           {
             "name": "protocol",
             "value": "'tcp'"
-          }
-        ]
-      }
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message && (message.indexOf('from ') !== -1 || message.indexOf('peer ') !== -1)",
-      "disabled": false,
-      "description": "Extract source IP (including IPv6) and port from connection-related messages",
-      "conf": {
-        "source": "message",
-        "regex": "/(?:from|peer)\\s(?<src_ip>[0-9a-fA-F:.]+):(?<src_port>\\d+)/",
-        "iterations": 1,
-        "overwrite": false
-      }
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message && message.indexOf('[user=') !== -1",
-      "disabled": false,
-      "description": "Extract user from bracketed [user=xxx] notation on forwarding requests",
-      "conf": {
-        "source": "message",
-        "regex": "/\\[user=(?<user>[^\\]]+)\\]/",
-        "iterations": 1,
-        "overwrite": false
-      }
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message && message.indexOf(\"user '\") !== -1",
-      "disabled": false,
-      "description": "Extract user from quoted 'user' notation on authentication failure messages",
-      "conf": {
-        "source": "message",
-        "regex": "/user\\s'(?<user>[^']+)'/",
-        "iterations": 1,
-        "overwrite": false
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "description": "Classify action based on message content",
-      "conf": {
-        "add": [
+          },
           {
-            "name": "action",
-            "value": "message.match(/^Accepted/) ? 'accepted' : message.match(/^Rejected/) ? 'rejected' : message.match(/^Authentication failed/) ? 'failed' : message.match(/^Repeated authentication failures/) ? 'blocked' : message.match(/^Connection reset/) ? 'reset' : message.match(/^Slow response/) ? 'slow_response' : message.match(/^Forwarding request/) ? 'forwarded' : 'unknown'"
+            "name": "app",
+            "value": "'vmware_esxi_apiforwarder'"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':') > -1 ? 'ipv6' : 'ipv4') : null"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? (src_ip == '127.0.0.1' || src_ip == '::1' ? 'internal' : 'inbound') : null"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? Number(src_port) : null"
+          },
+          {
+            "name": "duration_ms",
+            "value": "duration_ms ? Number(duration_ms) : null"
+          },
+          {
+            "name": "failure_count",
+            "value": "failure_count ? Number(failure_count) : null"
+          },
+          {
+            "name": "_time",
+            "value": "strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%LZ') ? strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%LZ') : _time"
           }
+        ],
+        "remove": [
+          "user_quoted"
         ]
       }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
   "report": null
 }
