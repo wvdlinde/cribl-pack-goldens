@@ -15330,6 +15330,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aemaccess::ocsf",
+      "sourcetype": "aemaccess",
+      "dest_format": "ocsf",
+      "score": 88,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:55:26.513Z",
+      "path": "shared-goldens/aemaccess__ocsf.json",
+      "report": {
+        "score": 88,
+        "band": "good"
+      }
     }
   ]
 }
