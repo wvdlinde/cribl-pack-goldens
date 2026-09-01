@@ -1,0 +1,260 @@
+{
+  "key": "corelight_http::cim#web_proxy::__mapping__",
+  "sourcetype": "corelight_http",
+  "dest_format": "cim#web_proxy::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T10:04:41.921Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Web'"
+          },
+          {
+            "name": "event_type",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dest",
+            "value": "dest_ip || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dest_port || 0)"
+          },
+          {
+            "name": "http_method",
+            "value": "(method || '').toUpperCase()"
+          },
+          {
+            "name": "operation",
+            "value": "(method || '').toLowerCase()"
+          },
+          {
+            "name": "url_domain",
+            "value": "host || ''"
+          },
+          {
+            "name": "site",
+            "value": "host || ''"
+          },
+          {
+            "name": "url",
+            "value": "host ? ('http://' + host + (uri || '')) : (uri || '')"
+          },
+          {
+            "name": "url_length",
+            "value": "Number((host ? ('http://' + host + (uri || '')) : (uri || '')).length)"
+          },
+          {
+            "name": "uri_path",
+            "value": "(uri || '').split('?')[0]"
+          },
+          {
+            "name": "uri_query",
+            "value": "(uri || '').indexOf('?') > -1 ? (uri || '').split('?').slice(1).join('?') : ''"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "user_agent || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-27)",
+      "conf": {
+        "add": [
+          {
+            "name": "http_user_agent_length",
+            "value": "Number((user_agent || '').length)"
+          },
+          {
+            "name": "status",
+            "value": "String(status_code || '')"
+          },
+          {
+            "name": "action",
+            "value": "status_code && Number(status_code) < 400 ? 'allowed' : (status_code ? 'blocked' : 'unknown')"
+          },
+          {
+            "name": "error_code",
+            "value": "status_code && Number(status_code) >= 400 ? String(status_code) : ''"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(response_body_len || 0)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(request_body_len || 0)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(request_body_len || 0) + Number(response_body_len || 0)"
+          },
+          {
+            "name": "http_content_type",
+            "value": "resp_mime_types && resp_mime_types[0] ? resp_mime_types[0] : (resp_mime_types || '')"
+          },
+          {
+            "name": "user",
+            "value": "username || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "vendor_product || 'Corelight Zeek HTTP'"
+          },
+          {
+            "name": "app",
+            "value": "version ? 'http/' + version : 'http'"
+          },
+          {
+            "name": "cached",
+            "value": "status_code && Number(status_code) == 304 ? true : false"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_http'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "host",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "method",
+        "request_body_len",
+        "resp_fuids",
+        "resp_mime_types",
+        "response_body_len",
+        "status_code",
+        "status_msg",
+        "tags",
+        "trans_depth",
+        "ts",
+        "uid",
+        "uri",
+        "user_agent",
+        "username",
+        "version"
+      ]
+    }
+  },
+  "report": null
+}
