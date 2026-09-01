@@ -14805,6 +14805,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "clearswift_email_syslog::cim#email::__mapping__",
+      "sourcetype": "clearswift_email_syslog",
+      "dest_format": "cim#email::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:39:04.236Z",
+      "path": "shared-goldens/clearswift_email_syslog__cim#email____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
