@@ -15180,6 +15180,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vcenter_syslog::ocsf",
+      "sourcetype": "vcenter_syslog",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:54:46.822Z",
+      "path": "shared-goldens/vcenter_syslog__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
