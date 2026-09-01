@@ -15825,6 +15825,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "nginx_plus_access::ocsf",
+      "sourcetype": "nginx_plus_access",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:58:59.631Z",
+      "path": "shared-goldens/nginx_plus_access__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
