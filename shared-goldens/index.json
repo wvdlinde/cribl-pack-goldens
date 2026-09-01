@@ -14310,6 +14310,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_nfcd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_nfcd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:59.833Z",
+      "path": "shared-goldens/vmware_esxlog_nfcd__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
