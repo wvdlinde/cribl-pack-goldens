@@ -16125,6 +16125,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "windows_system::ocsf",
+      "sourcetype": "windows_system",
+      "dest_format": "ocsf",
+      "score": 97,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:00:30.046Z",
+      "path": "shared-goldens/windows_system__ocsf.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
