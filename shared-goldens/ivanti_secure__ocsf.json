@@ -1,0 +1,322 @@
+{
+  "key": "ivanti_secure::ocsf",
+  "sourcetype": "ivanti_secure",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:58:01.976Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?<host>\\S+) ivanti-secure\\[(?<module>\\w+)\\]: (?<__kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog-style header (timestamp, host, module tag) and capture remaining key=value payload for KVP parsing"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp",
+        "cleanFields": true
+      },
+      "description": "Extract key=value pairs (id, severity, src, dst, dport, proto, user, realm, roles, vpn, msg) from the remainder of the log line"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "dst_port",
+            "value": "dport"
+          },
+          {
+            "name": "protocol",
+            "value": "proto"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "event_id",
+            "value": "id"
+          }
+        ],
+        "remove": [
+          "src",
+          "dst",
+          "dport",
+          "proto",
+          "msg",
+          "id",
+          "__kvp"
+        ]
+      },
+      "description": "Normalize field names to standard schema (src_ip, dst_ip, dst_port, protocol, message) and clean up scratch/raw kvp fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/successful/i) ? 'success' : message.match(/failed|locked/i) ? 'failure' : message.match(/blocked|deny/i) ? 'blocked' : message.match(/established/i) ? 'connect' : message.match(/terminated/i) ? 'disconnect' : 'info'"
+          }
+        ]
+      },
+      "description": "Classify action based on message content (success, failure, blocked, connect, disconnect, info)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^10\\.|^192\\.168\\.|^172\\.16\\./) ? 'outbound' : (dst_ip && dst_ip.match(/^10\\.|^192\\.168\\.|^172\\.16\\./) ? 'inbound' : 'unknown')"
+          }
+        ]
+      },
+      "description": "Derive _time from timestamp field and determine traffic direction based on src_ip range"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'deny' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'closed' ? 2 : 1)"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'deny' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'closed' ? 2 : 1))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : ((severity || '').toLowerCase() == 'error' ? 4 : ((severity || '').toLowerCase() == 'warn' || (severity || '').toLowerCase() == 'warning' ? 3 : ((severity || '').toLowerCase() == 'notice' || (severity || '').toLowerCase() == 'info' ? 1 : 0)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || ''"
+          },
+          {
+            "name": "time",
+            "value": "timestamp && !isNaN(new Date(timestamp).getTime()) ? new Date(timestamp).getTime() : Math.round(Number(_time || 0) * 1000)"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'Connect Secure'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.3.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_secure'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
