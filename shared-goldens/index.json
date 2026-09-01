@@ -9650,14 +9650,14 @@
       "key": "palo_alto_threat::commonsecuritylog::__mapping__",
       "sourcetype": "palo_alto_threat",
       "dest_format": "commonsecuritylog::__mapping__",
-      "score": 93,
+      "score": 100,
       "part": "mapping",
-      "author": "unknown",
-      "build": 258,
-      "updated_at": "2026-07-16T13:34:32.009Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:36:38.567Z",
       "path": "shared-goldens/palo_alto_threat__commonsecuritylog____mapping__.json",
       "report": {
-        "score": 93,
+        "score": 100,
         "band": "good"
       }
     },
