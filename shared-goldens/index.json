@@ -1505,14 +1505,14 @@
       "key": "cisco_esa::ocsf",
       "sourcetype": "cisco_esa",
       "dest_format": "ocsf",
-      "score": 86,
+      "score": 100,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-10T13:28:35.526Z",
+      "updated_at": "2026-09-01T07:36:13.753Z",
       "path": "shared-goldens/cisco_esa__ocsf.json",
       "report": {
-        "score": 86,
+        "score": 100,
         "band": "good"
       }
     },
