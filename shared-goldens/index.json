@@ -14100,6 +14100,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_cpu::cim#network::__mapping__",
+      "sourcetype": "ivanti_cpu",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:58.172Z",
+      "path": "shared-goldens/ivanti_cpu__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
