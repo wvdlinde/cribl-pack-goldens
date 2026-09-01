@@ -14145,6 +14145,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "sysmon_deploy_log::cim#endpoint::__mapping__",
+      "sourcetype": "sysmon_deploy_log",
+      "dest_format": "cim#endpoint::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:10.738Z",
+      "path": "shared-goldens/sysmon_deploy_log__cim#endpoint____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
