@@ -15840,6 +15840,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_https_request::ocsf",
+      "sourcetype": "ivanti_https_request",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:05.291Z",
+      "path": "shared-goldens/ivanti_https_request__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
