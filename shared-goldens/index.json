@@ -13055,14 +13055,14 @@
       "key": "vmware_esxlog_vsantraceurgent::__extraction__",
       "sourcetype": "vmware_esxlog_vsantraceurgent",
       "dest_format": "__extraction__",
-      "score": 90,
+      "score": 92,
       "part": "extraction",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T11:17:01.744Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T11:57:15.622Z",
       "path": "shared-goldens/vmware_esxlog_vsantraceurgent____extraction__.json",
       "report": {
-        "score": 90,
+        "score": 92,
         "band": "good"
       }
     },
