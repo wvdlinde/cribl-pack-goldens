@@ -1,0 +1,406 @@
+{
+  "key": "apache_access::ocsf",
+  "sourcetype": "apache_access",
+  "dest_format": "ocsf",
+  "score": 87,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:53:49.701Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+)\\s+(?<ident>\\S+)\\s+(?<user>\\S+)\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+\"(?<http_method>\\w+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]+)\"\\s+(?<status>\\d+)\\s+(?<bytes>\\d+)(?:\\s+\"(?<http_referrer>[^\"]*)\"\\s+\"(?<http_user_agent>[^\"]*)\")?/"
+      },
+      "description": "Parse combined/common access log format"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp ? Date.parse(timestamp.replace(/^(\\d+)\\/(\\w+)\\/(\\d+):/, '$1 $2 $3 ')) / 1000 : undefined"
+          },
+          {
+            "name": "url",
+            "value": "uri || undefined"
+          },
+          {
+            "name": "user",
+            "value": "user && user !== '-' ? user : undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "user && user !== '-' ? user : undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "status != null ? Number(status) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "status ? (Number(status) >= 400 ? 'blocked' : 'allowed') : undefined"
+          },
+          {
+            "name": "app",
+            "value": "'http'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'apache'"
+          }
+        ]
+      },
+      "description": "Normalize access-log fields to the canonical model"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'apache access'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(((url || uri) != null && String(url || uri) != 'undefined' && String(url || uri) != 'null' && String(url || uri) != '-' && String(url || uri) != '') || ((request_method || method) != null && String(request_method || method) != 'undefined' && String(request_method || method) != 'null' && String(request_method || method) != '-' && String(request_method || method) != '') || ((user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_response",
+            "value": "(((status || http_status) != null && String(status || http_status) != 'undefined' && String(status || http_status) != 'null' && String(status || http_status) != '-' && String(status || http_status) != '')) ? {} : undefined"
+          },
+          {
+            "name": "traffic",
+            "value": "(((bytes_in || response_bytes) != null && String(bytes_in || response_bytes) != 'undefined' && String(bytes_in || response_bytes) != 'null' && String(bytes_in || response_bytes) != '-' && String(bytes_in || response_bytes) != '') || ((bytes_out || request_bytes) != null && String(bytes_out || request_bytes) != 'undefined' && String(bytes_out || request_bytes) != 'null' && String(bytes_out || request_bytes) != '-' && String(bytes_out || request_bytes) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "(((transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != null && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != 'null' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != '-' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != '' ? Number(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != null && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != 'null' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != '-' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != '' ? Number(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 HTTP Activity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "http_request.url",
+            "value": "(url || uri) != null && String(url || uri) != 'undefined' && String(url || uri) != 'null' && String(url || uri) != '-' && String(url || uri) != '' ? (url || uri) : undefined"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(request_method || method) != null && String(request_method || method) != 'undefined' && String(request_method || method) != 'null' && String(request_method || method) != '-' && String(request_method || method) != '' ? (request_method || method) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '' ? (user_agent) : undefined"
+          },
+          {
+            "name": "http_response.code",
+            "value": "(status || http_status) != null && String(status || http_status) != 'undefined' && String(status || http_status) != 'null' && String(status || http_status) != '-' && String(status || http_status) != '' ? Number(status || http_status) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in || response_bytes) != null && String(bytes_in || response_bytes) != 'undefined' && String(bytes_in || response_bytes) != 'null' && String(bytes_in || response_bytes) != '-' && String(bytes_in || response_bytes) != '' ? Number(bytes_in || response_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out || request_bytes) != null && String(bytes_out || request_bytes) != 'undefined' && String(bytes_out || request_bytes) != 'null' && String(bytes_out || request_bytes) != '-' && String(bytes_out || request_bytes) != '' ? Number(bytes_out || request_bytes) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "category_name",
+            "value": "(url_category || category) != null && String(url_category || category) != 'undefined' && String(url_category || category) != 'null' && String(url_category || category) != '-' && String(url_category || category) != '' ? (url_category || category) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'access_log'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "uri === '/health' || uri === '/favicon.ico'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop health checks and favicon requests (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "uri && /\\.(js|css|png|jpg|gif|woff2?|map|svg|ico)$/.test(uri)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop static asset requests (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2025\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"17.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"17.2\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
