@@ -13400,15 +13400,15 @@
       "key": "windows_security::ocsf",
       "sourcetype": "windows_security",
       "dest_format": "ocsf",
-      "score": 82,
+      "score": 100,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-13T06:40:24.191Z",
+      "updated_at": "2026-09-01T07:36:30.214Z",
       "path": "shared-goldens/windows_security__ocsf.json",
       "report": {
-        "score": 82,
-        "band": "warn"
+        "score": 100,
+        "band": "good"
       }
     },
     {
