@@ -15705,6 +15705,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vsand::ocsf",
+      "sourcetype": "vmware_esxlog_vsand",
+      "dest_format": "ocsf",
+      "score": 98,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:57:52.814Z",
+      "path": "shared-goldens/vmware_esxlog_vsand__ocsf.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
