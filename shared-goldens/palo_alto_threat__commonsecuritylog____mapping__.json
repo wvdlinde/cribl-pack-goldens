@@ -2,12 +2,84 @@
   "key": "palo_alto_threat::commonsecuritylog::__mapping__",
   "sourcetype": "palo_alto_threat",
   "dest_format": "commonsecuritylog::__mapping__",
-  "score": 93,
+  "score": 100,
   "part": "mapping",
-  "author": "unknown",
-  "build": 258,
-  "updated_at": "2026-07-16T13:34:32.009Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:36:38.567Z",
   "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
     {
       "id": "eval",
       "description": "Set device vendor/product/version",
@@ -35,7 +107,7 @@
         "add": [
           {
             "name": "TimeGenerated",
-            "value": "((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != null && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'undefined' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'null' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '-' && String((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '' ? ((typeof log_time != 'undefined' && log_time) ? (String(log_time).length >= 13 ? new Date(Number(log_time)).toISOString() : String(log_time).length >= 9 && !isNaN(Number(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) : undefined"
+            "value": "((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != null && String((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'undefined' && String((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != 'null' && String((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '-' && String((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) != '' ? ((typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()) : undefined"
           },
           {
             "name": "DeviceVendor",
@@ -139,7 +211,7 @@
         "add": [
           {
             "name": "sourcetype",
-            "value": "'palo_alto_threat:commonsecuritylog'"
+            "value": "'pan:threat'"
           },
           {
             "name": "_time",
@@ -184,13 +256,13 @@
           "!typeof",
           "!log_time",
           "!undefined",
+          "!d",
+          "!test",
           "!String",
-          "!length",
           "!new",
           "!Date",
           "!Number",
           "!toISOString",
-          "!isNaN",
           "!_time",
           "!now",
           "!vendor",
@@ -230,71 +302,13 @@
           "*"
         ]
       }
-    },
-    {
-      "id": "eval",
-      "description": "Keep only Sentinel CommonSecurityLog fields + routing",
-      "conf": {
-        "remove": [
-          "*"
-        ],
-        "keep": [
-          "_time",
-          "index",
-          "source",
-          "sourcetype",
-          "host",
-          "cribl_breaker",
-          "cribl_pipe",
-          "TimeGenerated",
-          "TimeGenerated.*",
-          "DeviceVendor",
-          "DeviceVendor.*",
-          "DeviceProduct",
-          "DeviceProduct.*",
-          "DeviceVersion",
-          "DeviceVersion.*",
-          "DeviceEventClassID",
-          "DeviceEventClassID.*",
-          "Activity",
-          "Activity.*",
-          "SourceIP",
-          "SourceIP.*",
-          "SourcePort",
-          "SourcePort.*",
-          "DestinationIP",
-          "DestinationIP.*",
-          "DestinationPort",
-          "DestinationPort.*",
-          "Protocol",
-          "Protocol.*",
-          "DeviceAction",
-          "DeviceAction.*",
-          "SourceUserName",
-          "SourceUserName.*",
-          "DestinationUserName",
-          "DestinationUserName.*",
-          "SentBytes",
-          "SentBytes.*",
-          "ReceivedBytes",
-          "ReceivedBytes.*",
-          "ApplicationProtocol",
-          "ApplicationProtocol.*",
-          "DeviceName",
-          "DeviceName.*",
-          "LogSeverity",
-          "LogSeverity.*",
-          "RequestURL",
-          "RequestURL.*",
-          "SourceTranslatedAddress",
-          "SourceTranslatedAddress.*",
-          "DestinationTranslatedAddress",
-          "DestinationTranslatedAddress.*",
-          "AdditionalExtensions"
-        ]
-      }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
   "report": null
 }
