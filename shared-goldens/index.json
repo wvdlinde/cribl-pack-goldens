@@ -15030,6 +15030,21 @@
         "score": 87,
         "band": "good"
       }
+    },
+    {
+      "key": "mscs_azure_eventhub::ocsf",
+      "sourcetype": "mscs_azure_eventhub",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:53:52.719Z",
+      "path": "shared-goldens/mscs_azure_eventhub__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
