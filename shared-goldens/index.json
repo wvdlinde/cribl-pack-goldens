@@ -15000,6 +15000,21 @@
         "score": 98,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ironport_wsa::ocsf",
+      "sourcetype": "cisco_ironport_wsa",
+      "dest_format": "ocsf",
+      "score": 90,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:53:47.223Z",
+      "path": "shared-goldens/cisco_ironport_wsa__ocsf.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
