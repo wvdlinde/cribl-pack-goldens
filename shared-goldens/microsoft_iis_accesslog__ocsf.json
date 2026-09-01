@@ -1,0 +1,372 @@
+{
+  "key": "microsoft_iis_accesslog::ocsf",
+  "sourcetype": "microsoft_iis_accesslog",
+  "dest_format": "ocsf",
+  "score": 80,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:37.690Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\s+(?:\\S+\\s+\\S+\\s+)?(?<src_ip>[0-9a-fA-F:.%]+)\\s+(?<method>[A-Z]+)\\s+(?<uri_stem>\\S+)\\s+(?<uri_query>\\S+)\\s+(?<dst_port>\\d+)\\s+(?<user>\\S+)\\s+(?<dst_ip>[0-9a-fA-F:.%]+)\\s+(?:HTTP\\/\\S+\\s+)?(?<user_agent>\\S+)\\s+(?<referer>\\S+)\\s+(?:(?<dst_host>[A-Za-z0-9.\\-]+)\\s+)?(?<status>\\d{3})\\s+(?<substatus>\\d+)\\s+(?<win32_status>\\d+)\\s+(?<time_taken>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse IIS W3C extended log fields (date/time, client ip, method, uri, port, user, server ip, user-agent, referer, optional host, status codes, time taken)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/%.*/, '') : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip.replace(/%.*/, '') : dst_ip"
+          },
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "referer",
+            "value": "referer === '-' ? null : referer"
+          }
+        ]
+      },
+      "description": "Clean IPv6 zone identifiers and normalize empty/placeholder user field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "dst_port === '443' ? 'https' : 'http'"
+          },
+          {
+            "name": "action",
+            "value": "status && Number(status) >= 500 ? 'error' : status && Number(status) >= 400 ? 'denied' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "status && Number(status) >= 500 ? 'critical' : status && Number(status) >= 400 ? 'warning' : 'info'"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          }
+        ]
+      },
+      "description": "Derive protocol, action, severity from status/port and set event timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'6003'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'6'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Web Proxy Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Number(new Date(_time || timestamp).getTime())"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "method"
+          },
+          {
+            "name": "http_request.url",
+            "value": "uri_stem + (uri_query ? '?' + uri_query : '')"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "user_agent"
+          },
+          {
+            "name": "http_response.code",
+            "value": "Number(status || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || 'HTTP'"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(severity || 0)"
+          },
+          {
+            "name": "category_name",
+            "value": "'Web Proxy Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "6003"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "6"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "600301"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Microsoft IIS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.0.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-21)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ms:iis:auto'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0+\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"81.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"windows+nt+10.0;+win64;+x64;+rv\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"34ff475072d54117bcb46ea7f023bd87.jpg?width\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1200&height\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"630&mode\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"4.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"4.0+\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"compatible;+msie+7.0;+windows+nt+10.0;+win64;+x64;+trident\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"7.0;+.net4.0c;+.net4.0e;+.net+clr+2.0.50727;+.net+clr+3.0.30729;+.net+clr+3.5.30729\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
