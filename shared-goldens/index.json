@@ -9350,15 +9350,15 @@
       "key": "nginx_access::ocsf",
       "sourcetype": "nginx_access",
       "dest_format": "ocsf",
-      "score": 82,
+      "score": 100,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-13T06:49:17.424Z",
+      "updated_at": "2026-09-01T07:36:34.616Z",
       "path": "shared-goldens/nginx_access__ocsf.json",
       "report": {
-        "score": 82,
-        "band": "warn"
+        "score": 100,
+        "band": "good"
       }
     },
     {
