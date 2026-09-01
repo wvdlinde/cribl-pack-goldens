@@ -14205,6 +14205,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_snmpd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_snmpd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:27.466Z",
+      "path": "shared-goldens/vmware_esxlog_snmpd__cim#network____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
