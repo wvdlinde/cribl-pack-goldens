@@ -10055,14 +10055,14 @@
       "key": "postfix_syslog::__extraction__",
       "sourcetype": "postfix_syslog",
       "dest_format": "__extraction__",
-      "score": 96,
+      "score": 97,
       "part": "extraction",
-      "author": "unknown",
-      "build": 378,
-      "updated_at": "2026-08-07T14:13:50.830Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:36:51.374Z",
       "path": "shared-goldens/postfix_syslog____extraction__.json",
       "report": {
-        "score": 96,
+        "score": 97,
         "band": "good"
       }
     },
