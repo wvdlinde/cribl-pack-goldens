@@ -14085,6 +14085,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "pan_globalprotect::cim#authentication::__mapping__",
+      "sourcetype": "pan_globalprotect",
+      "dest_format": "cim#authentication::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:53.981Z",
+      "path": "shared-goldens/pan_globalprotect__cim#authentication____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
