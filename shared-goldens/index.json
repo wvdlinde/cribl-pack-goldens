@@ -14025,6 +14025,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "f5_bigip_ltm_ssl_error::cim#network::__mapping__",
+      "sourcetype": "f5_bigip_ltm_ssl_error",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:37.314Z",
+      "path": "shared-goldens/f5_bigip_ltm_ssl_error__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
