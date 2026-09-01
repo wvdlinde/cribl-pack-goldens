@@ -6125,14 +6125,14 @@
       "key": "ivanti_https_access::cim#network::__mapping__",
       "sourcetype": "ivanti_https_access",
       "dest_format": "cim#network::__mapping__",
-      "score": 92,
+      "score": 100,
       "part": "mapping",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T11:45:57.039Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T11:57:29.044Z",
       "path": "shared-goldens/ivanti_https_access__cim#network____mapping__.json",
       "report": {
-        "score": 92,
+        "score": 100,
         "band": "good"
       }
     },
