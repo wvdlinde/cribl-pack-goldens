@@ -14775,6 +14775,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vsantraceurgent::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_vsantraceurgent",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:26:30.107Z",
+      "path": "shared-goldens/vmware_esxlog_vsantraceurgent__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
