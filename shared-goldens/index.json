@@ -14040,6 +14040,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_audit_log::cim#network::__mapping__",
+      "sourcetype": "ivanti_audit_log",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:41.701Z",
+      "path": "shared-goldens/ivanti_audit_log__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
