@@ -1,0 +1,294 @@
+{
+  "key": "citrix_netscaler_syslog::ocsf",
+  "sourcetype": "citrix_netscaler_syslog",
+  "dest_format": "ocsf",
+  "score": 97,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:52:35.929Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<__syslog_time>\\w{3}\\s+\\d+\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<__syslog_host>\\S+)\\s+(?<__ns_time>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\\s+(?<__tz>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<ns_ppe>\\S+)\\s+:\\s+(?<log_partition>\\S+)\\s+(?<module>\\S+)\\s+(?<event_name>\\S+)\\s+(?<event_id>\\d+)\\s+(?<event_repeat>\\d+)\\s+:\\s+(?<src_ip>\\S+)\\s+(?<src_port>\\d+)(?:-PPE\\d+)?\\s+(?<message>.*)$/"
+      },
+      "description": "Parse syslog header + Citrix NetScaler event header (module, event name, id, source IP/port) and isolate the message tail"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module=='APPFW'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/APPFW_ACTION\\s+\\[(?<appfw_action>\\w+)\\]\\s*(?<appfw_message>.*)$/"
+      },
+      "description": "Extract AppFirewall action and violation text"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "module=='APPFW'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:field|param)=\"(?<appfw_field>[^\"]*)\"/",
+        "regexList": [
+          {
+            "regex": "/value=\"(?<appfw_value>.*)\"\\s+request=\"(?<http_request>[^\"]*)\"/"
+          },
+          {
+            "regex": "/severity=(?<severity>\\w+)/i"
+          }
+        ]
+      },
+      "description": "Extract AppFirewall violated field/param, payload value, HTTP request and severity"
+    },
+    {
+      "id": "serde",
+      "filter": "module!='APPFW' && message && message.indexOf('=')>-1",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      },
+      "description": "Message tail for AAA/SSLVPN/LB/GSLB/SSL events is key=value pairs"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "strptime(__ns_time, '%m/%d/%Y:%H:%M:%S')"
+          },
+          {
+            "name": "user",
+            "value": "User ? String(User).replace(/^\"|\"$/g,'') : null"
+          },
+          {
+            "name": "vserver",
+            "value": "Vserver ? Vserver : null"
+          },
+          {
+            "name": "auth_type",
+            "value": "Auth_Type ? Auth_Type : null"
+          },
+          {
+            "name": "status",
+            "value": "Status ? String(Status).toLowerCase() : null"
+          },
+          {
+            "name": "reason",
+            "value": "Reason ? Reason : null"
+          },
+          {
+            "name": "service",
+            "value": "Service ? Service : null"
+          },
+          {
+            "name": "monitor",
+            "value": "Monitor ? Monitor : null"
+          },
+          {
+            "name": "state",
+            "value": "State ? String(State).toLowerCase() : (LastState ? String(LastState).toLowerCase() : null)"
+          },
+          {
+            "name": "site",
+            "value": "Site ? Site : null"
+          },
+          {
+            "name": "ssl_cert",
+            "value": "Cert ? Cert : null"
+          },
+          {
+            "name": "days_to_expiry",
+            "value": "DaysToExpiry ? Number(DaysToExpiry) : null"
+          },
+          {
+            "name": "client_ip",
+            "value": "ClientIP ? ClientIP : null"
+          },
+          {
+            "name": "client_type",
+            "value": "Client_Type ? Client_Type : null"
+          },
+          {
+            "name": "duration",
+            "value": "Duration ? Duration : null"
+          },
+          {
+            "name": "bytes_in",
+            "value": "BytesIn ? Number(BytesIn) : null"
+          },
+          {
+            "name": "bytes_out",
+            "value": "BytesOut ? Number(BytesOut) : null"
+          },
+          {
+            "name": "action",
+            "value": "appfw_action ? (appfw_action.match(/^block$/i) ? 'blocked' : (appfw_action.match(/^transform$/i) ? 'transformed' : 'allowed')) : (event_name.match(/FAIL/i) ? 'failure' : (event_name.match(/SUCCESS/i) ? 'success' : (event_name.match(/_DOWN$/i) ? 'down' : (event_name.match(/_UP$/i) ? 'up' : 'info'))))"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? String(severity).toLowerCase() : (Severity ? String(Severity).toLowerCase() : (module=='APPFW' ? 'high' : (event_name.match(/FAIL|DOWN/i) ? 'medium' : 'low')))"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.indexOf(':')>-1 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "event_type",
+            "value": "module"
+          },
+          {
+            "name": "message",
+            "value": "appfw_message ? appfw_message : message"
+          }
+        ],
+        "remove": [
+          "__syslog_time",
+          "__syslog_host",
+          "__ns_time",
+          "__tz",
+          "User",
+          "Auth_Type",
+          "Vserver",
+          "Status",
+          "Reason",
+          "Service",
+          "Monitor",
+          "State",
+          "LastState",
+          "Site",
+          "Cert",
+          "DaysToExpiry",
+          "ClientIP",
+          "Client_Type",
+          "Duration",
+          "BytesIn",
+          "BytesOut",
+          "Severity",
+          "appfw_message",
+          "appfw_action"
+        ]
+      },
+      "description": "Normalize timestamp, user, action, status, severity and IP version; drop scratch/duplicate fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2024\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
