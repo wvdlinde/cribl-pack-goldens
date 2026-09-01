@@ -1,0 +1,292 @@
+{
+  "key": "stash::ocsf",
+  "sourcetype": "stash",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:28.822Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2},\\d{3})\\s+(?<severity>\\w+)\\s+\\[(?<thread>[^\\]]+)\\]\\s+(?<logger_class>\\S+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base log line: timestamp, severity, thread, logger class, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"user '\") !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']*)'.*?from (?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and source IP from messages referencing a user and 'from <ip>'"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('on port') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/on port (?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract destination port for SSH session events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('repository') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/repository (?<repository>[A-Za-z0-9_\\-]+\\/[A-Za-z0-9_\\-]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract repository project/name from repository-related messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/Authentication succeeded/) ? 'login_success' : message.match(/Authentication failed/) ? 'login_failure' : message.match(/Multiple authentication failures/) ? 'login_failure_suspicious' : message.match(/Push rejected/) ? 'push_rejected' : message.match(/cloned by/) ? 'repo_clone' : message.match(/SSH session opened/) ? 'ssh_session_open' : message.match(/Pull request/) ? 'pr_merge' : message.match(/backup job/) ? 'backup_job' : message.match(/Failed to load plugin/) ? 'plugin_load_failure' : message.match(/joined cluster/) ? 'cluster_join' : message.match(/OAuth access token refresh failed/) ? 'oauth_refresh_failure' : message.match(/SSH __e['public'] key added/) ? 'ssh_key_added' : 'other'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.match(/using PASSWORD/) ? 'password' : message.match(/using publickey/) ? 'publickey' : message.match(/via HTTP/) ? 'http' : null"
+          }
+        ]
+      },
+      "description": "Classify action type and protocol based on message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(action || '').match(/fail|reject|deny|lock/i) ? 5 : ((action || '').match(/open|succeed|clone|start|push|pull/i) ? 1 : ((action || '').match(/clos|complet|end/i) ? 2 : 99))"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + ((action || '').match(/fail|reject|deny|lock/i) ? 5 : ((action || '').match(/open|succeed|clone|start|push|pull/i) ? 1 : ((action || '').match(/clos|complet|end/i) ? 2 : 99)))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toUpperCase() == 'ERROR' ? 4 : ((severity || '').toUpperCase() == 'WARN' ? 3 : ((severity || '').toUpperCase() == 'FATAL' ? 5 : ((severity || '').toUpperCase() == 'DEBUG' ? 1 : 2)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toString().toLowerCase()"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "time",
+            "value": "_time ? Math.round(Number(_time) * 1000) : (timestamp ? Date.parse(String(timestamp).replace(',', '.')) : Date.now())"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Bitbucket'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Atlassian'"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "device.hostname",
+            "value": "logger_class ? String(logger_class).split('.').pop() : ''"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-17)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'stash'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"proj\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
