@@ -15765,6 +15765,21 @@
         "score": 86,
         "band": "good"
       }
+    },
+    {
+      "key": "email_fpc_metadata::ocsf",
+      "sourcetype": "email_fpc_metadata",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:58:17.695Z",
+      "path": "shared-goldens/email_fpc_metadata__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
