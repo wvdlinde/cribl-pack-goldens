@@ -15960,6 +15960,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "v2_access_common::ocsf",
+      "sourcetype": "v2_access_common",
+      "dest_format": "ocsf",
+      "score": 82,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:43.720Z",
+      "path": "shared-goldens/v2_access_common__ocsf.json",
+      "report": {
+        "score": 82,
+        "band": "warn"
+      }
     }
   ]
 }
