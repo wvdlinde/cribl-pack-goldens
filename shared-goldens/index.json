@@ -9215,14 +9215,14 @@
       "key": "ncsc_rsa_netwitness::__extraction__",
       "sourcetype": "ncsc_rsa_netwitness",
       "dest_format": "__extraction__",
-      "score": 90,
+      "score": 100,
       "part": "extraction",
-      "author": "unknown",
-      "build": 378,
-      "updated_at": "2026-08-07T13:36:43.038Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:36:43.052Z",
       "path": "shared-goldens/ncsc_rsa_netwitness____extraction__.json",
       "report": {
-        "score": 90,
+        "score": 100,
         "band": "good"
       }
     },
