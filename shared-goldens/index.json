@@ -11780,14 +11780,14 @@
       "key": "vmware_esxlog_clusteragent::__extraction__",
       "sourcetype": "vmware_esxlog_clusteragent",
       "dest_format": "__extraction__",
-      "score": 98,
+      "score": 100,
       "part": "extraction",
-      "author": "unknown",
-      "build": 528,
-      "updated_at": "2026-08-18T06:35:19.614Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T11:56:58.496Z",
       "path": "shared-goldens/vmware_esxlog_clusteragent____extraction__.json",
       "report": {
-        "score": 98,
+        "score": 100,
         "band": "good"
       }
     },
