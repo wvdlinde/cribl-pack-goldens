@@ -15795,6 +15795,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "isva_syslog::ocsf",
+      "sourcetype": "isva_syslog",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:58:48.574Z",
+      "path": "shared-goldens/isva_syslog__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
