@@ -15285,6 +15285,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "cloudflare_gateway_dns::ocsf",
+      "sourcetype": "cloudflare_gateway_dns",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:54:52.738Z",
+      "path": "shared-goldens/cloudflare_gateway_dns__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
