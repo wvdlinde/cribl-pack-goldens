@@ -14520,6 +14520,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "iostat::cim#network::__mapping__",
+      "sourcetype": "iostat",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:41:03.088Z",
+      "path": "shared-goldens/iostat__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
