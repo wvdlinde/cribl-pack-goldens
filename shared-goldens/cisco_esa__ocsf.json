@@ -2,17 +2,18 @@
   "key": "cisco_esa::ocsf",
   "sourcetype": "cisco_esa",
   "dest_format": "ocsf",
-  "score": 86,
-  "author": "wlinde@cribl.io",
+  "score": 100,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-10T13:28:35.526Z",
+  "updated_at": "2026-09-01T07:36:13.753Z",
   "functions": [
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "cisco_esa to OCSF Email Activity pipeline."
+        "comment": "cisco_esa to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
       }
     },
     {
@@ -31,7 +32,7 @@
         "source": "_raw",
         "regex": "/^(?<log_time>\\w{3}\\s+\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\s+\\d{4})\\s+(?<level>Info|Warning|Critical|Debug|Trace):\\s+(?<msg_body>.*)$/"
       },
-      "description": "Extract ESA log header"
+      "description": "Extract ESA log header (timestamp, level, message body)"
     },
     {
       "id": "regex_extract",
@@ -39,9 +40,19 @@
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/(?:\\bMID\\s+(?<mid>\\d+))?(?:.*?\\bICID\\s+(?<icid>\\d+))?(?:.*?\\bDCID\\s+(?<dcid>\\d+))?/"
+        "regex": "/(?:\\bMID\\s+(?<mid>\\d+))?(?:.*?\\bICID\\s+(?<icid>\\d+))?(?:.*?\\bDCID\\s+(?<dcid>\\d+))?(?:.*?\\bRID\\s+\\[?(?<rid>\\d+))?/"
       },
-      "description": "Extract MID, ICID, DCID"
+      "description": "Extract message/connection identifiers (MID, ICID, DCID, RID)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "msg_body && msg_body.indexOf('New SMTP ICID') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "msg_body",
+        "regex": "/New SMTP ICID\\s+\\d+\\s+interface\\s+(?<interface>\\S+).*?address\\s+(?<src_ip>[\\d.]+)\\s+reverse dns host\\s+(?<reverse_dns>\\S+)\\s+verified\\s+(?<dns_verified>\\w+)/"
+      },
+      "description": "Parse new inbound SMTP connection (sender IP + reverse DNS)"
     },
     {
       "id": "regex_extract",
@@ -51,7 +62,7 @@
         "source": "msg_body",
         "regex": "/From:\\s+<?(?<sender>[^>\\s]+)>?/"
       },
-      "description": "Parse envelope sender"
+      "description": "Parse envelope sender (From)"
     },
     {
       "id": "regex_extract",
@@ -61,7 +72,7 @@
         "source": "msg_body",
         "regex": "/To:\\s+<?(?<recipient>[^>\\s]+)>?/"
       },
-      "description": "Parse envelope recipient"
+      "description": "Parse envelope recipient (To)"
     },
     {
       "id": "regex_extract",
@@ -69,56 +80,166 @@
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/Subject:?\\s+\"(?<subject>[^\"]*)\"/"
+        "regex": "/Subject\\s+'(?<subject>[^']*)'/"
       },
       "description": "Parse subject"
     },
     {
       "id": "regex_extract",
-      "filter": "msg_body && msg_body.indexOf('SPAM') >= 0",
+      "filter": "msg_body && msg_body.indexOf('interim verdict') >= 0 || msg_body && msg_body.indexOf('using engine') >= 0",
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/Anti-Spam\\s+(?<spam_verdict>POSITIVE SPAM|SUSPECT SPAM|NEGATIVE)\\s+score\\s+(?<spam_score>\\d+)/"
+        "regex": "/using engine:\\s+(?<scan_engine>\\S+)\\s+spam\\s+(?<spam_verdict>\\w+)/"
       },
-      "description": "Parse anti-spam verdict and score"
+      "description": "Parse anti-spam verdict (engine + verdict)"
     },
     {
       "id": "regex_extract",
-      "filter": "msg_body && msg_body.indexOf('Graymail') >= 0",
+      "filter": "msg_body && msg_body.indexOf('antivirus') >= 0",
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/Graymail\\s+(?<graymail_type>\\w+)\\s+message detected score\\s+(?<graymail_score>\\d+)/"
+        "regex": "/antivirus\\s+(?<av_verdict>\\w+)(?:\\s+'(?<av_name>[^']+)')?/"
       },
-      "description": "Parse graymail detection"
+      "description": "Parse antivirus verdict"
     },
     {
       "id": "regex_extract",
-      "filter": "msg_body && msg_body.indexOf('quarantine') >= 0",
+      "filter": "msg_body && msg_body.indexOf('rule') >= 0",
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/quarantine\\s+\"(?<quarantine_name>[^\"]+)\"/"
+        "regex": "/rule\\s+'(?<filter_rule>[^']+)'/"
       },
-      "description": "Parse quarantine policy name"
+      "description": "Parse Outbreak Filters rule name"
     },
     {
       "id": "regex_extract",
-      "filter": "msg_body && msg_body.indexOf('bytes') >= 0",
+      "filter": "msg_body && msg_body.indexOf('DKIM') >= 0",
       "disabled": false,
       "conf": {
         "source": "msg_body",
-        "regex": "/\\bbytes\\s+(?<msg_bytes>\\d+)/"
+        "regex": "/DKIM verification\\s+(?<dkim_result>\\w+)\\s+domain\\s+(?<dkim_domain>\\S+)/"
       },
-      "description": "Parse message byte count"
+      "description": "Parse DKIM verification result and domain"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "msg_body && msg_body.indexOf('TLS') >= 0 && msg_body.indexOf('CN=') >= 0",
+      "disabled": false,
+      "conf": {
+        "source": "msg_body",
+        "regex": "/CN=(?<tls_peer_cn>[^\\s]+)/"
+      },
+      "description": "Parse TLS peer certificate CN"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "msg_body && (msg_body.indexOf('queued for delivery') >= 0 || msg_body.indexOf('Message done') >= 0) ? 'delivered' : msg_body && (msg_body.indexOf('Dropped') >= 0 || msg_body.indexOf('aborted') >= 0) ? 'dropped' : msg_body && msg_body.indexOf('quarantine') >= 0 ? 'quarantined' : msg_body && msg_body.indexOf('Bounced') >= 0 ? 'bounced' : msg_body && msg_body.indexOf('TLS') >= 0 ? 'allowed' : msg_body && msg_body.indexOf('DKIM') >= 0 ? 'allowed' : 'received'"
+          },
+          {
+            "name": "category",
+            "value": "msg_body && msg_body.indexOf('quarantine') >= 0 ? 'phishing' : msg_body && msg_body.indexOf('TLS') >= 0 ? 'tls' : msg_body && msg_body.indexOf('DKIM') >= 0 ? 'dkim' : msg_body && msg_body.indexOf('spam') >= 0 ? 'spam' : msg_body && msg_body.indexOf('antivirus') >= 0 ? 'malware' : 'email'"
+          }
+        ]
+      },
+      "description": "Classify ESA event action and category from message body"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level == 'Critical' ? 'critical' : level == 'Warning' ? 'medium' : level == 'Info' ? 'informational' : level == 'Debug' ? 'low' : undefined"
+          },
+          {
+            "name": "message_id",
+            "value": "mid || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "dcid || icid || undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "sender || undefined"
+          },
+          {
+            "name": "user",
+            "value": "sender || undefined"
+          },
+          {
+            "name": "dest_user",
+            "value": "recipient || undefined"
+          },
+          {
+            "name": "subject",
+            "value": "subject || undefined"
+          },
+          {
+            "name": "app",
+            "value": "'Cisco ESA'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Cisco Email Security Appliance'"
+          },
+          {
+            "name": "signature",
+            "value": "filter_rule || av_name || undefined"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || tls_peer_cn || undefined"
+          },
+          {
+            "name": "host",
+            "value": "'cisco-esa'"
+          }
+        ]
+      },
+      "description": "Alias ESA fields to CIM Email canonical names"
     },
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- STEP 2: Classify + severity ---"
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
+      }
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "--- STEP 3: Map fields to OCSF schema ---"
+      }
+    },
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
       }
     },
     {
@@ -128,190 +249,20 @@
       "conf": {
         "add": [
           {
-            "name": "severity_id",
-            "value": "level == 'Critical' ? 5 : level == 'Warning' ? 4 : level == 'Info' ? 1 : level == 'Debug' ? 1 : level == 'Trace' ? 1 : 0"
+            "name": "vendor",
+            "value": "'Cisco'"
           },
           {
-            "name": "activity_id",
-            "value": "msg_body && msg_body.indexOf('quarantine') >= 0 ? 4 : msg_body && msg_body.indexOf('SPAM') >= 0 ? 4 : msg_body && msg_body.indexOf('Graymail') >= 0 ? 4 : 1"
+            "name": "product",
+            "value": "'Email Security Appliance'"
+          },
+          {
+            "name": "version",
+            "value": "'15.0'"
           }
         ]
       },
-      "description": "Map severity_id and activity_id"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 3: Map to OCSF Email Activity ---"
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "class_uid",
-            "value": "9007"
-          },
-          {
-            "name": "category_uid",
-            "value": "9"
-          },
-          {
-            "name": "type_uid",
-            "value": "Number(9007 * 100 + (msg_body && msg_body.indexOf('quarantine') >= 0 ? 4 : msg_body && msg_body.indexOf('SPAM') >= 0 ? 4 : msg_body && msg_body.indexOf('Graymail') >= 0 ? 4 : 1))"
-          }
-        ]
-      },
-      "description": "Set class/category/type uid"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "email",
-            "value": "{}"
-          },
-          {
-            "name": "email.subject",
-            "value": "subject && String(subject) != '' ? subject : undefined"
-          },
-          {
-            "name": "email.message_uid",
-            "value": "mid && String(mid) != '' ? String(mid) : undefined"
-          },
-          {
-            "name": "email.smtp_from",
-            "value": "sender && String(sender) != '' ? sender : undefined"
-          },
-          {
-            "name": "email.smtp_to",
-            "value": "recipient && String(recipient) != '' ? recipient : undefined"
-          }
-        ]
-      },
-      "description": "Build email object"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "connection_info",
-            "value": "icid && String(icid) != '' ? {} : undefined"
-          },
-          {
-            "name": "connection_info.uid",
-            "value": "icid && String(icid) != '' ? String(icid) : undefined"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "icid && String(icid) != '' ? 'smtp' : undefined"
-          },
-          {
-            "name": "connection_info.session_id",
-            "value": "dcid && String(dcid) != '' ? String(dcid) : undefined"
-          }
-        ]
-      },
-      "description": "Build connection_info from ICID/DCID"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "traffic",
-            "value": "msg_bytes && String(msg_bytes) != '' ? {} : undefined"
-          },
-          {
-            "name": "traffic.bytes_in",
-            "value": "msg_bytes && String(msg_bytes) != '' ? Number(msg_bytes) : undefined"
-          },
-          {
-            "name": "traffic.bytes",
-            "value": "msg_bytes && String(msg_bytes) != '' ? Number(msg_bytes) : undefined"
-          }
-        ]
-      },
-      "description": "Build traffic from bytes"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "actor",
-            "value": "sender && String(sender) != '' ? {} : undefined"
-          },
-          {
-            "name": "actor.user",
-            "value": "sender && String(sender) != '' ? {} : undefined"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "sender && String(sender) != '' ? sender : undefined"
-          }
-        ]
-      },
-      "description": "Build actor only when sender present"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "disposition_id",
-            "value": "spam_verdict == 'POSITIVE SPAM' ? 4 : msg_body && msg_body.indexOf('quarantine') >= 0 ? 6 : graymail_type ? 4 : 1"
-          },
-          {
-            "name": "disposition",
-            "value": "spam_verdict == 'POSITIVE SPAM' ? 'Blocked' : msg_body && msg_body.indexOf('quarantine') >= 0 ? 'Quarantined' : graymail_type ? 'Blocked' : 'Allowed'"
-          }
-        ]
-      },
-      "description": "Set disposition"
-    },
-    {
-      "id": "eval",
-      "filter": "spam_score || graymail_score || quarantine_name",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "finding_info",
-            "value": "{}"
-          },
-          {
-            "name": "finding_info.title",
-            "value": "spam_verdict ? String(spam_verdict) : graymail_type ? ('Graymail ' + String(graymail_type)) : quarantine_name ? ('Policy quarantine ' + String(quarantine_name)) : undefined"
-          },
-          {
-            "name": "finding_info.score",
-            "value": "spam_score ? Number(spam_score) : graymail_score ? Number(graymail_score) : undefined"
-          },
-          {
-            "name": "finding_info.quarantine_name",
-            "value": "quarantine_name && String(quarantine_name) != '' ? quarantine_name : undefined"
-          }
-        ]
-      },
-      "description": "Build finding_info for verdicts"
+      "description": "Set device vendor/product/version"
     },
     {
       "id": "eval",
@@ -321,45 +272,31 @@
         "add": [
           {
             "name": "src_endpoint",
-            "value": "src_ip && String(src_ip) != '' ? {} : undefined"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "src_ip && String(src_ip) != '' ? src_ip : undefined"
-          },
-          {
-            "name": "src_endpoint.port",
-            "value": "src_port && String(src_port) != '' ? Number(src_port) : undefined"
-          },
-          {
-            "name": "dst_endpoint",
-            "value": "dest_ip && String(dest_ip) != '' ? {} : undefined"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "dest_ip && String(dest_ip) != '' ? dest_ip : undefined"
-          },
-          {
-            "name": "dst_endpoint.port",
-            "value": "dest_port && String(dest_port) != '' ? Number(dest_port) : undefined"
-          }
-        ]
-      },
-      "description": "Build endpoints when present"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "device",
             "value": "{}"
           },
           {
-            "name": "device.hostname",
-            "value": "'cisco-esa'"
+            "name": "dst_endpoint",
+            "value": "{}"
+          },
+          {
+            "name": "connection_info",
+            "value": "{}"
+          },
+          {
+            "name": "traffic",
+            "value": "{}"
+          },
+          {
+            "name": "actor",
+            "value": "{}"
+          },
+          {
+            "name": "actor.user",
+            "value": "{}"
+          },
+          {
+            "name": "device",
+            "value": "{}"
           },
           {
             "name": "metadata",
@@ -370,28 +307,32 @@
             "value": "{}"
           },
           {
-            "name": "metadata.product.name",
-            "value": "'Email Security Appliance'"
+            "name": "class_uid",
+            "value": "4001"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'Cisco'"
+            "name": "category_uid",
+            "value": "4"
           },
           {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
           },
           {
-            "name": "host",
-            "value": "'cisco-esa'"
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
           },
           {
-            "name": "sourcetype",
-            "value": "'cisco_esa:ocsf'"
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
           }
         ]
       },
-      "description": "Set device/metadata"
+      "description": "Map canonical fields → OCSF 1.4"
     },
     {
       "id": "eval",
@@ -400,20 +341,74 @@
       "conf": {
         "add": [
           {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
             "name": "time",
-            "value": "log_time && String(log_time) != '' ? new Date(String(log_time)).getTime() : undefined"
-          },
-          {
-            "name": "_time",
-            "value": "log_time && String(log_time) != '' ? new Date(String(log_time)).getTime() / 1000 : _time"
-          },
-          {
-            "name": "raw_data",
-            "value": "_raw"
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
           }
         ]
       },
-      "description": "Set time and preserve raw"
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco_esa:ocsf'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
     },
     {
       "id": "eval",
@@ -431,12 +426,16 @@
           "host",
           "cribl_breaker",
           "cribl_pipe",
-          "raw_data",
           "class_uid",
+          "class_uid.*",
           "category_uid",
+          "category_uid.*",
           "activity_id",
+          "activity_id.*",
           "type_uid",
+          "type_uid.*",
           "severity_id",
+          "severity_id.*",
           "src_endpoint",
           "src_endpoint.*",
           "dst_endpoint",
@@ -451,104 +450,13 @@
           "device.*",
           "metadata",
           "metadata.*",
-          "email",
-          "email.*",
-          "finding_info",
-          "finding_info.*",
-          "disposition",
-          "disposition_id",
-          "time"
+          "time",
+          "time.*"
         ]
       },
-      "description": "Keep only OCSF Email Activity fields + routing"
+      "description": "Keep only OCSF 1.4 fields + routing"
     }
   ],
   "recipe": null,
-  "report": {
-    "band": "warn",
-    "scoreSource": "golden-spec",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "traffic.bytes_out",
-        "issue": "OCSF field \"traffic.bytes_out\" is defined for this class but empty in the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "class_uid",
-        "issue": "class_uid 9007 is not a valid OCSF class. The correct OCSF class for email activity is 4009 (Email Activity), category_uid should be 4 (Network Activity), and type_uid should be 400901/400904 etc.",
-        "example": "\"class_uid\": 9007, \"category_uid\": 9, \"type_uid\": 900701",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "category_uid",
-        "issue": "category_uid 9 does not exist in OCSF. Email Activity belongs to category_uid 4 (Network Activity).",
-        "example": "\"category_uid\": 9",
-        "pointImpact": 0
-      },
-      {
-        "severity": "high",
-        "field": "type_uid",
-        "issue": "type_uid values (900701, 900704) are derived from the invalid class_uid 9007 and are not valid OCSF type UIDs. Correct values would be 400901 (Send) or 400900 (Unknown) under class 4009.",
-        "example": "\"type_uid\": 900701",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "severity_id",
-        "issue": "OCSF severity_id 5 maps to 'Critical' which is correct for Critical log level, but severity_id 1 maps to 'Informational' in OCSF — this is valid. However the mapping from 'Info' to severity_id 1 (Informational) is correct.",
-        "example": "Acceptable mapping, no defect here",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "activity_id",
-        "issue": "activity_id 4 in OCSF Email Activity class means 'Receive', not 'Block/Detect'. For blocked/quarantined events the semantic mapping is questionable; OCSF Email Activity activity_id should reflect the email action (Send=1, Receive=2, Scan=3, etc.), not a disposition action.",
-        "example": "\"activity_id\": 4 for a SPAM block event",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "disposition_id",
-        "issue": "disposition_id 6 mapped to 'Quarantined' is non-standard in OCSF core schema. Standard OCSF disposition_ids are: 1=Unknown, 2=Allowed, 3=Blocked, 4=Quarantined — the numeric values used here (1=Allowed, 4=Blocked, 6=Quarantined) do not match the OCSF enum.",
-        "example": "\"disposition_id\": 1, \"disposition\": \"Allowed\" — OCSF uses 2 for Allowed",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "finding_info",
-        "issue": "finding_info is not a standard top-level OCSF field for Email Activity (class 4009). Detection/finding information should map to the unmapped_data or a vendor extension. The 'score' sub-field is also non-standard.",
-        "example": "\"finding_info\": {\"title\": \"POSITIVE SPAM\", \"score\": 98}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "email.smtp_from",
-        "issue": "OCSF Email object uses 'from' not 'smtp_from' as the field name for sender address.",
-        "example": "\"smtp_from\": \"hr@company.com\" should be \"from\": \"hr@company.com\"",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "traffic",
-        "issue": "traffic object is not part of OCSF Email Activity class. Byte count for email should map to email.size or network_traffic object within the correct class context.",
-        "example": "\"traffic\": {\"bytes_in\": 12048, \"bytes\": 12048}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "time",
-        "issue": "OCSF uses 'time' as epoch milliseconds (present and correct), but '_time' at epoch seconds is a Cribl internal field — acceptable as internal index field but not part of OCSF schema.",
-        "example": "\"_time\": 1705286875 (seconds) alongside \"time\": 1705286875000 (ms) — time value itself is correct",
-        "pointImpact": 0
-      }
-    ],
-    "missingFields": [
-      "traffic.bytes_out"
-    ],
-    "emptyFields": [],
-    "summary": "The pipeline correctly extracts all source values (timestamps, MID, ICID, subject, sender, scores, byte counts) and maps them into a structured OCSF-like envelope. However, the OCSF class/category/type UIDs are entirely fabricated (9007/9/900701) and do not exist in the OCSF specification — the correct class for email activity is 4009. The disposition_id enum values and email field name 'smtp_from' also deviate from OCSF standards, making the output structurally non-conformant despite good data extraction coverage."
-  }
+  "report": null
 }
