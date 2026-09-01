@@ -16005,6 +16005,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vmkernel::ocsf",
+      "sourcetype": "vmware_esxlog_vmkernel",
+      "dest_format": "ocsf",
+      "score": 88,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:52.277Z",
+      "path": "shared-goldens/vmware_esxlog_vmkernel__ocsf.json",
+      "report": {
+        "score": 88,
+        "band": "good"
+      }
     }
   ]
 }
