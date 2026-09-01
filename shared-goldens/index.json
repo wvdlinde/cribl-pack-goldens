@@ -11630,14 +11630,14 @@
       "key": "vmware_esxlog_apiforwarder::__extraction__",
       "sourcetype": "vmware_esxlog_apiforwarder",
       "dest_format": "__extraction__",
-      "score": 91,
+      "score": 94,
       "part": "extraction",
-      "author": "unknown",
-      "build": 529,
-      "updated_at": "2026-08-18T08:11:51.145Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:17.032Z",
       "path": "shared-goldens/vmware_esxlog_apiforwarder____extraction__.json",
       "report": {
-        "score": 91,
+        "score": 94,
         "band": "good"
       }
     },
