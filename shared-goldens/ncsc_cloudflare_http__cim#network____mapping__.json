@@ -1,0 +1,363 @@
+{
+  "key": "ncsc_cloudflare_http::cim#network::__mapping__",
+  "sourcetype": "ncsc_cloudflare_http",
+  "dest_format": "cim#network::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T10:05:25.499Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "(/^(\\d{1,3}(\\.\\d{1,3}){3}|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]+)$/.test(String((ClientIP || ''))) ? (ClientIP || '') : undefined)"
+          },
+          {
+            "name": "src",
+            "value": "ClientIP || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(ClientSrcPort || 0)"
+          },
+          {
+            "name": "dest_ip",
+            "value": "(/^(\\d{1,3}(\\.\\d{1,3}){3}|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]+)$/.test(String((EdgeServerIP || OriginIP || ''))) ? (EdgeServerIP || OriginIP || '') : undefined)"
+          },
+          {
+            "name": "dest",
+            "value": "ClientRequestHost || EdgeRequestHost || ''"
+          },
+          {
+            "name": "dest_port",
+            "value": "(ClientRequestScheme || 'https') == 'https' ? 443 : 80"
+          },
+          {
+            "name": "app",
+            "value": "ClientRequestScheme || 'http'"
+          },
+          {
+            "name": "protocol",
+            "value": "(String(ClientRequestProtocol || 'HTTP').split('/')[0]).toLowerCase()"
+          },
+          {
+            "name": "protocol_version",
+            "value": "String(ClientRequestProtocol || '').indexOf('/') > -1 ? String(ClientRequestProtocol).split('/')[1] : ''"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(ClientRequestBytes || 0)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(EdgeResponseBytes || EdgeResponseBodyBytes || 0)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-30)",
+      "conf": {
+        "add": [
+          {
+            "name": "bytes",
+            "value": "Number(ClientRequestBytes || 0) + Number(EdgeResponseBytes || EdgeResponseBodyBytes || 0)"
+          },
+          {
+            "name": "vendor_action",
+            "value": "SecurityAction || Action || WAFAction || EdgeRateLimitAction || ''"
+          },
+          {
+            "name": "action",
+            "value": "['block','drop','challenge','jschallenge','managed_challenge','connectionClose'].indexOf(SecurityAction || Action || WAFAction || '') > -1 ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "rule_id",
+            "value": "SecurityRuleID || WAFRuleID || String(EdgeRateLimitID || '')"
+          },
+          {
+            "name": "rule",
+            "value": "SecurityRuleDescription || WAFRuleMessage || ''"
+          },
+          {
+            "name": "session_id",
+            "value": "RayID || ''"
+          },
+          {
+            "name": "flow_id",
+            "value": "ParentRayID || RayID || ''"
+          },
+          {
+            "name": "response_time",
+            "value": "Number(EdgeTimeToFirstByteMs || OriginResponseDurationMs || 0)"
+          },
+          {
+            "name": "duration",
+            "value": "Number(OriginResponseDurationMs || ClientTCPRTTMs || 0)"
+          },
+          {
+            "name": "dvc",
+            "value": "EdgeColoCode || ''"
+          },
+          {
+            "name": "dvc_ip",
+            "value": "EdgeServerIP || ''"
+          },
+          {
+            "name": "dest_zone",
+            "value": "ZoneName || ''"
+          },
+          {
+            "name": "vendor_account",
+            "value": "String(ZoneID || ZoneName || '')"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Cloudflare HTTP'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ncsc:cloudflare:http'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "action",
+        "botdetectionids",
+        "botdetectiontags",
+        "botscore",
+        "botscoresrc",
+        "bottags",
+        "cachecachestatus",
+        "cacheresponsebytes",
+        "cacheresponsestatus",
+        "cachetieredfill",
+        "clientasn",
+        "clientcity",
+        "clientcountry",
+        "clientdevicetype",
+        "clientip",
+        "clientipclass",
+        "clientlatitude",
+        "clientlongitude",
+        "clientmtlsauthcertfingerprint",
+        "clientmtlsauthstatus",
+        "clientregioncode",
+        "clientrequestbytes",
+        "clientrequesthost",
+        "clientrequestmethod",
+        "clientrequestpath",
+        "clientrequestprotocol",
+        "clientrequestquery",
+        "clientrequestreferer",
+        "clientrequestscheme",
+        "clientrequestsource",
+        "clientrequesturi",
+        "clientrequestuseragent",
+        "clientsrcport",
+        "clientsslcipher",
+        "clientsslprotocol",
+        "clienttcprttms",
+        "clientxrequestedwith",
+        "contentscanobjresults",
+        "contentscanobjsizes",
+        "contentscanobjtypes",
+        "cookies",
+        "datetime",
+        "edgecfconnectingo2o",
+        "edgecolocode",
+        "edgecoloid",
+        "edgeendtimestamp",
+        "edgepathingop",
+        "edgepathingsrc",
+        "edgepathingstatus",
+        "edgeratelimitaction",
+        "edgeratelimitid",
+        "edgerequesthost",
+        "edgeresponsebodybytes",
+        "edgeresponsebytes",
+        "edgeresponsecompressionratio",
+        "edgeresponsecontenttype",
+        "edgeresponsestatus",
+        "edgeserverip",
+        "edgestarttimestamp",
+        "edgetimetofirstbytems",
+        "firewallmatchesactions",
+        "firewallmatchesruleids",
+        "firewallmatchessources",
+        "ja3hash",
+        "ja4",
+        "ja4signals",
+        "jsdetectionpassed",
+        "origindnsresponsetimems",
+        "originip",
+        "originrequestheadersenddurationms",
+        "originresponsebytes",
+        "originresponsedurationms",
+        "originresponseheaderreceivedurationms",
+        "originresponsehttpexpires",
+        "originresponsehttplastmodified",
+        "originresponsestatus",
+        "originresponsetime",
+        "originsslprotocol",
+        "origintcphandshakedurationms",
+        "origintlshandshakedurationms",
+        "parentrayid",
+        "rayid",
+        "requestheaders",
+        "responseheaders",
+        "securityaction",
+        "securityactions",
+        "securitylevel",
+        "securityruledescription",
+        "securityruleid",
+        "securityruleids",
+        "securitysources",
+        "smartroutecoloid",
+        "uppertiercoloid",
+        "verifiedbotcategory",
+        "wafaction",
+        "wafattackscore",
+        "wafflags",
+        "wafmatchedvar",
+        "wafprofile",
+        "wafrceattackscore",
+        "wafruleid",
+        "wafrulemessage",
+        "wafsqliattackscore",
+        "wafxssattackscore",
+        "workercputime",
+        "workerscriptname",
+        "workerstatus",
+        "workersubrequest",
+        "workersubrequestcount",
+        "zoneid",
+        "zonename"
+      ]
+    }
+  },
+  "report": null
+}
