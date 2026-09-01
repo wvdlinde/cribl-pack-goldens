@@ -14190,6 +14190,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_ldap::cim#network::__mapping__",
+      "sourcetype": "ivanti_ldap",
+      "dest_format": "cim#network::__mapping__",
+      "score": 91,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:23.515Z",
+      "path": "shared-goldens/ivanti_ldap__cim#network____mapping__.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
