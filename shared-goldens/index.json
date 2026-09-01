@@ -16305,6 +16305,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_fdm::ocsf",
+      "sourcetype": "vmware_esxlog_fdm",
+      "dest_format": "ocsf",
+      "score": 98,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:02:01.583Z",
+      "path": "shared-goldens/vmware_esxlog_fdm__ocsf.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
