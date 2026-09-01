@@ -1,0 +1,322 @@
+{
+  "key": "aemhttpdaccess::ocsf",
+  "sourcetype": "aemhttpdaccess",
+  "dest_format": "ocsf",
+  "score": 92,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:55:16.333Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+) \\S+ (?<user>\\S+) \\[(?<timestamp>[^\\]]+)\\] \"(?<method>\\S+) (?<uri>\\S+) HTTP\\/(?<http_version>[\\d.]+)\" (?<status>\\d+) (?<bytes>\\S+) \"(?<referer>[^\"]*)\" \"(?<user_agent>[^\"]*)\" (?<response_time>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Apache combined access log fields from _raw"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "action",
+            "value": "Number(status) >= 400 ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status) >= 500 ? 'high' : Number(status) >= 400 ? 'medium' : 'low'"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes === '-' ? 0 : Number(bytes)"
+          }
+        ]
+      },
+      "description": "Normalize user field, protocol, and derive action/severity from status code"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp.replace(/^(\\d+)\\/(\\w+)\\/(\\d+):/,'$2 $1 $3 '))/1000"
+          }
+        ]
+      },
+      "description": "Convert timestamp to epoch for downstream use"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'6003'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'6'"
+          },
+          {
+            "name": "event_type",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "time",
+            "value": "Date.parse(timestamp)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user"
+          },
+          {
+            "name": "http_request.url",
+            "value": "uri"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "method"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "user_agent"
+          },
+          {
+            "name": "http_response.code",
+            "value": "Number(status || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || 'HTTP'"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(status) >= 500 ? 4 : (Number(status) >= 400 ? 3 : 1)"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "class_uid",
+            "value": "6003"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "6"
+          },
+          {
+            "name": "type_uid",
+            "value": "600301"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Adobe Experience Manager'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Adobe'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-21)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aemhttpdaccess'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2024\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"17.4\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"13;\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
