@@ -15885,6 +15885,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "stream_dns::ocsf",
+      "sourcetype": "stream_dns",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:21.741Z",
+      "path": "shared-goldens/stream_dns__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
