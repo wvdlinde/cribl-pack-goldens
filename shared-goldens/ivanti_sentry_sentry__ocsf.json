@@ -1,0 +1,315 @@
+{
+  "key": "ivanti_sentry_sentry::ocsf",
+  "sourcetype": "ivanti_sentry_sentry",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:58:54.189Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<sentry_host>\\S+)\\s+Sentry\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+)\\s+\\[(?<module>\\w+)\\]\\s+(?<message>[^=]+?)\\s*(?<__kvp_string>\\S+=.*)?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Sentry syslog-style header: timestamp, host, pid, severity, module, message, and trailing key=value string"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_string",
+        "cleanFields": true
+      },
+      "description": "Extract embedded key=value pairs (user, deviceId, clientIP, backend, host, port, action, reason, etc.) from the scratch kvp string"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "clientIP ? clientIP.replace(/^\\[|\\]$/g,'') : undefined"
+          },
+          {
+            "name": "dst_host",
+            "value": "backend ? backend : (host ? host : (serverName ? serverName : undefined))"
+          },
+          {
+            "name": "dst_port",
+            "value": "port ? Number(port) : undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_string",
+          "clientIP",
+          "host",
+          "port",
+          "backend",
+          "serverName"
+        ]
+      },
+      "description": "Normalize network fields: strip IPv6 brackets from clientIP into src_ip, derive dst_host/dst_port, and clean up scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? (action.match(/^(BLOCK|BLOCKED|REJECT)$/) ? 'blocked' : (action.match(/^THROTTLE$/) ? 'throttled' : (action.match(/^FLAGGED$/) ? 'flagged' : action.toLowerCase()))) : (result === 'compliant' ? 'allowed' : undefined)"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ],
+        "remove": []
+      },
+      "description": "Normalize action values into standard categories and set event time from parsed timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "device.hostname",
+            "value": "dst_host || sentry_host || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 5 : severity == 'ERROR' ? 4 : severity == 'WARN' ? 3 : severity == 'INFO' ? 1 : 0"
+          },
+          {
+            "name": "time",
+            "value": "Date.parse(timestamp || _time) || 0"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "tlsVersion ? 'TLS ' + tlsVersion : ''"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "400101"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ivanti'"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'Sentry'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.0.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-17)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti:sentry:sentry'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "actor.user.name",
+        "issue": "source value present but \"actor.user.name\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "device.hostname",
+        "issue": "source value present but \"device.hostname\" is empty in output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "actor.user.name",
+      "device.hostname"
+    ],
+    "emptyFields": [
+      "actor.user.name",
+      "device.hostname"
+    ],
+    "summary": "Deterministic live preview completed."
+  }
+}
