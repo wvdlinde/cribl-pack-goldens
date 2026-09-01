@@ -14430,6 +14430,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "jira_security::cim#network::__mapping__",
+      "sourcetype": "jira_security",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:37.958Z",
+      "path": "shared-goldens/jira_security__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
