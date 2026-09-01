@@ -2,20 +2,20 @@
   "key": "ncsc_rsa_netwitness::__extraction__",
   "sourcetype": "ncsc_rsa_netwitness",
   "dest_format": "__extraction__",
-  "score": 90,
+  "score": 100,
   "part": "extraction",
-  "author": "unknown",
-  "build": 378,
-  "updated_at": "2026-08-07T13:36:43.038Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:36:43.052Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Extract leading ISO8601 timestamp from start of raw event",
+      "description": "Parse syslog header (priority, timestamp, host, process) and isolate the NetWitness KVP body into a scratch field",
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\S+)/",
+        "regex": "/^<(?<priority>\\d+)>(?<syslog_timestamp>[A-Za-z]{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+NetWitness\\[(?<process>\\w+)\\]:\\s+(?<__kvp_body>.*)$/",
         "iterations": 1,
         "overwrite": false
       }
@@ -24,11 +24,11 @@
       "id": "serde",
       "filter": "true",
       "disabled": false,
-      "description": "Extract dotted key=value pairs (KVP format) from raw event into nested fields",
+      "description": "Extract the NetWitness key=value pairs (sessionid, time, ip.src/dst, tcp/udp ports, action, result, severity, etc.) from the scratch KVP body field",
       "conf": {
         "mode": "extract",
         "type": "kvp",
-        "srcField": "_raw",
+        "srcField": "__kvp_body",
         "cleanFields": true
       }
     },
@@ -36,113 +36,110 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Flatten nested KVP fields into clean top-level field names for mapping stage",
+      "description": "Normalize extracted NetWitness fields into consistent names: src_ip, dst_ip, src_port, dst_port, protocol, action, severity, user, timestamp, dst_host",
       "conf": {
         "add": [
           {
-            "name": "user",
-            "value": "user.dst ? user.dst : (user.src ? user.src : null)"
+            "name": "timestamp",
+            "value": "typeof time !== 'undefined' ? time : syslog_timestamp"
           },
           {
             "name": "src_ip",
-            "value": "ip.src"
+            "value": "typeof ip !== 'undefined' ? ip.src : undefined"
           },
           {
             "name": "dst_ip",
-            "value": "ip.dst"
+            "value": "typeof ip !== 'undefined' && ip.dst ? ip.dst : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "typeof tcp !== 'undefined' && tcp.srcport ? tcp.srcport : (typeof udp !== 'undefined' && udp.srcport ? udp.srcport : undefined)"
           },
           {
             "name": "dst_port",
-            "value": "port.dst"
-          },
-          {
-            "name": "dst_host",
-            "value": "alias.host"
+            "value": "typeof tcp !== 'undefined' && tcp.dstport ? tcp.dstport : (typeof udp !== 'undefined' && udp.dstport ? udp.dstport : undefined)"
           },
           {
             "name": "protocol",
-            "value": "proto"
+            "value": "typeof protocol !== 'undefined' ? protocol : undefined"
           },
           {
-            "name": "message",
-            "value": "event.desc"
-          },
-          {
-            "name": "event_category",
-            "value": "event.cat.name"
-          },
-          {
-            "name": "device_ip",
-            "value": "device.ip"
-          },
-          {
-            "name": "device_type",
-            "value": "device.type"
+            "name": "vendor_action",
+            "value": "action || undefined"
           },
           {
             "name": "action",
-            "value": "ec.activity"
+            "value": "typeof action !== 'undefined' ? action : undefined"
           },
           {
-            "name": "theme",
-            "value": "ec.theme"
+            "name": "vendor_severity",
+            "value": "severity || undefined"
           },
           {
-            "name": "outcome",
-            "value": "ec.outcome"
+            "name": "severity",
+            "value": "typeof severity !== 'undefined' ? severity : 'info'"
           },
           {
-            "name": "threat_desc",
-            "value": "threat.desc"
+            "name": "user",
+            "value": "typeof user !== 'undefined' ? (user.src ? user.src : user.dst) : undefined"
           },
           {
-            "name": "sig_id",
-            "value": "sig.id"
+            "name": "dst_host",
+            "value": "typeof alias !== 'undefined' ? alias.host : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "typeof direction !== 'undefined' ? direction : undefined"
           }
         ],
         "remove": [
-          "device",
-          "event",
-          "ec",
-          "user",
-          "ip",
-          "port",
-          "alias",
-          "proto",
-          "threat",
-          "sig"
-        ]
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "description": "Normalize outcome into standard action taxonomy (allow/deny/detect/unknown)",
-      "conf": {
-        "add": [
-          {
-            "name": "normalized_action",
-            "value": "outcome && outcome.match(/Success|Permit/) ? 'allow' : (outcome && outcome.match(/Failure|Block|Blocked/) ? 'deny' : (outcome && outcome.match(/Detected/) ? 'detect' : 'unknown'))"
-          }
-        ]
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "description": "Determine IP version for device/source/destination IPs to handle IPv6 addresses",
-      "conf": {
-        "add": [
-          {
-            "name": "ip_version",
-            "value": "device_ip && device_ip.indexOf(':') >= 0 ? 6 : (src_ip && src_ip.indexOf(':') >= 0 ? 6 : 4)"
-          }
+          "__kvp_body"
         ]
       }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "alert",
+        "alias.host",
+        "attachment.name",
+        "attempts",
+        "community",
+        "device.type",
+        "direction",
+        "eth.type",
+        "event.type",
+        "filename",
+        "hash",
+        "ip.dst",
+        "ip.src",
+        "medium",
+        "note",
+        "payload.bytes",
+        "process.name",
+        "protocol",
+        "query",
+        "result",
+        "service",
+        "session.duration",
+        "sessionid",
+        "severity",
+        "ssl.ca",
+        "ssl.subject",
+        "tcp.dstport",
+        "tcp.srcport",
+        "threat.category",
+        "time",
+        "udp.dstport",
+        "udp.srcport",
+        "url",
+        "user.dst",
+        "user.src"
+      ]
+    }
+  },
   "report": null
 }
