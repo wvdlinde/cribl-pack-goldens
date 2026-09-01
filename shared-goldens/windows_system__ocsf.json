@@ -1,0 +1,416 @@
+{
+  "key": "windows_system::ocsf",
+  "sourcetype": "windows_system",
+  "dest_format": "ocsf",
+  "score": 97,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:00:30.046Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('<Event')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/<Provider Name='(?<provider>[^']+)'.*?<EventID[^>]*>(?<event_id>\\d+)<\\/EventID>[\\s\\S]*?<TimeCreated SystemTime='(?<timestamp>[^']+)'\\/>[\\s\\S]*?<Computer>(?<host>[^<]+)<\\/Computer>[\\s\\S]*?<Security UserID='(?<user_sid>[^']+)'\\/>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract core System block fields from Windows XML event (provider, event id, timestamp, host, user SID)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('<Event')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/<EventData>(?<message>[\\s\\S]*)<\\/EventData>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract raw EventData block as message for XML-formatted Windows events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('eventsourcename=')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/eventsourcename=(?<provider>.*?) guid=(?<guid>\\{[^}]+\\}) name=(?<message>.*?) processid=(?<process_id>\\d+) qualifiers=(?<qualifiers>\\d+) systemtime=(?<timestamp>\\S+) threadid=(?<thread_id>\\d+) userid=(?<user_sid>\\S+) xmlns=/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract fields from KVP-formatted Windows event (provider, guid, message, process/thread ids, timestamp, user SID)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "typeof timestamp === 'string' ? Date.parse(timestamp)/1000 : _time"
+          },
+          {
+            "name": "action",
+            "value": "event_id === '7045' ? 'service_installed' : event_id === '7036' ? 'service_state_change' : event_id === '7040' ? 'service_config_change' : event_id === '1074' ? 'shutdown_restart' : event_id === '41' ? 'unexpected_shutdown' : (message && message.indexOf('service was installed') !== -1) ? 'service_installed' : (message && message.indexOf('entered the running state') !== -1) ? 'service_state_change' : (message && message.indexOf('start type of the') !== -1) ? 'service_config_change' : (message && message.indexOf('has initiated the restart') !== -1) ? 'shutdown_restart' : 'unknown'"
+          }
+        ]
+      },
+      "description": "Derive _time from extracted timestamp and normalize action based on event_id or message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'Windows'"
+          },
+          {
+            "name": "version",
+            "value": "'10'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "gfsrc_tmp_process",
+            "value": "process"
+          },
+          {
+            "name": "process",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '') || ((process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '') || ((process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '') || ((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
+          },
+          {
+            "name": "process.file",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '')) ? {} : undefined"
+          },
+          {
+            "name": "process.parent_process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "(((transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '')) ? {} : undefined"
+          },
+          {
+            "name": "file",
+            "value": "(((file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "reg_key",
+            "value": "(((registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "query",
+            "value": "(((dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 Process Activity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product",
+            "value": "(((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != null && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'undefined' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'null' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '-' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '' ? Number(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) : undefined"
+          },
+          {
+            "name": "category_uid",
+            "value": "(event_code == '3' || event_code == '22' ? 4 : 1) != null && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'undefined' && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'null' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '-' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '' ? Number(event_code == '3' || event_code == '22' ? 4 : 1) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != null && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'undefined' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'null' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '-' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '' ? Number(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != null && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'undefined' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'null' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '-' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '' ? Number((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "process.name",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "(command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '' ? (command) : undefined"
+          },
+          {
+            "name": "process.pid",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "process.uid",
+            "value": "(process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '' ? (process_guid) : undefined"
+          },
+          {
+            "name": "process.file.path",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.cmd_line",
+            "value": "(parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '' ? (parent_command) : undefined"
+          },
+          {
+            "name": "process.parent_process.pid",
+            "value": "(parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '' ? Number(parent_process_id) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '' ? (user) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor.process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '' ? (transport) : undefined"
+          },
+          {
+            "name": "file.path",
+            "value": "(file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '' ? (file_path) : undefined"
+          },
+          {
+            "name": "reg_key.path",
+            "value": "(registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '' ? (registry_path) : undefined"
+          },
+          {
+            "name": "query.hostname",
+            "value": "(dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '' ? (dns_query) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '' ? (app || 'Sysmon') : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '' ? ('Microsoft') : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'XmlWinEventLog:System'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '7036' || event_code === '7036'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop service entered running/stopped state (7036) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"{b0aa8734-56f7-41cc-b2f4-de228e98b946}\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"{331c3b3a-2005-44c2-ac5e-77220c37d6b4}\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
