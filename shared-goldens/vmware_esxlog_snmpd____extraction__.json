@@ -2,17 +2,17 @@
   "key": "vmware_esxlog_snmpd::__extraction__",
   "sourcetype": "vmware_esxlog_snmpd",
   "dest_format": "__extraction__",
-  "score": 91,
+  "score": 95,
   "part": "extraction",
-  "author": "unknown",
-  "build": 379,
-  "updated_at": "2026-08-07T15:51:27.997Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:37:04.225Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Extract syslog header fields: timestamp, host, pid, severity, message",
+      "description": "Parse base syslog-style structure: timestamp, host, pid, severity, message",
       "conf": {
         "source": "_raw",
         "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+snmpd\\[(?<pid>\\d+)\\]:\\s+\\[(?<severity>\\w+)\\]\\s+(?<message>.*)$/",
@@ -22,36 +22,36 @@
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/from\\s+\\d/)",
+      "filter": "message && message.match(/from\\s+/)",
       "disabled": false,
-      "description": "Extract source IP and optional port from messages containing 'from <ip>[:port]'",
+      "description": "Extract source IP (IPv4 or IPv6) when message references a 'from' clause",
       "conf": {
         "source": "message",
-        "regex": "/from\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})(:(?<src_port>\\d+))?/",
+        "regex": "/from\\s+(?<src_ip>[0-9a-fA-F:.]+)/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/\\sto\\s+\\d/)",
+      "filter": "message && message.match(/sent to/)",
       "disabled": false,
-      "description": "Extract destination IP and port from trap/send messages containing 'to <ip>:<port>'",
+      "description": "Extract destination host/port from trap 'sent to' messages, supporting bracketed IPv6",
       "conf": {
         "source": "message",
-        "regex": "/\\sto\\s+(?<dst_ip>\\d{1,3}(?:\\.\\d{1,3}){3}):(?<dst_port>\\d+)/",
+        "regex": "/sent to \\[?(?<dst_host>[0-9a-fA-F:.]+)\\]?:(?<dst_port>\\d+)/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/user=/)",
+      "filter": "message && message.match(/user\\s+'/)",
       "disabled": false,
-      "description": "Extract SNMPv3 user field when present",
+      "description": "Extract user field when message references a quoted username",
       "conf": {
         "source": "message",
-        "regex": "/user=(?<user>\\S+)/",
+        "regex": "/user\\s+'(?<user>[^']+)'/",
         "iterations": 1,
         "overwrite": false
       }
@@ -60,7 +60,7 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Classify action type and set protocol based on message content",
+      "description": "Normalize protocol/transport, derive action outcome and standardize severity",
       "conf": {
         "add": [
           {
@@ -68,14 +68,30 @@
             "value": "'SNMP'"
           },
           {
+            "name": "transport",
+            "value": "'UDP'"
+          },
+          {
             "name": "action",
-            "value": "message.match(/Authentication failure|authentication failed|brute force/i) ? 'authentication_failure' : message.match(/GETBULK request|GET request|SET request|authenticated GET request/i) ? 'snmp_request' : message.match(/trap/i) ? 'trap' : message.match(/started successfully|Loaded MIB/i) ? 'startup' : message.match(/Failed to bind|Timeout waiting/i) ? 'error' : message.match(/Malformed SNMP PDU/i) ? 'malformed_packet' : message.match(/configuration reloaded/i) ? 'config_reload' : 'other'"
+            "value": "message.match(/denied|failed|unauthorized|Malformed|Failed|mismatch|invalid/i) ? 'failure' : message.match(/succeeded|completed|reloaded|sent|served|started|served/i) ? 'success' : 'info'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
           }
-        ],
-        "remove": []
+        ]
       }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
   "report": null
 }
