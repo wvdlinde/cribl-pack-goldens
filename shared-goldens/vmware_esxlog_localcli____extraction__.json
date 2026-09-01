@@ -2,20 +2,20 @@
   "key": "vmware_esxlog_localcli::__extraction__",
   "sourcetype": "vmware_esxlog_localcli",
   "dest_format": "__extraction__",
-  "score": 93,
+  "score": 95,
   "part": "extraction",
-  "author": "unknown",
-  "build": 529,
-  "updated_at": "2026-08-18T07:51:37.758Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:39:31.890Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Extract timestamp, host, pid, user, command, and result from localcli log line",
+      "description": "Parse ESXi localcli log line into timestamp, host, pid, user, command, status, failure reason/code, and security-relevant note",
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+localcli\\[(?<pid>\\d+)\\]:\\s+\\[User=(?<user>[^\\]]+)\\]\\s+(?<command>.*?)\\s+--\\s+(?<result>SUCCESS|FAILED)(?::\\s*(?<failure_reason>.*?))?(?:\\s+\\[SECURITY-RELEVANT:\\s*(?<security_note>[^\\]]+)\\])?$/",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<__host_raw>\\S+)\\s+localcli\\[(?<pid>\\d+)\\]:\\s+\\[User=(?<user>[^\\]]+)\\]\\s+(?<message>.*?)\\s+--\\s+(?<status>SUCCESS|FAILED)(?::\\s+(?<failure_reason>.*?)\\s+\\((?<error_code>\\d+)\\))?(?:\\s+\\[SECURITY-RELEVANT:\\s+(?<security_note>[^\\]]+)\\])?$/",
         "iterations": 1,
         "overwrite": false
       }
@@ -24,21 +24,20 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Normalize action and severity based on result and security relevance",
+      "description": "Split parsed host into dst_ip (IPv4/IPv6) or dst_host (hostname) based on format",
       "conf": {
         "add": [
           {
-            "name": "action",
-            "value": "result === 'SUCCESS' ? 'success' : 'failure'"
+            "name": "dst_ip",
+            "value": "__host_raw && __host_raw.match(/^([0-9]{1,3}\\.){3}[0-9]{1,3}$|:.*:/) ? __host_raw : undefined"
           },
           {
-            "name": "severity",
-            "value": "security_note ? 'high' : (result === 'FAILED' ? 'medium' : 'low')"
-          },
-          {
-            "name": "is_security_relevant",
-            "value": "security_note ? true : false"
+            "name": "dst_host",
+            "value": "__host_raw && !__host_raw.match(/^([0-9]{1,3}\\.){3}[0-9]{1,3}$|:.*:/) ? __host_raw : undefined"
           }
+        ],
+        "remove": [
+          "__host_raw"
         ]
       }
     },
@@ -46,17 +45,26 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Flag IPv6 host values in dst_host field",
+      "description": "Normalize action and derive severity based on status, failure, and security-relevant flag",
       "conf": {
         "add": [
           {
-            "name": "dst_host_is_ipv6",
-            "value": "dst_host.match(/:.*:/) ? true : false"
+            "name": "action",
+            "value": "status === 'SUCCESS' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "severity",
+            "value": "security_note ? 'high' : (status === 'FAILED' ? 'medium' : 'low')"
           }
         ]
       }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
   "report": null
 }
