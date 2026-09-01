@@ -14160,6 +14160,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_generic_icmp_tunnels::cim#network::__mapping__",
+      "sourcetype": "corelight_generic_icmp_tunnels",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:14.699Z",
+      "path": "shared-goldens/corelight_generic_icmp_tunnels__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
