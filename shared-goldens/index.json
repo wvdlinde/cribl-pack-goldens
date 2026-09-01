@@ -11885,14 +11885,14 @@
       "key": "vmware_esxlog_cmmdstimemachinedump::__extraction__",
       "sourcetype": "vmware_esxlog_cmmdstimemachinedump",
       "dest_format": "__extraction__",
-      "score": 94,
+      "score": 96,
       "part": "extraction",
-      "author": "unknown",
-      "build": 378,
-      "updated_at": "2026-08-07T13:52:08.995Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:36:47.041Z",
       "path": "shared-goldens/vmware_esxlog_cmmdstimemachinedump____extraction__.json",
       "report": {
-        "score": 94,
+        "score": 96,
         "band": "good"
       }
     },
