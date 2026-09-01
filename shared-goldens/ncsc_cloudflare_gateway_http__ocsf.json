@@ -1,0 +1,165 @@
+{
+  "key": "ncsc_cloudflare_gateway_http::ocsf",
+  "sourcetype": "ncsc_cloudflare_gateway_http",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:54:31.795Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Try JSON parse"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__*"
+        ]
+      },
+      "description": "Keep mapped CIM fields + all extracted source fields before serialization"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "activity_id",
+        "issue": "source value present but \"activity_id\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "type_uid",
+        "issue": "source value present but \"type_uid\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "http_request.url",
+        "issue": "source value present but \"http_request.url\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "http_request.user_agent",
+        "issue": "source value present but \"http_request.user_agent\" is empty in output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "activity_id",
+      "type_uid",
+      "http_request.url",
+      "http_request.user_agent"
+    ],
+    "emptyFields": [
+      "activity_id",
+      "type_uid",
+      "http_request.url",
+      "http_request.user_agent"
+    ],
+    "summary": "Deterministic live preview completed."
+  }
+}
