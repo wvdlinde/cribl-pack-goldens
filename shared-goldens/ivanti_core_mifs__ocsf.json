@@ -1,0 +1,333 @@
+{
+  "key": "ivanti_core_mifs::ocsf",
+  "sourcetype": "ivanti_core_mifs",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:11.712Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      },
+      "description": "Parse space-delimited key=value pairs (KVP) format from Ivanti Core MIFS logs"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      },
+      "description": "Derive event time from extracted timestamp field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "source_ip ? source_ip : undefined"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dest_ip ? dest_ip : undefined"
+          }
+        ],
+        "remove": [
+          "source_ip",
+          "dest_ip"
+        ]
+      },
+      "description": "Normalize source/destination IP fields and remove originals to avoid duplicate field semantics"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "proto ? proto.toLowerCase() : undefined"
+          }
+        ],
+        "remove": [
+          "proto"
+        ]
+      },
+      "description": "Normalize protocol casing and remove original proto field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : (status ? status.toLowerCase() : undefined)"
+          }
+        ]
+      },
+      "description": "Normalize action field, falling back to status when action is absent"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? Math.round(new Date(timestamp).getTime()) : Math.round(_time * 1000)"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "status == 'success' || status == 'deployed' ? 1 : (status == 'failure' || status == 'failed' || status == 'denied' ? 5 : 6)"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + (status == 'success' || status == 'deployed' ? 1 : (status == 'failure' || status == 'failed' || status == 'denied' ? 5 : 6))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toUpperCase() == 'CRITICAL' ? 5 : ((severity || '').toUpperCase() == 'ERROR' ? 4 : ((severity || '').toUpperCase() == 'WARN' ? 3 : ((severity || '').toUpperCase() == 'INFO' ? 1 : 0)))"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(port || 0)"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "''"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toLowerCase()"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "Number(bytes_transferred || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(export_size || 0)"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor.user.name",
+            "value": "user || initiated_by || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || target_host || ''"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Endpoint Manager Core' + (module ? ' - ' + module : '')"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ivanti'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-20)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti:core:mifs'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "actor.user.name",
+        "issue": "source value present but \"actor.user.name\" is empty in output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "device.hostname",
+        "issue": "source value present but \"device.hostname\" is empty in output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [
+      "actor.user.name",
+      "device.hostname"
+    ],
+    "emptyFields": [
+      "actor.user.name",
+      "device.hostname"
+    ],
+    "summary": "Deterministic live preview completed."
+  }
+}
