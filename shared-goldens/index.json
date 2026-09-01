@@ -14745,6 +14745,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_http::__optimization__",
+      "sourcetype": "ncsc_cloudflare_http",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:05:39.091Z",
+      "path": "shared-goldens/ncsc_cloudflare_http____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
