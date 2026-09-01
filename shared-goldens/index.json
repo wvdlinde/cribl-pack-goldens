@@ -15465,6 +15465,21 @@
         "score": 85,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_splunk_metrics_log::ocsf",
+      "sourcetype": "ivanti_splunk_metrics_log",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:56:36.360Z",
+      "path": "shared-goldens/ivanti_splunk_metrics_log__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
