@@ -1,0 +1,367 @@
+{
+  "key": "aemrequest::ocsf",
+  "sourcetype": "aemrequest",
+  "dest_format": "ocsf",
+  "score": 86,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:54:22.843Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?:\\[(?<__src_ip6>[0-9a-fA-F:]+)\\]|(?<src_ip>\\S+)) - (?<user>\\S+) (?:\\[(?<timestamp>[^\\]]+)\\] )?\"?(?:(?<method>[A-Z]+) (?<path>\\S+) )?(?<http_version>HTTP\\/[\\d.]+)\"? (?<status>\\d+) (?<bytes>\\d+) \"(?<referrer>[^\"]*)\" \"(?<user_agent>[^\"]*)\" (?<response_time_ms>\\d+)ms/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse AEM/Apache-style access log fields: source IP (v4 or bracketed v6), user, timestamp, HTTP method/path/version, status, bytes, referrer, user agent, and response time. Handles malformed lines missing timestamp/method/path."
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__src_ip6 ? __src_ip6 : src_ip"
+          }
+        ],
+        "remove": [
+          "__src_ip6"
+        ]
+      },
+      "description": "Normalize src_ip to a single field (merging IPv6 bracketed capture), and remove the scratch IPv6 field."
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes)"
+          },
+          {
+            "name": "response_time_ms",
+            "value": "Number(response_time_ms)"
+          },
+          {
+            "name": "action",
+            "value": "status >= 200 && status < 400 ? 'allowed' : (status == 401 || status == 403 ? 'denied' : (status == 404 ? 'not_found' : 'error'))"
+          },
+          {
+            "name": "severity",
+            "value": "status >= 500 ? 'high' : (status >= 400 ? 'medium' : 'low')"
+          }
+        ]
+      },
+      "description": "Derive protocol, action classification, and severity from HTTP status code."
+    },
+    {
+      "id": "eval",
+      "filter": "timestamp",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "strptime(timestamp, '%d/%b/%Y:%H:%M:%S %z')"
+          }
+        ]
+      },
+      "description": "Parse the Apache-style timestamp into an epoch time for _time."
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'HTTP Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round(Number(_time || 0) * 1000)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user && user != '-' ? user : ''"
+          },
+          {
+            "name": "http_request.url",
+            "value": "path || ''"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(method || '').toUpperCase()"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "user_agent && user_agent != '-' ? user_agent : ''"
+          },
+          {
+            "name": "http_response.code",
+            "value": "Number(status || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || 'HTTP').toLowerCase().indexOf('https') == 0 ? 'https' : 'http'"
+          },
+          {
+            "name": "activity_id",
+            "value": "(method || '').toUpperCase() == 'CONNECT' ? 1 : ((method || '').toUpperCase() == 'DELETE' ? 2 : ((method || '').toUpperCase() == 'GET' ? 3 : ((method || '').toUpperCase() == 'HEAD' ? 4 : ((method || '').toUpperCase() == 'OPTIONS' ? 5 : ((method || '').toUpperCase() == 'POST' ? 6 : ((method || '').toUpperCase() == 'PUT' ? 7 : ((method || '').toUpperCase() == 'TRACE' ? 8 : ((method || '').toUpperCase() == 'PATCH' ? 9 : 0))))))))"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200 + ((method || '').toUpperCase() == 'CONNECT' ? 1 : ((method || '').toUpperCase() == 'DELETE' ? 2 : ((method || '').toUpperCase() == 'GET' ? 3 : ((method || '').toUpperCase() == 'HEAD' ? 4 : ((method || '').toUpperCase() == 'OPTIONS' ? 5 : ((method || '').toUpperCase() == 'POST' ? 6 : ((method || '').toUpperCase() == 'PUT' ? 7 : ((method || '').toUpperCase() == 'TRACE' ? 8 : ((method || '').toUpperCase() == 'PATCH' ? 9 : 0)))))))))"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : ((severity || '').toLowerCase() == 'high' || (severity || '').toLowerCase() == 'error' ? 4 : ((severity || '').toLowerCase() == 'medium' || (severity || '').toLowerCase() == 'warning' ? 3 : (Number(status || 0) >= 500 ? 4 : (Number(status || 0) >= 400 ? 3 : 1))))"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Adobe Experience Manager'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Adobe'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-21)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aemrequest'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2024\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"4.3\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2001\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"db8\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1a2b\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.8\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
