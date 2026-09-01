@@ -1,0 +1,373 @@
+{
+  "key": "linux_secure::ocsf",
+  "sourcetype": "linux_secure",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:59.589Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>[\\w\\-\\.\\/]+)(?:\\[(?<pid>\\d+)\\])?:\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header (timestamp, host, process, pid, message)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.startsWith('Accepted') || message.startsWith('Failed'))",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<__auth_result>Accepted|Failed)\\s+(?<auth_method>\\S+)\\s+for\\s+(?<__invalid>invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[0-9a-fA-F:.]+)\\s+port\\s+(?<src_port>\\d+)\\s+(?<protocol>\\S+?)(?::\\s+(?<key_type>\\S+)\\s+(?<key_fingerprint>\\S+))?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse sshd Accepted/Failed authentication attempts"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Disconnected')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^Disconnected from (?:(?<__invalid>invalid user)\\s+)?(?<user>\\S+)\\s+(?<src_ip>[0-9a-fA-F:.]+)\\s+port\\s+(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse sshd disconnect events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "process === 'sudo' && message && message.indexOf('COMMAND=') > -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<user>\\S+)\\s*:\\s*TTY=(?<tty>\\S+)\\s*;\\s*PWD=(?<pwd>\\S+)\\s*;\\s*USER=(?<target_user>\\S+)\\s*;\\s*COMMAND=(?<command>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse sudo command invocation"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('pam_unix(') === 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^pam_unix\\((?<pam_service>[^:]+):session\\):\\s+session\\s+(?<session_action>opened|closed)\\s+for\\s+user\\s+(?<user>[^\\s]+?)(?:\\s+by\\s+(?<by_user>\\S*?)\\(uid=(?<uid>\\d+)\\))?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse pam_unix session open/close events"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "__auth_result === 'Accepted' ? 'success' : (__auth_result === 'Failed' ? 'failure' : (session_action === 'opened' ? 'success' : (command ? 'success' : (message && message.startsWith('Disconnected') ? 'blocked' : undefined))))"
+          },
+          {
+            "name": "event_type",
+            "value": "command ? 'privilege_escalation' : (session_action ? 'session_' + session_action : (__auth_result ? 'authentication' : (message && message.startsWith('Disconnected') ? 'disconnect' : 'other')))"
+          },
+          {
+            "name": "invalid_user",
+            "value": "__invalid ? 'true' : 'false'"
+          },
+          {
+            "name": "severity",
+            "value": "__auth_result === 'Failed' ? 'medium' : (__invalid ? 'medium' : 'informational')"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? String(protocol).toLowerCase() : (process === 'sshd' ? 'ssh' : undefined)"
+          },
+          {
+            "name": "transport",
+            "value": "process === 'sshd' ? 'tcp' : undefined"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          },
+          {
+            "name": "dst_port",
+            "value": "process === 'sshd' ? 22 : undefined"
+          },
+          {
+            "name": "app",
+            "value": "process"
+          },
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Secure'"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? Math.round(Date.parse(timestamp + ' ' + (new Date()).getUTCFullYear() + ' UTC')/1000) : _time"
+          }
+        ],
+        "remove": [
+          "__auth_result",
+          "__invalid"
+        ]
+      },
+      "description": "Normalize action, event_type, severity and vendor metadata"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'3002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'3'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Authentication'"
+          },
+          {
+            "name": "class_uid",
+            "value": "3002"
+          },
+          {
+            "name": "category_uid",
+            "value": "3"
+          },
+          {
+            "name": "activity_id",
+            "value": "session_action == 'closed' ? 2 : (session_action == 'opened' ? 1 : ((event_type || '') == 'logoff' || (action || '').toLowerCase() == 'disconnected' ? 2 : 1))"
+          },
+          {
+            "name": "type_uid",
+            "value": "session_action == 'closed' || (action || '').toLowerCase() == 'disconnected' ? 300202 : 300201"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : ((severity || '').toLowerCase() == 'high' ? 4 : ((severity || '').toLowerCase() == 'medium' ? 3 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' || invalid_user ? 3 : 1)))"
+          },
+          {
+            "name": "status_id",
+            "value": "(action || '').toLowerCase() == 'success' || (action || '').toLowerCase() == 'accepted' ? 1 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' || invalid_user ? 2 : 0)"
+          },
+          {
+            "name": "status",
+            "value": "(action || '').toLowerCase() == 'success' || (action || '').toLowerCase() == 'accepted' ? 'Success' : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' || invalid_user ? 'Failure' : 'Unknown')"
+          },
+          {
+            "name": "user.name",
+            "value": "user || target_user || invalid_user || ''"
+          },
+          {
+            "name": "user.uid",
+            "value": "String(uid || '')"
+          },
+          {
+            "name": "user.type",
+            "value": "invalid_user ? 'Unknown' : ((target_user || user) == 'root' ? 'Admin' : 'User')"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "by_user || user || ''"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "dst_host || host || ''"
+          },
+          {
+            "name": "auth_protocol",
+            "value": "auth_method || key_type || ''"
+          },
+          {
+            "name": "logon_type",
+            "value": "process == 'sudo' ? 'Interactive' : (src_ip ? 'Network' : 'Local')"
+          },
+          {
+            "name": "service.name",
+            "value": "process || pam_service || app || ''"
+          },
+          {
+            "name": "message",
+            "value": "message || ''"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "String(pid || '')"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'Linux Secure'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'Linux'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round(Number(_time || 0) * 1000)"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-25)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'linux_secure'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
