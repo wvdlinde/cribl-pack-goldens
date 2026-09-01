@@ -1055,14 +1055,14 @@
       "key": "bluecoat_proxysg_access_syslog::__extraction__",
       "sourcetype": "bluecoat_proxysg_access_syslog",
       "dest_format": "__extraction__",
-      "score": 90,
+      "score": 91,
       "part": "extraction",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T10:28:56.023Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T11:57:06.763Z",
       "path": "shared-goldens/bluecoat_proxysg_access_syslog____extraction__.json",
       "report": {
-        "score": 90,
+        "score": 91,
         "band": "good"
       }
     },
