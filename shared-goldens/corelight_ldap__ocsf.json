@@ -1,0 +1,390 @@
+{
+  "key": "corelight_ldap::ocsf",
+  "sourcetype": "corelight_ldap",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:55:45.556Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.indexOf('{') > 0 ? _raw.slice(_raw.indexOf('{')) : _raw"
+          }
+        ]
+      },
+      "description": "Strip RFC5424 syslog header to isolate JSON payload"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Parse Corelight/Zeek JSON log"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__e['id.orig_h'] || undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "__e['id.orig_p'] || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "__e['id.resp_h'] || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "__e['id.resp_p'] || undefined"
+          },
+          {
+            "name": "session_id",
+            "value": "uid || undefined"
+          },
+          {
+            "name": "log_time",
+            "value": "ts || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Corelight Zeek'"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ldap'"
+          }
+        ],
+        "remove": [
+          "id.orig_h",
+          "id.orig_p",
+          "id.resp_h",
+          "id.resp_p"
+        ]
+      },
+      "description": "Normalize Zeek dotted fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'corelight ldap'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "gfsrc_tmp_user",
+            "value": "user"
+          },
+          {
+            "name": "gfsrc_tmp_actor",
+            "value": "actor"
+          },
+          {
+            "name": "gfsrc_tmp_service",
+            "value": "service"
+          },
+          {
+            "name": "user",
+            "value": "(((gfsrc_tmp_user || src_user || account || src_username) != null && String(gfsrc_tmp_user || src_user || account || src_username) != 'undefined' && String(gfsrc_tmp_user || src_user || account || src_username) != 'null' && String(gfsrc_tmp_user || src_user || account || src_username) != '-' && String(gfsrc_tmp_user || src_user || account || src_username) != '') || ((user_uid || user_id) != null && String(user_uid || user_id) != 'undefined' && String(user_uid || user_id) != 'null' && String(user_uid || user_id) != '-' && String(user_uid || user_id) != '') || ((user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != null && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'undefined' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'null' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '-' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != null && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'undefined' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'null' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '-' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_host || host) != null && String(src_host || host) != 'undefined' && String(src_host || host) != 'null' && String(src_host || host) != '-' && String(src_host || host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_host || dest) != null && String(dest_host || dest) != 'undefined' && String(dest_host || dest) != 'null' && String(dest_host || dest) != '-' && String(dest_host || dest) != '')) ? {} : undefined"
+          },
+          {
+            "name": "service",
+            "value": "(((gfsrc_tmp_service || tcode) != null && String(gfsrc_tmp_service || tcode) != 'undefined' && String(gfsrc_tmp_service || tcode) != 'null' && String(gfsrc_tmp_service || tcode) != '-' && String(gfsrc_tmp_service || tcode) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "(((event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '') || (('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(3002) != null && String(3002) != 'undefined' && String(3002) != 'null' && String(3002) != '-' && String(3002) != '' ? Number(3002) : undefined"
+          },
+          {
+            "name": "category_uid",
+            "value": "(3) != null && String(3) != 'undefined' && String(3) != 'null' && String(3) != '-' && String(3) != '' ? Number(3) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) != null && String(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) != 'undefined' && String(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) != 'null' && String(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) != '-' && String(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) != '' ? Number(/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99)) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) != null && String(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) != 'undefined' && String(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) != 'null' && String(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) != '-' && String(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) != '' ? Number(300200 + (/logoff|logout|log.?out|sign.?out|disconnect/i.test(String(action)) ? 2 : /logon|login|sign.?in|authenticat|logged.?on|access.?granted/i.test(String(action)) ? 1 : (action == null || action === '' ? 0 : 99))) : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 Authentication"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity_id",
+            "value": "(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) != null && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) != 'undefined' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) != 'null' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) != '-' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) != '' ? Number(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 3 : 1) : undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) != null && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) != 'undefined' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) != 'null' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) != '-' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) != '' ? Number(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 2 : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 1 : 0)) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) != null && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) != 'undefined' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) != 'null' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) != '-' && String(outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) != '' ? (outcome == 'failure' || status == 'failure' || /fail|denied|invalid|error|locked/i.test(String(action)) ? 'Failure' : (outcome == 'success' || status == 'success' || /success|granted|accept|logon|login/i.test(String(action)) ? 'Success' : 'Unknown')) : undefined"
+          },
+          {
+            "name": "user.name",
+            "value": "(gfsrc_tmp_user || src_user || account || src_username) != null && String(gfsrc_tmp_user || src_user || account || src_username) != 'undefined' && String(gfsrc_tmp_user || src_user || account || src_username) != 'null' && String(gfsrc_tmp_user || src_user || account || src_username) != '-' && String(gfsrc_tmp_user || src_user || account || src_username) != '' ? (gfsrc_tmp_user || src_user || account || src_username) : undefined"
+          },
+          {
+            "name": "user.uid",
+            "value": "(user_uid || user_id) != null && String(user_uid || user_id) != 'undefined' && String(user_uid || user_id) != 'null' && String(user_uid || user_id) != '-' && String(user_uid || user_id) != '' ? (user_uid || user_id) : undefined"
+          },
+          {
+            "name": "user.type",
+            "value": "(user_type) != null && String(user_type) != 'undefined' && String(user_type) != 'null' && String(user_type) != '-' && String(user_type) != '' ? (user_type) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != null && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'undefined' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != 'null' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '-' && String(gfsrc_tmp_actor || src_user || gfsrc_tmp_user) != '' ? (gfsrc_tmp_actor || src_user || gfsrc_tmp_user) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.hostname",
+            "value": "(src_host || host) != null && String(src_host || host) != 'undefined' && String(src_host || host) != 'null' && String(src_host || host) != '-' && String(src_host || host) != '' ? (src_host || host) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "(dest_host || dest) != null && String(dest_host || dest) != 'undefined' && String(dest_host || dest) != 'null' && String(dest_host || dest) != '-' && String(dest_host || dest) != '' ? (dest_host || dest) : undefined"
+          },
+          {
+            "name": "auth_protocol",
+            "value": "(auth_protocol) != null && String(auth_protocol) != 'undefined' && String(auth_protocol) != 'null' && String(auth_protocol) != '-' && String(auth_protocol) != '' ? (auth_protocol) : undefined"
+          },
+          {
+            "name": "logon_type",
+            "value": "(logon_type) != null && String(logon_type) != 'undefined' && String(logon_type) != 'null' && String(logon_type) != '-' && String(logon_type) != '' ? (logon_type) : undefined"
+          },
+          {
+            "name": "service.name",
+            "value": "(gfsrc_tmp_service || tcode) != null && String(gfsrc_tmp_service || tcode) != 'undefined' && String(gfsrc_tmp_service || tcode) != 'null' && String(gfsrc_tmp_service || tcode) != '-' && String(gfsrc_tmp_service || tcode) != '' ? (gfsrc_tmp_service || tcode) : undefined"
+          },
+          {
+            "name": "is_mfa",
+            "value": "(mfa_used) != null && String(mfa_used) != 'undefined' && String(mfa_used) != 'null' && String(mfa_used) != '-' && String(mfa_used) != '' ? (mfa_used) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "message",
+            "value": "(text || message || msg) != null && String(text || message || msg) != 'undefined' && String(text || message || msg) != 'null' && String(text || message || msg) != '-' && String(text || message || msg) != '' ? (text || message || msg) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '' ? (event_uid) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '' ? (product || vendor_product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '' ? (vendor || vendor_name) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_ldap'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
