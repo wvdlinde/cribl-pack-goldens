@@ -15240,6 +15240,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aemcdn::ocsf",
+      "sourcetype": "aemcdn",
+      "dest_format": "ocsf",
+      "score": 92,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:55:06.003Z",
+      "path": "shared-goldens/aemcdn__ocsf.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
