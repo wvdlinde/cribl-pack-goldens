@@ -14940,6 +14940,21 @@
         "score": 89,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_vpc_v5::ocsf",
+      "sourcetype": "aws_vpc_v5",
+      "dest_format": "ocsf",
+      "score": 90,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:52:28.767Z",
+      "path": "shared-goldens/aws_vpc_v5__ocsf.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
