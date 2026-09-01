@@ -1,0 +1,301 @@
+{
+  "key": "vmware_esxlog_clusteragent::ocsf",
+  "sourcetype": "vmware_esxlog_clusteragent",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:57:44.304Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Clusteragent:\\s+\\[(?<thread_id>\\S+)\\s+(?<severity>\\w+)\\s+'(?<component>[^']+)'\\]\\s+(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base ESXi Clusteragent log line into timestamp, host, thread id, severity, component and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('vCenter')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/vCenter\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract vCenter source IP from configuration update messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('master')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/master(?: node)?\\s+(?<dst_ip>[0-9a-fA-F:.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract master node destination IP and port from heartbeat/SSL/reconnect messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('Authentication failure')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Authentication failure for user\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+):/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and source IP from authentication failure messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('authenticated successfully')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/User\\s+(?<user>\\S+)\\s+authenticated successfully/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user from successful authentication messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.includes('Authentication failure') ? 'blocked' : message.includes('authenticated successfully') ? 'allowed' : message.includes('Network partition') ? 'isolated' : message.includes('elected') || message.includes('Master election') ? 'elected' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.includes('SSL') ? 'ssl' : dst_port ? 'tcp' : null"
+          }
+        ]
+      },
+      "description": "Normalize action classification and protocol based on message content and severity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Number(new Date(_time || timestamp).getTime())"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || '').toUpperCase()"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'info' ? 1 : severity == 'warning' ? 3 : severity == 'error' ? 4 : 0"
+          },
+          {
+            "name": "activity_id",
+            "value": "action && action.toLowerCase().indexOf('fail') >= 0 ? 2 : (action && action.toLowerCase().indexOf('success') >= 0 ? 1 : 0)"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'ESXi ClusterAgent (' + (component || 'ClusterAgent') + ')'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'VMware'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.0.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:clusterAgent'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
