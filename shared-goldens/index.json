@@ -13875,6 +13875,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "arbor_pravailaps::cim#network::__mapping__",
+      "sourcetype": "arbor_pravailaps",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:54.895Z",
+      "path": "shared-goldens/arbor_pravailaps__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
