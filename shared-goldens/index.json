@@ -13740,6 +13740,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable_sc_vuln::cim#network::__mapping__",
+      "sourcetype": "tenable_sc_vuln",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:16.489Z",
+      "path": "shared-goldens/tenable_sc_vuln__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
