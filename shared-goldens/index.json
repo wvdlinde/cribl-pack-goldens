@@ -5075,14 +5075,14 @@
       "key": "fortinet_fortigate::ocsf",
       "sourcetype": "fortinet_fortigate",
       "dest_format": "ocsf",
-      "score": 88,
+      "score": 100,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-10T12:54:24.104Z",
+      "updated_at": "2026-09-01T07:36:17.440Z",
       "path": "shared-goldens/fortinet_fortigate__ocsf.json",
       "report": {
-        "score": 88,
+        "score": 100,
         "band": "good"
       }
     },
