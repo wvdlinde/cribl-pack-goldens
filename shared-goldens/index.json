@@ -13725,6 +13725,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_threatevents_ens_ids::cim#network::__mapping__",
+      "sourcetype": "mcafee_epo_threatevents_ens_ids",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:12.245Z",
+      "path": "shared-goldens/mcafee_epo_threatevents_ens_ids__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
