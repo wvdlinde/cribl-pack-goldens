@@ -14730,6 +14730,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_cloudflare_http::cim#network::__mapping__",
+      "sourcetype": "ncsc_cloudflare_http",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:05:25.499Z",
+      "path": "shared-goldens/ncsc_cloudflare_http__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
