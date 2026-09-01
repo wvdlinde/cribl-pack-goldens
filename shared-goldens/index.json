@@ -14325,6 +14325,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_solidcoreevents::cim#network::__mapping__",
+      "sourcetype": "mcafee_epo_solidcoreevents",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:04.154Z",
+      "path": "shared-goldens/mcafee_epo_solidcoreevents__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
