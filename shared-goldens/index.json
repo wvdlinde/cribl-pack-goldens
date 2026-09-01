@@ -9785,15 +9785,15 @@
       "key": "palo_alto_traffic::ocsf",
       "sourcetype": "palo_alto_traffic",
       "dest_format": "ocsf",
-      "score": 82,
+      "score": 91,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-10T13:28:13.315Z",
+      "updated_at": "2026-09-01T07:36:26.050Z",
       "path": "shared-goldens/palo_alto_traffic__ocsf.json",
       "report": {
-        "score": 82,
-        "band": "warn"
+        "score": 91,
+        "band": "good"
       }
     },
     {
