@@ -14460,6 +14460,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "symantec_email_cloud_antispam::cim#network::__mapping__",
+      "sourcetype": "symantec_email_cloud_antispam",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:46.274Z",
+      "path": "shared-goldens/symantec_email_cloud_antispam__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
