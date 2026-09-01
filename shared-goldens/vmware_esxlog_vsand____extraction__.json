@@ -1,0 +1,104 @@
+{
+  "key": "vmware_esxlog_vsand::__extraction__",
+  "sourcetype": "vmware_esxlog_vsand",
+  "dest_format": "__extraction__",
+  "score": 91,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T10:39:58.308Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse vSAN daemon syslog header: timestamp, host, process, pid, subsystem, severity, message",
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<__ts>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[a-zA-Z0-9_\\-]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<subsystem>[^\\]]+)\\]\\s+(?<log_level>[A-Z]+):\\s+(?<message>.*)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "description": "Extract IPv4/IPv6 address and device/disk identifiers from the message body",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:::)?[0-9a-fA-F]{0,4})/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(?:disk|device|volume)\\s/i.test(message)",
+      "disabled": false,
+      "description": "Extract storage device / disk / object identifiers",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:device|disk|volume)\\s+(?<device>(?:naa\\.[0-9a-zA-Z]+|mpx\\.[^\\s,]+|vsan[^\\s,]*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))/i"
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize timestamp, severity, action, and derive event classification",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? Date.parse(__ts)/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "severity",
+            "value": "log_level=='CRITICAL' ? 'critical' : (log_level=='ERROR' ? 'high' : (log_level=='WARNING' ? 'medium' : 'low'))"
+          },
+          {
+            "name": "protocol",
+            "value": "'vsan'"
+          },
+          {
+            "name": "action",
+            "value": "message && /access denied|denied|unauthorized|quarantin|rate limiting/i.test(message) ? 'blocked' : (message && /fail|corrupt|absent|unreachable|unresponsive/i.test(message) ? 'failure' : 'success')"
+          },
+          {
+            "name": "event_type",
+            "value": "message && /Unauthorized|Suspicious|rogue actor/i.test(message) ? 'security' : (log_level=='INFO' ? 'operational' : 'health')"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi vSAN'"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':')>-1 ? 6 : 4) : null"
+          }
+        ],
+        "remove": [
+          "__ts"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "unstructured",
+      "keys": []
+    }
+  },
+  "report": null
+}
