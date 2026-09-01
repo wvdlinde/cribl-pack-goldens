@@ -14640,6 +14640,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "vcenter_syslog::cim#network::__mapping__",
+      "sourcetype": "vcenter_syslog",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T09:58:57.134Z",
+      "path": "shared-goldens/vcenter_syslog__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
