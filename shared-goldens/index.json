@@ -15105,6 +15105,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_weird::ocsf",
+      "sourcetype": "corelight_weird",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:54:19.079Z",
+      "path": "shared-goldens/corelight_weird__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
