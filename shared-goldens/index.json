@@ -14760,6 +14760,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ldap_search::cim#email::__mapping__",
+      "sourcetype": "corelight_ldap_search",
+      "dest_format": "cim#email::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:12:49.967Z",
+      "path": "shared-goldens/corelight_ldap_search__cim#email____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
