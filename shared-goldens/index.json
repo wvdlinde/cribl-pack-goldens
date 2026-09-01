@@ -15975,6 +15975,21 @@
         "score": 82,
         "band": "warn"
       }
+    },
+    {
+      "key": "aws_elb_accesslog::ocsf",
+      "sourcetype": "aws_elb_accesslog",
+      "dest_format": "ocsf",
+      "score": 89,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:46.189Z",
+      "path": "shared-goldens/aws_elb_accesslog__ocsf.json",
+      "report": {
+        "score": 89,
+        "band": "good"
+      }
     }
   ]
 }
