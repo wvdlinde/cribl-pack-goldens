@@ -13310,14 +13310,14 @@
       "key": "windows_powershell::ocsf",
       "sourcetype": "windows_powershell",
       "dest_format": "ocsf",
-      "score": 87,
+      "score": 100,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-10T12:55:26.383Z",
+      "updated_at": "2026-09-01T07:36:21.826Z",
       "path": "shared-goldens/windows_powershell__ocsf.json",
       "report": {
-        "score": 87,
+        "score": 100,
         "band": "good"
       }
     },
