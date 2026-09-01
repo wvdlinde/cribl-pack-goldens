@@ -14880,6 +14880,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_mi::cim#network::__mapping__",
+      "sourcetype": "ivanti_mi",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T11:35:08.282Z",
+      "path": "shared-goldens/ivanti_mi__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
