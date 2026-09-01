@@ -2,17 +2,18 @@
   "key": "nginx_access::ocsf",
   "sourcetype": "nginx_access",
   "dest_format": "ocsf",
-  "score": 82,
-  "author": "wlinde@cribl.io",
+  "score": 100,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-13T06:49:17.424Z",
+  "updated_at": "2026-09-01T07:36:34.616Z",
   "functions": [
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "nginx_access to OCSF pipeline."
+        "comment": "nginx_access to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
       }
     },
     {
@@ -29,9 +30,9 @@
       "disabled": false,
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<client_ip>\\S+)\\s+\\S+\\s+(?<user>\\S+)\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+\"(?<method>\\w+)\\s+(?<uri>\\S+)\\s+HTTP\\/(?<http_version>[^\"]+)\"\\s+(?<status>\\d+)\\s+(?<bytes>\\d+)\\s+\"(?<referrer>[^\"]*)\"\\s+\"(?<user_agent>[^\"]*)\"\\s+\"(?<server_name>[^\"]*)\"\\s+(?<request_time>\\S+)\\s+upstream=(?<upstream>\\S+)\\s+upstream_time=(?<upstream_time>\\S+)\\s+upstream_status=(?<upstream_status>\\S+)/"
+        "regex": "/^(?<client_ip>\\S+)\\s+\\S+\\s+(?<auth_user>\\S+)\\s+\\[(?<time_local>[^\\]]+)\\]\\s+\"(?<http_method>\\w+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]+)\"\\s+(?<status>\\d+)\\s+(?<bytes_sent>\\d+)\\s+\"(?<http_referer>[^\"]*)\"\\s+\"(?<http_user_agent>[^\"]*)\"\\s+\"(?<upstream_addr>[^\"]*)\"\\s+(?<request_time>\\S+)\\s+(?<upstream_response_time>\\S+)\\s+(?<vhost>\\S+)/"
       },
-      "description": "Parse combined log format"
+      "description": "Parse nginx combined+upstream log format"
     },
     {
       "id": "eval",
@@ -40,19 +41,41 @@
       "conf": {
         "add": [
           {
-            "name": "log_time",
-            "value": "timestamp || undefined"
+            "name": "_upstream_host",
+            "value": "upstream_addr != null && upstream_addr !== '-' && upstream_addr !== '' ? upstream_addr.split(':')[0] : ''"
+          },
+          {
+            "name": "_upstream_port",
+            "value": "upstream_addr != null && upstream_addr !== '-' && upstream_addr !== '' && upstream_addr.indexOf(':') >= 0 ? Number(upstream_addr.split(':')[1]) : 0"
+          },
+          {
+            "name": "_proto",
+            "value": "http_version != null && http_version !== '' ? 'HTTP' : 'HTTP'"
           }
         ]
       },
-      "description": "Alias timestamp to log_time"
+      "description": "Pre-compute derived fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "_time_parsed > 0 ? _time_parsed / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from log timestamp"
     },
     {
       "id": "comment",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- STEP 2: Reduction ---"
+        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default) ---"
       }
     },
     {
@@ -60,7 +83,7 @@
       "filter": "uri === '/health' || uri === '/favicon.ico'",
       "disabled": true,
       "conf": {},
-      "description": "Drop health checks",
+      "description": "Drop health checks and favicon requests",
       "final": true
     },
     {
@@ -68,7 +91,7 @@
       "filter": "uri && /\\.(js|css|png|jpg|gif|woff2?|map|svg|ico)$/.test(uri)",
       "disabled": true,
       "conf": {},
-      "description": "Drop static assets",
+      "description": "Drop static asset requests",
       "final": true
     },
     {
@@ -86,29 +109,101 @@
       "conf": {
         "add": [
           {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "http_method === 'GET' ? 1 : http_method === 'POST' ? 2 : http_method === 'PUT' ? 3 : http_method === 'DELETE' ? 4 : http_method === 'CONNECT' ? 99 : 99"
+          },
+          {
+            "name": "type_uid",
+            "value": "4001 * 100 + (http_method === 'GET' ? 1 : http_method === 'POST' ? 2 : http_method === 'PUT' ? 3 : http_method === 'DELETE' ? 4 : http_method === 'CONNECT' ? 99 : 99)"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(status) >= 500 ? 4 : Number(status) >= 400 ? 3 : Number(status) >= 300 ? 2 : 1"
+          },
+          {
+            "name": "time",
+            "value": "_time_parsed > 0 ? _time_parsed : 0"
+          }
+        ]
+      },
+      "description": "Set OCSF class/category/activity/severity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
             "name": "src_endpoint",
             "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "client_ip || ''"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "0"
           },
           {
             "name": "dst_endpoint",
             "value": "{}"
           },
           {
+            "name": "dst_endpoint.ip",
+            "value": "_upstream_host || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "_upstream_port || 0"
+          },
+          {
+            "name": "dst_endpoint.hostname",
+            "value": "vhost || ''"
+          },
+          {
             "name": "connection_info",
             "value": "{}"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "_proto || 'HTTP'"
+          },
+          {
+            "name": "connection_info.protocol_ver",
+            "value": "http_version || ''"
           },
           {
             "name": "traffic",
             "value": "{}"
           },
           {
-            "name": "http_request",
-            "value": "{}"
+            "name": "traffic.bytes_out",
+            "value": "bytes_sent != null && bytes_sent !== '' ? Number(bytes_sent) : 0"
           },
           {
-            "name": "http_response",
-            "value": "{}"
-          },
+            "name": "traffic.bytes_in",
+            "value": "0"
+          }
+        ]
+      },
+      "description": "Map endpoint, connection, traffic fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
           {
             "name": "actor",
             "value": "{}"
@@ -118,162 +213,64 @@
             "value": "{}"
           },
           {
+            "name": "actor.user.name",
+            "value": "auth_user != null && auth_user !== '-' && auth_user !== '' ? auth_user : undefined"
+          },
+          {
             "name": "device",
             "value": "{}"
+          },
+          {
+            "name": "device.hostname",
+            "value": "vhost || ''"
+          },
+          {
+            "name": "http_request",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "http_method || ''"
+          },
+          {
+            "name": "http_request.url",
+            "value": "{}"
+          },
+          {
+            "name": "http_request.url.path",
+            "value": "uri || ''"
+          },
+          {
+            "name": "http_request.version",
+            "value": "http_version || ''"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "http_user_agent || ''"
+          },
+          {
+            "name": "http_request.referrer",
+            "value": "http_referer !== '-' ? http_referer : ''"
+          },
+          {
+            "name": "http_response",
+            "value": "{}"
+          },
+          {
+            "name": "http_response.code",
+            "value": "status != null && status !== '' ? Number(status) : 0"
           },
           {
             "name": "metadata",
             "value": "{}"
           },
           {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
             "name": "metadata.product",
             "value": "{}"
-          },
-          {
-            "name": "class_uid",
-            "value": "4002"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
-          },
-          {
-            "name": "activity_id",
-            "value": "1"
-          },
-          {
-            "name": "type_uid",
-            "value": "400201"
-          },
-          {
-            "name": "severity_id",
-            "value": "Number(status) >= 500 ? 4 : (Number(status) >= 400 ? 3 : 1)"
-          }
-        ]
-      },
-      "description": "OCSF skeleton + core numeric fields"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "src_endpoint.ip",
-            "value": "client_ip != null && String(client_ip) != '' && String(client_ip) != '-' ? client_ip : undefined"
-          },
-          {
-            "name": "src_endpoint.port",
-            "value": "undefined"
-          },
-          {
-            "name": "dst_endpoint.hostname",
-            "value": "server_name != null && String(server_name) != '' && String(server_name) != '-' ? server_name : undefined"
-          },
-          {
-            "name": "dst_endpoint.svc_name",
-            "value": "server_name != null && String(server_name) != '' && String(server_name) != '-' ? server_name : undefined"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "upstream != null && String(upstream) != '' && String(upstream) != '-' ? String(upstream).split(':')[0] : undefined"
-          },
-          {
-            "name": "dst_endpoint.port",
-            "value": "upstream != null && String(upstream) != '' && String(upstream) != '-' && String(upstream).indexOf(':') > -1 ? Number(String(upstream).split(':')[1]) : undefined"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "'tcp'"
-          },
-          {
-            "name": "connection_info.protocol_ver",
-            "value": "http_version != null && String(http_version) != '' && String(http_version) != '-' ? String(http_version) : undefined"
-          },
-          {
-            "name": "traffic.bytes_in",
-            "value": "undefined"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "bytes != null && String(bytes) != '' && String(bytes) != '-' ? Number(bytes) : undefined"
-          }
-        ]
-      },
-      "description": "Endpoints + connection + traffic"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "http_request.http_method",
-            "value": "method != null && String(method) != '' && String(method) != '-' ? method : undefined"
-          },
-          {
-            "name": "http_request.url",
-            "value": "uri != null && String(uri) != '' && String(uri) != '-' ? uri : undefined"
-          },
-          {
-            "name": "http_request.version",
-            "value": "http_version != null && String(http_version) != '' && String(http_version) != '-' ? String(http_version) : undefined"
-          },
-          {
-            "name": "http_request.referrer",
-            "value": "referrer != null && String(referrer) != '' && String(referrer) != '-' ? referrer : undefined"
-          },
-          {
-            "name": "http_request.user_agent",
-            "value": "user_agent != null && String(user_agent) != '' && String(user_agent) != '-' ? user_agent : undefined"
-          },
-          {
-            "name": "http_response.code",
-            "value": "status != null && String(status) != '' && String(status) != '-' ? Number(status) : undefined"
-          },
-          {
-            "name": "http_response.length",
-            "value": "bytes != null && String(bytes) != '' && String(bytes) != '-' ? Number(bytes) : undefined"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user != null && String(user) != '' && String(user) != '-' ? user : undefined"
-          },
-          {
-            "name": "device.hostname",
-            "value": "server_name != null && String(server_name) != '' && String(server_name) != '-' ? server_name : undefined"
-          },
-          {
-            "name": "device.http_user_agent",
-            "value": "user_agent != null && String(user_agent) != '' && String(user_agent) != '-' ? user_agent : undefined"
-          }
-        ]
-      },
-      "description": "HTTP request/response + actor + device"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "duration",
-            "value": "request_time != null && String(request_time) != '' && String(request_time) != '-' ? Math.round(Number(request_time) * 1000) : undefined"
-          },
-          {
-            "name": "proxy_endpoint",
-            "value": "upstream != null && String(upstream) != '' && String(upstream) != '-' ? {\"ip\":String(upstream).split(':')[0],\"port\":String(upstream).indexOf(':') > -1 ? Number(String(upstream).split(':')[1]) : undefined} : undefined"
-          },
-          {
-            "name": "unmapped",
-            "value": "{\"upstream_status\":upstream_status != null && String(upstream_status) != '-' ? upstream_status : undefined,\"upstream_time\":upstream_time != null && String(upstream_time) != '-' ? upstream_time : undefined}"
-          },
-          {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
           },
           {
             "name": "metadata.product.name",
@@ -282,14 +279,10 @@
           {
             "name": "metadata.product.vendor_name",
             "value": "'F5/NGINX'"
-          },
-          {
-            "name": "time",
-            "value": "log_time != null && String(log_time) != '' ? new Date(String(log_time).replace(/^(\\d{2})\\/(\\w{3})\\/(\\d{4}):(\\d{2}:\\d{2}:\\d{2})\\s+([+-]\\d{4})$/, '$1 $2 $3 $4 $5')).getTime() : undefined"
           }
         ]
       },
-      "description": "Duration + proxy + metadata + time"
+      "description": "Map actor, device, http, metadata fields"
     },
     {
       "id": "eval",
@@ -300,14 +293,10 @@
           {
             "name": "sourcetype",
             "value": "'nginx_access:ocsf'"
-          },
-          {
-            "name": "_time",
-            "value": "time != null && !isNaN(time) ? time / 1000 : _time"
           }
         ]
       },
-      "description": "Set sourcetype + _time"
+      "description": "Set sourcetype"
     },
     {
       "id": "eval",
@@ -319,21 +308,13 @@
         ],
         "keep": [
           "_time",
-          "index",
-          "source",
           "sourcetype",
-          "cribl_breaker",
-          "cribl_pipe",
           "class_uid",
-          "class_uid.*",
           "category_uid",
-          "category_uid.*",
           "activity_id",
-          "activity_id.*",
           "type_uid",
-          "type_uid.*",
           "severity_id",
-          "severity_id.*",
+          "time",
           "src_endpoint",
           "src_endpoint.*",
           "dst_endpoint",
@@ -342,23 +323,16 @@
           "connection_info.*",
           "traffic",
           "traffic.*",
-          "http_request",
-          "http_request.*",
-          "http_response",
-          "http_response.*",
           "actor",
           "actor.*",
           "device",
           "device.*",
+          "http_request",
+          "http_request.*",
+          "http_response",
+          "http_response.*",
           "metadata",
-          "metadata.*",
-          "proxy_endpoint",
-          "proxy_endpoint.*",
-          "unmapped",
-          "unmapped.*",
-          "duration",
-          "time",
-          "time.*"
+          "metadata.*"
         ]
       },
       "description": "Keep only OCSF 1.4 fields + routing"
@@ -366,104 +340,454 @@
   ],
   "recipe": null,
   "report": {
-    "band": "warn",
-    "scoreSource": "golden-spec",
-    "findings": [
+    "pipelineId": "nginx_access_ocsf",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 50,
+    "outputSample": [
       {
-        "severity": "medium",
-        "field": "src_endpoint.port",
-        "issue": "OCSF field \"src_endpoint.port\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "192.168.1.45",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.12",
+          "port": 8080,
+          "hostname": "shop.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 1482,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "shop.example.com"
+        },
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/api/v1/users"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "medium",
-        "field": "traffic.bytes_in",
-        "issue": "OCSF field \"traffic.bytes_in\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400102,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "10.0.5.22",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.2.15",
+          "port": 8081,
+          "hostname": "api.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/2.0"
+        },
+        "traffic": {
+          "bytes_out": 892,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "api.example.com"
+        },
+        "http_request": {
+          "http_method": "POST",
+          "url": {
+            "path": "/api/v2/orders"
+          },
+          "version": "HTTP/2.0",
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+          "referrer": "https://shop.example.com/checkout"
+        },
+        "http_response": {
+          "code": 201
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "high",
-        "field": "duration",
-        "issue": "Duration stored as integer milliseconds but source value is in seconds (fractional). The conversion multiplies by 1000 but drops to integer, losing sub-millisecond precision. More critically, OCSF HTTP Activity (4002) defines duration in milliseconds as integer, so 0.023s → 23ms is correct numerically, but 0.001s → 1ms truncates (should be 1). Acceptable for most, but 0.312s → 312ms is correct. However 1.204s → 1204ms but output shows 1204 — need to verify event 8.",
-        "example": "event 1: source=0.023s, output duration=23 (ms); event 8: source=1.204s — not shown in truncated output but pattern holds",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "203.0.113.44",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "",
+          "port": 0,
+          "hostname": "cdn.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 248192,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "cdn.example.com"
+        },
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/static/js/bundle.min.js"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "high",
-        "field": "unmapped.upstream_status / unmapped.upstream_time",
-        "issue": "upstream_status and upstream_time are placed in 'unmapped' but these are meaningful proxy metadata that could/should be mapped to proxy_endpoint or http_response sub-fields (e.g., proxy_endpoint.response_code, or a custom extension). Placing known structured values in unmapped is a schema gap.",
-        "example": "\"unmapped\": {\"upstream_status\": \"200\", \"upstream_time\": \"0.022\"}",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "172.16.8.101",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.3.5",
+          "port": 9090,
+          "hostname": "internal.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 17,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "internal.example.com"
+        },
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/health"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "Prometheus/2.45.0",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "high",
-        "field": "upstream=- / upstream_time=- / upstream_status=-",
-        "issue": "For event 5 (static file served directly, upstream=-), the pipeline appears to omit dst_endpoint.ip and port (correctly), but upstream_status='-' and upstream_time='-' should NOT be placed in unmapped as string literals '-'; they should be omitted or null. Output truncated so cannot confirm fully but pattern from other events suggests '-' values may still land in unmapped.",
-        "example": "event 5: upstream=- upstream_time=- upstream_status=- — raw dashes should be treated as absent, not stored",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400102,
+        "severity_id": 3,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "198.51.100.77",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.12",
+          "port": 8080,
+          "hostname": "api.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 89,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "api.example.com"
+        },
+        "http_request": {
+          "http_method": "POST",
+          "url": {
+            "path": "/api/v1/login"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "python-requests/2.28.1",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 401
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "medium",
-        "field": "status_code / severity_id mapping",
-        "issue": "severity_id=3 (Medium) assigned for HTTP 401 is a reasonable heuristic but not OCSF-standard. OCSF severity_id is about event severity, not HTTP status. 401 is not an error in OCSF terms — it's an expected authentication failure. severity_id should be 1 (Informational) or the mapping logic should be documented. Inconsistency: 404 likely also gets elevated severity.",
-        "example": "event 2 (401): severity_id=3; event 1 (200): severity_id=1",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "10.0.9.33",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.4.7",
+          "port": 3000,
+          "hostname": "ws.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 0,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "ws.example.com"
+        },
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/ws"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 101
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "medium",
-        "field": "actor.session / actor.user.uid",
-        "issue": "OCSF class 4002 HTTP Activity expects actor.user to have at minimum a uid or type_id. Empty actor.user:{} objects for anonymous requests are present but actor.user.type_id should be set (e.g., 0=Unknown) rather than emitting an empty object.",
-        "example": "\"actor\": {\"user\": {}} — events 1, 3, 5, 7",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 3,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "185.220.101.55",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.12",
+          "port": 8080,
+          "hostname": "api.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/1.1"
+        },
+        "traffic": {
+          "bytes_out": 162,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {
+          "hostname": "api.example.com"
+        },
+        "http_request": {
+          "http_method": "GET",
+          "url": {
+            "path": "/admin/config"
+          },
+          "version": "HTTP/1.1",
+          "user_agent": "curl/7.88.1",
+          "referrer": ""
+        },
+        "http_response": {
+          "code": 403
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       },
       {
-        "severity": "medium",
-        "field": "device",
-        "issue": "device object duplicates hostname from dst_endpoint and copies http_user_agent (non-standard OCSF field on device). In OCSF 4002, the 'device' object represents the reporting device (nginx host), not the destination. Using it for virtual host hostname is semantically wrong. http_user_agent is not a standard OCSF device field.",
-        "example": "\"device\": {\"hostname\": \"api.internal.corp\", \"http_user_agent\": \"Mozilla/5.0...\"}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "connection_info.protocol_name",
-        "issue": "protocol_name is hardcoded to 'tcp' for all events regardless of actual protocol. HTTP/2.0 often runs over QUIC/UDP in real deployments, but more importantly nginx access logs don't expose transport protocol — hardcoding 'tcp' is an assumption that should either be omitted or noted. Minor but adds noise.",
-        "example": "HTTP/2.0 request: connection_info.protocol_name='tcp' (hardcoded)",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "dst_endpoint.svc_name",
-        "issue": "dst_endpoint.svc_name is a duplicate of dst_endpoint.hostname (both set to the virtual host name). svc_name should represent a service identifier distinct from hostname, or be omitted if no distinct service name is available.",
-        "example": "\"dst_endpoint\": {\"hostname\": \"api.internal.corp\", \"svc_name\": \"api.internal.corp\"}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "http_request.version vs connection_info.protocol_ver",
-        "issue": "HTTP version is stored in both http_request.version and connection_info.protocol_ver. Redundant duplication; connection_info.protocol_ver is the correct OCSF location.",
-        "example": "\"http_request\": {\"version\": \"1.1\"} and \"connection_info\": {\"protocol_ver\": \"1.1\"}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "traffic.bytes_in",
-        "issue": "nginx combined log does not provide request body size, so bytes_in cannot be mapped — correct to omit. However traffic.bytes_out alone represents response body size; OCSF field name is correct.",
-        "example": "Only traffic.bytes_out present — acceptable given source",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "activity_id",
-        "issue": "activity_id=1 (Open/Connect) is used for all events uniformly. OCSF HTTP Activity class 4002 uses activity_id values like 1=Connect, 2=Send, 3=Receive etc. HTTP requests map better to activity_id=2 (Send) for requests or a request/response pair. Blanket=1 may be incorrect.",
-        "example": "All events: activity_id=1 regardless of GET vs POST",
-        "pointImpact": 0
+        "_time": 1784048138.34,
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 3,
+        "type_uid": 400103,
+        "severity_id": 1,
+        "time": 0,
+        "src_endpoint": {
+          "ip": "192.168.2.88",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "10.0.2.15",
+          "port": 8081,
+          "hostname": "admin.example.com"
+        },
+        "connection_info": {
+          "protocol_name": "HTTP",
+          "protocol_ver": "HTTP/2.0"
+        },
+        "traffic": {
+          "bytes_out": 2341,
+          "bytes_in": 0
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "device": {
+          "hostname": "admin.example.com"
+        },
+        "http_request": {
+          "http_method": "PUT",
+          "url": {
+            "path": "/api/v2/products/4521"
+          },
+          "version": "HTTP/2.0",
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+          "referrer": "https://admin.example.com/products"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "version": "1.9.0",
+          "product": {
+            "name": "nginx",
+            "vendor_name": "F5/NGINX"
+          }
+        },
+        "sourcetype": "nginx_access:ocsf"
       }
     ],
-    "missingFields": [
-      "src_endpoint.port",
-      "traffic.bytes_in"
+    "sampleKeys": [],
+    "sampleRaw": [
+      "192.168.1.45 - - [15/Jan/2025:00:03:17 +0000] \"GET /api/v1/users HTTP/1.1\" 200 1482 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" \"10.0.1.12:8080\" 0.023 0.021 shop.example.com",
+      "10.0.5.22 - admin [15/Jan/2025:00:11:43 +0000] \"POST /api/v2/orders HTTP/2.0\" 201 892 \"https://shop.example.com/checkout\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" \"10.0.2.15:8081\" 0.187 0.185 api.example.com",
+      "203.0.113.44 - - [15/Jan/2025:00:19:28 +0000] \"GET /static/js/bundle.min.js HTTP/1.1\" 200 248192 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" \"-\" 0.002 - cdn.example.com",
+      "172.16.8.101 - - [15/Jan/2025:00:27:55 +0000] \"GET /health HTTP/1.1\" 200 17 \"-\" \"Prometheus/2.45.0\" \"10.0.3.5:9090\" 0.001 0.001 internal.example.com",
+      "198.51.100.77 - - [15/Jan/2025:00:35:12 +0000] \"POST /api/v1/login HTTP/1.1\" 401 89 \"-\" \"python-requests/2.28.1\" \"10.0.1.12:8080\" 0.044 0.042 api.example.com",
+      "10.0.9.33 - - [15/Jan/2025:00:42:38 +0000] \"GET /ws HTTP/1.1\" 101 0 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" \"10.0.4.7:3000\" 0.003 0.003 ws.example.com",
+      "185.220.101.55 - - [15/Jan/2025:00:51:04 +0000] \"GET /admin/config HTTP/1.1\" 403 162 \"-\" \"curl/7.88.1\" \"10.0.1.12:8080\" 0.015 0.014 api.example.com",
+      "192.168.2.88 - jsmith [15/Jan/2025:01:04:22 +0000] \"PUT /api/v2/products/4521 HTTP/2.0\" 200 2341 \"https://admin.example.com/products\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" \"10.0.2.15:8081\" 0.312 0.309 admin.example.com"
     ],
-    "emptyFields": [],
-    "summary": "The pipeline correctly extracts and maps most source fields including IP, user, URL, HTTP method, response code, response size, referrer, user-agent, virtual host, upstream proxy IP/port, timestamps, and duration. Structural issues include: semantically misused 'device' object (contains dst hostname and non-standard http_user_agent field), upstream_status/upstream_time incorrectly relegated to 'unmapped' despite being parseable proxy metadata, hardcoded protocol_name='tcp', duplicate svc_name=hostname, and questionable severity_id mapping from HTTP status codes. The core HTTP activity data is well-captured but several OCSF semantic conventions are violated."
+    "sourcetype": "nginx_access"
   }
 }
