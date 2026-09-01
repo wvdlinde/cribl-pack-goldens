@@ -14505,6 +14505,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_configstorebackup::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_configstorebackup",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:58.871Z",
+      "path": "shared-goldens/vmware_esxlog_configstorebackup__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
