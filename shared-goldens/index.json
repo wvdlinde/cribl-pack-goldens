@@ -15780,6 +15780,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ios::ocsf",
+      "sourcetype": "cisco_ios",
+      "dest_format": "ocsf",
+      "score": 91,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:58:23.140Z",
+      "path": "shared-goldens/cisco_ios__ocsf.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
