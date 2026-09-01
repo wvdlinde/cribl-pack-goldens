@@ -15525,6 +15525,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "trendmicro_interscan::ocsf",
+      "sourcetype": "trendmicro_interscan",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:56:58.623Z",
+      "path": "shared-goldens/trendmicro_interscan__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
