@@ -1,0 +1,277 @@
+{
+  "key": "ivanti_https_access::ocsf",
+  "sourcetype": "ivanti_https_access",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:59:10.900Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+) - (?<user>\\S+) \\[(?<timestamp>[^\\]]+)\\] \"(?<http_method>\\S+) (?<uri>\\S+) (?<protocol>[^\"]+)\" (?<status>\\d+) (?<bytes>\\d+) \"(?<referrer>[^\"]*)\" \"(?<user_agent>[^\"]*)\" sid=(?<sid>\\S+) realm=\"(?<realm>[^\"]*)\" role=\"(?<role>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Ivanti/Pulse Secure HTTPS access log (Apache combined format with sid/realm/role fields)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user=='-' ? 'anonymous' : user"
+          },
+          {
+            "name": "sid",
+            "value": "sid=='-' ? null : sid"
+          },
+          {
+            "name": "action",
+            "value": "Number(status)<400 ? 'allowed' : (Number(status)==401||Number(status)==403) ? 'denied' : 'error'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status)>=500 ? 'high' : (Number(status)>=400 ? 'medium' : 'low')"
+          },
+          {
+            "name": "protocol_name",
+            "value": "'https'"
+          }
+        ]
+      },
+      "description": "Normalize user/sid placeholders and classify action/severity from HTTP status code"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'HTTP Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(http_method || '').toUpperCase() == 'GET' ? 3 : ((http_method || '').toUpperCase() == 'POST' ? 6 : ((http_method || '').toUpperCase() == 'PUT' ? 7 : ((http_method || '').toUpperCase() == 'DELETE' ? 2 : ((http_method || '').toUpperCase() == 'HEAD' ? 4 : ((http_method || '').toUpperCase() == 'OPTIONS' ? 5 : ((http_method || '').toUpperCase() == 'CONNECT' ? 1 : 0))))))"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200 + ((http_method || '').toUpperCase() == 'GET' ? 3 : ((http_method || '').toUpperCase() == 'POST' ? 6 : ((http_method || '').toUpperCase() == 'PUT' ? 7 : ((http_method || '').toUpperCase() == 'DELETE' ? 2 : ((http_method || '').toUpperCase() == 'HEAD' ? 4 : ((http_method || '').toUpperCase() == 'OPTIONS' ? 5 : ((http_method || '').toUpperCase() == 'CONNECT' ? 1 : 0)))))))"
+          },
+          {
+            "name": "severity_id",
+            "value": "Number(status || 0) >= 500 ? 4 : (Number(status || 0) >= 400 ? 3 : 1)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user && user != '-' ? user : ''"
+          },
+          {
+            "name": "http_request.url",
+            "value": "uri || ''"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(http_method || '').toUpperCase()"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "user_agent && user_agent != '-' ? user_agent : ''"
+          },
+          {
+            "name": "http_response.code",
+            "value": "Number(status || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes || 0)"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol_name || protocol || 'https').toLowerCase()"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Connect Secure'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round(Number(_time || 0) * 1000)"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-21)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_https_access'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
