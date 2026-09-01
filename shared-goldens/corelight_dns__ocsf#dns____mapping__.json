@@ -1,0 +1,280 @@
+{
+  "key": "corelight_dns::ocsf#dns::__mapping__",
+  "sourcetype": "corelight_dns",
+  "dest_format": "ocsf#dns::__mapping__",
+  "score": 91,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T09:39:35.279Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'corelight dns'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → OCSF 1.4 DNS Activity",
+      "conf": {
+        "add": [
+          {
+            "name": "gfsrc_tmp_query",
+            "value": "query"
+          },
+          {
+            "name": "query",
+            "value": "(((gfsrc_tmp_query || query_name || dns_query || question || qname) != null && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != 'undefined' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != 'null' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != '-' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != '') || ((query_type || qtype || record_type) != null && String(query_type || qtype || record_type) != 'undefined' && String(query_type || qtype || record_type) != 'null' && String(query_type || qtype || record_type) != '-' && String(query_type || qtype || record_type) != '') || ((query_class || qclass) != null && String(query_class || qclass) != 'undefined' && String(query_class || qclass) != 'null' && String(query_class || qclass) != '-' && String(query_class || qclass) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || client_ip) != null && String(src_ip || client_ip) != 'undefined' && String(src_ip || client_ip) != 'null' && String(src_ip || client_ip) != '-' && String(src_ip || client_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dns_server || server_ip) != null && String(dest_ip || dns_server || server_ip) != 'undefined' && String(dest_ip || dns_server || server_ip) != 'null' && String(dest_ip || dns_server || server_ip) != '-' && String(dest_ip || dns_server || server_ip) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "(((event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '') || (('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '') || ((vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(4003) != null && String(4003) != 'undefined' && String(4003) != 'null' && String(4003) != '-' && String(4003) != '' ? Number(4003) : undefined"
+          },
+          {
+            "name": "category_uid",
+            "value": "(4) != null && String(4) != 'undefined' && String(4) != 'null' && String(4) != '-' && String(4) != '' ? Number(4) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) != null && String((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) != 'undefined' && String((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) != 'null' && String((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) != '-' && String((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) != '' ? Number((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) != null && String(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) != 'undefined' && String(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) != 'null' && String(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) != '-' && String(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) != '' ? Number(400300 + ((response_code != null || rcode != null || resolved_ip != null || answer != null || answers != null) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(1) != null && String(1) != 'undefined' && String(1) != 'null' && String(1) != '-' && String(1) != '' ? Number(1) : undefined"
+          },
+          {
+            "name": "status_id",
+            "value": "(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) != null && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) != 'undefined' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) != 'null' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) != '-' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) != '' ? Number(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') != null && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') != 'undefined' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') != 'null' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') != '-' && String(/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') != '' ? (/nxdomain|servfail|refused|formerr|notimp|fail/i.test(String(rcode || response_code || reply_code)) ? 'Failure' : 'Success') : undefined"
+          },
+          {
+            "name": "query.hostname",
+            "value": "(gfsrc_tmp_query || query_name || dns_query || question || qname) != null && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != 'undefined' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != 'null' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != '-' && String(gfsrc_tmp_query || query_name || dns_query || question || qname) != '' ? (gfsrc_tmp_query || query_name || dns_query || question || qname) : undefined"
+          },
+          {
+            "name": "query.type",
+            "value": "(query_type || qtype || record_type) != null && String(query_type || qtype || record_type) != 'undefined' && String(query_type || qtype || record_type) != 'null' && String(query_type || qtype || record_type) != '-' && String(query_type || qtype || record_type) != '' ? (query_type || qtype || record_type) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "query.class",
+            "value": "(query_class || qclass) != null && String(query_class || qclass) != 'undefined' && String(query_class || qclass) != 'null' && String(query_class || qclass) != '-' && String(query_class || qclass) != '' ? (query_class || qclass) : undefined"
+          },
+          {
+            "name": "answers",
+            "value": "(resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) != null && String(resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) != 'undefined' && String(resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) != 'null' && String(resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) != '-' && String(resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) != '' ? (resolved_ip != null ? [{ rdata: String(resolved_ip) }] : (answer != null ? [{ rdata: String(answer) }] : undefined)) : undefined"
+          },
+          {
+            "name": "rcode",
+            "value": "(rcode || response_code || reply_code) != null && String(rcode || response_code || reply_code) != 'undefined' && String(rcode || response_code || reply_code) != 'null' && String(rcode || response_code || reply_code) != '-' && String(rcode || response_code || reply_code) != '' ? (rcode || response_code || reply_code) : undefined"
+          },
+          {
+            "name": "rcode_id",
+            "value": "(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) != null && String(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) != 'undefined' && String(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) != 'null' && String(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) != '-' && String(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) != '' ? Number(response_code != null && /^([0-9]|1[01])$/.test(String(response_code)) ? Number(response_code) : /nxdomain/i.test(String(rcode || reply_code)) ? 3 : /servfail/i.test(String(rcode || reply_code)) ? 2 : /refused/i.test(String(rcode || reply_code)) ? 5 : /formerr/i.test(String(rcode || reply_code)) ? 1 : /notimp/i.test(String(rcode || reply_code)) ? 4 : /noerror|success/i.test(String(rcode || reply_code)) ? 0 : undefined) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || client_ip) != null && String(src_ip || client_ip) != 'undefined' && String(src_ip || client_ip) != 'null' && String(src_ip || client_ip) != '-' && String(src_ip || client_ip) != '' ? (src_ip || client_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dns_server || server_ip) != null && String(dest_ip || dns_server || server_ip) != 'undefined' && String(dest_ip || dns_server || server_ip) != 'null' && String(dest_ip || dns_server || server_ip) != '-' && String(dest_ip || dns_server || server_ip) != '' ? (dest_ip || dns_server || server_ip) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || text) != null && String(message || msg || text) != 'undefined' && String(message || msg || text) != 'null' && String(message || msg || text) != '-' && String(message || msg || text) != '' ? (message || msg || text) : undefined"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "(event_uid) != null && String(event_uid) != 'undefined' && String(event_uid) != 'null' && String(event_uid) != '-' && String(event_uid) != '' ? (event_uid) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product || vendor_product) != null && String(product || vendor_product) != 'undefined' && String(product || vendor_product) != 'null' && String(product || vendor_product) != '-' && String(product || vendor_product) != '' ? (product || vendor_product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor || vendor_name) != null && String(vendor || vendor_name) != 'undefined' && String(vendor || vendor_name) != 'null' && String(vendor || vendor_name) != '-' && String(vendor || vendor_name) != '' ? (vendor || vendor_name) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_dns'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "json",
+      "keys": [
+        "aa",
+        "answers",
+        "id.orig_h",
+        "id.orig_p",
+        "id.resp_h",
+        "id.resp_p",
+        "proto",
+        "qclass",
+        "qclass_name",
+        "qtype",
+        "qtype_name",
+        "query",
+        "ra",
+        "rcode",
+        "rcode_name",
+        "rd",
+        "rejected",
+        "rtt",
+        "tc",
+        "trans_id",
+        "ts",
+        "ttls",
+        "uid",
+        "z"
+      ]
+    }
+  },
+  "report": null
+}
