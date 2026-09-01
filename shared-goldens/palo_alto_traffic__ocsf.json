@@ -2,10 +2,11 @@
   "key": "palo_alto_traffic::ocsf",
   "sourcetype": "palo_alto_traffic",
   "dest_format": "ocsf",
-  "score": 82,
-  "author": "wlinde@cribl.io",
+  "score": 91,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-10T13:28:13.315Z",
+  "updated_at": "2026-09-01T07:36:26.050Z",
   "functions": [
     {
       "id": "comment",
@@ -269,7 +270,7 @@
           },
           {
             "name": "metadata.version",
-            "value": "('1.4.0') != null && String('1.4.0') != 'undefined' && String('1.4.0') != 'null' && String('1.4.0') != '-' && String('1.4.0') != '' ? ('1.4.0') : undefined"
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
           },
           {
             "name": "metadata.product.name",
@@ -354,163 +355,487 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "palo_alto_traffic_ocsf",
+    "destFormat": "ocsf",
+    "score": 28,
     "band": "fail",
-    "scoreSource": "golden-spec",
+    "sampleFormatOk": true,
+    "sampleFormatNote": "Valid Palo Alto Networks PAN-OS CSV traffic logs with standard field ordering including subtype, timestamps, IPs, ports, zones, interfaces, bytes, packets, and session metadata.",
+    "outputFormatOk": false,
     "findings": [
       {
-        "severity": "medium",
-        "field": "actor.user.name",
-        "issue": "OCSF field \"actor.user.name\" is defined for this class but empty in the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "device.hostname",
-        "issue": "OCSF field \"device.hostname\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "severity": "high",
+        "field": "connection_info.protocol_name",
+        "issue": "Field contains the firewall action (allow/drop/deny) instead of the network transport protocol (udp/tcp). The protocol is in field index 29 of the CSV. OCSF connection_info.protocol_name should be 'udp' or 'tcp'.",
+        "example": "Event 1: protocol_name='allow' but source has 'udp'; Event 2: protocol_name='drop' but source has 'tcp'"
       },
       {
         "severity": "high",
-        "field": "dst_endpoint.ip",
-        "issue": "NAT destination IP (post-NAT) is used instead of the original destination IP. Source field 8 (175.16.199.1) is the NAT dst; field 7 is the original src, field 8 is original dst — mapping appears correct here but NAT dst IP (field 10: 175.16.199.1) and NAT src IP (field 9: 192.168.1.63) are entirely dropped and not mapped to nat_dst_endpoint / nat_src_endpoint",
-        "example": "nat_src_endpoint {ip:192.168.1.63} and nat_dst_endpoint {ip:175.16.199.1, port:443} missing from all events",
-        "pointImpact": 0
+        "field": "activity_id",
+        "issue": "activity_id is hardcoded to 1 (Open) for all events regardless of action. OCSF 4001 activity_ids: 1=Open, 2=Close, 3=Reset, 4=Fail, 6=Traffic. Blocked/denied traffic should map to 4 (Fail) or 6, allowed end-session should map to 2 (Close). The action (allow/drop/deny) and subtype (end/drop/deny) are both present and must drive this.",
+        "example": "Event 2 (drop/policy-deny) has activity_id=1; Event 3 (end/allow) has activity_id=1"
       },
       {
         "severity": "high",
-        "field": "firewall_rule",
-        "issue": "Security policy/rule name (field 11: new_outbound_from_trust) present in source but not mapped — OCSF Network Activity expects firewall_rule.name",
-        "example": "new_outbound_from_trust present in every raw event, absent from all output events",
-        "pointImpact": 0
+        "field": "type_uid",
+        "issue": "type_uid is hardcoded to 400101 for all events. type_uid = class_uid * 100 + activity_id, so it must vary with activity_id. A close event should be 400102, a fail/block should be 400104, etc.",
+        "example": "All 8 events show type_uid=400101 regardless of action"
       },
       {
         "severity": "high",
-        "field": "app_name / connection_info.boundary_id",
-        "issue": "Application name (field 14: apple-maps, ping, web-browsing, ssl, quic) is present in source but entirely dropped — should map to connection_info.boundary or app field",
-        "example": "apple-maps, ping, web-browsing, ssl, quic all absent from output",
-        "pointImpact": 0
+        "field": "dst_endpoint.port",
+        "issue": "Destination port is wrong or zeroed for many events. The source CSV has destination port in field index 23 (column 24). For event 1 dst port should be 53, event 2 should be 445, event 4 should be 1433, event 8 should be 22. Instead the pipeline appears to have swapped src/dst ports or misidentified columns.",
+        "example": "Event 1: dst_endpoint.port=0 but source dst_port=53; Event 4: dst_endpoint.port=0 but source dst_port=1433; Event 8: dst_endpoint.port=0 but source dst_port=22"
       },
       {
         "severity": "high",
-        "field": "connection_info.direction_id / direction",
-        "issue": "Traffic direction (from-policy / trust→untrust zones) is present and derivable but not mapped to connection_info.direction_id",
-        "example": "Zone pair trust→untrust and action from-policy present in source, missing in output",
-        "pointImpact": 0
+        "field": "src_endpoint.port",
+        "issue": "Source port is mapped to what appears to be the destination port. Event 1 src port should be 54321 (ephemeral), not 53. The pipeline seems to have swapped source and destination ports.",
+        "example": "Event 1: src_endpoint.port=53 but source src_port=54321; Event 2: src_endpoint.port=445 but source src_port=44512"
       },
       {
         "severity": "high",
-        "field": "disposition / disposition_id",
-        "issue": "Firewall action (field 30: allow) is present in source but not mapped to OCSF disposition_id — this is a core OCSF Network Activity field",
-        "example": "action=allow in every raw event; disposition_id absent from all output events",
-        "pointImpact": 0
+        "field": "traffic.bytes_in / traffic.bytes_out",
+        "issue": "Bytes fields are mis-mapped. OCSF bytes_in/bytes_out should be total bytes received and sent. The source CSV has total_bytes at index 30, bytes_sent at 31, bytes_received at 32, packets at 33. The pipeline maps packet count to bytes_in and bytes_received to bytes_out instead of the correct byte fields.",
+        "example": "Event 1: bytes_in=1 (is packet count), bytes_out=64 (is bytes_received); should be bytes_in=64 bytes_received, bytes_out=64 bytes_sent"
       },
       {
         "severity": "high",
         "field": "traffic.packets_in / traffic.packets_out",
-        "issue": "Packet counts (fields 45/46: e.g. 16 pkts_sent, 20 pkts_rcvd for event 1) present in source but not mapped to traffic.packets_in / traffic.packets_out",
-        "example": "pkts_sent=16, pkts_rcvd=20 in event 1; absent from output",
-        "pointImpact": 0
+        "issue": "OCSF Network Activity traffic object supports packets_in and packets_out. The source CSV contains packets_received and packets_sent fields which are present in the input but entirely unmapped.",
+        "example": "Event 3 source has pkts_sent=35, pkts_received=3; these are absent from output"
       },
       {
         "severity": "high",
-        "field": "traffic.bytes",
-        "issue": "Total bytes (field 29: 7734) present in source but not mapped — only directional bytes mapped",
-        "example": "bytes=7734 in event 1 absent from output traffic object",
-        "pointImpact": 0
+        "field": "disposition / disposition_id",
+        "issue": "OCSF Network Activity requires disposition_id to reflect whether traffic was allowed or blocked. This critical field is completely absent. Source action field (allow/drop/deny) must map to disposition_id (1=Allowed, 2=Blocked, etc.).",
+        "example": "Event 2 action=drop → should be disposition_id=2 (Blocked); Event 1 action=allow → disposition_id=1 (Allowed); all disposition fields missing"
       },
       {
         "severity": "high",
-        "field": "start_time / duration",
-        "issue": "Session start time (field 34: 2018/11/30 15:59:04) and elapsed time (field 35: 586 seconds) present in source but not mapped to OCSF start_time / duration",
-        "example": "start_time=2018/11/30 15:59:04, elapsed=586 in event 1; both absent from output",
-        "pointImpact": 0
+        "field": "firewall_rule.name",
+        "issue": "The policy/rule name is present in the source (field index 11: Allow-DNS-Out, Default-Deny, Allow-Web-Out, etc.) but is completely unmapped to OCSF firewall_rule.name.",
+        "example": "Event 1 rule='Allow-DNS-Out'; Event 2 rule='Default-Deny'; all absent from output"
       },
       {
         "severity": "high",
-        "field": "connection_info.tcp_flags / end_reason",
-        "issue": "TCP end reason (field 44: tcp-fin, aged-out) and flags (field 28: 0x400053) are present but not mapped",
-        "example": "tcp-fin and 0x400053 in event 1; absent from output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
         "field": "src_endpoint.zone / dst_endpoint.zone",
-        "issue": "Source and destination zones (fields 15/16: trust, untrust) present in source but not mapped to OCSF endpoint zone fields",
-        "example": "src_zone=trust, dst_zone=untrust in every event; absent from output",
-        "pointImpact": 0
+        "issue": "Source and destination security zones are present in the source (fields: trust/untrust/dmz) but not mapped to OCSF src_endpoint.zone and dst_endpoint.zone.",
+        "example": "Event 1: from_zone='trust', to_zone='untrust'; Event 4: from_zone='trust', to_zone='dmz'; all absent"
+      },
+      {
+        "severity": "high",
+        "field": "src_endpoint.intermediate_ips / NAT mapping",
+        "issue": "NAT translated source IP (field index 8) and translated destination IP (field index 9) are present in the source but entirely unmapped.",
+        "example": "Event 3: nat_src='203.0.113.1', nat_dst='172.217.14.100'; absent from output"
+      },
+      {
+        "severity": "high",
+        "field": "session_uid / connection_info.session_id",
+        "issue": "Session ID is present in source (field index 43: 123456789...) but not mapped to OCSF connection_info.session_id or equivalent.",
+        "example": "Event 1 session_id=123456789; Event 2 session_id=123456790; all absent"
       },
       {
         "severity": "medium",
-        "field": "src_endpoint.interface_uid / dst_endpoint.interface_uid",
-        "issue": "Ingress/egress interface names (fields 17/18: ethernet1/2, ethernet1/1) present in source but not mapped",
-        "example": "inbound_if=ethernet1/2, outbound_if=ethernet1/1 absent from output",
-        "pointImpact": 0
+        "field": "end_time / start_time",
+        "issue": "OCSF supports start_time and end_time. The PAN-OS log contains both session start time (field index 6) and log receive time (field index 1). These are present but not mapped.",
+        "example": "Event 3: session_start='2026/06/25 00:30:12', log_time='2026/06/25 00:31:55'; both absent from output"
       },
       {
         "severity": "medium",
-        "field": "log_time / metadata.logged_time",
-        "issue": "Log receive time (field 2: 2018/11/30 16:09:07) differs from generate time and should populate metadata.logged_time or log_time; only one timestamp is captured",
-        "example": "receive_time=2018/11/30 16:09:07 vs generate_time=2018/11/30 16:09:07 — distinct field dropped",
-        "pointImpact": 0
+        "field": "duration",
+        "issue": "Session elapsed time (field index 46: e.g., 103, 600, 4) is present in the source but not mapped to OCSF duration or equivalent field.",
+        "example": "Event 3: elapsed=103; Event 6: elapsed=600; all absent"
+      },
+      {
+        "severity": "medium",
+        "field": "connection_info.boundary_id / network_connection_info",
+        "issue": "Session end reason (aged-out, tcp-fin, policy-deny) is present in the source and maps to OCSF connection_info.boundary or a session end reason field, but is entirely absent from output.",
+        "example": "Event 1: session_end_reason='aged-out'; Event 3: session_end_reason='tcp-fin'; all absent"
+      },
+      {
+        "severity": "medium",
+        "field": "app",
+        "issue": "Application name is present in source (field index 13: dns, ssl, ms-sql-db, youtube, ms-office365) but not mapped to any OCSF field such as app_name or connection_info.protocol_ver.",
+        "example": "Event 1: app='dns'; Event 3: app='ssl'; Event 5: app='youtube'; all absent"
       },
       {
         "severity": "medium",
         "field": "device.name / observables",
-        "issue": "Device serial (field 3: 012801096514) and hostname (PA-220) present in source but device object is empty {} — should populate device.name and device.uid",
-        "example": "device:{} in every event; serial=012801096514, hostname=PA-220 present in source",
-        "pointImpact": 0
+        "issue": "Device model/serial (PA-3220, serial 001234567890) and virtual system (vsys1) are present in source but device object is empty in all output events.",
+        "example": "device={} in all events; source has serial=001234567890, device_name=PA-3220"
       },
       {
         "severity": "medium",
-        "field": "dst_endpoint.location.country",
-        "issue": "Destination country (field 42: United States) present in source but not mapped to dst_endpoint.location.country",
-        "example": "dst_location=United States in every event; absent from output",
-        "pointImpact": 0
+        "field": "src_endpoint.interface_uid / dst_endpoint.interface_uid",
+        "issue": "Ingress and egress interface names (ethernet1/1, ethernet1/3, ethernet1/2) are present in source but not mapped to OCSF endpoint interface fields.",
+        "example": "Event 1: inbound_if='ethernet1/1', outbound_if='ethernet1/3'; absent"
       },
       {
         "severity": "medium",
-        "field": "session_uid / connection_info.session_id",
-        "issue": "Session ID (field 33: e.g. 22751) present in source but not mapped",
-        "example": "session_id=22751 in event 1; absent from output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "category_name / class_name",
-        "issue": "URL category (field 36: computer-and-internet-info, web-advertisements, any) present in source but not mapped to any OCSF field",
-        "example": "url_category=computer-and-internet-info in event 1; absent from output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "actor.user",
-        "issue": "actor.user is populated as empty {} in every event — should be omitted if no user data exists in source rather than emitting an empty object",
-        "example": "actor:{user:{}} in all events",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
         "field": "severity_id",
-        "issue": "severity_id is hardcoded to 1 (Informational) without mapping from source — acceptable default but not derived from any source field",
-        "example": "severity_id:1 in all events",
-        "pointImpact": 0
+        "issue": "severity_id is hardcoded to 1 (Informational) for all events including drops and denies. While traffic logs don't carry an explicit severity, blocked/denied actions could reasonably warrant a different severity_id and this should be configurable rather than hardcoded the same for all.",
+        "example": "Event 2 (drop) and Event 5 (deny) both have severity_id=1"
       },
       {
         "severity": "low",
-        "field": "activity_id",
-        "issue": "activity_id hardcoded to 1 for all events including end/allow actions — should reflect the subtype (e.g., Traffic End = 6 in OCSF 4001)",
-        "example": "activity_id:1 on all events though PA log type is 'end'",
-        "pointImpact": 0
+        "field": "metadata.log_name / metadata.logged_time",
+        "issue": "OCSF metadata.log_name and metadata.logged_time (log receipt time) are mappable from the source but absent.",
+        "example": "metadata contains only product and version; log_name='TRAFFIC' and logged_time from field index 1 absent"
+      },
+      {
+        "severity": "low",
+        "field": "actor.user.name for 'unknown'",
+        "issue": "When the username field in source is 'unknown', this is not a real user but a PAN-OS placeholder. It is mapped literally as actor.user.name='unknown' which may cause false attribution.",
+        "example": "Event 2: actor.user.name='unknown' from source field 'unknown'"
       }
     ],
     "missingFields": [
-      "actor.user.name",
-      "device.hostname"
+      "disposition / disposition_id (action: allow/drop/deny is present)",
+      "firewall_rule.name (policy name field is present)",
+      "src_endpoint.zone (from_zone field is present)",
+      "dst_endpoint.zone (to_zone field is present)",
+      "connection_info.session_id (session_id field is present)",
+      "traffic.packets_in / traffic.packets_out (pkts_received/pkts_sent fields are present)",
+      "start_time (session_start_time field is present)",
+      "end_time (log receive time / session end time fields present)",
+      "duration (elapsed time field is present)",
+      "connection_info.boundary (session_end_reason field is present)",
+      "app / application name (app field index 13 is present)",
+      "device.name (devicename PA-3220 is present)",
+      "device.uid (serial number 001234567890 is present)",
+      "src_endpoint.interface_uid (inbound_if is present)",
+      "dst_endpoint.interface_uid (outbound_if is present)",
+      "nat_src_ip / nat_dst_ip (translated IP fields are present)"
     ],
     "emptyFields": [
-      "actor.user",
-      "device"
+      "device (object present but always empty {})"
     ],
-    "summary": "The pipeline correctly maps the core IP/port 5-tuple, protocol, directional byte counts, and timestamp to valid OCSF Network Activity (class 4001) structure. However, the majority of information-rich fields present in the Palo Alto traffic log — firewall action/disposition, application name, NAT endpoints, packet counts, session start/duration, zones, interfaces, end reason, URL category, TCP flags, destination country, device identity, and session ID — are entirely dropped, representing a significant loss of the source data. The output skeleton is structurally valid OCSF but captures less than half of the available telemetry from these logs."
+    "summary": "The pipeline produces structurally valid OCSF Network Activity (4001) events but with severe mapping errors throughout. The most critical failures are: (1) connection_info.protocol_name is set to the firewall action (allow/drop/deny) instead of the transport protocol (tcp/udp); (2) source and destination ports are swapped; (3) bytes_in/bytes_out are mapped to packet counts and wrong byte columns; (4) activity_id and type_uid are hardcoded to 1/400101 for all events ignoring the actual action; and (5) the majority of available source fields — disposition, rule name, zones, session ID, app name, NAT IPs, end reason, duration, packets, and device details — are completely absent from the output. Of roughly 25 distinct values the source provides, fewer than 7 are correctly mapped.",
+    "lessons": [
+      "For PAN-OS CSV traffic logs, carefully index all columns: the transport protocol (tcp/udp) is at index 29, source port at index 24, destination port at index 23, bytes_sent at index 31, bytes_received at index 32, packets_sent at index 35, packets_received at index 34 — do not confuse action (index 30) with protocol, and do not confuse packet count (index 33) with bytes.",
+      "OCSF activity_id for Network Activity (4001) MUST be derived from the firewall action and session subtype: allow+end→2 (Close), drop or deny→4 (Fail); type_uid must always equal class_uid*100+activity_id and never be hardcoded.",
+      "disposition_id is a mandatory OCSF field for firewall traffic events — always map the firewall action (allow=1 Allowed, drop/deny=2 Blocked) to this field; omitting it makes the event non-conformant.",
+      "Never leave the device{} object empty when the source provides serial number and model (PA-3220, 001234567890); map these to device.uid and device.name respectively.",
+      "Map all contextually rich fields the source provides: firewall_rule.name from policy name, src/dst endpoint zones, session_id, app name, NAT translated IPs, session end reason, elapsed duration, and interface names — these are all present in PAN-OS traffic logs and have clear OCSF target fields."
+    ],
+    "inputCount": 8,
+    "outputCount": 56,
+    "outputSample": [
+      {
+        "_time": 1782345797,
+        "src_endpoint": {
+          "ip": "10.1.10.45",
+          "port": 53
+        },
+        "dst_endpoint": {
+          "ip": "8.8.8.53",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "allow"
+        },
+        "traffic": {
+          "bytes_in": 1,
+          "bytes_out": 64
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782345797000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782346662,
+        "src_endpoint": {
+          "ip": "203.0.113.88",
+          "port": 445
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.1",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "drop"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "unknown"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782346662000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782347412,
+        "src_endpoint": {
+          "ip": "192.168.1.105",
+          "port": 443
+        },
+        "dst_endpoint": {
+          "ip": "172.217.14.100",
+          "port": 1025
+        },
+        "connection_info": {
+          "protocol_name": "allow"
+        },
+        "traffic": {
+          "bytes_in": 38,
+          "bytes_out": 23120
+        },
+        "actor": {
+          "user": {
+            "name": "aparker"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782347412000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782348265,
+        "src_endpoint": {
+          "ip": "10.10.20.33",
+          "port": 1433
+        },
+        "dst_endpoint": {
+          "ip": "10.10.30.5",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "allow"
+        },
+        "traffic": {
+          "bytes_in": 12,
+          "bytes_out": 5501
+        },
+        "actor": {
+          "user": {
+            "name": "dbadmin"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782348265000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782349328,
+        "src_endpoint": {
+          "ip": "10.5.5.77",
+          "port": 443
+        },
+        "dst_endpoint": {
+          "ip": "104.18.32.68",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "deny"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {
+            "name": "tlee"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782349328000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782349533,
+        "src_endpoint": {
+          "ip": "172.16.50.22",
+          "port": 443
+        },
+        "dst_endpoint": {
+          "ip": "40.99.184.16",
+          "port": 1025
+        },
+        "connection_info": {
+          "protocol_name": "allow"
+        },
+        "traffic": {
+          "bytes_in": 720,
+          "bytes_out": 524288
+        },
+        "actor": {
+          "user": {
+            "name": "svc_office365"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782349533000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782350926,
+        "src_endpoint": {
+          "ip": "10.20.10.9",
+          "port": 53
+        },
+        "dst_endpoint": {
+          "ip": "8.8.8.8",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "allow"
+        },
+        "traffic": {
+          "bytes_in": 1,
+          "bytes_out": 32
+        },
+        "actor": {
+          "user": {
+            "name": "resolver"
+          }
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782350926000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      },
+      {
+        "_time": 1782351679,
+        "src_endpoint": {
+          "ip": "198.51.100.44",
+          "port": 22
+        },
+        "dst_endpoint": {
+          "ip": "192.168.1.1",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "drop"
+        },
+        "traffic": {
+          "bytes_in": 0,
+          "bytes_out": 0
+        },
+        "actor": {
+          "user": {}
+        },
+        "device": {},
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1782351679000,
+        "sourcetype": "palo_alto_traffic:ocsf"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "1,2026/06/25 00:03:17,001234567890,TRAFFIC,end,2816,2026/06/25 00:03:17,10.1.10.45,8.8.8.53,10.1.10.45,8.8.8.53,Allow-DNS-Out,jsmith,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 00:03:17,12345,1,54321,53,0,0,0x0,udp,allow,128,64,64,1,2026/06/25 00:03:17,0,any,0,123456789,0x0,United States,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223344,0",
+      "1,2026/06/25 00:17:42,001234567890,TRAFFIC,drop,2816,2026/06/25 00:17:42,203.0.113.88,10.0.0.1,203.0.113.88,10.0.0.1,Default-Deny,unknown,not-applicable,vsys1,untrust,untrust,ethernet1/3,ethernet1/3,Sinkhole-Zone,2026/06/25 00:17:42,0,0,44512,445,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 00:17:42,0,any,0,123456790,0x0,United States,10.0.0.0-10.255.255.255,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223345,0",
+      "1,2026/06/25 00:31:55,001234567890,TRAFFIC,end,2816,2026/06/25 00:30:12,192.168.1.105,172.217.14.100,203.0.113.1,172.217.14.100,Allow-Web-Out,aparker,ssl,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 00:31:55,22301,1,52441,443,1025,0,0x400000,tcp,allow,45230,22110,23120,38,2026/06/25 00:30:12,103,any,0,123456791,0x0,10.0.0.0-10.255.255.255,United States,0,35,3,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223346,0",
+      "1,2026/06/25 00:44:29,001234567890,TRAFFIC,end,2816,2026/06/25 00:44:25,10.10.20.33,10.10.30.5,10.10.20.33,10.10.30.5,Allow-Internal,dbadmin,ms-sql-db,vsys1,trust,dmz,ethernet1/1,ethernet1/2,Forward-Zone,2026/06/25 00:44:29,61234,1,55100,1433,0,0,0x400000,tcp,allow,8902,3401,5501,12,2026/06/25 00:44:25,4,any,0,123456792,0x0,10.0.0.0-10.255.255.255,10.0.0.0-10.255.255.255,0,10,2,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223347,0",
+      "1,2026/06/25 01:02:08,001234567890,TRAFFIC,deny,2816,2026/06/25 01:02:08,10.5.5.77,104.18.32.68,10.5.5.77,104.18.32.68,Block-Streaming,tlee,youtube,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:02:08,0,0,56221,443,0,0,0x0,tcp,deny,0,0,0,0,2026/06/25 01:02:08,0,any,0,123456793,0x0,10.0.0.0-10.255.255.255,United States,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223348,0",
+      "1,2026/06/25 01:15:33,001234567890,TRAFFIC,end,2816,2026/06/25 01:05:33,172.16.50.22,40.99.184.16,203.0.113.1,40.99.184.16,Allow-O365,svc_office365,ms-office365,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:15:33,49021,1,51000,443,1025,0,0x400000,tcp,allow,1048576,524288,524288,720,2026/06/25 01:05:33,600,any,0,123456794,0x0,172.16.0.0-172.31.255.255,United States,0,512,128,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223349,0",
+      "1,2026/06/25 01:28:47,001234567890,TRAFFIC,end,2816,2026/06/25 01:28:46,10.20.10.9,8.8.8.8,10.20.10.9,8.8.8.8,Allow-DNS-Out,resolver,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:28:47,33211,1,44322,53,0,0,0x0,udp,allow,74,42,32,1,2026/06/25 01:28:46,1,any,0,123456795,0x0,10.0.0.0-10.255.255.255,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223350,0",
+      "1,2026/06/25 01:41:19,001234567890,TRAFFIC,drop,2816,2026/06/25 01:41:19,198.51.100.44,192.168.1.1,198.51.100.44,192.168.1.1,Default-Deny,,not-applicable,vsys1,untrust,untrust,ethernet1/3,ethernet1/3,Sinkhole-Zone,2026/06/25 01:41:19,0,0,4532,22,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 01:41:19,0,any,0,123456796,0x0,United States,192.168.0.0-192.168.255.255,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223351,0"
+    ],
+    "sourcetype": "palo_alto_traffic"
   }
 }
