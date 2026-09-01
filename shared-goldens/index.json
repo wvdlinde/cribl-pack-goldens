@@ -16380,6 +16380,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ssh::ocsf",
+      "sourcetype": "corelight_ssh",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:02:16.173Z",
+      "path": "shared-goldens/corelight_ssh__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
