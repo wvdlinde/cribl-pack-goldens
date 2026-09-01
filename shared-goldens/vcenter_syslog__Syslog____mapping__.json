@@ -2,11 +2,11 @@
   "key": "vcenter_syslog::Syslog::__mapping__",
   "sourcetype": "vcenter_syslog",
   "dest_format": "Syslog::__mapping__",
-  "score": 93,
+  "score": 96,
   "part": "mapping",
-  "author": "unknown",
-  "build": 648,
-  "updated_at": "2026-08-31T10:32:09.311Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T11:57:10.541Z",
   "functions": [
     {
       "id": "eval",
@@ -119,35 +119,31 @@
           },
           {
             "name": "Computer",
-            "value": "host || ''"
+            "value": "vcenter_host || ''"
           },
           {
             "name": "HostName",
-            "value": "host || ''"
+            "value": "vcenter_host ? String(vcenter_host).split('.')[0] : ''"
           },
           {
             "name": "CollectorHostName",
-            "value": "host || ''"
+            "value": "vcenter_host || ''"
           },
           {
             "name": "ProcessName",
-            "value": "process || tag || ''"
+            "value": "process || component || ''"
           },
           {
             "name": "ProcessID",
             "value": "Number(pid || 0)"
           },
           {
-            "name": "Facility",
-            "value": "['kern','user','mail','daemon','auth','syslog','lpr','news','uucp','cron','authpriv','ftp','ntp','audit','alert','clock','local0','local1','local2','local3','local4','local5','local6','local7'][Math.floor(Number(pri || 0) / 8)] || 'local0'"
-          },
-          {
-            "name": "SeverityLevel",
-            "value": "pri ? (['emerg','alert','crit','err','warning','notice','info','debug'][Number(pri) % 8] || 'info') : String(severity || 'info').toLowerCase()"
-          },
-          {
             "name": "SyslogMessage",
-            "value": "(message || '') + (user ? ' user=' + user : '') + (src_ip ? ' src_ip=' + src_ip : '') + (dst_ip ? ' dst_ip=' + dst_ip : '') + (dst_host ? ' dst_host=' + dst_host : '') + (action ? ' action=' + action : '')"
+            "value": "(component ? '[' + component + '] ' : '') + (message || '') + (user ? ' user=' + user : '') + (src_ip ? ' src_ip=' + src_ip : '') + (dst_host ? ' dst_host=' + dst_host : '') + (action ? ' action=' + action : '')"
+          },
+          {
+            "name": "HostIP",
+            "value": "src_ip || ''"
           },
           {
             "name": "SourceSystem",
