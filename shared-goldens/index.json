@@ -12770,14 +12770,14 @@
       "key": "vmware_esxlog_snmpd::__extraction__",
       "sourcetype": "vmware_esxlog_snmpd",
       "dest_format": "__extraction__",
-      "score": 91,
+      "score": 95,
       "part": "extraction",
-      "author": "unknown",
-      "build": 379,
-      "updated_at": "2026-08-07T15:51:27.997Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:04.225Z",
       "path": "shared-goldens/vmware_esxlog_snmpd____extraction__.json",
       "report": {
-        "score": 91,
+        "score": 95,
         "band": "good"
       }
     },
