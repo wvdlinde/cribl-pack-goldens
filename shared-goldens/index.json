@@ -14790,6 +14790,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_clusteragent::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_clusteragent",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:38:01.930Z",
+      "path": "shared-goldens/vmware_esxlog_clusteragent__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
