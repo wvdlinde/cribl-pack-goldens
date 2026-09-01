@@ -14235,6 +14235,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "fml_spam::cim#network::__mapping__",
+      "sourcetype": "fml_spam",
+      "dest_format": "cim#network::__mapping__",
+      "score": 94,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:39.532Z",
+      "path": "shared-goldens/fml_spam__cim#network____mapping__.json",
+      "report": {
+        "score": 94,
+        "band": "good"
+      }
     }
   ]
 }
