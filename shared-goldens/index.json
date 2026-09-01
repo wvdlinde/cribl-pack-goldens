@@ -13815,6 +13815,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_ise::cim#network::__mapping__",
+      "sourcetype": "cisco_ise",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:37.795Z",
+      "path": "shared-goldens/cisco_ise__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
