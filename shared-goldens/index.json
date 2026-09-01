@@ -16470,6 +16470,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_miclient_access::ocsf",
+      "sourcetype": "ivanti_miclient_access",
+      "dest_format": "ocsf",
+      "score": 84,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:03:01.566Z",
+      "path": "shared-goldens/ivanti_miclient_access__ocsf.json",
+      "report": {
+        "score": 84,
+        "band": "warn"
+      }
     }
   ]
 }
