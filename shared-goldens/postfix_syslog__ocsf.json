@@ -1,0 +1,381 @@
+{
+  "key": "postfix_syslog::ocsf",
+  "sourcetype": "postfix_syslog",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:01:51.918Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d+\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+postfix\\/(?<process>\\w+)\\[(?<pid>\\d+)\\]:\\s+(?:(?<queue_id>[0-9A-F]{6,}|NOQUEUE):\\s+)?(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract syslog header, process, pid, queue_id and remainder message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^connect from/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^connect from (?<client_host>\\S+)\\[(?<src_ip>[0-9a-fA-F.:]+)\\]/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract connect events with client host and ip"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^disconnect from/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^disconnect from (?<client_host>\\S+)\\[(?<src_ip>[0-9a-fA-F.:]+)\\]\\s+ehlo=(?<ehlo>\\d+)\\s+auth=(?<auth>\\S+)\\s+commands=(?<commands>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract disconnect events with client host, ip and session stats"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^client=/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^client=(?<client_host>\\S+)\\[(?<src_ip>[0-9a-fA-F.:]+)\\]/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract client field with hostname and ip"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^message-id=/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^message-id=<(?<message_id>[^>]+)>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract message-id"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^from=/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^from=<(?<user>[^>]*)>,\\s+size=(?<size>\\d+),\\s+nrcpt=(?<nrcpt>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract sender, size and recipient count from qmgr events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^to=/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^to=<(?<recipient>[^>]*)>,\\s+relay=(?<dst_host>[^,]+),\\s+delay=(?<delay>[\\d.]+),\\s+delays=(?<delays>\\S+),\\s+dsn=(?<dsn>\\S+),\\s+status=(?<action>\\S+)\\s+\\((?<status_message>.*)\\)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract recipient, relay, delivery status and delay from smtp delivery events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^to=<[^>]*>, relay=none/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^to=<(?<recipient>[^>]*)>,\\s+relay=none,\\s+delay=(?<delay>[\\d.]+),\\s+status=(?<action>\\S+)\\s+\\((?<status_message>.*)\\)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract deferred/failed delivery attempts with no relay"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^warning:.*hostname unknown/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^warning:\\s+(?<src_ip>[0-9a-fA-F.:]+):\\s+hostname unknown/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract warning for unresolved hostname"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^warning:.*SASL LOGIN authentication failed/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^warning:\\s+\\S+\\[(?<src_ip>[0-9a-fA-F.:]+)\\]:\\s+SASL\\s+(?<auth_method>\\S+)\\s+authentication failed:\\s+(?<failure_reason>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract SASL authentication failure warnings"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/^reject:/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^reject:\\s+RCPT from \\S+\\[(?<src_ip>[0-9a-fA-F.:]+)\\]:\\s+(?<status_code>\\d+)\\s+(?<status_detail>\\S+)\\s+<(?<recipient>[^>]*)>:\\s+(?<reject_reason>[^;]+);\\s+from=<(?<user>[^>]*)>\\s+to=<(?<recipient_full>[^>]*)>\\s+proto=(?<protocol>\\S+)\\s+helo=<(?<helo>[^>]*)>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract reject events with sender, recipient, protocol, helo and reason"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action : (message && message.match(/^reject:/) ? 'blocked' : (process=='smtpd' && message && message.match(/^connect from/) ? 'connected' : (process=='smtpd' && message && message.match(/^disconnect from/) ? 'disconnected' : (message && message.match(/authentication failed/) ? 'auth_failed' : undefined))))"
+          },
+          {
+            "name": "severity",
+            "value": "message && message.match(/^warning:/) ? 'warning' : (message && message.match(/^reject:/) ? 'high' : 'info')"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol : 'SMTP'"
+          }
+        ]
+      },
+      "description": "Normalize action/severity fields based on message type"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "status == 'sent' ? 1 : (action == 'reject' ? 2 : 0)"
+          },
+          {
+            "name": "type_uid",
+            "value": "400101"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'warning' ? 2 : (action == 'reject' ? 3 : 1)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_host || ''"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(size || 0)"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || ''"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? Number(new Date(timestamp).getTime()) : Number(new Date(_time).getTime())"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Postfix'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "process || 'postfix'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'postfix_syslog'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
