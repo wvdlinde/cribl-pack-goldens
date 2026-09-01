@@ -1,0 +1,358 @@
+{
+  "key": "vmware_esxlog_etcd::ocsf",
+  "sourcetype": "vmware_esxlog_etcd",
+  "dest_format": "ocsf",
+  "score": 87,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:00:10.343Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>\\S+)\\s+(?<host>\\S+)\\s+etcd\\[(?<pid>\\d+)\\]:\\s+\\{\"level\":\"(?<level>\\w+)\",\"ts\":\"(?<timestamp>[^\"]+)\",\"caller\":\"(?<caller>[^\"]+)\",\"msg\":\"(?<message>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog-style header (timestamp, host, pid) and core etcd JSON fields (level, ts, caller, msg) from _raw"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message === 'authentication failed, invalid password or user' || message === 'rejected too many failed authentication attempts'",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"user-name\":\"(?<user>[^\"]+)\"(?:.*\"client-address\":\"(?<__src_ip>[0-9\\.]+):(?<__src_port>\\d+)\")?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and optional client address from authentication-related etcd log messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message === 'rejected connection on peer endpoint' || message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!'",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"(?:remote-addr|target-addr|address)\":\"(?<__net_ip>[0-9\\.]+):(?<__net_port>\\d+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract generic network address/port (remote-addr, target-addr, or address) into scratch fields for later role assignment"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level === 'error' ? 'critical' : level === 'warn' ? 'warning' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message === 'authentication failed, invalid password or user' ? 'login_failure' : message === 'rejected too many failed authentication attempts' ? 'blocked' : message === 'rejected connection on peer endpoint' ? 'blocked' : message === 'failed to dial peer' ? 'connection_failed' : message === 'grpc: addrConn.createTransport failed to connect' ? 'connection_failed' : message === 'leader changed' ? 'leader_changed' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "(__net_ip || __src_ip) ? 'tcp' : null"
+          },
+          {
+            "name": "src_ip",
+            "value": "__src_ip ? __src_ip : (message === 'rejected connection on peer endpoint' ? __net_ip : null)"
+          },
+          {
+            "name": "src_port",
+            "value": "__src_port ? __src_port : (message === 'rejected connection on peer endpoint' ? __net_port : null)"
+          },
+          {
+            "name": "dst_ip",
+            "value": "(message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!') ? __net_ip : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "(message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!') ? __net_port : null"
+          }
+        ],
+        "remove": [
+          "__net_ip",
+          "__net_port",
+          "__src_ip",
+          "__src_port"
+        ]
+      },
+      "description": "Normalize severity, classify action, assign protocol and src/dst ip:port based on message type, then clean up scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Number(new Date(timestamp || _time).getTime())"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "host || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "level == 'error' ? 4 : level == 'warn' ? 3 : level == 'info' ? 1 : 0"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "0"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.name",
+            "value": "'etcd'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'CNCF'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-18)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:etcd'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1234\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"48213}\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"456\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"889\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"170\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"x509\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"815\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"565\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2101\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
