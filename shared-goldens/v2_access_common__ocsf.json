@@ -1,0 +1,437 @@
+{
+  "key": "v2_access_common::ocsf",
+  "sourcetype": "v2_access_common",
+  "dest_format": "ocsf",
+  "score": 82,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:59:43.720Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<src_ip>\\S+)\\s+(?<__ident>\\S+)\\s+(?<user>\\S+)\\s+\\[(?<__ts>[^\\]]+)\\]\\s+\"(?<http_method>[A-Z]+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]*)\"\\s+(?<status>\\d{3})\\s+(?<bytes_out>\\d+|-)\\s+\"(?<http_referrer>[^\"]*)\"\\s+\"(?<http_user_agent>[^\"]*)\"\\s+(?<duration>\\d+)\\s+(?<dst_host>\\S+)/"
+      },
+      "description": "Parse extended NCSA common access log line (IPv4/IPv6 client, ident, user, ts, request, status, bytes, referrer, UA, duration, server host)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "uri",
+      "disabled": false,
+      "conf": {
+        "source": "uri",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<uri_path>[^?]*)(?:\\?(?<uri_query>.*))?$/"
+      },
+      "description": "Split URI into path and query string"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? C.Time.strptime(__ts, '%d/%b/%Y:%H:%M:%S %z').getTime()/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "user",
+            "value": "user == '-' ? undefined : user"
+          },
+          {
+            "name": "http_referrer",
+            "value": "http_referrer == '-' ? undefined : http_referrer"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out == '-' ? 0 : Number(bytes_out)"
+          },
+          {
+            "name": "duration_ms",
+            "value": "Number(duration)"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app_protocol",
+            "value": "String(http_version).match(/^HTTPS/i) ? 'https' : 'http'"
+          },
+          {
+            "name": "ip_version",
+            "value": "String(src_ip).indexOf(':') > -1 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "action",
+            "value": "Number(status) < 400 ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status) >= 500 ? 'high' : (Number(status) >= 400 ? 'medium' : 'low')"
+          },
+          {
+            "name": "direction",
+            "value": "String(src_ip).match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|127\\.|fd|fe80)/i) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "message",
+            "value": "http_method + ' ' + uri + ' ' + status"
+          }
+        ],
+        "remove": [
+          "__ts",
+          "__ident",
+          "duration"
+        ]
+      },
+      "description": "Normalize timestamp, numerics, user, protocol, action, severity and direction"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "String(uri_path).match(/login/i) ? 'authentication' : (String(uri_path).match(/^\\/(healthz|metrics)$/) ? 'health_check' : 'web_request')"
+          },
+          {
+            "name": "auth_result",
+            "value": "String(uri_path).match(/login/i) ? (Number(status) < 400 ? 'success' : 'failure') : undefined"
+          },
+          {
+            "name": "is_suspicious",
+            "value": "String(uri).match(/(\\.env|wp-login|\\.\\.\\/|etc\\/passwd)/i) || String(http_user_agent).match(/(sqlmap|nmap|nikto|python-requests|curl)/i) ? true : false"
+          },
+          {
+            "name": "tool_signature",
+            "value": "String(http_user_agent).match(/sqlmap/i) ? 'sqlmap' : (String(http_user_agent).match(/Nmap/i) ? 'nmap' : (String(http_user_agent).match(/python-requests/i) ? 'python-requests' : (String(http_user_agent).match(/curl/i) ? 'curl' : undefined)))"
+          }
+        ]
+      },
+      "description": "Classify event type and flag likely reconnaissance/attack tooling or paths"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4002'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'HTTP Activity'"
+          },
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(http_method || '').toUpperCase() == 'CONNECT' ? 1 : (http_method || '').toUpperCase() == 'DELETE' ? 2 : (http_method || '').toUpperCase() == 'GET' ? 3 : (http_method || '').toUpperCase() == 'HEAD' ? 4 : (http_method || '').toUpperCase() == 'OPTIONS' ? 5 : (http_method || '').toUpperCase() == 'POST' ? 6 : (http_method || '').toUpperCase() == 'PUT' ? 7 : (http_method || '').toUpperCase() == 'TRACE' ? 8 : (http_method || '').toUpperCase() == 'PATCH' ? 9 : 0"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200 + ((http_method || '').toUpperCase() == 'CONNECT' ? 1 : (http_method || '').toUpperCase() == 'DELETE' ? 2 : (http_method || '').toUpperCase() == 'GET' ? 3 : (http_method || '').toUpperCase() == 'HEAD' ? 4 : (http_method || '').toUpperCase() == 'OPTIONS' ? 5 : (http_method || '').toUpperCase() == 'POST' ? 6 : (http_method || '').toUpperCase() == 'PUT' ? 7 : (http_method || '').toUpperCase() == 'TRACE' ? 8 : (http_method || '').toUpperCase() == 'PATCH' ? 9 : 0)"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : (severity || '').toLowerCase() == 'high' ? 4 : (severity || '').toLowerCase() == 'medium' ? 3 : (severity || '').toLowerCase() == 'low' ? 2 : Number(status || 0) >= 500 ? 3 : Number(status || 0) >= 400 ? 2 : 1"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user && user != '-' ? user : ''"
+          },
+          {
+            "name": "http_request.url",
+            "value": "uri || uri_path || ''"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(http_method || '').toUpperCase()"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "http_user_agent && http_user_agent != '-' ? http_user_agent : ''"
+          },
+          {
+            "name": "http_response.code",
+            "value": "Number(status || 0)"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "Number(bytes_out || 0)"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(protocol || app_protocol || 'tcp').toLowerCase()"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "dst_host && dst_host.match(/^[0-9a-fA-F:.]+$/) && dst_host.match(/[:.]/) ? dst_host : ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(app_protocol || '').toLowerCase() == 'https' ? 443 : 80"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Web Server Access Log'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Apache'"
+          },
+          {
+            "name": "time",
+            "value": "timestamp ? Math.round(new Date(String(timestamp).replace(/^(\\d{2})\\/(\\w{3})\\/(\\d{4}):/, '$1 $2 $3 ')).getTime()) : Math.round(Date.now())"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-23)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'access_common'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2025\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1.29\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"4471\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"2001\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"db8\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"85a3\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"8a2e\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"370\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"7334\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
