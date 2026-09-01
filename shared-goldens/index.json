@@ -15930,6 +15930,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_threatevents_ens_ids::ocsf",
+      "sourcetype": "mcafee_epo_threatevents_ens_ids",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:59:31.412Z",
+      "path": "shared-goldens/mcafee_epo_threatevents_ens_ids__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
