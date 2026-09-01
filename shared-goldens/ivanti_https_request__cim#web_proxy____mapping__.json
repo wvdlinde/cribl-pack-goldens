@@ -1,0 +1,230 @@
+{
+  "key": "ivanti_https_request::cim#web_proxy::__mapping__",
+  "sourcetype": "ivanti_https_request",
+  "dest_format": "cim#web_proxy::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 650,
+  "updated_at": "2026-09-01T10:52:44.431Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'web_proxy'"
+          },
+          {
+            "name": "src",
+            "value": "src_ip"
+          },
+          {
+            "name": "dest",
+            "value": "dst_host"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "http_method",
+            "value": "http_method"
+          },
+          {
+            "name": "uri_path",
+            "value": "http_path ? http_path.split('?')[0] : ''"
+          },
+          {
+            "name": "uri_query",
+            "value": "http_path && http_path.indexOf('?') > -1 ? http_path.split('?')[1] : ''"
+          },
+          {
+            "name": "url",
+            "value": "(dst_host || '') + (http_path || '')"
+          },
+          {
+            "name": "url_domain",
+            "value": "dst_host"
+          },
+          {
+            "name": "status",
+            "value": "String(status || '')"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes || 0)"
+          },
+          {
+            "name": "response_time",
+            "value": "response_time ? Number(String(response_time).replace('s','')) : null"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "user_agent"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-23)",
+      "conf": {
+        "add": [
+          {
+            "name": "http_user_agent_length",
+            "value": "Number(String(user_agent || '').length)"
+          },
+          {
+            "name": "http_referrer",
+            "value": "referer && referer != '-' ? referer : ''"
+          },
+          {
+            "name": "user",
+            "value": "user && user != '-' ? user : ''"
+          },
+          {
+            "name": "action",
+            "value": "action"
+          },
+          {
+            "name": "error_code",
+            "value": "reason && reason != '-' ? reason : ''"
+          },
+          {
+            "name": "category",
+            "value": "realm && realm != '-' ? realm : ''"
+          },
+          {
+            "name": "app",
+            "value": "role && role != '-' ? role : ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Ivanti Connect Secure'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_https_request'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "bytes_in",
+        "bytes_out",
+        "realm",
+        "reason",
+        "role",
+        "user"
+      ]
+    }
+  },
+  "report": null
+}
