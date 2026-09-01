@@ -14850,6 +14850,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_https_request::cim#web_proxy::__mapping__",
+      "sourcetype": "ivanti_https_request",
+      "dest_format": "cim#web_proxy::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:52:44.431Z",
+      "path": "shared-goldens/ivanti_https_request__cim#web_proxy____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
