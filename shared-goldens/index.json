@@ -13710,6 +13710,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "fortinet_fortigate::cim#network::__mapping__",
+      "sourcetype": "fortinet_fortigate",
+      "dest_format": "cim#network::__mapping__",
+      "score": 97,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:08.263Z",
+      "path": "shared-goldens/fortinet_fortigate__cim#network____mapping__.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
