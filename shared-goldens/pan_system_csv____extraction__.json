@@ -2,17 +2,17 @@
   "key": "pan_system_csv::__extraction__",
   "sourcetype": "pan_system_csv",
   "dest_format": "__extraction__",
-  "score": 93,
+  "score": 95,
   "part": "extraction",
-  "author": "unknown",
-  "build": 648,
-  "updated_at": "2026-08-31T11:23:23.755Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T11:57:20.036Z",
   "functions": [
     {
       "id": "serde",
       "filter": "true",
       "disabled": false,
-      "description": "Extract PAN-OS SYSTEM log CSV fields from _raw",
+      "description": "Parse PAN-OS SYSTEM log CSV fields",
       "conf": {
         "mode": "extract",
         "type": "csv",
@@ -24,7 +24,7 @@
           "log_type",
           "subtype",
           "future_use2",
-          "generated_time",
+          "generate_time",
           "vsys",
           "eventid",
           "object",
@@ -35,15 +35,15 @@
           "message",
           "seqno",
           "actionflags",
-          "flags1",
-          "flags2",
-          "flags3",
-          "flags4",
-          "vsys_name",
-          "dst_host",
           "future_use5",
           "future_use6",
-          "generated_time_ms"
+          "future_use7",
+          "future_use8",
+          "vsys_name",
+          "device_name",
+          "future_use9",
+          "future_use10",
+          "timestamp"
         ],
         "cleanFields": true
       }
@@ -52,69 +52,48 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Normalize timestamp, severity, and clean up unused scratch fields",
+      "description": "Derive _time from the millisecond-precision timestamp field",
       "conf": {
         "add": [
           {
             "name": "_time",
-            "value": "Date.parse(generated_time_ms.replace(/\\//g,'-')+'Z')/1000"
-          },
-          {
-            "name": "vendor_severity",
-            "value": "severity || undefined"
-          },
-          {
-            "name": "severity",
-            "value": "severity==='informational' ? 'info' : severity"
+            "value": "new Date(timestamp.replace(/\\//g,'-')).getTime()/1000"
           }
-        ],
-        "remove": [
-          "future_use1",
-          "future_use2",
-          "future_use3",
-          "future_use4",
-          "future_use5",
-          "future_use6",
-          "flags1",
-          "flags2",
-          "flags3",
-          "flags4",
-          "actionflags"
         ]
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/logged (in|out)/)",
+      "filter": "message && message.indexOf('logged in via WebUI') !== -1",
       "disabled": false,
-      "description": "Extract user, src_ip, protocol from login/logout messages",
+      "description": "Extract user, src_ip, protocol from successful WebUI login messages",
       "conf": {
         "source": "message",
-        "regex": "/(?:User|Admin) (?<user>\\S+) logged (?:in via \\S+ from|out from \\S+ session originating) (?<src_ip>[\\d.]+)(?: using (?<protocol>\\S+))?/",
+        "regex": "/User (?<user>\\S+) logged in via WebUI from (?<src_ip>[\\d.]+) using (?<protocol>\\S+)/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message && message.match(/[Ff]ail/)",
+      "filter": "message && message.indexOf('Failed login attempt') !== -1",
       "disabled": false,
-      "description": "Extract user, src_ip, protocol from failed authentication/login messages",
+      "description": "Extract user, src_ip, protocol, and reason from failed login attempt messages",
       "conf": {
         "source": "message",
-        "regex": "/for user (?<user>\\S+) from (?<src_ip>[\\d.]+)(?: using (?<protocol>\\S+))?/",
+        "regex": "/Failed login attempt for user (?<user>\\S+) from (?<src_ip>[\\d.]+) using (?<protocol>\\S+): (?<reason>.+)/",
         "iterations": 1,
         "overwrite": false
       }
     },
     {
       "id": "regex_extract",
-      "filter": "!user && message && message.match(/by user/)",
+      "filter": "message && message.indexOf('Repeated authentication failures') !== -1",
       "disabled": false,
-      "description": "Extract user from generic administrative action messages",
+      "description": "Extract user and src_ip from repeated authentication failure messages",
       "conf": {
         "source": "message",
-        "regex": "/by user (?<user>\\S+)/",
+        "regex": "/Repeated authentication failures detected for user (?<user>\\S+) from (?<src_ip>[\\d.]+)/",
         "iterations": 1,
         "overwrite": false
       }
@@ -123,12 +102,12 @@
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Classify action based on message severity/content",
+      "description": "Classify action as success, failure, or info based on message content",
       "conf": {
         "add": [
           {
             "name": "action",
-            "value": "message.match(/[Ff]ail|down|expire|exceeded/) ? 'alert' : 'info'"
+            "value": "message.indexOf('Failed')!==-1 || message.indexOf('failures')!==-1 || message.indexOf('failed')!==-1 || message.indexOf('down')!==-1 || message.indexOf('exceeded')!==-1 ? 'failure' : (message.indexOf('succeeded')!==-1 || message.indexOf('successfully')!==-1 || message.indexOf('successful')!==-1) ? 'success' : 'info'"
           }
         ]
       }
