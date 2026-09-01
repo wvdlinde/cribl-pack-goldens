@@ -16140,6 +16140,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_iofiltervpd::ocsf",
+      "sourcetype": "vmware_esxlog_iofiltervpd",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:00:44.123Z",
+      "path": "shared-goldens/vmware_esxlog_iofiltervpd__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
