@@ -16335,6 +16335,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ntp::ocsf",
+      "sourcetype": "corelight_ntp",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:02:12.303Z",
+      "path": "shared-goldens/corelight_ntp__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
