@@ -14340,6 +14340,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_vpp::cim#network::__mapping__",
+      "sourcetype": "ivanti_vpp",
+      "dest_format": "cim#network::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:08.399Z",
+      "path": "shared-goldens/ivanti_vpp__cim#network____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
