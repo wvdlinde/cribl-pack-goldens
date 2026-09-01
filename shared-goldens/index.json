@@ -14700,6 +14700,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_http::__optimization__",
+      "sourcetype": "corelight_http",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:04:54.516Z",
+      "path": "shared-goldens/corelight_http____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
