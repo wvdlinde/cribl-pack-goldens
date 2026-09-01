@@ -1,0 +1,311 @@
+{
+  "key": "ivanti_servicestatus::ocsf",
+  "sourcetype": "ivanti_servicestatus",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:56:24.819Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+(?<process>ServiceStatus)\\[(?<process_id>\\d+)\\]:\\s+(?<log_level>[A-Z]+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse ivanti ServiceStatus syslog header: timestamp, host, process, pid, level and message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof message === 'string'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Service\\s+'(?<service>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract quoted service name from the message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof message === 'string' && message.indexOf('->') > -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<previous_state>[A-Z]+)->(?<new_state>[A-Z]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract service state transition (OLD->NEW) when present"
+    },
+    {
+      "id": "serde",
+      "filter": "typeof message === 'string' && message.indexOf('=') > -1",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "fields": [],
+        "cleanFields": true
+      },
+      "description": "Extract trailing key=value pairs (node, cluster, admin, srcip, pid, reason, etc.) from message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? Math.floor(Date.parse(timestamp.replace(' ','T')+'Z')/1000) : _time"
+          },
+          {
+            "name": "severity",
+            "value": "log_level === 'CRITICAL' ? 'critical' : (log_level === 'ERROR' ? 'high' : (log_level === 'WARNING' ? 'medium' : (log_level === 'NOTICE' ? 'low' : 'informational')))"
+          },
+          {
+            "name": "user",
+            "value": "admin"
+          },
+          {
+            "name": "src_ip",
+            "value": "srcip"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/restart|manual restart/i) ? 'restart' : (message.match(/crashed|failed|unresponsive|down|loss detected/i) ? 'failure' : (message.match(/reloaded|update applied|signature update|renewal|configuration/i) ? 'update' : (message.match(/degraded|high|memory usage/i) ? 'degraded' : 'status')))"
+          },
+          {
+            "name": "status",
+            "value": "result ? result : (message.match(/success|passed|OK|completed|successful/i) ? 'success' : (message.match(/failed|crashed|unresponsive/i) ? 'failure' : status))"
+          },
+          {
+            "name": "vendor",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "product",
+            "value": "'Connect Secure'"
+          }
+        ],
+        "remove": [
+          "admin",
+          "srcip",
+          "log_level"
+        ]
+      },
+      "description": "Normalize timestamp, severity, user, src_ip and action; drop scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "vip || ''"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "user || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "node || server || ''"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || 'Ivanti Connect Secure'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || 'Ivanti'"
+          },
+          {
+            "name": "time",
+            "value": "Number(new Date(_time || timestamp).getTime())"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRITICAL' ? 5 : severity == 'ERROR' ? 4 : severity == 'WARNING' ? 3 : severity == 'NOTICE' ? 2 : severity == 'INFO' ? 1 : 0"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "1"
+          },
+          {
+            "name": "type_uid",
+            "value": "400101"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.version",
+            "value": "'1.0.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_servicestatus'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
