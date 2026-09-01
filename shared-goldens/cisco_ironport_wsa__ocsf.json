@@ -1,0 +1,267 @@
+{
+  "key": "cisco_ironport_wsa::ocsf",
+  "sourcetype": "cisco_ironport_wsa",
+  "dest_format": "ocsf",
+  "score": 90,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T14:53:47.223Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<__epoch>\\d+(?:\\.\\d+)?)\\s+(?<duration>\\d+)\\s+(?<src_ip>\\S+)\\s+(?<cache_result>[A-Z_]+)\\/(?<status_code>\\d+)\\s+(?<bytes>\\d+)\\s+(?<http_method>\\S+)\\s+(?<url>\\S+)\\s+(?<__user>\\S+)\\s+(?<acl_decision_tag>\\S+)\\s+(?<http_status>\\d+)\\s+\"(?<http_referrer>[^\"]*)\"\\s+(?<content_type>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Cisco IronPort WSA W3C/squid-style access log base structure"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "url",
+      "disabled": false,
+      "conf": {
+        "source": "url",
+        "regex": "/^(?<url_scheme>[a-zA-Z][a-zA-Z0-9+.-]*):\\/\\/(?:\\[(?<__dst_v6>[0-9a-fA-F:]+)\\]|(?<__dst_host>[^\\/:?#]+))(?::(?<__dst_port>\\d+))?(?<uri_path>[\\/?#]\\S*)?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Break URL into scheme, destination host, port and path"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "acl_decision_tag && acl_decision_tag !== '-'",
+      "disabled": false,
+      "conf": {
+        "source": "acl_decision_tag",
+        "regex": "/^(?<acl_policy>[A-Z_]+)-(?<web_category>[^-]+)-(?<acl_action>[A-Z]+)-(?<threat_score>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Decompose WSA ACL decision tag into policy, web category, action and threat/WBRS score"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__epoch ? Number(__epoch) : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__epoch ? Number(__epoch) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "__user && __user !== '-' ? __user : undefined"
+          },
+          {
+            "name": "dst_host",
+            "value": "__dst_v6 ? __dst_v6 : __dst_host"
+          },
+          {
+            "name": "dst_port",
+            "value": "__dst_port ? Number(__dst_port) : (url_scheme === 'https' ? 443 : 80)"
+          },
+          {
+            "name": "protocol",
+            "value": "url_scheme === 'https' || http_method === 'CONNECT' ? 'https' : (url_scheme ? url_scheme.toLowerCase() : 'http')"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "action",
+            "value": "acl_action === 'ALLOW' ? 'allowed' : (acl_action === 'BLOCK' || acl_action === 'DROP' ? 'blocked' : (acl_action === 'MONITOR' ? 'monitored' : (cache_result && cache_result.indexOf('DENIED') > -1 ? 'blocked' : 'allowed')))"
+          },
+          {
+            "name": "severity",
+            "value": "Number(threat_score) >= 80 ? 'critical' : (Number(threat_score) >= 40 ? 'high' : (acl_action === 'BLOCK' ? 'medium' : 'low'))"
+          },
+          {
+            "name": "src_ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 6 : 4"
+          },
+          {
+            "name": "duration",
+            "value": "duration ? Number(duration) : undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes ? Number(bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes ? Number(bytes) : undefined"
+          },
+          {
+            "name": "http_status",
+            "value": "Number(http_status)"
+          },
+          {
+            "name": "status_code",
+            "value": "Number(status_code)"
+          },
+          {
+            "name": "threat_score",
+            "value": "threat_score ? Number(threat_score) : undefined"
+          },
+          {
+            "name": "http_referrer",
+            "value": "http_referrer && http_referrer !== '-' ? http_referrer : undefined"
+          },
+          {
+            "name": "content_type",
+            "value": "content_type && content_type !== '-' ? content_type : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "dst_host && dst_host.match(/\\.(local|corp|internal)$/) ? 'internal' : 'outbound'"
+          },
+          {
+            "name": "message",
+            "value": "http_method + ' ' + url + ' -> ' + (acl_action ? acl_action : cache_result)"
+          }
+        ],
+        "remove": [
+          "__epoch",
+          "__user",
+          "__dst_host",
+          "__dst_v6",
+          "__dst_port"
+        ]
+      },
+      "description": "Normalize timestamp, user, protocol, action, severity, direction and numeric types"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"fe80\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"1a2b\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"3c4d\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"5e6f\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      },
+      {
+        "severity": "medium",
+        "field": "_value",
+        "issue": "sample value \"7g8h\" was not extracted/mapped into the output",
+        "pointImpact": 0
+      }
+    ],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
