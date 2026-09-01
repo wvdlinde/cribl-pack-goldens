@@ -16065,6 +16065,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostdcgiserver::ocsf",
+      "sourcetype": "vmware_esxlog_hostdcgiserver",
+      "dest_format": "ocsf",
+      "score": 94,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:00:23.555Z",
+      "path": "shared-goldens/vmware_esxlog_hostdcgiserver__ocsf.json",
+      "report": {
+        "score": 94,
+        "band": "good"
+      }
     }
   ]
 }
