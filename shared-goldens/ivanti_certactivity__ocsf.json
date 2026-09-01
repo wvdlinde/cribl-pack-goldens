@@ -1,0 +1,287 @@
+{
+  "key": "ivanti_certactivity::ocsf",
+  "sourcetype": "ivanti_certactivity",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:01:07.155Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+certactivity\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\S+)\\s+-\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header (timestamp, host, pid, severity) and remaining message text"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"user '\") !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/user '(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the username referenced in certificate/authentication events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/src_ip=(?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract source IP address from key=value pair in message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.indexOf('cert_serial=') !== -1 || message.indexOf('serial=') !== -1)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:cert_serial|serial)=(?<cert_serial>\\w+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract certificate serial number from cert_serial= or serial= fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:session_id=(?<session_id>\\S+)\\s+)?result=(?<result>\\w+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract session_id (when present) and result outcome for the certificate activity event"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='NOTICE' ? 'info' : severity=='WARN' ? 'warning' : severity=='CRIT' ? 'critical' : severity=='ERROR' ? 'error' : severity=='INFO' ? 'info' : severity"
+          },
+          {
+            "name": "action",
+            "value": "result=='SUCCESS' ? 'allowed' : result=='FAILURE' ? 'blocked' : result=='SUSPICIOUS' ? 'flagged' : 'unknown'"
+          },
+          {
+            "name": "protocol",
+            "value": "'TLS'"
+          }
+        ]
+      },
+      "description": "Normalize severity levels, derive action from result, and set protocol context for certificate activity events"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4009'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Email Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Number(_time)"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "src_ip"
+          },
+          {
+            "name": "email.from",
+            "value": "user"
+          },
+          {
+            "name": "status",
+            "value": "result"
+          },
+          {
+            "name": "status_id",
+            "value": "result == 'SUCCESS' ? 1 : (result == 'FAILURE' ? 2 : 0)"
+          },
+          {
+            "name": "message",
+            "value": "message"
+          },
+          {
+            "name": "email.subject",
+            "value": "action"
+          },
+          {
+            "name": "email.message_uid",
+            "value": "cert_serial"
+          },
+          {
+            "name": "metadata.uid",
+            "value": "session_id"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity == 'CRIT' ? 5 : (severity == 'ERROR' ? 4 : (severity == 'WARN' ? 3 : (severity == 'NOTICE' ? 2 : (severity == 'INFO' ? 1 : 0))))"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "host"
+          },
+          {
+            "name": "email.smtp_from",
+            "value": "protocol"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_certactivity'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
