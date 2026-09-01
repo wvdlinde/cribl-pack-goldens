@@ -14490,6 +14490,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_solarwinds_vpn::cim#network::__mapping__",
+      "sourcetype": "ncsc_solarwinds_vpn",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:54.476Z",
+      "path": "shared-goldens/ncsc_solarwinds_vpn__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
