@@ -14010,6 +14010,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vmauthd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_vmauthd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:33.278Z",
+      "path": "shared-goldens/vmware_esxlog_vmauthd__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
