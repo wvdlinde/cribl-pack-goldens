@@ -14985,6 +14985,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ssl::ocsf",
+      "sourcetype": "corelight_ssl",
+      "dest_format": "ocsf",
+      "score": 98,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:52:47.401Z",
+      "path": "shared-goldens/corelight_ssl__ocsf.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
