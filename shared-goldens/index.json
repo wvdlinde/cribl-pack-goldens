@@ -16515,6 +16515,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_esxtokend::ocsf",
+      "sourcetype": "vmware_esxlog_esxtokend",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:03:26.061Z",
+      "path": "shared-goldens/vmware_esxlog_esxtokend__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
