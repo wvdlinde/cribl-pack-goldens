@@ -14220,6 +14220,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_unix_listeningports::cim#network::__mapping__",
+      "sourcetype": "ivanti_unix_listeningports",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:39:35.705Z",
+      "path": "shared-goldens/ivanti_unix_listeningports__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
