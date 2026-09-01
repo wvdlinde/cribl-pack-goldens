@@ -14370,6 +14370,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "mcafee_epo_threatevents_uncategorized::cim#network::__mapping__",
+      "sourcetype": "mcafee_epo_threatevents_uncategorized",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:21.329Z",
+      "path": "shared-goldens/mcafee_epo_threatevents_uncategorized__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
