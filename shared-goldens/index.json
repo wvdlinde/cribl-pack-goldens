@@ -13965,6 +13965,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "symantec_email_cloud_atp::cim#network::__mapping__",
+      "sourcetype": "symantec_email_cloud_atp",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:38:19.721Z",
+      "path": "shared-goldens/symantec_email_cloud_atp__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
