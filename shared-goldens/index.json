@@ -11814,7 +11814,7 @@
       "part": "mapping",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-09-01T11:57:24.389Z",
+      "updated_at": "2026-09-01T11:57:29.188Z",
       "path": "shared-goldens/vmware_esxlog_clusteragent__cim#network____mapping__.json",
       "report": {
         "score": 100,
