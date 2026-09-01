@@ -16290,6 +16290,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_linux_audit::ocsf",
+      "sourcetype": "ivanti_linux_audit",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:01:57.433Z",
+      "path": "shared-goldens/ivanti_linux_audit__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
