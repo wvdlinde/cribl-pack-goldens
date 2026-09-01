@@ -15675,6 +15675,21 @@
         "score": 80,
         "band": "warn"
       }
+    },
+    {
+      "key": "vmware_esxlog_clusteragent::ocsf",
+      "sourcetype": "vmware_esxlog_clusteragent",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:57:44.304Z",
+      "path": "shared-goldens/vmware_esxlog_clusteragent__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
