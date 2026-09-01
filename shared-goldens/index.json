@@ -15420,6 +15420,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_top::ocsf",
+      "sourcetype": "ivanti_top",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:56:17.640Z",
+      "path": "shared-goldens/ivanti_top__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
