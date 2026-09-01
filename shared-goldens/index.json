@@ -14610,6 +14610,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "sap_audit::cim#authentication::__mapping__",
+      "sourcetype": "sap_audit",
+      "dest_format": "cim#authentication::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:41:27.970Z",
+      "path": "shared-goldens/sap_audit__cim#authentication____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
