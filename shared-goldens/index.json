@@ -15015,6 +15015,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "apache_access::ocsf",
+      "sourcetype": "apache_access",
+      "dest_format": "ocsf",
+      "score": 87,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T14:53:49.701Z",
+      "path": "shared-goldens/apache_access__ocsf.json",
+      "report": {
+        "score": 87,
+        "band": "good"
+      }
     }
   ]
 }
