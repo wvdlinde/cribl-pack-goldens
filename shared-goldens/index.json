@@ -14685,6 +14685,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_http::cim#web_proxy::__mapping__",
+      "sourcetype": "corelight_http",
+      "dest_format": "cim#web_proxy::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 650,
+      "updated_at": "2026-09-01T10:04:41.921Z",
+      "path": "shared-goldens/corelight_http__cim#web_proxy____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
