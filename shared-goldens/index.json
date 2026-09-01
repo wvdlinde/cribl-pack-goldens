@@ -14400,6 +14400,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_fidelis_assets::cim#network::__mapping__",
+      "sourcetype": "ncsc_fidelis_assets",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:29.446Z",
+      "path": "shared-goldens/ncsc_fidelis_assets__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
