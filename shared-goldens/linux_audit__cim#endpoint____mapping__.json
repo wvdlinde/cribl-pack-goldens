@@ -1,0 +1,438 @@
+{
+  "key": "linux_audit::cim#endpoint::__mapping__",
+  "sourcetype": "linux_audit",
+  "dest_format": "cim#endpoint::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:37:29.553Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Auditd'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map canonical fields → Splunk CIM — Endpoint",
+      "conf": {
+        "add": [
+          {
+            "name": "creation_time",
+            "value": "(creation_time) != null && String(creation_time) != 'undefined' && String(creation_time) != 'null' && String(creation_time) != '-' && String(creation_time) != '' ? (creation_time) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "(dest_port || destination__port || dpt || dstport) != null && String(dest_port || destination__port || dpt || dstport) != 'undefined' && String(dest_port || destination__port || dpt || dstport) != 'null' && String(dest_port || destination__port || dpt || dstport) != '-' && String(dest_port || destination__port || dpt || dstport) != '' ? Number(dest_port || destination__port || dpt || dstport) : undefined"
+          },
+          {
+            "name": "dest_requires_av",
+            "value": "(dest_requires_av) != null && String(dest_requires_av) != 'undefined' && String(dest_requires_av) != 'null' && String(dest_requires_av) != '-' && String(dest_requires_av) != '' ? (dest_requires_av) : undefined"
+          },
+          {
+            "name": "dest_should_timesync",
+            "value": "(dest_should_timesync) != null && String(dest_should_timesync) != 'undefined' && String(dest_should_timesync) != 'null' && String(dest_should_timesync) != '-' && String(dest_should_timesync) != '' ? (dest_should_timesync) : undefined"
+          },
+          {
+            "name": "dest_should_update",
+            "value": "(dest_should_update) != null && String(dest_should_update) != 'undefined' && String(dest_should_update) != 'null' && String(dest_should_update) != '-' && String(dest_should_update) != '' ? (dest_should_update) : undefined"
+          },
+          {
+            "name": "process_guid",
+            "value": "(process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '' ? (process_guid) : undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "src_requires_av",
+            "value": "(src_requires_av) != null && String(src_requires_av) != 'undefined' && String(src_requires_av) != 'null' && String(src_requires_av) != '-' && String(src_requires_av) != '' ? (src_requires_av) : undefined"
+          },
+          {
+            "name": "src_should_timesync",
+            "value": "(src_should_timesync) != null && String(src_should_timesync) != 'undefined' && String(src_should_timesync) != 'null' && String(src_should_timesync) != '-' && String(src_should_timesync) != '' ? (src_should_timesync) : undefined"
+          },
+          {
+            "name": "src_should_update",
+            "value": "(src_should_update) != null && String(src_should_update) != 'undefined' && String(src_should_update) != 'null' && String(src_should_update) != '-' && String(src_should_update) != '' ? (src_should_update) : undefined"
+          },
+          {
+            "name": "state",
+            "value": "(state) != null && String(state) != 'undefined' && String(state) != 'null' && String(state) != '-' && String(state) != '' ? (state) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "(cimTransport) != null && String(cimTransport) != 'undefined' && String(cimTransport) != 'null' && String(cimTransport) != '-' && String(cimTransport) != '' ? (cimTransport) : undefined"
+          },
+          {
+            "name": "transport_dest_port",
+            "value": "(transport_dest_port) != null && String(transport_dest_port) != 'undefined' && String(transport_dest_port) != 'null' && String(transport_dest_port) != '-' && String(transport_dest_port) != '' ? (transport_dest_port) : undefined"
+          },
+          {
+            "name": "src",
+            "value": "(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != null && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'undefined' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != 'null' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '-' && String(src_ip || src || source__ip || client__ip || IpAddress || ipAddress) != '' ? (src_ip || src || source__ip || client__ip || IpAddress || ipAddress) : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "(src_port || source__port || spt || srcport || sport) != null && String(src_port || source__port || spt || srcport || sport) != 'undefined' && String(src_port || source__port || spt || srcport || sport) != 'null' && String(src_port || source__port || spt || srcport || sport) != '-' && String(src_port || source__port || spt || srcport || sport) != '' ? Number(src_port || source__port || spt || srcport || sport) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "dest",
+            "value": "(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != null && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'undefined' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != 'null' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '-' && String(dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) != '' ? (dest_ip || dst_ip || destination__ip || server__ip || dest || dest_host || Computer || WorkstationName) : undefined"
+          },
+          {
+            "name": "user",
+            "value": "(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != null && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'undefined' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != 'null' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '-' && String(user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) != '' ? (user || src_user || unauthuser || SubjectUserName || UserName || TargetUserName) : undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != null && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'undefined' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != 'null' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '-' && String(vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) != '' ? (vendor_product || ((vendor || '') + ((vendor && product) ? ' ' : '') + (product || '')).trim() || undefined) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != null && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != 'undefined' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != 'null' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != '-' && String(/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') != '' ? (/deny|drop|block|fail|denied|failure|error/i.test(String(outcome || action)) ? 'blocked' : 'allowed') : undefined"
+          },
+          {
+            "name": "cpu_load_percent",
+            "value": "(cpu_load_percent) != null && String(cpu_load_percent) != 'undefined' && String(cpu_load_percent) != 'null' && String(cpu_load_percent) != '-' && String(cpu_load_percent) != '' ? Number(cpu_load_percent) : undefined"
+          },
+          {
+            "name": "dest_is_expected",
+            "value": "(dest_is_expected) != null && String(dest_is_expected) != 'undefined' && String(dest_is_expected) != 'null' && String(dest_is_expected) != '-' && String(dest_is_expected) != '' ? (dest_is_expected) : undefined"
+          },
+          {
+            "name": "mem_used",
+            "value": "(mem_used) != null && String(mem_used) != 'undefined' && String(mem_used) != 'null' && String(mem_used) != '-' && String(mem_used) != '' ? Number(mem_used) : undefined"
+          },
+          {
+            "name": "os",
+            "value": "(os) != null && String(os) != 'undefined' && String(os) != 'null' && String(os) != '-' && String(os) != '' ? (os) : undefined"
+          },
+          {
+            "name": "parent_process_exec",
+            "value": "(parent_process_exec) != null && String(parent_process_exec) != 'undefined' && String(parent_process_exec) != 'null' && String(parent_process_exec) != '-' && String(parent_process_exec) != '' ? (parent_process_exec) : undefined"
+          },
+          {
+            "name": "parent_process_id",
+            "value": "(parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '' ? Number(parent_process_id) : undefined"
+          },
+          {
+            "name": "parent_process_guid",
+            "value": "(parent_process_guid) != null && String(parent_process_guid) != 'undefined' && String(parent_process_guid) != 'null' && String(parent_process_guid) != '-' && String(parent_process_guid) != '' ? (parent_process_guid) : undefined"
+          },
+          {
+            "name": "parent_process_path",
+            "value": "(parent_process_path) != null && String(parent_process_path) != 'undefined' && String(parent_process_path) != 'null' && String(parent_process_path) != '-' && String(parent_process_path) != '' ? (parent_process_path) : undefined"
+          },
+          {
+            "name": "process_current_directory",
+            "value": "(process_current_directory || cwd) != null && String(process_current_directory || cwd) != 'undefined' && String(process_current_directory || cwd) != 'null' && String(process_current_directory || cwd) != '-' && String(process_current_directory || cwd) != '' ? (process_current_directory || cwd) : undefined"
+          },
+          {
+            "name": "process_exec",
+            "value": "(process_exec || process_name) != null && String(process_exec || process_name) != 'undefined' && String(process_exec || process_name) != 'null' && String(process_exec || process_name) != '-' && String(process_exec || process_name) != '' ? (process_exec || process_name) : undefined"
+          },
+          {
+            "name": "process_hash",
+            "value": "(process_hash || file_hash) != null && String(process_hash || file_hash) != 'undefined' && String(process_hash || file_hash) != 'null' && String(process_hash || file_hash) != '-' && String(process_hash || file_hash) != '' ? (process_hash || file_hash) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "process_integrity_level",
+            "value": "(process_integrity_level) != null && String(process_integrity_level) != 'undefined' && String(process_integrity_level) != 'null' && String(process_integrity_level) != '-' && String(process_integrity_level) != '' ? (process_integrity_level) : undefined"
+          },
+          {
+            "name": "process_path",
+            "value": "(process_path || process) != null && String(process_path || process) != 'undefined' && String(process_path || process) != 'null' && String(process_path || process) != '-' && String(process_path || process) != '' ? (process_path || process) : undefined"
+          },
+          {
+            "name": "user_id",
+            "value": "(user_id || user_uid || SubjectUserSid) != null && String(user_id || user_uid || SubjectUserSid) != 'undefined' && String(user_id || user_uid || SubjectUserSid) != 'null' && String(user_id || user_uid || SubjectUserSid) != '-' && String(user_id || user_uid || SubjectUserSid) != '' ? (user_id || user_uid || SubjectUserSid) : undefined"
+          },
+          {
+            "name": "original_file_name",
+            "value": "(original_file_name) != null && String(original_file_name) != 'undefined' && String(original_file_name) != 'null' && String(original_file_name) != '-' && String(original_file_name) != '' ? (original_file_name) : undefined"
+          },
+          {
+            "name": "parent_process",
+            "value": "(parent_process || parent_process_name) != null && String(parent_process || parent_process_name) != 'undefined' && String(parent_process || parent_process_name) != 'null' && String(parent_process || parent_process_name) != '-' && String(parent_process || parent_process_name) != '' ? (parent_process || parent_process_name) : undefined"
+          },
+          {
+            "name": "parent_process_name",
+            "value": "(parent_process_name || parent_process) != null && String(parent_process_name || parent_process) != 'undefined' && String(parent_process_name || parent_process) != 'null' && String(parent_process_name || parent_process) != '-' && String(parent_process_name || parent_process) != '' ? (parent_process_name || parent_process) : undefined"
+          },
+          {
+            "name": "process",
+            "value": "(command || process || process_name) != null && String(command || process || process_name) != 'undefined' && String(command || process || process_name) != 'null' && String(command || process || process_name) != '-' && String(command || process || process_name) != '' ? (command || process || process_name) : undefined"
+          },
+          {
+            "name": "process_name",
+            "value": "(process_name || process) != null && String(process_name || process) != 'undefined' && String(process_name || process) != 'null' && String(process_name || process) != '-' && String(process_name || process) != '' ? (process_name || process) : undefined"
+          },
+          {
+            "name": "description",
+            "value": "(description || message) != null && String(description || message) != 'undefined' && String(description || message) != 'null' && String(description || message) != '-' && String(description || message) != '' ? (description || message) : undefined"
+          },
+          {
+            "name": "service_dll",
+            "value": "(service_dll) != null && String(service_dll) != 'undefined' && String(service_dll) != 'null' && String(service_dll) != '-' && String(service_dll) != '' ? (service_dll) : undefined"
+          },
+          {
+            "name": "service_dll_path",
+            "value": "(service_dll_path) != null && String(service_dll_path) != 'undefined' && String(service_dll_path) != 'null' && String(service_dll_path) != '-' && String(service_dll_path) != '' ? (service_dll_path) : undefined"
+          },
+          {
+            "name": "service_dll_hash",
+            "value": "(service_dll_hash) != null && String(service_dll_hash) != 'undefined' && String(service_dll_hash) != 'null' && String(service_dll_hash) != '-' && String(service_dll_hash) != '' ? (service_dll_hash) : undefined"
+          },
+          {
+            "name": "service_dll_signature_exists",
+            "value": "(service_dll_signature_exists) != null && String(service_dll_signature_exists) != 'undefined' && String(service_dll_signature_exists) != 'null' && String(service_dll_signature_exists) != '-' && String(service_dll_signature_exists) != '' ? (service_dll_signature_exists) : undefined"
+          },
+          {
+            "name": "service_dll_signature_verified",
+            "value": "(service_dll_signature_verified) != null && String(service_dll_signature_verified) != 'undefined' && String(service_dll_signature_verified) != 'null' && String(service_dll_signature_verified) != '-' && String(service_dll_signature_verified) != '' ? (service_dll_signature_verified) : undefined"
+          },
+          {
+            "name": "service_exec",
+            "value": "(service_exec) != null && String(service_exec) != 'undefined' && String(service_exec) != 'null' && String(service_exec) != '-' && String(service_exec) != '' ? (service_exec) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 46)",
+      "conf": {
+        "add": [
+          {
+            "name": "service_hash",
+            "value": "(service_hash) != null && String(service_hash) != 'undefined' && String(service_hash) != 'null' && String(service_hash) != '-' && String(service_hash) != '' ? (service_hash) : undefined"
+          },
+          {
+            "name": "service_path",
+            "value": "(service_path) != null && String(service_path) != 'undefined' && String(service_path) != 'null' && String(service_path) != '-' && String(service_path) != '' ? (service_path) : undefined"
+          },
+          {
+            "name": "service_signature_exists",
+            "value": "(service_signature_exists) != null && String(service_signature_exists) != 'undefined' && String(service_signature_exists) != 'null' && String(service_signature_exists) != '-' && String(service_signature_exists) != '' ? (service_signature_exists) : undefined"
+          },
+          {
+            "name": "service_signature_verified",
+            "value": "(service_signature_verified) != null && String(service_signature_verified) != 'undefined' && String(service_signature_verified) != 'null' && String(service_signature_verified) != '-' && String(service_signature_verified) != '' ? (service_signature_verified) : undefined"
+          },
+          {
+            "name": "service",
+            "value": "(service || service_name) != null && String(service || service_name) != 'undefined' && String(service || service_name) != 'null' && String(service || service_name) != '-' && String(service || service_name) != '' ? (service || service_name) : undefined"
+          },
+          {
+            "name": "service_name",
+            "value": "(service_name || service) != null && String(service_name || service) != 'undefined' && String(service_name || service) != 'null' && String(service_name || service) != '-' && String(service_name || service) != '' ? (service_name || service) : undefined"
+          },
+          {
+            "name": "service_id",
+            "value": "(service_id) != null && String(service_id) != 'undefined' && String(service_id) != 'null' && String(service_id) != '-' && String(service_id) != '' ? (service_id) : undefined"
+          },
+          {
+            "name": "start_mode",
+            "value": "(start_mode) != null && String(start_mode) != 'undefined' && String(start_mode) != 'null' && String(start_mode) != '-' && String(start_mode) != '' ? (start_mode) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "(status || http_status || outcome) != null && String(status || http_status || outcome) != 'undefined' && String(status || http_status || outcome) != 'null' && String(status || http_status || outcome) != '-' && String(status || http_status || outcome) != '' ? (status || http_status || outcome) : undefined"
+          },
+          {
+            "name": "file_access_time",
+            "value": "(file_access_time) != null && String(file_access_time) != 'undefined' && String(file_access_time) != 'null' && String(file_access_time) != '-' && String(file_access_time) != '' ? (file_access_time) : undefined"
+          },
+          {
+            "name": "file_create_time",
+            "value": "(file_create_time) != null && String(file_create_time) != 'undefined' && String(file_create_time) != 'null' && String(file_create_time) != '-' && String(file_create_time) != '' ? (file_create_time) : undefined"
+          },
+          {
+            "name": "file_modify_time",
+            "value": "(file_modify_time) != null && String(file_modify_time) != 'undefined' && String(file_modify_time) != 'null' && String(file_modify_time) != '-' && String(file_modify_time) != '' ? (file_modify_time) : undefined"
+          },
+          {
+            "name": "file_hash",
+            "value": "(file_hash || hash || md5 || sha256) != null && String(file_hash || hash || md5 || sha256) != 'undefined' && String(file_hash || hash || md5 || sha256) != 'null' && String(file_hash || hash || md5 || sha256) != '-' && String(file_hash || hash || md5 || sha256) != '' ? (file_hash || hash || md5 || sha256) : undefined"
+          },
+          {
+            "name": "file_name",
+            "value": "(file_name || filename || file) != null && String(file_name || filename || file) != 'undefined' && String(file_name || filename || file) != 'null' && String(file_name || filename || file) != '-' && String(file_name || filename || file) != '' ? (file_name || filename || file) : undefined"
+          },
+          {
+            "name": "file_path",
+            "value": "(file_path || path) != null && String(file_path || path) != 'undefined' && String(file_path || path) != 'null' && String(file_path || path) != '-' && String(file_path || path) != '' ? (file_path || path) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map (cont. 61)",
+      "conf": {
+        "add": [
+          {
+            "name": "file_acl",
+            "value": "(file_acl) != null && String(file_acl) != 'undefined' && String(file_acl) != 'null' && String(file_acl) != '-' && String(file_acl) != '' ? (file_acl) : undefined"
+          },
+          {
+            "name": "file_size",
+            "value": "(file_size || size) != null && String(file_size || size) != 'undefined' && String(file_size || size) != 'null' && String(file_size || size) != '-' && String(file_size || size) != '' ? Number(file_size || size) : undefined"
+          },
+          {
+            "name": "registry_hive",
+            "value": "(registry_hive) != null && String(registry_hive) != 'undefined' && String(registry_hive) != 'null' && String(registry_hive) != '-' && String(registry_hive) != '' ? (registry_hive) : undefined"
+          },
+          {
+            "name": "registry_value_text",
+            "value": "(registry_value_text) != null && String(registry_value_text) != 'undefined' && String(registry_value_text) != 'null' && String(registry_value_text) != '-' && String(registry_value_text) != '' ? (registry_value_text) : undefined"
+          },
+          {
+            "name": "registry_path",
+            "value": "(registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '' ? (registry_path) : undefined"
+          },
+          {
+            "name": "registry_key_name",
+            "value": "(registry_key_name) != null && String(registry_key_name) != 'undefined' && String(registry_key_name) != 'null' && String(registry_key_name) != '-' && String(registry_key_name) != '' ? (registry_key_name) : undefined"
+          },
+          {
+            "name": "registry_value_data",
+            "value": "(registry_value_data) != null && String(registry_value_data) != 'undefined' && String(registry_value_data) != 'null' && String(registry_value_data) != '-' && String(registry_value_data) != '' ? (registry_value_data) : undefined"
+          },
+          {
+            "name": "registry_value_name",
+            "value": "(registry_value_name) != null && String(registry_value_name) != 'undefined' && String(registry_value_name) != 'null' && String(registry_value_name) != '-' && String(registry_value_name) != '' ? (registry_value_name) : undefined"
+          },
+          {
+            "name": "registry_value_type",
+            "value": "(registry_value_type) != null && String(registry_value_type) != 'undefined' && String(registry_value_type) != 'null' && String(registry_value_type) != '-' && String(registry_value_type) != '' ? (registry_value_type) : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set sourcetype + _time",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'linux_audit'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}
