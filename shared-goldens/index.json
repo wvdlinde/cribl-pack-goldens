@@ -14475,6 +14475,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "delinea_reports::cim#network::__mapping__",
+      "sourcetype": "delinea_reports",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:40:50.525Z",
+      "path": "shared-goldens/delinea_reports__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
