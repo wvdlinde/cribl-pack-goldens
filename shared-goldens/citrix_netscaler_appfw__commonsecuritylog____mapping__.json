@@ -2,11 +2,11 @@
   "key": "citrix_netscaler_appfw::commonsecuritylog::__mapping__",
   "sourcetype": "citrix_netscaler_appfw",
   "dest_format": "commonsecuritylog::__mapping__",
-  "score": 90,
+  "score": 100,
   "part": "mapping",
-  "author": "unknown",
-  "build": 648,
-  "updated_at": "2026-08-31T12:20:56.940Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T11:57:35.320Z",
   "functions": [
     {
       "id": "eval",
@@ -98,32 +98,24 @@
       "conf": {
         "add": [
           {
+            "name": "class_uid",
+            "value": "'commonsecuritylog'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'network'"
+          },
+          {
             "name": "event_type",
-            "value": "'NetScaler AppFW Security Event'"
+            "value": "'WebApplicationFirewall'"
           },
           {
             "name": "TimeGenerated",
-            "value": "_time ? new Date(_time*1000).toISOString() : (timestamp ? new Date(timestamp*1000).toISOString() : null)"
-          },
-          {
-            "name": "DeviceName",
-            "value": "ns_hostname"
-          },
-          {
-            "name": "DeviceEventClassID",
-            "value": "appfw_event_type"
-          },
-          {
-            "name": "Activity",
-            "value": "action"
-          },
-          {
-            "name": "DeviceAction",
-            "value": "action"
+            "value": "timestamp || _time"
           },
           {
             "name": "SourceIP",
-            "value": "src_ip"
+            "value": "(/^(\\d{1,3}(\\.\\d{1,3}){3}|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]+)$/.test(String((src_ip))) ? (src_ip) : undefined)"
           },
           {
             "name": "SourcePort",
@@ -138,8 +130,20 @@
             "value": "protocol"
           },
           {
+            "name": "DeviceEventClassID",
+            "value": "sig_category"
+          },
+          {
+            "name": "Activity",
+            "value": "action_normalized || signature || sig_category"
+          },
+          {
+            "name": "DeviceAction",
+            "value": "result || action || status"
+          },
+          {
             "name": "LogSeverity",
-            "value": "severity == 'CRITICAL' ? 10 : severity == 'ERROR' ? 8 : severity == 'HIGH' ? 7 : severity == 'WARNING' ? 5 : 0"
+            "value": "severity == 'CRITICAL' ? 10 : severity == 'HIGH' ? 8 : severity == 'ERROR' ? 7 : severity == 'WARNING' ? 5 : 0"
           },
           {
             "name": "RequestURL",
@@ -147,15 +151,35 @@
           },
           {
             "name": "ApplicationProtocol",
-            "value": "http_method ? 'HTTP' : ''"
+            "value": "'HTTP'"
           },
           {
-            "name": "DeviceVendor",
-            "value": "'Citrix'"
+            "name": "DeviceName",
+            "value": "profile"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-19)",
+      "conf": {
+        "add": [
+          {
+            "name": "SourceUserName",
+            "value": "policy_name"
           },
           {
-            "name": "DeviceProduct",
-            "value": "'NetScaler AppFW'"
+            "name": "DestinationUserName",
+            "value": "session_id"
+          },
+          {
+            "name": "SentBytes",
+            "value": "Number(threat_index || 0)"
+          },
+          {
+            "name": "ReceivedBytes",
+            "value": "Number(status || 0)"
           }
         ]
       }
@@ -167,7 +191,19 @@
         "add": [
           {
             "name": "sourcetype",
-            "value": "'citrix_netscaler_appfw'"
+            "value": "'citrix:netscaler:appfw'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Force Sentinel TimeGenerated (required ingest-time column)",
+      "conf": {
+        "add": [
+          {
+            "name": "TimeGenerated",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)).toISOString() : /^\\d{10}(\\.\\d+)?$/.test(String(log_time)) ? new Date(Number(log_time)*1000).toISOString() : new Date(log_time).toISOString()) : new Date(_time ? _time*1000 : Date.now()).toISOString()"
           }
         ]
       }
