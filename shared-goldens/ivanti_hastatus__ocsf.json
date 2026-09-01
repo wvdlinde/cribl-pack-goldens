@@ -1,0 +1,327 @@
+{
+  "key": "ivanti_hastatus::ocsf",
+  "sourcetype": "ivanti_hastatus",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "wlinde@cribl.io",
+  "build": 652,
+  "updated_at": "2026-09-01T15:02:57.183Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<dvc_host>\\S+)\\s+(?<process>[A-Za-z0-9_-]+)\\[(?<pid>\\d+)\\]:\\s+(?<severity_label>INFO|WARN|WARNING|ERROR|CRITICAL|DEBUG)\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog header: timestamp, host, process, pid, severity label and message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:peer|member)\\s+(?:(?<peer_node>node-\\d+)(?:\\s+\\((?<peer_ip>[0-9A-Fa-f.:]+)\\))?|(?<__peer_ip2>\\d{1,3}(?:\\.\\d{1,3}){3}))/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract HA peer/cluster member node name and its IPv4/IPv6 address"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:external\\sIP\\s(?<src_ip>[0-9A-Fa-f.:]+)|peer\\s(?<__peer_unreach>[0-9A-Fa-f.:]+)\\sunreachable|VIP\\s(?<vip>[0-9A-Fa-f.:]+)|user\\s(?<user>[A-Za-z0-9_.-]+))(?:[^\\n]*?on\\sport\\s(?<dst_port>\\d+)(?:\\/(?<__transport>[A-Za-z]+))?)?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract external source IP, unreachable peer IP, VIP, admin user and destination port/transport"
+    },
+    {
+      "id": "serde",
+      "filter": "message && message.indexOf('=') > -1",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "cleanFields": true
+      },
+      "description": "Extract trailing key=value detail pairs (cluster, state, latency, role, retry, etc.) from the message body"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp && strptime(timestamp, '%b %d %H:%M:%S') ? strptime(timestamp, '%b %d %H:%M:%S').getTime()/1000 : _time"
+          },
+          {
+            "name": "severity",
+            "value": "severity_label === 'CRITICAL' ? 'critical' : severity_label === 'ERROR' ? 'error' : (severity_label === 'WARN' || severity_label === 'WARNING') ? 'warning' : severity_label === 'DEBUG' ? 'debug' : 'informational'"
+          },
+          {
+            "name": "peer_ip",
+            "value": "peer_ip ? String(peer_ip).toLowerCase() : (__peer_ip2 ? __peer_ip2 : (__peer_unreach ? __peer_unreach : (peer ? String(peer).toLowerCase() : undefined)))"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? String(src_ip).toLowerCase() : undefined"
+          },
+          {
+            "name": "dst_host",
+            "value": "dvc_host"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "__transport ? String(__transport).toLowerCase() : 'ha'"
+          },
+          {
+            "name": "action",
+            "value": "/blocked|dropping|demoted/i.test(message) ? 'blocked' : (severity_label === 'ERROR' || severity_label === 'CRITICAL') ? 'failure' : 'success'"
+          },
+          {
+            "name": "event_type",
+            "value": "/heartbeat/i.test(message) ? 'ha_heartbeat' : /failover/i.test(message) ? 'ha_failover' : /split-brain/i.test(message) ? 'ha_split_brain' : /configuration sync/i.test(message) ? 'config_sync' : /license sync/i.test(message) ? 'license_sync' : /unauthorized/i.test(message) ? 'unauthorized_connection' : /joined cluster/i.test(message) ? 'cluster_member_join' : /state transition/i.test(message) ? 'ha_state_transition' : 'ha_status'"
+          },
+          {
+            "name": "vendor",
+            "value": "'Ivanti'"
+          },
+          {
+            "name": "product",
+            "value": "'Connect Secure HA'"
+          }
+        ],
+        "remove": [
+          "__peer_ip2",
+          "__peer_unreach",
+          "__transport",
+          "peer"
+        ]
+      },
+      "description": "Normalize timestamp, severity, protocol, action, peer IP and classify HA event type"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "time",
+            "value": "Number(new Date(timestamp || _time).getTime())"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "peer_ip || ''"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "vip || ''"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "protocol || ''"
+          },
+          {
+            "name": "device.hostname",
+            "value": "dvc_host || dst_host || ''"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "vendor || ''"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "product || ''"
+          },
+          {
+            "name": "metadata.version",
+            "value": "version || ''"
+          },
+          {
+            "name": "severity_id",
+            "value": "severity_label == 'CRITICAL' ? 5 : severity_label == 'ERROR' ? 4 : severity_label == 'WARN' ? 3 : severity_label == 'INFO' ? 1 : Number(severity || 0)"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_type == 'ha_failover' ? 2 : 1"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "type_uid",
+            "value": "400100 + (event_type == 'ha_failover' ? 2 : 1)"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "peer_node || ''"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-17)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti_hastatus'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "band": "fail",
+    "scoreSource": "value-coverage",
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed."
+  }
+}
