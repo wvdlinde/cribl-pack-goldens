@@ -1,0 +1,214 @@
+{
+  "key": "citrix_netscaler_appfw::cim#network::__mapping__",
+  "sourcetype": "citrix_netscaler_appfw",
+  "dest_format": "cim#network::__mapping__",
+  "score": 92,
+  "part": "mapping",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-01T07:37:42.122Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured",
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields to destination schema",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'Network_Traffic'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'Network'"
+          },
+          {
+            "name": "event_type",
+            "value": "'network_traffic'"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src",
+            "value": "src_ip || ''"
+          },
+          {
+            "name": "src_port",
+            "value": "Number(src_port || 0)"
+          },
+          {
+            "name": "dest_port",
+            "value": "Number(dst_port || 0)"
+          },
+          {
+            "name": "dest",
+            "value": "host || ''"
+          },
+          {
+            "name": "dvc",
+            "value": "host || ''"
+          },
+          {
+            "name": "action",
+            "value": "action_normalized || (action == 'BLOCKED' || action == 'DROPPED' || action == 'RESET' ? 'blocked' : 'allowed')"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || ''"
+          },
+          {
+            "name": "transport",
+            "value": "(protocol || 'tcp').toLowerCase()"
+          },
+          {
+            "name": "protocol",
+            "value": "(protocol || 'tcp').toLowerCase()"
+          },
+          {
+            "name": "app",
+            "value": "Number(dst_port || 0) == 443 ? 'https' : 'http'"
+          },
+          {
+            "name": "rule",
+            "value": "policy || ''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Map fields (continued 16-22)",
+      "conf": {
+        "add": [
+          {
+            "name": "rule_id",
+            "value": "signature && signature != 'NA' ? signature : (sig_type || '')"
+          },
+          {
+            "name": "session_id",
+            "value": "String(session_id || '')"
+          },
+          {
+            "name": "flow_id",
+            "value": "String(session_id || '')"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && C.Net.isPrivate(src_ip) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_ip && C.Net.isPrivate(src_ip) ? 'internal' : 'external'"
+          },
+          {
+            "name": "dest_interface",
+            "value": "ppe || ''"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Citrix NetScaler AppFW'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set source-native sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'citrix_netscaler_appfw'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": null,
+  "report": null
+}
