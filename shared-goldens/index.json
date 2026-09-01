@@ -14580,6 +14580,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_openports::cim#network::__mapping__",
+      "sourcetype": "ivanti_openports",
+      "dest_format": "cim#network::__mapping__",
+      "score": 93,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:41:19.925Z",
+      "path": "shared-goldens/ivanti_openports__cim#network____mapping__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
