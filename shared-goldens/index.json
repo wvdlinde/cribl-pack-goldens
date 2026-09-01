@@ -16020,6 +16020,21 @@
         "score": 88,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc_misp_web::ocsf",
+      "sourcetype": "ncsc_misp_web",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "wlinde@cribl.io",
+      "build": 652,
+      "updated_at": "2026-09-01T15:00:01.430Z",
+      "path": "shared-goldens/ncsc_misp_web__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
