@@ -13785,6 +13785,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "linux_audit::cim#endpoint::__mapping__",
+      "sourcetype": "linux_audit",
+      "dest_format": "cim#endpoint::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-01T07:37:29.553Z",
+      "path": "shared-goldens/linux_audit__cim#endpoint____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
