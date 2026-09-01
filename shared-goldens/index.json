@@ -8660,14 +8660,14 @@
       "key": "ncsc_cloudflare_firewall::__extraction__",
       "sourcetype": "ncsc_cloudflare_firewall",
       "dest_format": "__extraction__",
-      "score": 98,
+      "score": 100,
       "part": "extraction",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-08-10T06:38:05.997Z",
+      "updated_at": "2026-09-01T07:36:55.340Z",
       "path": "shared-goldens/ncsc_cloudflare_firewall____extraction__.json",
       "report": {
-        "score": 98,
+        "score": 100,
         "band": "good"
       }
     },
