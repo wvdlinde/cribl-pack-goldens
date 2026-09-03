@@ -4550,14 +4550,14 @@
       "key": "f5_bigip::ocsf",
       "sourcetype": "f5_bigip",
       "dest_format": "ocsf",
-      "score": 91,
+      "score": 94,
       "part": null,
-      "author": "wlinde@cribl.io",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-13T07:00:58.910Z",
+      "updated_at": "2026-09-03T05:56:47.983Z",
       "path": "shared-goldens/f5_bigip__ocsf.json",
       "report": {
-        "score": 91,
+        "score": 94,
         "band": "good"
       }
     },
