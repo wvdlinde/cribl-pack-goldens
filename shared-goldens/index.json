@@ -13670,14 +13670,14 @@
       "key": "zscaler_web::ocsf",
       "sourcetype": "zscaler_web",
       "dest_format": "ocsf",
-      "score": 91,
+      "score": 100,
       "part": null,
-      "author": "wvdlinde",
-      "build": 273,
-      "updated_at": "2026-07-16T18:17:46.176Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:56:59.828Z",
       "path": "shared-goldens/zscaler_web__ocsf.json",
       "report": {
-        "score": 91,
+        "score": 100,
         "band": "good"
       }
     },
