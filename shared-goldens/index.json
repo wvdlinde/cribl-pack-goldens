@@ -9665,15 +9665,15 @@
       "key": "palo_alto_threat::ocsf",
       "sourcetype": "palo_alto_threat",
       "dest_format": "ocsf",
-      "score": 82,
+      "score": 98,
       "part": null,
-      "author": "wvdlinde",
-      "build": 273,
-      "updated_at": "2026-07-16T18:16:01.059Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:56:51.647Z",
       "path": "shared-goldens/palo_alto_threat__ocsf.json",
       "report": {
-        "score": 82,
-        "band": "warn"
+        "score": 98,
+        "band": "good"
       }
     },
     {
