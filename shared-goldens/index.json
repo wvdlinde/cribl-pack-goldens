@@ -16575,6 +16575,21 @@
         "score": 96,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_suricata_corelight::ocsf",
+      "sourcetype": "corelight_suricata_corelight",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:57:07.701Z",
+      "path": "shared-goldens/corelight_suricata_corelight__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
