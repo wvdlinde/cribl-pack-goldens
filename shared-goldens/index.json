@@ -16590,6 +16590,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_messages::ocsf",
+      "sourcetype": "ivanti_messages",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:57:11.998Z",
+      "path": "shared-goldens/ivanti_messages__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
