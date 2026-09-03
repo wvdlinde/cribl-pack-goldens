@@ -16560,6 +16560,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ivanti_sun_jvm::ocsf",
+      "sourcetype": "ivanti_sun_jvm",
+      "dest_format": "ocsf",
+      "score": 96,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:57:04.135Z",
+      "path": "shared-goldens/ivanti_sun_jvm__ocsf.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
