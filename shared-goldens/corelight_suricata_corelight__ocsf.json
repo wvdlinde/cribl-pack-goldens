@@ -1,0 +1,526 @@
+{
+  "key": "corelight_suricata_corelight::ocsf",
+  "sourcetype": "corelight_suricata_corelight",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-03T05:57:07.701Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Try JSON parse"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "'4001'"
+          },
+          {
+            "name": "category_uid",
+            "value": "'4'"
+          },
+          {
+            "name": "event_type",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "id.orig_h || ''"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "Number(id.orig_p || 0)"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "id.resp_h || ''"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "Number(id.resp_p || 0)"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(proto || '').toUpperCase()"
+          },
+          {
+            "name": "time",
+            "value": "Number(ts) * 1000"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "event_type == 'alert' ? 1 : (event_type == 'dns' ? 2 : (event_type == 'http' ? 3 : (event_type == 'ssh' ? 4 : (event_type == 'tls' ? 5 : (event_type == 'fileinfo' ? 6 : (event_type == 'smtp' ? 7 : 99))))))"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100 + (event_type == 'alert' ? 1 : (event_type == 'dns' ? 2 : (event_type == 'http' ? 3 : (event_type == 'ssh' ? 4 : (event_type == 'tls' ? 5 : (event_type == 'fileinfo' ? 6 : (event_type == 'smtp' ? 7 : 99)))))) )"
+          },
+          {
+            "name": "severity_id",
+            "value": "alert && alert.severity ? Number(alert.severity) : 1"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "http && http.length ? Number(http.length) : 0"
+          }
+        ]
+      },
+      "description": "Map fields to destination schema"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "traffic.bytes_in",
+            "value": "fileinfo && fileinfo.size ? Number(fileinfo.size) : 0"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "smtp && smtp.mail_from ? smtp.mail_from : ''"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Suricata'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Corelight'"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.1.0'"
+          }
+        ]
+      },
+      "description": "Map fields (continued 16-20)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'corelight_suricata_corelight'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "CorelightSuricataCorelight_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718012345.123456,\"uid\":\"CHhAvVGS1DHFjwGM9\",\"id.orig_h\":\"10.1.4.22\",\"id.orig_p\":49213,\"id.resp_h\":\"203.0.113.55\",\"id.resp_p\":443,\"event_type\":\"alert\",\"proto\":\"TCP\",\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2024897,\"rev\":2,\"signature\":\"ET MALWARE Win32/Cobalt Strike Beacon Activity\",\"category\":\"A Network Trojan was detected\",\"severity\":1},\"flow_id\":934821023847123}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718012345.123456,
+        "uid": "CHhAvVGS1DHFjwGM9",
+        "id.orig_h": "10.1.4.22",
+        "id.orig_p": 49213,
+        "id.resp_h": "203.0.113.55",
+        "id.resp_p": 443,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "alert": {
+          "action": "allowed",
+          "gid": 1,
+          "signature_id": 2024897,
+          "rev": 2,
+          "signature": "ET MALWARE Win32/Cobalt Strike Beacon Activity",
+          "category": "A Network Trojan was detected",
+          "severity": 1
+        },
+        "flow_id": 934821023847123,
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718012345123.456,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718013456.654321,\"uid\":\"C4tRnf2vXyLm3Aoq1a\",\"id.orig_h\":\"192.168.1.14\",\"id.orig_p\":52344,\"id.resp_h\":\"8.8.8.8\",\"id.resp_p\":53,\"event_type\":\"dns\",\"proto\":\"UDP\",\"dns\":{\"type\":\"query\",\"id\":51023,\"rrname\":\"update.microsoft.com\",\"rrtype\":\"A\",\"rcode\":\"NOERROR\"}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718013456.654321,
+        "uid": "C4tRnf2vXyLm3Aoq1a",
+        "id.orig_h": "192.168.1.14",
+        "id.orig_p": 52344,
+        "id.resp_h": "8.8.8.8",
+        "id.resp_p": 53,
+        "event_type": "Network Activity",
+        "proto": "UDP",
+        "dns": {
+          "type": "query",
+          "id": 51023,
+          "rrname": "update.microsoft.com",
+          "rrtype": "A",
+          "rcode": "NOERROR"
+        },
+        "protocol": "UDP",
+        "transport": "UDP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718013456654.321,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718014521.987654,\"uid\":\"CqZ8p1sJn4vXe7Y6h5\",\"id.orig_h\":\"172.16.5.9\",\"id.orig_p\":51222,\"id.resp_h\":\"198.51.100.23\",\"id.resp_p\":80,\"event_type\":\"http\",\"proto\":\"TCP\",\"http\":{\"hostname\":\"insecure-download.biz\",\"url\":\"/payload.exe\",\"http_user_agent\":\"Mozilla/5.0\",\"http_method\":\"GET\",\"status\":200,\"length\":184320}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718014521.987654,
+        "uid": "CqZ8p1sJn4vXe7Y6h5",
+        "id.orig_h": "172.16.5.9",
+        "id.orig_p": 51222,
+        "id.resp_h": "198.51.100.23",
+        "id.resp_p": 80,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "http": {
+          "hostname": "insecure-download.biz",
+          "url": "/payload.exe",
+          "http_user_agent": "Mozilla/5.0",
+          "http_method": "GET",
+          "status": 200,
+          "length": 184320
+        },
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718014521987.654,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718015672.111222,\"uid\":\"CxT2mQ9wLp5Kj0Ac3d\",\"id.orig_h\":\"10.10.10.5\",\"id.orig_p\":22,\"id.resp_h\":\"45.33.32.156\",\"id.resp_p\":51322,\"event_type\":\"ssh\",\"proto\":\"TCP\",\"ssh\":{\"client\":{\"software_version\":\"OpenSSH_8.9\",\"version\":2},\"server\":{\"software_version\":\"OpenSSH_7.4\",\"version\":2}}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718015672.111222,
+        "uid": "CxT2mQ9wLp5Kj0Ac3d",
+        "id.orig_h": "10.10.10.5",
+        "id.orig_p": 22,
+        "id.resp_h": "45.33.32.156",
+        "id.resp_p": 51322,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "ssh": {
+          "client": {
+            "software_version": "OpenSSH_8.9",
+            "version": 2
+          },
+          "server": {
+            "software_version": "OpenSSH_7.4",
+            "version": 2
+          }
+        },
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718015672111.222,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718016789.333444,\"uid\":\"CvB3nRq7Y8sT1jLk9m\",\"id.orig_h\":\"10.1.9.44\",\"id.orig_p\":58211,\"id.resp_h\":\"142.250.72.14\",\"id.resp_p\":443,\"event_type\":\"tls\",\"proto\":\"TCP\",\"tls\":{\"version\":\"TLS 1.3\",\"sni\":\"mail.google.com\",\"subject\":\"CN=mail.google.com\",\"issuerdn\":\"CN=GTS CA 1C3,O=Google Trust Services LLC,C=US\",\"notbefore\":\"2024-03-01T00:00:00\",\"notafter\":\"2024-06-01T00:00:00\"}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718016789.333444,
+        "uid": "CvB3nRq7Y8sT1jLk9m",
+        "id.orig_h": "10.1.9.44",
+        "id.orig_p": 58211,
+        "id.resp_h": "142.250.72.14",
+        "id.resp_p": 443,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "tls": {
+          "version": "TLS 1.3",
+          "sni": "mail.google.com",
+          "subject": "CN=mail.google.com",
+          "issuerdn": "CN=GTS CA 1C3,O=Google Trust Services LLC,C=US",
+          "notbefore": "2024-03-01T00:00:00",
+          "notafter": "2024-06-01T00:00:00"
+        },
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718016789333.444,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718017890.445566,\"uid\":\"CzP6xWr2Y9tR3kMn8p\",\"id.orig_h\":\"203.0.113.99\",\"id.orig_p\":41562,\"id.resp_h\":\"10.0.2.15\",\"id.resp_p\":3389,\"event_type\":\"alert\",\"proto\":\"TCP\",\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2210044,\"rev\":1,\"signature\":\"ET SCAN Potential SSH Scan\",\"category\":\"Attempted Information Leak\",\"severity\":2},\"flow_id\":934821023899221}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718017890.445566,
+        "uid": "CzP6xWr2Y9tR3kMn8p",
+        "id.orig_h": "203.0.113.99",
+        "id.orig_p": 41562,
+        "id.resp_h": "10.0.2.15",
+        "id.resp_p": 3389,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "alert": {
+          "action": "allowed",
+          "gid": 1,
+          "signature_id": 2210044,
+          "rev": 1,
+          "signature": "ET SCAN Potential SSH Scan",
+          "category": "Attempted Information Leak",
+          "severity": 2
+        },
+        "flow_id": 934821023899221,
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718017890445.566,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 2,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718018901.556677,\"uid\":\"CoK1jXn5Z7wQ2rTl4v\",\"id.orig_h\":\"10.2.3.77\",\"id.orig_p\":60321,\"id.resp_h\":\"185.199.108.153\",\"id.resp_p\":443,\"event_type\":\"fileinfo\",\"proto\":\"TCP\",\"fileinfo\":{\"filename\":\"invoice_2024.pdf\",\"magic\":\"PDF document\",\"size\":2485760,\"sha256\":\"a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef12345\",\"stored\":false}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718018901.556677,
+        "uid": "CoK1jXn5Z7wQ2rTl4v",
+        "id.orig_h": "10.2.3.77",
+        "id.orig_p": 60321,
+        "id.resp_h": "185.199.108.153",
+        "id.resp_p": 443,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "fileinfo": {
+          "filename": "invoice_2024.pdf",
+          "magic": "PDF document",
+          "size": 2485760,
+          "sha256": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef12345",
+          "stored": false
+        },
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718018901556.677,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      },
+      {
+        "_raw": "{\"_path\":\"suricata_corelight\",\"ts\":1718019012.667788,\"uid\":\"CpR9mYt3X6vWq1Zk7j\",\"id.orig_h\":\"192.168.50.12\",\"id.orig_p\":25,\"id.resp_h\":\"172.217.14.99\",\"id.resp_p\":25,\"event_type\":\"smtp\",\"proto\":\"TCP\",\"smtp\":{\"helo\":\"mail.corp.local\",\"mail_from\":\"<billing@corp.local>\",\"rcpt_to\":[\"<user@partner.com>\"]}}",
+        "_time": 1788261327.861,
+        "_path": "suricata_corelight",
+        "ts": 1718019012.667788,
+        "uid": "CpR9mYt3X6vWq1Zk7j",
+        "id.orig_h": "192.168.50.12",
+        "id.orig_p": 25,
+        "id.resp_h": "172.217.14.99",
+        "id.resp_p": 25,
+        "event_type": "Network Activity",
+        "proto": "TCP",
+        "smtp": {
+          "helo": "mail.corp.local",
+          "mail_from": "<billing@corp.local>",
+          "rcpt_to": [
+            "<user@partner.com>"
+          ]
+        },
+        "protocol": "TCP",
+        "transport": "TCP",
+        "class_uid": 4001,
+        "category_uid": 4,
+        "time": 1718019012667.788,
+        "activity_id": 99,
+        "type_uid": 400199,
+        "severity_id": 1,
+        "sourcetype": "corelight_suricata_corelight"
+      }
+    ],
+    "sampleKeys": [
+      "_path",
+      "ts",
+      "uid",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "event_type",
+      "proto",
+      "alert",
+      "flow_id",
+      "dns",
+      "http",
+      "ssh",
+      "tls",
+      "fileinfo",
+      "smtp"
+    ],
+    "sampleRaw": [
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718012345.123456,\"uid\":\"CHhAvVGS1DHFjwGM9\",\"id.orig_h\":\"10.1.4.22\",\"id.orig_p\":49213,\"id.resp_h\":\"203.0.113.55\",\"id.resp_p\":443,\"event_type\":\"alert\",\"proto\":\"TCP\",\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2024897,\"rev\":2,\"signature\":\"ET MALWARE Win32/Cobalt Strike Beacon Activity\",\"category\":\"A Network Trojan was detected\",\"severity\":1},\"flow_id\":934821023847123}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718013456.654321,\"uid\":\"C4tRnf2vXyLm3Aoq1a\",\"id.orig_h\":\"192.168.1.14\",\"id.orig_p\":52344,\"id.resp_h\":\"8.8.8.8\",\"id.resp_p\":53,\"event_type\":\"dns\",\"proto\":\"UDP\",\"dns\":{\"type\":\"query\",\"id\":51023,\"rrname\":\"update.microsoft.com\",\"rrtype\":\"A\",\"rcode\":\"NOERROR\"}}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718014521.987654,\"uid\":\"CqZ8p1sJn4vXe7Y6h5\",\"id.orig_h\":\"172.16.5.9\",\"id.orig_p\":51222,\"id.resp_h\":\"198.51.100.23\",\"id.resp_p\":80,\"event_type\":\"http\",\"proto\":\"TCP\",\"http\":{\"hostname\":\"insecure-download.biz\",\"url\":\"/payload.exe\",\"http_user_agent\":\"Mozilla/5.0\",\"http_method\":\"GET\",\"status\":200,\"length\":184320}}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718015672.111222,\"uid\":\"CxT2mQ9wLp5Kj0Ac3d\",\"id.orig_h\":\"10.10.10.5\",\"id.orig_p\":22,\"id.resp_h\":\"45.33.32.156\",\"id.resp_p\":51322,\"event_type\":\"ssh\",\"proto\":\"TCP\",\"ssh\":{\"client\":{\"software_version\":\"OpenSSH_8.9\",\"version\":2},\"server\":{\"software_version\":\"OpenSSH_7.4\",\"version\":2}}}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718016789.333444,\"uid\":\"CvB3nRq7Y8sT1jLk9m\",\"id.orig_h\":\"10.1.9.44\",\"id.orig_p\":58211,\"id.resp_h\":\"142.250.72.14\",\"id.resp_p\":443,\"event_type\":\"tls\",\"proto\":\"TCP\",\"tls\":{\"version\":\"TLS 1.3\",\"sni\":\"mail.google.com\",\"subject\":\"CN=mail.google.com\",\"issuerdn\":\"CN=GTS CA 1C3,O=Google Trust Services LLC,C=US\",\"notbefore\":\"2024-03-01T00:00:00\",\"notafter\":\"2024-06-01T00:00:00\"}}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718017890.445566,\"uid\":\"CzP6xWr2Y9tR3kMn8p\",\"id.orig_h\":\"203.0.113.99\",\"id.orig_p\":41562,\"id.resp_h\":\"10.0.2.15\",\"id.resp_p\":3389,\"event_type\":\"alert\",\"proto\":\"TCP\",\"alert\":{\"action\":\"allowed\",\"gid\":1,\"signature_id\":2210044,\"rev\":1,\"signature\":\"ET SCAN Potential SSH Scan\",\"category\":\"Attempted Information Leak\",\"severity\":2},\"flow_id\":934821023899221}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718018901.556677,\"uid\":\"CoK1jXn5Z7wQ2rTl4v\",\"id.orig_h\":\"10.2.3.77\",\"id.orig_p\":60321,\"id.resp_h\":\"185.199.108.153\",\"id.resp_p\":443,\"event_type\":\"fileinfo\",\"proto\":\"TCP\",\"fileinfo\":{\"filename\":\"invoice_2024.pdf\",\"magic\":\"PDF document\",\"size\":2485760,\"sha256\":\"a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef12345\",\"stored\":false}}",
+      "{\"_path\":\"suricata_corelight\",\"ts\":1718019012.667788,\"uid\":\"CpR9mYt3X6vWq1Zk7j\",\"id.orig_h\":\"192.168.50.12\",\"id.orig_p\":25,\"id.resp_h\":\"172.217.14.99\",\"id.resp_p\":25,\"event_type\":\"smtp\",\"proto\":\"TCP\",\"smtp\":{\"helo\":\"mail.corp.local\",\"mail_from\":\"<billing@corp.local>\",\"rcpt_to\":[\"<user@partner.com>\"]}}"
+    ],
+    "sourcetype": "corelight_suricata_corelight"
+  }
+}
