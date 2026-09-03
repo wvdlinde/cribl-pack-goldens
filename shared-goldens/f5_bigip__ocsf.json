@@ -2,38 +2,23 @@
   "key": "f5_bigip::ocsf",
   "sourcetype": "f5_bigip",
   "dest_format": "ocsf",
-  "score": 91,
-  "author": "wlinde@cribl.io",
+  "score": 94,
+  "part": null,
+  "author": "push",
   "build": 0,
-  "updated_at": "2026-07-13T07:00:58.910Z",
+  "updated_at": "2026-09-03T05:56:47.983Z",
   "functions": [
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "f5_bigip to OCSF pipeline. Parses events, discriminates class, maps to OCSF schema."
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 1: Parse raw events ---"
-      }
-    },
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<msg_id>[\\d:]+):\\s+(?<message>.+)$/",
+        "regex": "/^(?:<(?<syslog_pri>\\d+)>)?(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<msg_id>\\d[\\d:]*\\d):\\s+(?<message>.+)$/",
         "iterations": 1,
         "overwrite": false
       },
-      "description": "Parse base syslog header with msg_id"
+      "description": "Parse F5 syslog header WITH message-id (optional <priority> prefix)"
     },
     {
       "id": "regex_extract",
@@ -41,103 +26,35 @@
       "disabled": false,
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<timestamp>\\w+\\s+\\d+\\s+[\\d:]+)\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.+)$/",
+        "regex": "/^(?:<(?<syslog_pri>\\d+)>)?(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>[\\w.\\-]+)\\s+(?<severity>\\w+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+(?<message>.+)$/",
         "iterations": 1,
         "overwrite": false
       },
-      "description": "Parse syslog header without msg_id (e.g. syslog-ng, httpd)"
+      "description": "Parse F5 syslog header WITHOUT message-id (syslog-ng, httpd, mcpd)"
     },
     {
       "id": "regex_extract",
-      "filter": "message != undefined && message.indexOf('SSL') >= 0 && message.indexOf('->') >= 0",
+      "filter": "message != undefined",
       "disabled": false,
       "conf": {
         "source": "message",
-        "regex": "/(?<ssl_event>SSL [\\w\\s()]+(?:failed|error))\\s+for\\s+(?:TCP\\s+)?(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)/",
+        "regex": "/(?:\\bclient\\s+(?<src_ip>[\\d.]+):(?<src_port>\\d+))?(?:.*?\\b(?:member|node|server)\\s+\\S*?(?<dest_ip>[\\d.]+):(?<dest_port>\\d+))?(?:.*?\\bPool\\s+(?<pool>\\S+))?(?:.*?\\bvirtual\\s+(?<virtual>\\S+))?(?:.*?\\bstatus\\s+(?<status_code>\\d{3})\\b)?/i",
         "iterations": 1,
         "overwrite": false
       },
-      "description": "Parse SSL failures"
+      "description": "Pull client/server endpoints, pool, node, virtual, monitor status from the message body"
     },
     {
       "id": "regex_extract",
-      "filter": "message != undefined && message.indexOf('SYN flood') >= 0",
+      "filter": "message && /\\bAUDIT\\b/.test(message)",
       "disabled": false,
       "conf": {
         "source": "message",
-        "regex": "/SYN flood attack detected from\\s+(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+),\\s*rate:\\s*(?<attack_rate>\\d+)\\s*(?<attack_rate_unit>\\w+)/",
+        "regex": "/\\buser=(?<user>\\S+)(?:\\s+folder=(?<folder>\\S+))?(?:\\s+module=(?<module>\\S+))?(?:\\s+status=\\[(?<status>[^\\]]*)\\])?(?:\\s+cmd_data=(?<cmd_data>.+))?/",
         "iterations": 1,
         "overwrite": false
       },
-      "description": "Parse SYN flood"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message != undefined && message.indexOf('Rule') >= 0 && message.indexOf('->') >= 0",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/Rule\\s+(?<irule>[\\w\\/]+)\\s+aborted for connection\\s+(?<src_ip>[\\d.]+):(?<src_port>\\d+)\\s*->\\s*(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)/",
-        "iterations": 1,
-        "overwrite": false
-      },
-      "description": "Parse iRule abort"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message != undefined && (message.indexOf('Pool member') >= 0 || message.indexOf('pool member') >= 0 || (message.indexOf('Pool') >= 0 && message.indexOf('member') >= 0))",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/Pool\\s+(?<pool_name>[\\w\\/]+)\\s+member\\s+(?<member_ip>[\\d.]+):(?<member_port>\\d+)\\s+monitor status\\s+(?<monitor_status>\\w+)/i",
-        "iterations": 1,
-        "overwrite": false
-      },
-      "description": "Parse pool member status"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message != undefined && message.indexOf('No members available') >= 0",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/No members available for pool\\s+(?<pool_name>[\\w\\/]+)/",
-        "iterations": 1,
-        "overwrite": false
-      },
-      "description": "Parse pool exhaustion"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "message != undefined && message.indexOf('Connection') >= 0 && message.indexOf('limit exceeded') >= 0",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/for\\s+(?:virtual server|client)\\s+(?<vs_ip>[\\d.]+):(?<vs_port>\\d+)/",
-        "iterations": 1,
-        "overwrite": false
-      },
-      "description": "Parse connection limit — virtual server is destination"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "process != undefined && process == 'httpd'",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/(?<src_ip>[\\d.]+)\\s+-\\s+(?<user>[\\w\\-]+)\\s+\\[(?<http_timestamp>[^\\]]+)\\]\\s+\"(?<http_method>[A-Z]+)\\s+(?<uri>[^\\s]+)\\s+(?<http_version>HTTP\\/[\\d.]+)\"\\s+(?<http_status>\\d+)\\s+(?<http_bytes>\\d+)/",
-        "iterations": 1,
-        "overwrite": false
-      },
-      "description": "Parse httpd access log"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 2: Classify + normalize timestamp ---"
-      }
+      "description": "Pull tmsh AUDIT fields (user, folder, module, status, cmd_data) from the message body"
     },
     {
       "id": "eval",
@@ -146,20 +63,94 @@
       "conf": {
         "add": [
           {
-            "name": "event_type",
-            "value": "process == 'httpd' ? 'http_access' : message == undefined ? 'unknown' : message.indexOf('Configuration reload') >= 0 ? 'config_reload' : message.indexOf('SSL') >= 0 && message.indexOf('->') >= 0 ? 'ssl_error' : message.indexOf('SYN flood') >= 0 ? 'syn_flood' : message.indexOf('Rule') >= 0 && message.indexOf('aborted') >= 0 ? 'irule_abort' : message.indexOf('member') >= 0 && message.indexOf('monitor status') >= 0 ? 'pool_member_status' : message.indexOf('No members available') >= 0 ? 'pool_exhausted' : message.indexOf('Connection') >= 0 && message.indexOf('limit') >= 0 ? 'connection_limit' : 'generic'"
+            "name": "log_time",
+            "value": "timestamp ? Date.parse(timestamp + ' ' + new Date().getUTCFullYear()) / 1000 : undefined"
+          },
+          {
+            "name": "ssl_event",
+            "value": "message && /SSL[\\w\\s()]*(?:failed|error|success)/i.test(message) ? message.match(/SSL[\\w\\s()]*(?:failed|error|success)/i)[0] : undefined"
+          },
+          {
+            "name": "action",
+            "value": "message && /\\b(down|up|failed|success|blocked|denied|reload|reset|disconnect)\\b/i.test(message) ? message.match(/\\b(down|up|failed|success|blocked|denied|reload|reset|disconnect)\\b/i)[1].toLowerCase() : undefined"
+          }
+        ]
+      },
+      "description": "Derive log_time from the syslog timestamp (add current year) + normalize severity/action"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
           },
           {
             "name": "log_time",
-            "value": "http_timestamp || timestamp || undefined"
-          },
-          {
-            "name": "year_now",
-            "value": "String(new Date().getFullYear())"
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
           }
         ]
       },
-      "description": "Classify event_type and pick source timestamp"
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
     },
     {
       "id": "eval",
@@ -168,82 +159,20 @@
       "conf": {
         "add": [
           {
-            "name": "_time",
-            "value": "http_timestamp ? new Date(String(http_timestamp).replace(/^(\\d+)\\/(\\w+)\\/(\\d+):(.+)$/,'$2 $1 $3 $4')).getTime()/1000 : timestamp ? new Date(String(timestamp)+' '+year_now).getTime()/1000 : _time"
+            "name": "vendor",
+            "value": "'f5 bigip'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
           }
         ]
       },
-      "description": "Compute _time from source timestamp, defaulting year to current"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "time",
-            "value": "Math.round(_time*1000)"
-          }
-        ]
-      },
-      "description": "OCSF time in ms"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 3: Map to OCSF ---"
-      }
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "class_uid",
-            "value": "event_type == 'config_reload' ? 1001 : event_type == 'http_access' ? 6001 : 4001"
-          },
-          {
-            "name": "category_uid",
-            "value": "event_type == 'config_reload' ? 1 : event_type == 'http_access' ? 6 : 4"
-          },
-          {
-            "name": "activity_id",
-            "value": "event_type == 'http_access' ? (http_method == 'GET' ? 2 : http_method == 'POST' ? 3 : http_method == 'PUT' ? 4 : http_method == 'DELETE' ? 5 : 1) : event_type == 'config_reload' ? 3 : event_type == 'ssl_error' ? 3 : event_type == 'pool_member_status' ? 3 : event_type == 'connection_limit' ? 5 : event_type == 'syn_flood' ? 5 : event_type == 'irule_abort' ? 5 : 1"
-          }
-        ]
-      },
-      "description": "Set class_uid, category_uid, activity_id per event class"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "type_uid",
-            "value": "class_uid * 100 + activity_id"
-          },
-          {
-            "name": "activity_name",
-            "value": "event_type == 'http_access' ? http_method : event_type == 'config_reload' ? 'Reload' : event_type == 'ssl_error' ? 'Close' : event_type == 'pool_member_status' ? 'Close' : 'General'"
-          },
-          {
-            "name": "severity_id",
-            "value": "severity == 'emerg' ? 6 : severity == 'alert' ? 6 : severity == 'crit' ? 5 : severity == 'err' ? 4 : severity == 'error' ? 4 : severity == 'warning' ? 3 : severity == 'notice' ? 2 : severity == 'info' ? 1 : 0"
-          },
-          {
-            "name": "severity",
-            "value": "severity"
-          }
-        ]
-      },
-      "description": "type_uid, activity_name, severity_id"
+      "description": "Set device vendor/product/version"
     },
     {
       "id": "eval",
@@ -253,79 +182,125 @@
         "add": [
           {
             "name": "src_endpoint",
-            "value": "src_ip ? {ip: src_ip, port: Number(src_port || 0)} : undefined"
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
           },
           {
             "name": "dst_endpoint",
-            "value": "dst_ip ? {ip: dst_ip, port: Number(dst_port || 0)} : member_ip ? {ip: member_ip, port: Number(member_port || 0)} : vs_ip ? {ip: vs_ip, port: Number(vs_port || 0)} : undefined"
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
           },
           {
             "name": "connection_info",
-            "value": "class_uid == 4001 ? {protocol_name: (ssl_event ? 'SSL/TLS' : 'TCP'), protocol_num: 6} : undefined"
-          }
-        ]
-      },
-      "description": "Build src/dst_endpoint and connection_info nested objects"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "metadata",
-            "value": "{version: '1.0.0', product: {name: 'BIG-IP', vendor_name: 'F5 Networks'}, profiles: ['host']}"
-          },
-          {
-            "name": "observer",
-            "value": "host ? {hostname: host} : undefined"
-          },
-          {
-            "name": "device",
-            "value": "host ? {hostname: host} : undefined"
-          },
-          {
-            "name": "process",
-            "value": "process ? {name: process, pid: Number(pid || 0)} : undefined"
-          },
-          {
-            "name": "actor",
-            "value": "user ? {user: {name: user}} : undefined"
-          }
-        ]
-      },
-      "description": "metadata, observer, device, process, actor objects"
-    },
-    {
-      "id": "eval",
-      "filter": "class_uid == 6001",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "http_request",
-            "value": "{http_method: http_method, url: {path: uri}, version: http_version}"
-          },
-          {
-            "name": "http_response",
-            "value": "{code: Number(http_status || 0)}"
+            "value": "(((transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '')) ? {} : undefined"
           },
           {
             "name": "traffic",
-            "value": "{bytes_out: Number(http_bytes || 0)}"
+            "value": "(((bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '') || ((bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "activity_id",
+            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != null && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != 'null' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '-' && String(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) != '' ? Number(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != null && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != 'null' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '-' && String(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) != '' ? Number(400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
           }
         ]
       },
-      "description": "HTTP request/response for web resources activity"
+      "description": "Map canonical fields → OCSF 1.4"
     },
     {
-      "id": "comment",
+      "id": "eval",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- STEP 4: Cleanup raw/intermediate fields ---"
-      }
+        "add": [
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '' ? Number(bytes_in) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '' ? Number(bytes_out) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
     },
     {
       "id": "eval",
@@ -335,172 +310,339 @@
         "add": [
           {
             "name": "sourcetype",
-            "value": "'f5_bigip'"
+            "value": "'f5:bigip:syslog'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
           }
-        ],
-        "remove": [
-          "_raw",
-          "src_ip",
-          "src_port",
-          "dst_ip",
-          "dst_port",
-          "member_ip",
-          "member_port",
-          "vs_ip",
-          "vs_port",
-          "pid",
-          "host",
-          "user",
-          "http_status",
-          "http_bytes",
-          "http_method",
-          "uri",
-          "http_version",
-          "http_timestamp",
-          "log_time",
-          "year_now",
-          "attack_rate",
-          "attack_rate_unit",
-          "irule",
-          "pool_name",
-          "monitor_status",
-          "ssl_event",
-          "__*"
         ]
       },
-      "description": "Remove raw/intermediate source fields, keep OCSF output"
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
     }
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "F5BigipSyslog_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "golden-spec",
-    "findings": [
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
       {
-        "severity": "medium",
-        "field": "traffic.bytes_in",
-        "issue": "OCSF field \"traffic.bytes_in\" is defined for this class but empty in the output",
-        "pointImpact": 0
+        "_raw": "<31>Apr 14 16:20:59 goat-grass-auh-f5-ltm07.local debug snmpd[5451]: truncating integer value > 32 bits",
+        "_time": 1776183659,
+        "syslog_pri": "31",
+        "timestamp": "Apr 14 16:20:59",
+        "host": "goat-grass-auh-f5-ltm07.local",
+        "severity": "debug",
+        "process": "snmpd",
+        "pid": "5451",
+        "message": "truncating integer value > 32 bits",
+        "log_time": 1776183659,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "goat-grass-auh-f5-ltm07.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183659000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "_time / time",
-        "issue": "Timestamps are wrong/inconsistent. Most events use a fabricated epoch (~1794700997) that does not correspond to Nov 15 of any real year. Event 4 (httpd) correctly uses 1700009058 (2023-11-15), but all other events use ~1794xxxxxx which maps to ~2026-10-xx, not Nov 15 2023. The syslog header has no year, but the httpd log body contains [15/Nov/2023:00:44:18 +0000] — the pipeline should have inferred 2023 consistently for all events.",
-        "example": "_time: 1794700997 for 'Nov 15 00:03:17' maps to ~Oct 2026, not Nov 2023",
-        "pointImpact": 0
+        "_raw": "Apr 14 16:20:59 cribl-goat-bigIP-zzcz-ttsc-05.local notice tmsh[7354]: 01420002:5: AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=list cm device recursive",
+        "_time": 1776183659,
+        "timestamp": "Apr 14 16:20:59",
+        "host": "cribl-goat-bigIP-zzcz-ttsc-05.local",
+        "severity": "notice",
+        "process": "tmsh",
+        "pid": "7354",
+        "msg_id": "01420002:5",
+        "message": "AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=list cm device recursive",
+        "user": "root",
+        "folder": "/",
+        "module": "(tmos)#",
+        "status": "Command OK",
+        "cmd_data": "list cm device recursive",
+        "log_time": 1776183659,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "cribl-goat-bigIP-zzcz-ttsc-05.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183659000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "class_uid",
-        "issue": "OCSF class_uid values are fabricated and do not match the OCSF specification. Network Activity is 4001 (correct), but System Activity is 1001, HTTP Activity is 6001 — OCSF defines System Activity as 1001 (acceptable) but HTTP Activity class_uid is 4002 (Web Resources Activity) or similar, not 6001. These UIDs are not valid OCSF class identifiers.",
-        "example": "class_uid: 6001 for HTTP access; OCSF HTTP Activity = 4002",
-        "pointImpact": 0
+        "_raw": "Apr 14 16:20:59 cribl-goat-bigIP-zzcz-ttsc-05.local notice tmsh[7354]: 01420002:5: AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=cd / ;",
+        "_time": 1776183659,
+        "timestamp": "Apr 14 16:20:59",
+        "host": "cribl-goat-bigIP-zzcz-ttsc-05.local",
+        "severity": "notice",
+        "process": "tmsh",
+        "pid": "7354",
+        "msg_id": "01420002:5",
+        "message": "AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=cd / ;",
+        "user": "root",
+        "folder": "/",
+        "module": "(tmos)#",
+        "status": "Command OK",
+        "cmd_data": "cd / ;",
+        "log_time": 1776183659,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "cribl-goat-bigIP-zzcz-ttsc-05.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183659000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "type_uid",
-        "issue": "type_uid values are arithmetically inconsistent with OCSF spec. OCSF type_uid = class_uid * 100 + activity_id. For class_uid=1001, activity_id=3: expected 100103, got 100103 (ok for event 2). For class_uid=6001, activity_id=2: expected 600102, got 600102 — but class_uid 6001 itself is invalid. For class_uid=4001, activity_id=3: 400103 is correct math but activity_id=3 'Close' is semantically wrong for pool-member-down and SSL-error events.",
-        "example": "type_uid: 400103 used for pool_member_status and ssl_error events where 'Close' activity is a semantic mismatch",
-        "pointImpact": 0
+        "_raw": "Apr 14 16:20:59 7A-GOAT-BIGIP-GRAS-FTTT-05.local info logger[21092]: [ssl_acc] 169.255.175.4 - admin [14/Apr/2025:16:20:59 +0400] \"/mgmt/shared/diagnostics/device-stats\" 200 6760",
+        "_time": 1776183659,
+        "timestamp": "Apr 14 16:20:59",
+        "host": "7A-GOAT-BIGIP-GRAS-FTTT-05.local",
+        "severity": "info",
+        "process": "logger",
+        "pid": "21092",
+        "message": "[ssl_acc] 169.255.175.4 - admin [14/Apr/2025:16:20:59 +0400] \"/mgmt/shared/diagnostics/device-stats\" 200 6760",
+        "log_time": 1776183659,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "7A-GOAT-BIGIP-GRAS-FTTT-05.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183659000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "category_uid",
-        "issue": "category_uid=4 for Network Activity is correct, but category_uid=1 for System Activity and category_uid=6 for HTTP do not match OCSF category definitions. OCSF category 6 is 'Application Activity', not a valid stand-alone HTTP category.",
-        "example": "category_uid: 6 for http_access event; OCSF does not define category 6 as HTTP",
-        "pointImpact": 0
+        "_raw": "Apr 14 16:20:59 7A-GOAT-BIGIP-GRAS-FTTT-05.local info logger[21093]: [ssl_req][14/Apr/2025:16:20:59 +0400] 169.255.175.4 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/diagnostics/device-stats\" 6760",
+        "_time": 1776183659,
+        "timestamp": "Apr 14 16:20:59",
+        "host": "7A-GOAT-BIGIP-GRAS-FTTT-05.local",
+        "severity": "info",
+        "process": "logger",
+        "pid": "21093",
+        "message": "[ssl_req][14/Apr/2025:16:20:59 +0400] 169.255.175.4 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/diagnostics/device-stats\" 6760",
+        "log_time": 1776183659,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "7A-GOAT-BIGIP-GRAS-FTTT-05.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183659000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "activity_id / activity_name",
-        "issue": "activity_id=3 mapped to activity_name='Close' for SSL errors and pool-member-down events is semantically incorrect. SSL handshake failure should be activity_id=1 (Open/Attempt) with a fail status, not 'Close'. Pool member down is a status event, not a connection close.",
-        "example": "activity_id: 3, activity_name: 'Close' for ssl_error event 01260013:6",
-        "pointImpact": 0
+        "_raw": "<132>Apr 14 16:20:56 goat-grass-field-f5-ltm-07.cribl.local warning tmm6[19081]: 01260013:4: SSL Handshake failed for TCP 86.98.91.225:52349 -> 10.112.13.42:443",
+        "_time": 1776183656,
+        "syslog_pri": "132",
+        "timestamp": "Apr 14 16:20:56",
+        "host": "goat-grass-field-f5-ltm-07.cribl.local",
+        "severity": "warning",
+        "process": "tmm6",
+        "pid": "19081",
+        "msg_id": "01260013:4",
+        "message": "SSL Handshake failed for TCP 86.98.91.225:52349 -> 10.112.13.42:443",
+        "log_time": 1776183656,
+        "ssl_event": "SSL Handshake failed",
+        "action": "failed",
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "goat-grass-field-f5-ltm-07.cribl.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183656000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "output truncated",
-        "issue": "The pipeline output JSON is truncated mid-stream after event 6. Events 7 (connection limit) and 8 (memory critical) are missing entirely from the output.",
-        "example": "Output ends at '_time: 1794' for event 7, JSON is incomplete",
-        "pointImpact": 0
+        "_raw": "<182>Apr 14 16:20:56 goat-grass-auh-f5-ltm07.local info logger[32041]: [ssl_req][14/Apr/2025:16:20:56 +0400] 192.168.25.2 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/inflate/available\" 2",
+        "_time": 1776183656,
+        "syslog_pri": "182",
+        "timestamp": "Apr 14 16:20:56",
+        "host": "goat-grass-auh-f5-ltm07.local",
+        "severity": "info",
+        "process": "logger",
+        "pid": "32041",
+        "message": "[ssl_req][14/Apr/2025:16:20:56 +0400] 192.168.25.2 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/inflate/available\" 2",
+        "log_time": 1776183656,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "goat-grass-auh-f5-ltm07.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183656000,
+        "sourcetype": "f5:bigip:syslog"
       },
       {
-        "severity": "high",
-        "field": "status / status_id",
-        "issue": "OCSF Network Activity and related classes require a 'status' and 'status_id' field. All error/failure events (SSL handshake failed, pool no members, monitor status down) are missing status/status_id entirely. These are mandatory OCSF fields.",
-        "example": "Event 1 SSL handshake failure has no status_id field; OCSF requires status_id for class 4001",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "src_endpoint.port",
-        "issue": "HTTP access event (event 4) has src_endpoint.port set to 0 — the source port is not present in the raw log, which is correct, but setting it to 0 is misleading. Should be omitted or null rather than 0.",
-        "example": "src_endpoint: {ip: '192.168.50.12', port: 0}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "msg_id",
-        "issue": "'msg_id' is a non-standard OCSF field. The F5 message ID (e.g. 01260013:6) should be mapped to metadata.log_name or unmapped.raw_data or the severity level extracted from it. Using a custom top-level field breaks OCSF schema compliance.",
-        "example": "msg_id: '01260013:6' at top level",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "event_type",
-        "issue": "'event_type' is not an OCSF top-level field. OCSF uses class_uid + type_uid + type_name to describe event type. This custom field adds noise but also duplicates intent without proper OCSF mapping.",
-        "example": "event_type: 'ssl_error' — not in OCSF schema",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "severity / severity_id",
-        "issue": "severity_id mapping from syslog severity levels is partially correct (info→1, notice→2, warning→3, err→4) but OCSF severity_id for 'err' should be 4 (Error) and 'crit' should be 5 (Critical). The mapping appears plausible but event 8 (crit) is truncated so cannot be verified.",
-        "example": "severity_id: 4 for 'err' level — acceptable, but crit→5 unverifiable due to truncation",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "connection_info.protocol_num",
-        "issue": "protocol_num=6 hardcoded for TCP/SSL is plausible (TCP=6 per IANA), but SSL/TLS is not a transport protocol with IANA number 6 — it rides atop TCP. Setting protocol_num=6 for SSL/TLS conflates transport and application layers.",
-        "example": "connection_info: {protocol_name: 'SSL/TLS', protocol_num: 6}",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "pool / virtual_server",
-        "issue": "Pool names (/Common/web_pool_443, /Common/app_pool) and virtual server names (/Common/vs_http) present in the raw messages are not mapped to any OCSF field. These are significant operational values that should appear in unmapped or a custom extension.",
-        "example": "Message 'No members available for pool /Common/web_pool_443' — pool name not extracted",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "metadata.profiles",
-        "issue": "profiles: ['host'] is static and hardcoded for all events regardless of event type. OCSF profiles should reflect which optional profile extensions are actually applied.",
-        "example": "metadata.profiles: ['host'] on all 6 visible events",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "timestamp",
-        "issue": "Retaining 'timestamp' as a separate string field alongside 'time' (epoch ms) is redundant in OCSF. OCSF only defines 'time' (epoch ms). 'timestamp' should be removed or placed in unmapped.",
-        "example": "timestamp: 'Nov 15 00:03:17' alongside time: 1794700997000",
-        "pointImpact": 0
-      },
-      {
-        "severity": "low",
-        "field": "sourcetype",
-        "issue": "sourcetype is a Splunk/Cribl metadata field, not an OCSF field. Should be placed under metadata or removed from the OCSF output.",
-        "example": "sourcetype: 'f5_bigip' at top level",
-        "pointImpact": 0
+        "_raw": "<182>Apr 14 16:20:56 goat-grass-auh-f5-ltm07.local info logger[32040]: [ssl_acc] 192.168.25.2 - admin [14/Apr/2025:16:20:56 +0400] \"/mgmt/shared/inflate/available\" 200 2",
+        "_time": 1776183656,
+        "syslog_pri": "182",
+        "timestamp": "Apr 14 16:20:56",
+        "host": "goat-grass-auh-f5-ltm07.local",
+        "severity": "info",
+        "process": "logger",
+        "pid": "32040",
+        "message": "[ssl_acc] 192.168.25.2 - admin [14/Apr/2025:16:20:56 +0400] \"/mgmt/shared/inflate/available\" 200 2",
+        "log_time": 1776183656,
+        "vendor": "f5 bigip",
+        "product": "Security",
+        "version": "1.0",
+        "device": {
+          "hostname": "goat-grass-auh-f5-ltm07.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "f5 bigip"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": null,
+        "time": 1776183656000,
+        "sourcetype": "f5:bigip:syslog"
       }
     ],
-    "missingFields": [
-      "traffic.bytes_in"
+    "sampleKeys": [
+      "pid",
+      "user",
+      "folder",
+      "module",
+      "status",
+      "cmd_data"
     ],
-    "emptyFields": [
-      "src_endpoint.port on http_access event (set to 0, effectively empty/unknown)"
+    "sampleRaw": [
+      "<31>Apr 14 16:20:59 goat-grass-auh-f5-ltm07.local debug snmpd[5451]: truncating integer value > 32 bits",
+      "Apr 14 16:20:59 cribl-goat-bigIP-zzcz-ttsc-05.local notice tmsh[7354]: 01420002:5: AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=list cm device recursive",
+      "Apr 14 16:20:59 cribl-goat-bigIP-zzcz-ttsc-05.local notice tmsh[7354]: 01420002:5: AUDIT - pid=7354 user=root folder=/ module=(tmos)# status=[Command OK] cmd_data=cd / ;",
+      "Apr 14 16:20:59 7A-GOAT-BIGIP-GRAS-FTTT-05.local info logger[21092]: [ssl_acc] 169.255.175.4 - admin [14/Apr/2025:16:20:59 +0400] \"/mgmt/shared/diagnostics/device-stats\" 200 6760",
+      "Apr 14 16:20:59 7A-GOAT-BIGIP-GRAS-FTTT-05.local info logger[21093]: [ssl_req][14/Apr/2025:16:20:59 +0400] 169.255.175.4 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/diagnostics/device-stats\" 6760",
+      "<132>Apr 14 16:20:56 goat-grass-field-f5-ltm-07.cribl.local warning tmm6[19081]: 01260013:4: SSL Handshake failed for TCP 86.98.91.225:52349 -> 10.112.13.42:443",
+      "<182>Apr 14 16:20:56 goat-grass-auh-f5-ltm07.local info logger[32041]: [ssl_req][14/Apr/2025:16:20:56 +0400] 192.168.25.2 TLSv1.2 ECDHE-RSA-AES128-GCM-SHA256 \"/mgmt/shared/inflate/available\" 2",
+      "<182>Apr 14 16:20:56 goat-grass-auh-f5-ltm07.local info logger[32040]: [ssl_acc] 192.168.25.2 - admin [14/Apr/2025:16:20:56 +0400] \"/mgmt/shared/inflate/available\" 200 2"
     ],
-    "summary": "The pipeline produces structurally recognizable OCSF-like output but has critical failures: timestamps are wrong for 7 of 8 events (fabricated epoch ~2026 instead of 2023), OCSF class_uid/type_uid values do not conform to the actual OCSF specification, mandatory status/status_id fields are absent from all events, and the output is physically truncated (events 7-8 missing). The HTTP access event is the closest to correct, having properly extracted actor, http_request, and http_response fields, but even it uses an invalid class_uid. Several source values (pool names, virtual server names, memory percentage) are present in the raw logs but not extracted."
+    "sourcetype": "f5_bigip"
   }
 }
