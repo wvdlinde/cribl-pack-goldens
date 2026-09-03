@@ -2,46 +2,34 @@
   "key": "linux_audit::ocsf",
   "sourcetype": "linux_audit",
   "dest_format": "ocsf",
-  "score": 83,
+  "score": 100,
   "part": null,
-  "author": "wvdlinde",
-  "build": 273,
-  "updated_at": "2026-07-16T18:15:15.868Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-03T05:56:43.571Z",
   "functions": [
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "CyberArk IDP (Identity provisioning) JSON to OCSF Account Change (3005) pipeline."
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 1: Parse raw JSON events ---"
-      }
-    },
     {
       "id": "serde",
       "filter": "true",
       "disabled": false,
       "conf": {
         "mode": "extract",
-        "type": "json",
-        "srcField": "_raw"
+        "type": "kvp",
+        "srcField": "_raw",
+        "delimChar": " ",
+        "quoteChar": "\""
       },
-      "description": "Parse IDP JSON"
+      "description": "Parse audit KVP"
     },
     {
-      "id": "comment",
+      "id": "regex_extract",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- STEP 2: Map fields to OCSF 3005 (Account Change) ---"
-      }
+        "source": "_raw",
+        "regex": "/type=(?<audit_type>\\w+)\\s+msg=audit\\((?<audit_epoch>[\\d.]+):(?<audit_serial>\\d+)\\)/"
+      },
+      "description": "Extract audit type and serial"
     },
     {
       "id": "eval",
@@ -50,40 +38,68 @@
       "conf": {
         "add": [
           {
-            "name": "class_uid",
-            "value": "3005"
+            "name": "log_time",
+            "value": "audit_epoch"
           },
           {
-            "name": "category_uid",
-            "value": "3"
+            "name": "process",
+            "value": "exe || comm"
           },
           {
-            "name": "activity_id",
-            "value": "actionType==='End' ? 2 : 1"
+            "name": "process_name",
+            "value": "comm || exe"
           },
           {
-            "name": "type_uid",
-            "value": "3005 * 100 + (actionType==='End' ? 2 : 1)"
+            "name": "command",
+            "value": "exe || comm"
           },
           {
-            "name": "severity_id",
-            "value": "auditType==='Error' ? 4 : (auditType==='Warning' ? 3 : 1)"
+            "name": "process_id",
+            "value": "pid != null && pid !== \"\" ? Number(pid) : undefined"
           },
           {
-            "name": "activity_name",
-            "value": "(action != null && String(action) !== '') ? String(action) : undefined"
+            "name": "parent_process_id",
+            "value": "ppid != null && ppid !== \"\" ? Number(ppid) : undefined"
           },
           {
-            "name": "message",
-            "value": "(message != null && String(message) !== '') ? String(message) : undefined"
+            "name": "user_id",
+            "value": "uid"
           },
           {
-            "name": "sourcetype",
-            "value": "'cyberark_idp:ocsf'"
+            "name": "audit_user_id",
+            "value": "auid"
+          },
+          {
+            "name": "session_id",
+            "value": "ses"
+          },
+          {
+            "name": "terminal",
+            "value": "terminal"
+          },
+          {
+            "name": "outcome",
+            "value": "res || (success === \"yes\" ? \"success\" : success === \"no\" ? \"failed\" : success)"
+          },
+          {
+            "name": "action",
+            "value": "res || (success === \"yes\" ? \"success\" : success === \"no\" ? \"failed\" : undefined)"
+          },
+          {
+            "name": "signature",
+            "value": "audit_type"
+          },
+          {
+            "name": "object",
+            "value": "key"
+          },
+          {
+            "name": "rule_name",
+            "value": "key"
           }
         ]
       },
-      "description": "Set OCSF classification + severity + names"
+      "description": "Normalize auditd fields to the canonical process model"
     },
     {
       "id": "eval",
@@ -92,40 +108,72 @@
       "conf": {
         "add": [
           {
-            "name": "metadata",
-            "value": "{}"
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
           },
           {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
           },
           {
-            "name": "metadata.product",
-            "value": "{}"
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
           },
           {
-            "name": "metadata.product.name",
-            "value": "(applicationCode != null && String(applicationCode) !== '') ? String(applicationCode) : 'IDP'"
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'CyberArk'"
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
           },
           {
-            "name": "metadata.product.feature",
-            "value": "(serviceName != null && String(serviceName) !== '') ? String(serviceName) : undefined"
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
           },
           {
-            "name": "metadata.uid",
-            "value": "(uuid != null && String(uuid) !== '') ? String(uuid) : undefined"
+            "name": "action",
+            "value": "action || event__outcome || act"
           },
           {
-            "name": "metadata.correlation_uid",
-            "value": "(correlationId != null && String(correlationId) !== '') ? String(correlationId) : undefined"
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
           }
         ]
       },
-      "description": "Set metadata (product = CyberArk IDP), uid from uuid"
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
     },
     {
       "id": "eval",
@@ -133,183 +181,858 @@
       "disabled": false,
       "conf": {
         "add": [
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Auditd'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "gfsrc_tmp_process",
+            "value": "process"
+          },
+          {
+            "name": "process",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '') || ((process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '') || ((process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '') || ((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
+          },
+          {
+            "name": "process.file",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '')) ? {} : undefined"
+          },
+          {
+            "name": "process.parent_process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
+          },
           {
             "name": "actor",
-            "value": "{}"
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
           },
           {
             "name": "actor.user",
-            "value": "{}"
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '')) ? {} : undefined"
           },
           {
-            "name": "actor.user.name",
-            "value": "(username != null && String(username) !== '') ? String(username) : undefined"
-          },
-          {
-            "name": "actor.user.email_addr",
-            "value": "(userId != null && String(userId) !== '') ? String(userId) : undefined"
-          },
-          {
-            "name": "actor.user.uid",
-            "value": "(userId != null && String(userId) !== '') ? String(userId) : undefined"
-          },
-          {
-            "name": "actor.user.type",
-            "value": "identityType==='NON_HUMAN' ? 'System' : (identityType != null && String(identityType) !== '' ? String(identityType) : undefined)"
-          }
-        ]
-      },
-      "description": "Map actor.user identity fields"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "src_endpoint",
-            "value": "(source != null && String(source) !== '') ? {} : undefined"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "(source != null && String(source) !== '') ? String(source) : undefined"
+            "name": "actor.process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
           },
           {
             "name": "device",
-            "value": "{}"
+            "value": "(((host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "(((transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '')) ? {} : undefined"
+          },
+          {
+            "name": "file",
+            "value": "(((file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "reg_key",
+            "value": "(((registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "query",
+            "value": "(((dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
+          }
+        ]
+      },
+      "description": "Map canonical fields → OCSF 1.4 Process Activity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product",
+            "value": "(((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
+          },
+          {
+            "name": "class_uid",
+            "value": "(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != null && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'undefined' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'null' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '-' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '' ? Number(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) : undefined"
+          },
+          {
+            "name": "category_uid",
+            "value": "(event_code == '3' || event_code == '22' ? 4 : 1) != null && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'undefined' && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'null' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '-' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '' ? Number(event_code == '3' || event_code == '22' ? 4 : 1) : undefined"
+          },
+          {
+            "name": "activity_id",
+            "value": "(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != null && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'undefined' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'null' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '-' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '' ? Number(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) : undefined"
+          },
+          {
+            "name": "type_uid",
+            "value": "((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != null && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'undefined' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'null' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '-' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '' ? Number((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
+          },
+          {
+            "name": "process.name",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "(command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '' ? (command) : undefined"
+          },
+          {
+            "name": "process.pid",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "process.uid",
+            "value": "(process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '' ? (process_guid) : undefined"
+          },
+          {
+            "name": "process.file.path",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.cmd_line",
+            "value": "(parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '' ? (parent_command) : undefined"
+          },
+          {
+            "name": "process.parent_process.pid",
+            "value": "(parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '' ? Number(parent_process_id) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '' ? (user) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor.process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
           },
           {
             "name": "device.hostname",
-            "value": "(source != null && String(source) !== '') ? String(source) : undefined"
-          }
-        ]
-      },
-      "description": "Map src_endpoint.ip + device.hostname from source"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "unmapped",
-            "value": "{}"
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
           },
           {
-            "name": "unmapped.tenantId",
-            "value": "(tenantId != null && String(tenantId) !== '') ? String(tenantId) : undefined"
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
           },
           {
-            "name": "unmapped.auditCode",
-            "value": "(auditCode != null && String(auditCode) !== '') ? String(auditCode) : undefined"
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
           },
           {
-            "name": "unmapped.auditType",
-            "value": "(auditType != null && String(auditType) !== '') ? String(auditType) : undefined"
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
           },
           {
-            "name": "unmapped.actionType",
-            "value": "(actionType != null && String(actionType) !== '') ? String(actionType) : undefined"
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
           },
           {
-            "name": "unmapped.component",
-            "value": "(component != null && String(component) !== '') ? String(component) : undefined"
+            "name": "connection_info.protocol_name",
+            "value": "(transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '' ? (transport) : undefined"
           },
           {
-            "name": "unmapped.sessionId",
-            "value": "(sessionId != null && String(sessionId) !== '') ? String(sessionId) : undefined"
+            "name": "file.path",
+            "value": "(file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '' ? (file_path) : undefined"
           },
           {
-            "name": "unmapped.correlationId",
-            "value": "(correlationId != null && String(correlationId) !== '') ? String(correlationId) : undefined"
+            "name": "reg_key.path",
+            "value": "(registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '' ? (registry_path) : undefined"
           },
           {
-            "name": "unmapped.identityType",
-            "value": "(identityType != null && String(identityType) !== '') ? String(identityType) : undefined"
+            "name": "query.hostname",
+            "value": "(dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '' ? (dns_query) : undefined"
           },
           {
-            "name": "unmapped.cloudProvider",
-            "value": "(cloudProvider != null && String(cloudProvider) !== '') ? String(cloudProvider) : undefined"
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
           },
           {
-            "name": "unmapped.isDr",
-            "value": "isDr"
+            "name": "metadata.product.name",
+            "value": "(app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '' ? (app || 'Sysmon') : undefined"
           },
           {
-            "name": "unmapped.originRegion",
-            "value": "(originRegion != null && String(originRegion) !== '') ? String(originRegion) : undefined"
+            "name": "metadata.product.vendor_name",
+            "value": "('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '' ? ('Microsoft') : undefined"
           },
-          {
-            "name": "unmapped.customData",
-            "value": "customData"
-          }
-        ]
-      },
-      "description": "Retain unmapped IDP source fields under unmapped.*"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
           {
             "name": "time",
-            "value": "(timestamp != null && String(timestamp) !== '') ? Number(timestamp) : undefined"
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'linux_audit'"
           },
           {
             "name": "_time",
-            "value": "(timestamp != null && String(timestamp) !== '') ? Number(timestamp) / 1000 : _time"
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
           }
         ]
       },
-      "description": "Derive time/_time from source timestamp (ms epoch)"
+      "description": "Set sourcetype + _time"
     },
     {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "remove": [
-          "*"
-        ],
-        "keep": [
-          "_time",
-          "index",
-          "sourcetype",
-          "cribl_breaker",
-          "cribl_pipe",
-          "class_uid",
-          "class_uid.*",
-          "category_uid",
-          "category_uid.*",
-          "activity_id",
-          "activity_id.*",
-          "type_uid",
-          "type_uid.*",
-          "severity_id",
-          "severity_id.*",
-          "activity_name",
-          "message",
-          "src_endpoint",
-          "src_endpoint.*",
-          "actor",
-          "actor.*",
-          "device",
-          "device.*",
-          "metadata",
-          "metadata.*",
-          "unmapped",
-          "unmapped.*",
-          "time",
-          "time.*"
-        ]
-      },
-      "description": "Keep only OCSF 3005 fields + routing"
+      "id": "drop",
+      "filter": "audit_type === 'CWD' || audit_type === 'PATH'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop CWD/PATH context events (enable in Cribl UI to activate)",
+      "final": true
     }
   ],
   "recipe": null,
-  "report": null
+  "report": {
+    "pipelineId": "LinuxAudit_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "type=MAC_IPSEC_EVENT msg=audit(1485893834.891:18877201): op=SPD-delete auid=4294967295 ses=4294967295 res=1 src=192.168.2.0 src_prefixlen=24 dst=192.168.0.0 dst_prefixlen=16",
+        "_time": 1485893834.891,
+        "type": "MAC_IPSEC_EVENT",
+        "msg": "audit(1485893834.891:18877201):",
+        "op": "SPD-delete",
+        "auid": "4294967295",
+        "ses": "4294967295",
+        "res": "1",
+        "src": "192.168.2.0",
+        "src_prefixlen": "24",
+        "dst": "192.168.0.0",
+        "dst_prefixlen": "16",
+        "audit_type": "MAC_IPSEC_EVENT",
+        "audit_epoch": "1485893834.891",
+        "audit_serial": "18877201",
+        "log_time": "1485893834.891",
+        "audit_user_id": "4294967295",
+        "session_id": "4294967295",
+        "outcome": "1",
+        "action": "1",
+        "signature": "MAC_IPSEC_EVENT",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1485893834891,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=EXECVE msg=audit(1643025668.518:5009988): a8_len=1 a8[0]=8 a9=9 a10=10 a11[1]=11",
+        "_time": 1643025668.518,
+        "type": "EXECVE",
+        "msg": "audit(1643025668.518:5009988):",
+        "a8_len": "1 a8",
+        "0]": "8",
+        "a9": "9",
+        "a10": "10 a11",
+        "1]": "11",
+        "audit_type": "EXECVE",
+        "audit_epoch": "1643025668.518",
+        "audit_serial": "5009988",
+        "log_time": "1643025668.518",
+        "signature": "EXECVE",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1643025668518,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=ADD_GROUP msg=audit(1610903553.686:584): pid=2940 uid=0 auid=1000 ses=14 msg='op=adding group to /etc/group id=1004 exe=\"/usr/sbin/groupadd\" hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success'",
+        "_time": 1610903553.686,
+        "type": "ADD_GROUP",
+        "msg": "",
+        "pid": "2940",
+        "uid": "0",
+        "auid": "1000",
+        "ses": "14",
+        "msg='op": "adding group to /etc/group",
+        "id": "1004",
+        "exe": "/usr/sbin/groupadd",
+        "hostname": "ubuntu-bionic",
+        "addr": "127.0.0.1",
+        "terminal": "pts/2",
+        "res": "success'",
+        "audit_type": "ADD_GROUP",
+        "audit_epoch": "1610903553.686",
+        "audit_serial": "584",
+        "log_time": "1610903553.686",
+        "process": {
+          "file": {
+            "path": "/usr/sbin/groupadd"
+          },
+          "name": "/usr/sbin/groupadd",
+          "cmd_line": "/usr/sbin/groupadd",
+          "pid": 2940
+        },
+        "process_name": "/usr/sbin/groupadd",
+        "command": "/usr/sbin/groupadd",
+        "process_id": 2940,
+        "user_id": "0",
+        "audit_user_id": "1000",
+        "session_id": "14",
+        "outcome": "success'",
+        "action": "success'",
+        "signature": "ADD_GROUP",
+        "host": "ubuntu-bionic",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "gfsrc_tmp_process": "/usr/sbin/groupadd",
+        "device": {
+          "hostname": "ubuntu-bionic"
+        },
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1610903553686,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=SOCKADDR msg=audit(1666825569.818:23260118): saddr=02000000000000000000000000000000\u001dSADDR={ saddr_fam=inet laddr=0.0.0.0 lport=0 }",
+        "_time": 1666825569.818,
+        "type": "SOCKADDR",
+        "msg": "audit(1666825569.818:23260118):",
+        "saddr": "02000000000000000000000000000000",
+        "SADDR": "",
+        "saddr_fam": "inet",
+        "laddr": "0.0.0.0",
+        "lport": "0 }",
+        "audit_type": "SOCKADDR",
+        "audit_epoch": "1666825569.818",
+        "audit_serial": "23260118",
+        "log_time": "1666825569.818",
+        "signature": "SOCKADDR",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1666825569818,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=USER_LOGIN msg=audit(1489636960.072:19623791): pid=28281 uid=0 auid=700 ses=6793 msg='op=login acct=\"root\" exe=\"/usr/sbin/sshd\" hostname=1.2.3.4 addr=1.2.3.4 terminal=sshd res=success'",
+        "_time": 1489636960.072,
+        "type": "USER_LOGIN",
+        "msg": "",
+        "pid": "28281",
+        "uid": "0",
+        "auid": "700",
+        "ses": "6793",
+        "msg='op": "login",
+        "acct": "root",
+        "exe": "/usr/sbin/sshd",
+        "hostname": "1.2.3.4",
+        "addr": "1.2.3.4",
+        "terminal": "sshd",
+        "res": "success'",
+        "audit_type": "USER_LOGIN",
+        "audit_epoch": "1489636960.072",
+        "audit_serial": "19623791",
+        "log_time": "1489636960.072",
+        "process": {
+          "file": {
+            "path": "/usr/sbin/sshd"
+          },
+          "name": "/usr/sbin/sshd",
+          "cmd_line": "/usr/sbin/sshd",
+          "pid": 28281
+        },
+        "process_name": "/usr/sbin/sshd",
+        "command": "/usr/sbin/sshd",
+        "process_id": 28281,
+        "user_id": "0",
+        "audit_user_id": "700",
+        "session_id": "6793",
+        "outcome": "success'",
+        "action": "success'",
+        "signature": "USER_LOGIN",
+        "host": "1.2.3.4",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "gfsrc_tmp_process": "/usr/sbin/sshd",
+        "device": {
+          "hostname": "1.2.3.4"
+        },
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1489636960072,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=SYSCALL msg=audit(1485893834.891:18877199): arch=c000003e syscall=59 success=yes exit=0 a0=7f095d0a4b88 ppid=1234 pid=5678 auid=1000 uid=0 gid=0 comm=\"ls\" exe=\"/bin/ls\"",
+        "_time": 1485893834.891,
+        "type": "SYSCALL",
+        "msg": "audit(1485893834.891:18877199):",
+        "arch": "c000003e",
+        "syscall": "59",
+        "success": "yes",
+        "exit": "0",
+        "a0": "7f095d0a4b88",
+        "ppid": "1234",
+        "pid": "5678",
+        "auid": "1000",
+        "uid": "0",
+        "gid": "0",
+        "comm": "ls",
+        "exe": "/bin/ls",
+        "audit_type": "SYSCALL",
+        "audit_epoch": "1485893834.891",
+        "audit_serial": "18877199",
+        "log_time": "1485893834.891",
+        "process": {
+          "file": {
+            "path": "/bin/ls"
+          },
+          "parent_process": {
+            "pid": 1234
+          },
+          "name": "/bin/ls",
+          "cmd_line": "/bin/ls",
+          "pid": 5678
+        },
+        "process_name": "ls",
+        "command": "/bin/ls",
+        "process_id": 5678,
+        "parent_process_id": 1234,
+        "user_id": "0",
+        "audit_user_id": "1000",
+        "outcome": "success",
+        "action": "success",
+        "signature": "SYSCALL",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "gfsrc_tmp_process": "/bin/ls",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1485893834891,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=SYSCALL msg=audit(1485893834.891:18877199): arch=c000003e syscall=44 success=yes exit=184 a0=9 items=0 ppid=1240 pid=1281 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=\"charon\" exe=2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429 key=(null)",
+        "_time": 1485893834.891,
+        "type": "SYSCALL",
+        "msg": "audit(1485893834.891:18877199):",
+        "arch": "c000003e",
+        "syscall": "44",
+        "success": "yes",
+        "exit": "184",
+        "a0": "9",
+        "items": "0",
+        "ppid": "1240",
+        "pid": "1281",
+        "auid": "4294967295",
+        "uid": "0",
+        "gid": "0",
+        "euid": "0",
+        "suid": "0",
+        "fsuid": "0",
+        "egid": "0",
+        "sgid": "0",
+        "fsgid": "0",
+        "tty": "none",
+        "ses": "4294967295",
+        "comm": "charon",
+        "exe": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429",
+        "key": "null)",
+        "audit_type": "SYSCALL",
+        "audit_epoch": "1485893834.891",
+        "audit_serial": "18877199",
+        "log_time": "1485893834.891",
+        "process": {
+          "file": {
+            "path": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429"
+          },
+          "parent_process": {
+            "pid": 1240
+          },
+          "name": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429",
+          "cmd_line": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429",
+          "pid": 1281
+        },
+        "process_name": "charon",
+        "command": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429",
+        "process_id": 1281,
+        "parent_process_id": 1240,
+        "user_id": "0",
+        "audit_user_id": "4294967295",
+        "session_id": "4294967295",
+        "outcome": "success",
+        "action": "success",
+        "signature": "SYSCALL",
+        "object": "null)",
+        "rule_name": "null)",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "gfsrc_tmp_process": "2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1485893834891,
+        "sourcetype": "linux_audit"
+      },
+      {
+        "_raw": "type=EXECVE msg=audit(1643025668.518:5009988): a10517=\"/redacted/path/for/arg10517\" a10518=\"/redacted/path/for/arg10518\" a10519=\"/redacted/path/for/arg10519\" a10520=\"/redacted/path/for/arg10520\" a10521=\"/redacted/path/for/arg10521\" a10522=\"/redacted/path/for/arg10522\" a10523=\"/redacted/path/for/arg10523\" a10524=\"/redacted/path/for/arg10524\" a10525=\"/redacted/path/for/arg10525\" a10526=\"/redacted/path/for/arg10526\" a10527=\"/redacted/path/for/arg10527\" a10528=\"/redacted/path/for/arg10528\" a10529=\"/redacted/path/for/arg10529\" a10530=\"/redacted/path/for/arg10530\" a10531=\"/redacted/path/for/arg10531\" a10532=\"/redacted/path/for/arg10532\" a10533=\"/redacted/path/for/arg10533\" a10534=\"/redacted/path/for/arg10534\" a10535=\"/redacted/path/for/arg10535\" a10536=\"/redacted/path/for/arg10536\" a10537=\"/redacted/path/for/arg10537\" a10538=\"/redacted/path/for/arg10538\" a10539=\"/redacted/path/for/arg10539\" a10540=\"/redacted/path/for/arg10540\" a10541=\"/redacted/path/for/arg10541\" a10542=\"/redacted/path/for/arg10542\" a10543=\"/redacted/path/for/arg10543\" a10544=\"/redacted/path/for/arg10544\" a10545=\"/redacted/path/for/arg10545\" a10546=\"/redacted/path/for/arg10546\" a10547=\"/redacted/path/for/arg10547\" a10548=\"/redacted/path/for/arg10548\" a10549=\"/redacted/path/for/arg10549\" a10550=\"/redacted/path/for/arg10550\" a10551=\"/redacted/path/for/arg10551\" a10552=\"/redacted/path/for/arg10552\" a10553=\"/redacted/path/for/arg10553\" a10554=\"/redacted/path/for/arg10554\" a10555=\"/redacted/path/for/arg10555\" a10556=\"/redacted/path/for/arg10556\" a10557=\"/redacted/path/for/arg10557\" a10558=\"/redacted/path/for/arg10558\" a10559=\"/redacted/path/for/arg10559\" a10560=\"/redacted/path/for/arg10560\" a10561=\"/redacted/path/for/arg10561\" a10562=\"/redacted/path/for/arg10562\" a10563=\"/redacted/path/for/arg10563\" a10564=\"/redacted/path/for/arg10564\" a10565=\"/redacted/path/for/arg10565\" a10566=\"/redacted/path/for/arg10566\" a10567=\"/redacted/path/for/arg10567\" a10568=\"/redacted/path/for/arg10568\" a10569=\"/redacted/path/for/arg10569\" a10570=\"/redacted/path/for/arg10570\" a10571=\"/redacted/path/for/arg10571\" a10572=\"/redacted/path/for/arg10572\" a10573=\"/redacted/path/for/arg10573\" a10574=\"/redacted/path/for/arg10574\" a10575=\"/redacted/path/for/arg10575\" a10576=\"/redacted/path/for/arg10576\" a10577=\"/redacted/path/for/arg10577\" a10578=\"/redacted/path/for/arg10578\" a10579=\"/redacted/path/for/arg10579\" a10580=\"/redacted/path/for/arg10580\" a10581=\"/redacted/path/for/arg10581\" a10582=\"/redacted/path/for/arg10582\" a10583=\"/redacted/path/for/arg10583\" a10584=\"/redacted/path/for/arg10584\" a10585=\"/redacted/path/for/arg10585\" a10586=\"/redacted/path/for/arg10586\" a10587_len=95 a10587[0]=\"/redacted/path\"",
+        "_time": 1643025668.518,
+        "type": "EXECVE",
+        "msg": "audit(1643025668.518:5009988):",
+        "a10517": "/redacted/path/for/arg10517",
+        "a10518": "/redacted/path/for/arg10518",
+        "a10519": "/redacted/path/for/arg10519",
+        "a10520": "/redacted/path/for/arg10520",
+        "a10521": "/redacted/path/for/arg10521",
+        "a10522": "/redacted/path/for/arg10522",
+        "a10523": "/redacted/path/for/arg10523",
+        "a10524": "/redacted/path/for/arg10524",
+        "a10525": "/redacted/path/for/arg10525",
+        "a10526": "/redacted/path/for/arg10526",
+        "a10527": "/redacted/path/for/arg10527",
+        "a10528": "/redacted/path/for/arg10528",
+        "a10529": "/redacted/path/for/arg10529",
+        "a10530": "/redacted/path/for/arg10530",
+        "a10531": "/redacted/path/for/arg10531",
+        "a10532": "/redacted/path/for/arg10532",
+        "a10533": "/redacted/path/for/arg10533",
+        "a10534": "/redacted/path/for/arg10534",
+        "a10535": "/redacted/path/for/arg10535",
+        "a10536": "/redacted/path/for/arg10536",
+        "a10537": "/redacted/path/for/arg10537",
+        "a10538": "/redacted/path/for/arg10538",
+        "a10539": "/redacted/path/for/arg10539",
+        "a10540": "/redacted/path/for/arg10540",
+        "a10541": "/redacted/path/for/arg10541",
+        "a10542": "/redacted/path/for/arg10542",
+        "a10543": "/redacted/path/for/arg10543",
+        "a10544": "/redacted/path/for/arg10544",
+        "a10545": "/redacted/path/for/arg10545",
+        "a10546": "/redacted/path/for/arg10546",
+        "a10547": "/redacted/path/for/arg10547",
+        "a10548": "/redacted/path/for/arg10548",
+        "a10549": "/redacted/path/for/arg10549",
+        "a10550": "/redacted/path/for/arg10550",
+        "a10551": "/redacted/path/for/arg10551",
+        "a10552": "/redacted/path/for/arg10552",
+        "a10553": "/redacted/path/for/arg10553",
+        "a10554": "/redacted/path/for/arg10554",
+        "a10555": "/redacted/path/for/arg10555",
+        "a10556": "/redacted/path/for/arg10556",
+        "a10557": "/redacted/path/for/arg10557",
+        "a10558": "/redacted/path/for/arg10558",
+        "a10559": "/redacted/path/for/arg10559",
+        "a10560": "/redacted/path/for/arg10560",
+        "a10561": "/redacted/path/for/arg10561",
+        "a10562": "/redacted/path/for/arg10562",
+        "a10563": "/redacted/path/for/arg10563",
+        "a10564": "/redacted/path/for/arg10564",
+        "a10565": "/redacted/path/for/arg10565",
+        "a10566": "/redacted/path/for/arg10566",
+        "a10567": "/redacted/path/for/arg10567",
+        "a10568": "/redacted/path/for/arg10568",
+        "a10569": "/redacted/path/for/arg10569",
+        "a10570": "/redacted/path/for/arg10570",
+        "a10571": "/redacted/path/for/arg10571",
+        "a10572": "/redacted/path/for/arg10572",
+        "a10573": "/redacted/path/for/arg10573",
+        "a10574": "/redacted/path/for/arg10574",
+        "a10575": "/redacted/path/for/arg10575",
+        "a10576": "/redacted/path/for/arg10576",
+        "a10577": "/redacted/path/for/arg10577",
+        "a10578": "/redacted/path/for/arg10578",
+        "a10579": "/redacted/path/for/arg10579",
+        "a10580": "/redacted/path/for/arg10580",
+        "a10581": "/redacted/path/for/arg10581",
+        "a10582": "/redacted/path/for/arg10582",
+        "a10583": "/redacted/path/for/arg10583",
+        "a10584": "/redacted/path/for/arg10584",
+        "a10585": "/redacted/path/for/arg10585",
+        "a10586": "/redacted/path/for/arg10586",
+        "a10587_len": "95 a10587",
+        "0]": "/redacted/path",
+        "audit_type": "EXECVE",
+        "audit_epoch": "1643025668.518",
+        "audit_serial": "5009988",
+        "log_time": "1643025668.518",
+        "signature": "EXECVE",
+        "vendor": "Linux",
+        "product": "Auditd",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 1,
+        "time": 1643025668518,
+        "sourcetype": "linux_audit"
+      }
+    ],
+    "sampleKeys": [
+      "type",
+      "msg",
+      "op",
+      "auid",
+      "ses",
+      "res",
+      "src",
+      "src_prefixlen",
+      "dst",
+      "dst_prefixlen",
+      "a8_len",
+      "a9",
+      "a10",
+      "pid",
+      "uid",
+      "id",
+      "exe",
+      "hostname",
+      "addr",
+      "terminal",
+      "saddr",
+      "saddr_fam",
+      "laddr",
+      "lport",
+      "acct",
+      "arch",
+      "syscall",
+      "success",
+      "exit",
+      "a0",
+      "ppid",
+      "gid",
+      "comm",
+      "items",
+      "euid",
+      "suid",
+      "fsuid",
+      "egid",
+      "sgid",
+      "fsgid",
+      "tty",
+      "key",
+      "a10517",
+      "a10518",
+      "a10519",
+      "a10520",
+      "a10521",
+      "a10522",
+      "a10523",
+      "a10524",
+      "a10525",
+      "a10526",
+      "a10527",
+      "a10528",
+      "a10529",
+      "a10530",
+      "a10531",
+      "a10532",
+      "a10533",
+      "a10534",
+      "a10535",
+      "a10536",
+      "a10537",
+      "a10538",
+      "a10539",
+      "a10540",
+      "a10541",
+      "a10542",
+      "a10543",
+      "a10544",
+      "a10545",
+      "a10546",
+      "a10547",
+      "a10548",
+      "a10549",
+      "a10550",
+      "a10551",
+      "a10552",
+      "a10553",
+      "a10554",
+      "a10555",
+      "a10556",
+      "a10557",
+      "a10558",
+      "a10559",
+      "a10560",
+      "a10561",
+      "a10562",
+      "a10563",
+      "a10564",
+      "a10565",
+      "a10566",
+      "a10567",
+      "a10568",
+      "a10569",
+      "a10570",
+      "a10571",
+      "a10572",
+      "a10573",
+      "a10574",
+      "a10575",
+      "a10576",
+      "a10577",
+      "a10578",
+      "a10579",
+      "a10580",
+      "a10581",
+      "a10582",
+      "a10583",
+      "a10584",
+      "a10585",
+      "a10586",
+      "a10587_len"
+    ],
+    "sampleRaw": [
+      "type=MAC_IPSEC_EVENT msg=audit(1485893834.891:18877201): op=SPD-delete auid=4294967295 ses=4294967295 res=1 src=192.168.2.0 src_prefixlen=24 dst=192.168.0.0 dst_prefixlen=16",
+      "type=EXECVE msg=audit(1643025668.518:5009988): a8_len=1 a8[0]=8 a9=9 a10=10 a11[1]=11",
+      "type=ADD_GROUP msg=audit(1610903553.686:584): pid=2940 uid=0 auid=1000 ses=14 msg='op=adding group to /etc/group id=1004 exe=\"/usr/sbin/groupadd\" hostname=ubuntu-bionic addr=127.0.0.1 terminal=pts/2 res=success'",
+      "type=SOCKADDR msg=audit(1666825569.818:23260118): saddr=02000000000000000000000000000000\u001dSADDR={ saddr_fam=inet laddr=0.0.0.0 lport=0 }",
+      "type=USER_LOGIN msg=audit(1489636960.072:19623791): pid=28281 uid=0 auid=700 ses=6793 msg='op=login acct=\"root\" exe=\"/usr/sbin/sshd\" hostname=1.2.3.4 addr=1.2.3.4 terminal=sshd res=success'",
+      "type=SYSCALL msg=audit(1485893834.891:18877199): arch=c000003e syscall=59 success=yes exit=0 a0=7f095d0a4b88 ppid=1234 pid=5678 auid=1000 uid=0 gid=0 comm=\"ls\" exe=\"/bin/ls\"",
+      "type=SYSCALL msg=audit(1485893834.891:18877199): arch=c000003e syscall=44 success=yes exit=184 a0=9 items=0 ppid=1240 pid=1281 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=\"charon\" exe=2F7573722F6C6962657865632F7374726F6E677377616E2F636861726F6E202864656C6574656429 key=(null)",
+      "type=EXECVE msg=audit(1643025668.518:5009988): a10517=\"/redacted/path/for/arg10517\" a10518=\"/redacted/path/for/arg10518\" a10519=\"/redacted/path/for/arg10519\" a10520=\"/redacted/path/for/arg10520\" a10521=\"/redacted/path/for/arg10521\" a10522=\"/redacted/path/for/arg10522\" a10523=\"/redacted/path/for/arg10523\" a10524=\"/redacted/path/for/arg10524\" a10525=\"/redacted/path/for/arg10525\" a10526=\"/redacted/path/for/arg10526\" a10527=\"/redacted/path/for/arg10527\" a10528=\"/redacted/path/for/arg10528\" a10529=\"/redacted/path/for/arg10529\" a10530=\"/redacted/path/for/arg10530\" a10531=\"/redacted/path/for/arg10531\" a10532=\"/redacted/path/for/arg10532\" a10533=\"/redacted/path/for/arg10533\" a10534=\"/redacted/path/for/arg10534\" a10535=\"/redacted/path/for/arg10535\" a10536=\"/redacted/path/for/arg10536\" a10537=\"/redacted/path/for/arg10537\" a10538=\"/redacted/path/for/arg10538\" a10539=\"/redacted/path/for/arg10539\" a10540=\"/redacted/path/for/arg10540\" a10541=\"/redacted/path/for/arg10541\" a10542=\"/redacted/path/for/arg10542\" a10543=\"/redacted/path/for/arg10543\" a10544=\"/redacted/path/for/arg10544\" a10545=\"/redacted/path/for/arg10545\" a10546=\"/redacted/path/for/arg10546\" a10547=\"/redacted/path/for/arg10547\" a10548=\"/redacted/path/for/arg10548\" a10549=\"/redacted/path/for/arg10549\" a10550=\"/redacted/path/for/arg10550\" a10551=\"/redacted/path/for/arg10551\" a10552=\"/redacted/path/for/arg10552\" a10553=\"/redacted/path/for/arg10553\" a10554=\"/redacted/path/for/arg10554\" a10555=\"/redacted/path/for/arg10555\" a10556=\"/redacted/path/for/arg10556\" a10557=\"/redacted/path/for/arg10557\" a10558=\"/redacted/path/for/arg10558\" a10559=\"/redacted/path/for/arg10559\" a10560=\"/redacted/path/for/arg10560\" a10561=\"/redacted/path/for/arg10561\" a10562=\"/redacted/path/for/arg10562\" a10563=\"/redacted/path/for/arg10563\" a10564=\"/redacted/path/for/arg10564\" a10565=\"/redacted/path/for/arg10565\" a10566=\"/redacted/path/for/arg10566\" a10567=\"/redacted/path/for/arg10567\" a10568=\"/redacted/path/for/arg10568\" a10569=\"/redacted/path/for/arg10569\" a10570=\"/redacted/path/for/arg10570\" a10571=\"/redacted/path/for/arg10571\" a10572=\"/redacted/path/for/arg10572\" a10573=\"/redacted/path/for/arg10573\" a10574=\"/redacted/path/for/arg10574\" a10575=\"/redacted/path/for/arg10575\" a10576=\"/redacted/path/for/arg10576\" a10577=\"/redacted/path/for/arg10577\" a10578=\"/redacted/path/for/arg10578\" a10579=\"/redacted/path/for/arg10579\" a10580=\"/redacted/path/for/arg10580\" a10581=\"/redacted/path/for/arg10581\" a10582=\"/redacted/path/for/arg10582\" a10583=\"/redacted/path/for/arg10583\" a10584=\"/redacted/path/for/arg10584\" a10585=\"/redacted/path/for/arg10585\" a10586=\"/redacted/path/for/arg10586\" a10587_len=95 a10587[0]=\"/redacted/path\""
+    ],
+    "sourcetype": "linux_audit"
+  }
 }
