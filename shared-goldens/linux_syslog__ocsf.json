@@ -2,28 +2,12 @@
   "key": "linux_syslog::ocsf",
   "sourcetype": "linux_syslog",
   "dest_format": "ocsf",
-  "score": 91,
+  "score": 100,
   "part": null,
-  "author": "wvdlinde",
-  "build": 273,
-  "updated_at": "2026-07-16T18:16:18.632Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-03T05:56:55.579Z",
   "functions": [
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "linux_syslog to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 1: Parse raw events ---"
-      }
-    },
     {
       "id": "regex_extract",
       "filter": "true",
@@ -40,9 +24,9 @@
       "disabled": false,
       "conf": {
         "source": "message",
-        "regex": "/(?<action>Accepted|Failed|Invalid)\\s+(?<auth_method>\\S+)\\s+for\\s+(?:invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+)\\s+port\\s+(?<src_port>\\d+)\\s*(?<ssh_proto>\\S+)?/"
+        "regex": "/(?<action>Accepted|Failed|Invalid)\\s+(?<auth_method>\\S+)\\s+for\\s+(?:invalid user\\s+)?(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+)\\s+port\\s+(?<src_port>\\d+)/"
       },
-      "description": "Extract SSH authentication fields (user, src_ip, port, method, protocol)"
+      "description": "Extract SSH authentication fields (user, src_ip, port, method)"
     },
     {
       "id": "regex_extract",
@@ -60,29 +44,9 @@
       "disabled": false,
       "conf": {
         "source": "message",
-        "regex": "/\\[UFW\\s+(?<action>\\w+)\\].*?SRC=(?<src_ip>[\\d.]+)\\s+DST=(?<dest_ip>[\\d.]+).*?PROTO=(?<transport>\\w+).*?SPT=(?<src_port>\\d+)\\s+DPT=(?<dest_port>\\d+)/"
+        "regex": "/\\[UFW\\s+(?<action>\\w+)\\].*?SRC=(?<src_ip>[\\d.]+)\\s+DST=(?<dest_ip>[\\d.]+).*?SPT=(?<src_port>\\d+)\\s+DPT=(?<dest_port>\\d+)\\s+.*?PROTO=(?<transport>\\w+)/"
       },
       "description": "Extract UFW firewall block fields"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "process === 'nginx' || (message && /HTTP\\//.test(message))",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/\"(?<http_method>\\w+)\\s+(?<uri>\\S+)\\s+HTTP\\/[\\d.]+\"\\s+(?<status_code>\\d+)\\s+(?<resp_bytes>\\d+)/"
-      },
-      "description": "Extract nginx access log fields (method, uri, status, bytes)"
-    },
-    {
-      "id": "regex_extract",
-      "filter": "process && (process === 'postfix/smtpd' || process === 'postfix/smtp' || process === 'postfix/qmgr' || process === 'postfix/local')",
-      "disabled": false,
-      "conf": {
-        "source": "message",
-        "regex": "/(?:connect from|from)\\s+\\S+\\[(?<src_ip>[\\d.a-fA-F:]+)\\]/"
-      },
-      "description": "Extract postfix client IP"
     },
     {
       "id": "eval",
@@ -103,64 +67,94 @@
             "value": "action === 'Failed' || action === 'Invalid' || action === 'BLOCK' ? 4 : 6"
           },
           {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
             "name": "action",
             "value": "action === 'Accepted' ? 'success' : action === 'Failed' || action === 'Invalid' ? 'failure' : action ? String(action).toLowerCase() : undefined"
           },
           {
             "name": "event_code",
             "value": "process || undefined"
-          },
-          {
-            "name": "transport",
-            "value": "transport ? transport : (ssh_proto ? 'TCP' : undefined)"
-          },
-          {
-            "name": "connection_protocol",
-            "value": "ssh_proto ? ssh_proto : (transport ? transport : undefined)"
           }
         ]
       },
       "description": "Normalize linux syslog fields to canonical model"
     },
     {
-      "id": "comment",
+      "id": "eval",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
-      }
-    },
-    {
-      "id": "drop",
-      "filter": "process === 'CRON' || (message && /session (opened|closed) for user/.test(message))",
-      "disabled": true,
-      "conf": {},
-      "description": "Drop CRON session noise (enable in Cribl UI to activate)",
-      "final": true
-    },
-    {
-      "id": "drop",
-      "filter": "message && /Created slice|Removed slice/.test(message)",
-      "disabled": true,
-      "conf": {},
-      "description": "Drop systemd slice creation/removal messages (enable in Cribl UI to activate)",
-      "final": true
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 3: Map fields to OCSF schema ---"
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
-      }
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
     },
     {
       "id": "eval",
@@ -191,64 +185,68 @@
       "conf": {
         "add": [
           {
-            "name": "src_endpoint",
-            "value": "{}"
+            "name": "gfsrc_tmp_process",
+            "value": "process"
           },
           {
-            "name": "dst_endpoint",
-            "value": "{}"
+            "name": "process",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '') || ((process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '') || ((process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '') || ((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
           },
           {
-            "name": "connection_info",
-            "value": "{}"
+            "name": "process.file",
+            "value": "(((gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '')) ? {} : undefined"
           },
           {
-            "name": "traffic",
-            "value": "{}"
+            "name": "process.parent_process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '') || ((parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '') || ((parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '')) ? {} : undefined"
           },
           {
             "name": "actor",
-            "value": "{}"
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '') || ((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
           },
           {
             "name": "actor.user",
-            "value": "{}"
+            "value": "(((user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.process",
+            "value": "(((parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '')) ? {} : undefined"
           },
           {
             "name": "device",
-            "value": "{}"
+            "value": "(((host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '')) ? {} : undefined"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "(((transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '')) ? {} : undefined"
+          },
+          {
+            "name": "file",
+            "value": "(((file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "reg_key",
+            "value": "(((registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '')) ? {} : undefined"
+          },
+          {
+            "name": "query",
+            "value": "(((dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '')) ? {} : undefined"
           },
           {
             "name": "metadata",
-            "value": "{}"
-          },
-          {
-            "name": "metadata.product",
-            "value": "{}"
-          },
-          {
-            "name": "class_uid",
-            "value": "4001"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
-          },
-          {
-            "name": "activity_id",
-            "value": "(/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)"
-          },
-          {
-            "name": "type_uid",
-            "value": "400100 + (/teardown|close|end|denied|deny/i.test(String(action)) ? 2 : 1)"
-          },
-          {
-            "name": "severity_id",
-            "value": "severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1"
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
           }
         ]
       },
-      "description": "Map canonical fields to OCSF 1.4 base"
+      "description": "Map canonical fields → OCSF 1.4 Process Activity"
     },
     {
       "id": "eval",
@@ -257,64 +255,134 @@
       "conf": {
         "add": [
           {
-            "name": "src_endpoint.ip",
-            "value": "src_ip && String(src_ip) !== '' && String(src_ip) !== 'undefined' ? String(src_ip) : undefined"
+            "name": "metadata.product",
+            "value": "(((app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '') || (('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '')) ? {} : undefined"
           },
           {
-            "name": "src_endpoint.port",
-            "value": "src_port && String(src_port) !== '' && String(src_port) !== 'undefined' ? Number(src_port) : undefined"
+            "name": "class_uid",
+            "value": "(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != null && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'undefined' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != 'null' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '-' && String(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) != '' ? Number(event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) : undefined"
           },
           {
-            "name": "dst_endpoint.ip",
-            "value": "dest_ip && String(dest_ip) !== '' && String(dest_ip) !== 'undefined' ? String(dest_ip) : undefined"
+            "name": "category_uid",
+            "value": "(event_code == '3' || event_code == '22' ? 4 : 1) != null && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'undefined' && String(event_code == '3' || event_code == '22' ? 4 : 1) != 'null' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '-' && String(event_code == '3' || event_code == '22' ? 4 : 1) != '' ? Number(event_code == '3' || event_code == '22' ? 4 : 1) : undefined"
           },
           {
-            "name": "dst_endpoint.port",
-            "value": "dest_port && String(dest_port) !== '' && String(dest_port) !== 'undefined' ? Number(dest_port) : undefined"
+            "name": "activity_id",
+            "value": "(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != null && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'undefined' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != 'null' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '-' && String(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) != '' ? Number(event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1) : undefined"
           },
           {
-            "name": "connection_info.protocol_name",
-            "value": "connection_protocol && String(connection_protocol) !== '' && String(connection_protocol) !== 'undefined' ? String(connection_protocol).toUpperCase() : (transport && String(transport) !== '' && String(transport) !== 'undefined' ? String(transport).toUpperCase() : undefined)"
+            "name": "type_uid",
+            "value": "((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != null && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'undefined' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != 'null' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '-' && String((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) != '' ? Number((event_code == '3' ? 4001 : event_code == '22' ? 4003 : event_code == '11' ? 1001 : 1007) * 100 + (event_code == '5' ? 2 : event_code == '10' ? 3 : event_code == '8' ? 4 : 1)) : undefined"
           },
           {
-            "name": "traffic.bytes_in",
-            "value": "resp_bytes && String(resp_bytes) !== '' && String(resp_bytes) !== 'undefined' ? Number(resp_bytes) : undefined"
+            "name": "severity_id",
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
           },
           {
-            "name": "traffic.bytes_out",
-            "value": "undefined"
+            "name": "process.name",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.cmd_line",
+            "value": "(command) != null && String(command) != 'undefined' && String(command) != 'null' && String(command) != '-' && String(command) != '' ? (command) : undefined"
+          },
+          {
+            "name": "process.pid",
+            "value": "(process_id) != null && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && String(process_id) != '' ? Number(process_id) : undefined"
+          },
+          {
+            "name": "process.uid",
+            "value": "(process_guid) != null && String(process_guid) != 'undefined' && String(process_guid) != 'null' && String(process_guid) != '-' && String(process_guid) != '' ? (process_guid) : undefined"
+          },
+          {
+            "name": "process.file.path",
+            "value": "(gfsrc_tmp_process) != null && String(gfsrc_tmp_process) != 'undefined' && String(gfsrc_tmp_process) != 'null' && String(gfsrc_tmp_process) != '-' && String(gfsrc_tmp_process) != '' ? (gfsrc_tmp_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
+          },
+          {
+            "name": "process.parent_process.cmd_line",
+            "value": "(parent_command) != null && String(parent_command) != 'undefined' && String(parent_command) != 'null' && String(parent_command) != '-' && String(parent_command) != '' ? (parent_command) : undefined"
+          },
+          {
+            "name": "process.parent_process.pid",
+            "value": "(parent_process_id) != null && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && String(parent_process_id) != '' ? Number(parent_process_id) : undefined"
           },
           {
             "name": "actor.user.name",
-            "value": "(user || src_user) && String(user || src_user) !== '' && String(user || src_user) !== 'undefined' ? String(user || src_user) : undefined"
-          },
-          {
-            "name": "device.hostname",
-            "value": "host && String(host) !== '' ? String(host) : undefined"
-          },
-          {
-            "name": "metadata.version",
-            "value": "'1.4.0'"
-          },
-          {
-            "name": "metadata.product.name",
-            "value": "product && String(product) !== '' ? String(product) : undefined"
-          },
-          {
-            "name": "metadata.product.vendor_name",
-            "value": "vendor && String(vendor) !== '' ? String(vendor) : undefined"
-          },
-          {
-            "name": "message",
-            "value": "message && String(message) !== '' ? String(message) : undefined"
-          },
-          {
-            "name": "time",
-            "value": "log_time && log_time !== '' ? new Date(String(log_time) + ' 2024').getTime() : _time * 1000"
+            "value": "(user) != null && String(user) != 'undefined' && String(user) != 'null' && String(user) != '-' && String(user) != '' ? (user) : undefined"
           }
         ]
       },
-      "description": "Map all OCSF endpoint, connection, traffic, actor, device, metadata fields"
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "actor.process.name",
+            "value": "(parent_process) != null && String(parent_process) != 'undefined' && String(parent_process) != 'null' && String(parent_process) != '-' && String(parent_process) != '' ? (parent_process) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '' ? (host) : undefined"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport) != null && String(transport) != 'undefined' && String(transport) != 'null' && String(transport) != '-' && String(transport) != '' ? (transport) : undefined"
+          },
+          {
+            "name": "file.path",
+            "value": "(file_path) != null && String(file_path) != 'undefined' && String(file_path) != 'null' && String(file_path) != '-' && String(file_path) != '' ? (file_path) : undefined"
+          },
+          {
+            "name": "reg_key.path",
+            "value": "(registry_path) != null && String(registry_path) != 'undefined' && String(registry_path) != 'null' && String(registry_path) != '-' && String(registry_path) != '' ? (registry_path) : undefined"
+          },
+          {
+            "name": "query.hostname",
+            "value": "(dns_query) != null && String(dns_query) != 'undefined' && String(dns_query) != 'null' && String(dns_query) != '-' && String(dns_query) != '' ? (dns_query) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(app || 'Sysmon') != null && String(app || 'Sysmon') != 'undefined' && String(app || 'Sysmon') != 'null' && String(app || 'Sysmon') != '-' && String(app || 'Sysmon') != '' ? (app || 'Sysmon') : undefined"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "('Microsoft') != null && String('Microsoft') != 'undefined' && String('Microsoft') != 'null' && String('Microsoft') != '-' && String('Microsoft') != '' ? ('Microsoft') : undefined"
+          },
+          {
+            "name": "time",
+            "value": "(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != null && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'undefined' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != 'null' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '-' && String(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) != '' ? Number(log_time != null && log_time !== '' ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) : undefined) : undefined"
+          }
+        ]
+      },
+      "description": "Map (cont. 31)"
     },
     {
       "id": "eval",
@@ -324,67 +392,36 @@
         "add": [
           {
             "name": "sourcetype",
-            "value": "'linux_syslog:ocsf'"
+            "value": "'syslog'"
           },
           {
             "name": "_time",
-            "value": "log_time && log_time !== '' ? new Date(String(log_time) + ' 2024').getTime() / 1000 : _time"
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
           }
         ]
       },
       "description": "Set sourcetype + _time"
     },
     {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "remove": [
-          "*"
-        ],
-        "keep": [
-          "_time",
-          "index",
-          "source",
-          "sourcetype",
-          "host",
-          "cribl_breaker",
-          "cribl_pipe",
-          "class_uid",
-          "class_uid.*",
-          "category_uid",
-          "category_uid.*",
-          "activity_id",
-          "activity_id.*",
-          "type_uid",
-          "type_uid.*",
-          "severity_id",
-          "severity_id.*",
-          "src_endpoint",
-          "src_endpoint.*",
-          "dst_endpoint",
-          "dst_endpoint.*",
-          "connection_info",
-          "connection_info.*",
-          "traffic",
-          "traffic.*",
-          "actor",
-          "actor.*",
-          "device",
-          "device.*",
-          "metadata",
-          "metadata.*",
-          "time",
-          "time.*",
-          "message"
-        ]
-      },
-      "description": "Keep only OCSF 1.4 fields + routing"
+      "id": "drop",
+      "filter": "process === 'CRON' || (message && /session (opened|closed) for user/.test(message))",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop CRON session noise (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "message && /Created slice|Removed slice/.test(message)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop systemd slice creation/removal messages (enable in Cribl UI to activate)",
+      "final": true
     }
   ],
   "recipe": null,
   "report": {
-    "pipelineId": "linux_syslog_ocsf",
+    "pipelineId": "Syslog_OCSF",
     "destFormat": "ocsf",
     "score": 0,
     "band": "fail",
@@ -398,294 +435,200 @@
     "summary": "Deterministic live preview completed.",
     "lessons": [],
     "inputCount": 8,
-    "outputCount": 51,
+    "outputCount": 8,
     "outputSample": [
       {
-        "_time": 1719273797,
-        "host": "web-01",
-        "message": "Failed password for root from 185.220.101.42 port 54321 ssh2",
-        "src_endpoint": {
-          "ip": "185.220.101.42",
-          "port": 54321
-        },
-        "dst_endpoint": {},
-        "connection_info": {
-          "protocol_name": "SSH2"
-        },
-        "traffic": {},
-        "actor": {
-          "user": {
-            "name": "root"
-          }
-        },
-        "device": {
-          "hostname": "web-01"
-        },
+        "_raw": "<38>Jun  9 16:17:01 web01 CRON[24187]: pam_unix(cron:session): session opened for user root by (uid=0)",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
-        "severity_id": 3,
-        "time": 1719273797000,
-        "sourcetype": "linux_syslog:ocsf"
-      },
-      {
-        "_time": 1719274064,
-        "host": "db-02",
-        "message": "[1234567.891] Out of memory: Kill process 8821 (mysqld) score 892 or sacrifice child",
-        "src_endpoint": {},
-        "dst_endpoint": {},
-        "connection_info": {},
-        "traffic": {},
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "db-02"
-        },
-        "metadata": {
-          "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
-          },
-          "version": "1.4.0"
-        },
-        "class_uid": 4001,
-        "category_uid": 4,
-        "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719274064000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
       },
       {
-        "_time": 1719274325,
-        "host": "mail-01",
-        "message": "connect from unknown[91.213.8.101]",
-        "src_endpoint": {
-          "ip": "91.213.8.101"
-        },
-        "dst_endpoint": {},
-        "connection_info": {},
-        "traffic": {},
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "mail-01"
-        },
+        "_raw": "<38>Jun  9 16:17:01 web01 CRON[24187]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719274325000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
       },
       {
-        "_time": 1719274713,
-        "host": "proxy-01",
-        "message": "2001:db8::ff00:42:8329 - - [25/Jun/2024:00:18:33 +0000] \"GET /admin/.env HTTP/1.1\" 404 162 \"-\" \"python-requests/2.28.0\"",
-        "src_endpoint": {},
-        "dst_endpoint": {},
-        "connection_info": {},
-        "traffic": {
-          "bytes_in": 162
-        },
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "proxy-01"
-        },
+        "_raw": "<38>Jun  9 16:17:01 web01 CRON[24187]: pam_unix(cron:session): session closed for user root",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719274713000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
       },
       {
-        "_time": 1719275031,
-        "host": "fw-01",
-        "message": "[UFW BLOCK] IN=eth0 OUT= MAC=aa:bb:cc:dd:ee:ff SRC=192.0.2.77 DST=10.0.1.5 LEN=44 TOS=0x00 PREC=0x00 TTL=238 ID=54321 PROTO=TCP SPT=47832 DPT=23 WINDOW=1024 RES=0x00 SYN URGP=0",
-        "src_endpoint": {
-          "ip": "192.0.2.77",
-          "port": 47832
-        },
-        "dst_endpoint": {
-          "ip": "10.0.1.5",
-          "port": 23
-        },
-        "connection_info": {
-          "protocol_name": "TCP"
-        },
-        "traffic": {},
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "fw-01"
-        },
+        "_raw": "<86>Jun  9 16:18:33 web01 sshd[24312]: Accepted publickey for deploy from 10.7.42.19 port 51234 ssh2: RSA SHA256:3n8Xq9k2Lm4pR7vT1yWbZ0cQ5dHfJgKl6MnOpQrStU",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
-        "severity_id": 3,
-        "time": 1719275031000,
-        "sourcetype": "linux_syslog:ocsf"
-      },
-      {
-        "_time": 1719275469,
-        "host": "app-03",
-        "message": "Accepted publickey for deploy from 10.0.5.22 port 61234 ssh2",
-        "src_endpoint": {
-          "ip": "10.0.5.22",
-          "port": 61234
-        },
-        "dst_endpoint": {},
-        "connection_info": {
-          "protocol_name": "SSH2"
-        },
-        "traffic": {},
-        "actor": {
-          "user": {
-            "name": "deploy"
-          }
-        },
-        "device": {
-          "hostname": "app-03"
-        },
-        "metadata": {
-          "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
-          },
-          "version": "1.4.0"
-        },
-        "class_uid": 4001,
-        "category_uid": 4,
-        "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719275469000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
       },
       {
-        "_time": 1719275469,
-        "host": "app-03",
-        "message": "pam_unix(sshd:session): session opened for user deploy by (uid=0)",
-        "src_endpoint": {},
-        "dst_endpoint": {},
-        "connection_info": {},
-        "traffic": {},
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "app-03"
-        },
+        "_raw": "<86>Jun  9 16:18:33 web01 sshd[24312]: pam_unix(sshd:session): session opened for user deploy by (uid=0)",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719275469000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
       },
       {
-        "_time": 1719276442,
-        "host": "db-02",
-        "message": "[1234891.003] EXT4-fs error (device sdb1): ext4_journal_check_start:61: Detected aborted journal",
-        "src_endpoint": {},
-        "dst_endpoint": {},
-        "connection_info": {},
-        "traffic": {},
-        "actor": {
-          "user": {}
-        },
-        "device": {
-          "hostname": "db-02"
-        },
+        "_raw": "<86>Jun  9 16:19:02 web01 sshd[24418]: Failed password for invalid user admin from 203.0.113.55 port 44921 ssh2",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
         "metadata": {
           "product": {
-            "name": "Syslog",
-            "vendor_name": "Linux"
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
           },
-          "version": "1.4.0"
+          "version": "1.9.0"
         },
-        "class_uid": 4001,
-        "category_uid": 4,
+        "class_uid": 1007,
+        "category_uid": 1,
         "activity_id": 1,
-        "type_uid": 400101,
+        "type_uid": 100701,
         "severity_id": 5,
-        "time": 1719276442000,
-        "sourcetype": "linux_syslog:ocsf"
+        "sourcetype": "syslog"
+      },
+      {
+        "_raw": "<84>Jun  9 16:19:02 web01 sshd[24418]: Invalid user admin from 203.0.113.55 port 44921",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 5,
+        "sourcetype": "syslog"
+      },
+      {
+        "_raw": "<85>Jun  9 16:20:15 web01 sudo:   deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx",
+        "_time": 1788255088.29,
+        "vendor_product": "Linux",
+        "severity": 6,
+        "vendor": "Linux",
+        "product": "Syslog",
+        "version": "1.0",
+        "metadata": {
+          "product": {
+            "name": "Sysmon",
+            "vendor_name": "Microsoft"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 1007,
+        "category_uid": 1,
+        "activity_id": 1,
+        "type_uid": 100701,
+        "severity_id": 5,
+        "sourcetype": "syslog"
       }
     ],
     "sampleKeys": [
-      "IN",
-      "OUT",
-      "MAC",
-      "SRC",
-      "DST",
-      "LEN",
-      "TOS",
-      "PREC",
-      "TTL",
-      "ID",
-      "PROTO",
-      "SPT",
-      "DPT",
-      "WINDOW",
-      "RES",
-      "URGP"
+      "TTY",
+      "PWD",
+      "USER",
+      "COMMAND"
     ],
     "sampleRaw": [
-      "Jun 25 00:03:17 web-01 sshd[10421]: Failed password for root from 185.220.101.42 port 54321 ssh2",
-      "Jun 25 00:07:44 db-02 kernel: [1234567.891] Out of memory: Kill process 8821 (mysqld) score 892 or sacrifice child",
-      "Jun 25 00:12:05 mail-01 postfix/smtpd[3341]: connect from unknown[91.213.8.101]",
-      "Jun 25 00:18:33 proxy-01 nginx[4412]: 2001:db8::ff00:42:8329 - - [25/Jun/2024:00:18:33 +0000] \"GET /admin/.env HTTP/1.1\" 404 162 \"-\" \"python-requests/2.28.0\"",
-      "Jun 25 00:23:51 fw-01 kernel: [UFW BLOCK] IN=eth0 OUT= MAC=aa:bb:cc:dd:ee:ff SRC=192.0.2.77 DST=10.0.1.5 LEN=44 TOS=0x00 PREC=0x00 TTL=238 ID=54321 PROTO=TCP SPT=47832 DPT=23 WINDOW=1024 RES=0x00 SYN URGP=0",
-      "Jun 25 00:31:09 app-03 sshd[7761]: Accepted publickey for deploy from 10.0.5.22 port 61234 ssh2",
-      "Jun 25 00:31:09 app-03 sshd[7761]: pam_unix(sshd:session): session opened for user deploy by (uid=0)",
-      "Jun 25 00:47:22 db-02 kernel: [1234891.003] EXT4-fs error (device sdb1): ext4_journal_check_start:61: Detected aborted journal"
+      "<38>Jun  9 16:17:01 web01 CRON[24187]: pam_unix(cron:session): session opened for user root by (uid=0)",
+      "<38>Jun  9 16:17:01 web01 CRON[24187]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)",
+      "<38>Jun  9 16:17:01 web01 CRON[24187]: pam_unix(cron:session): session closed for user root",
+      "<86>Jun  9 16:18:33 web01 sshd[24312]: Accepted publickey for deploy from 10.7.42.19 port 51234 ssh2: RSA SHA256:3n8Xq9k2Lm4pR7vT1yWbZ0cQ5dHfJgKl6MnOpQrStU",
+      "<86>Jun  9 16:18:33 web01 sshd[24312]: pam_unix(sshd:session): session opened for user deploy by (uid=0)",
+      "<86>Jun  9 16:19:02 web01 sshd[24418]: Failed password for invalid user admin from 203.0.113.55 port 44921 ssh2",
+      "<84>Jun  9 16:19:02 web01 sshd[24418]: Invalid user admin from 203.0.113.55 port 44921",
+      "<85>Jun  9 16:20:15 web01 sudo:   deploy : TTY=pts/0 ; PWD=/home/deploy ; USER=root ; COMMAND=/usr/bin/systemctl restart nginx"
     ],
     "sourcetype": "linux_syslog"
   }
