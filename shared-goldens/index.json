@@ -16605,6 +16605,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_esxcli::ocsf",
+      "sourcetype": "vmware_esxlog_esxcli",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:57:15.542Z",
+      "path": "shared-goldens/vmware_esxlog_esxcli__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
