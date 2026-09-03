@@ -9785,14 +9785,14 @@
       "key": "palo_alto_traffic::ocsf",
       "sourcetype": "palo_alto_traffic",
       "dest_format": "ocsf",
-      "score": 91,
+      "score": 99,
       "part": null,
       "author": "push",
       "build": 0,
-      "updated_at": "2026-09-01T07:36:26.050Z",
+      "updated_at": "2026-09-03T05:56:39.702Z",
       "path": "shared-goldens/palo_alto_traffic__ocsf.json",
       "report": {
-        "score": 91,
+        "score": 99,
         "band": "good"
       }
     },
