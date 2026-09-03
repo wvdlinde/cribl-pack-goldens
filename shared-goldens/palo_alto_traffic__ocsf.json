@@ -2,28 +2,12 @@
   "key": "palo_alto_traffic::ocsf",
   "sourcetype": "palo_alto_traffic",
   "dest_format": "ocsf",
-  "score": 91,
+  "score": 99,
   "part": null,
   "author": "push",
   "build": 0,
-  "updated_at": "2026-09-01T07:36:26.050Z",
+  "updated_at": "2026-09-03T05:56:39.702Z",
   "functions": [
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "palo_alto_traffic to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 1: Parse raw events ---"
-      }
-    },
     {
       "id": "serde",
       "filter": "true",
@@ -91,52 +75,72 @@
       "conf": {
         "add": [
           {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
             "name": "log_time",
-            "value": "generated_time || start_time || receive_time || undefined"
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
           }
         ]
       },
-      "description": "Alias captured timestamp field(s) to log_time (generated_time, start_time, receive_time) so _time reflects the source event, not pipeline processing time"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 2: Reduction — drop noise events (disabled by default, enable in Cribl UI to activate) ---"
-      }
-    },
-    {
-      "id": "drop",
-      "filter": "src_ip && src_ip.startsWith('169.254.')",
-      "disabled": true,
-      "conf": {},
-      "description": "Drop PA management/health check traffic (enable in Cribl UI to activate)",
-      "final": true
-    },
-    {
-      "id": "drop",
-      "filter": "action == 'allow' && dst_port == '53'",
-      "disabled": true,
-      "conf": {},
-      "description": "Drop routine allowed DNS queries (enable in Cribl UI to activate)",
-      "final": true
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 3: Map fields to OCSF schema ---"
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "Golden OCSF mapping — deterministic from canonical fields (no AI)."
-      }
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
     },
     {
       "id": "eval",
@@ -168,39 +172,39 @@
         "add": [
           {
             "name": "src_endpoint",
-            "value": "{}"
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
           },
           {
             "name": "dst_endpoint",
-            "value": "{}"
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
           },
           {
             "name": "connection_info",
-            "value": "{}"
+            "value": "(((transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '')) ? {} : undefined"
           },
           {
             "name": "traffic",
-            "value": "{}"
+            "value": "(((bytes_in) != null && String(bytes_in) != 'undefined' && String(bytes_in) != 'null' && String(bytes_in) != '-' && String(bytes_in) != '') || ((bytes_out) != null && String(bytes_out) != 'undefined' && String(bytes_out) != 'null' && String(bytes_out) != '-' && String(bytes_out) != '')) ? {} : undefined"
           },
           {
             "name": "actor",
-            "value": "{}"
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
           },
           {
             "name": "actor.user",
-            "value": "{}"
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
           },
           {
             "name": "device",
-            "value": "{}"
+            "value": "(((host) != null && String(host) != 'undefined' && String(host) != 'null' && String(host) != '-' && String(host) != '')) ? {} : undefined"
           },
           {
             "name": "metadata",
-            "value": "{}"
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
           },
           {
             "name": "metadata.product",
-            "value": "{}"
+            "value": "(((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
           },
           {
             "name": "class_uid",
@@ -296,7 +300,7 @@
         "add": [
           {
             "name": "sourcetype",
-            "value": "'palo_alto_traffic:ocsf'"
+            "value": "'pan:traffic'"
           },
           {
             "name": "_time",
@@ -307,320 +311,108 @@
       "description": "Set sourcetype + _time"
     },
     {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "remove": [
-          "*"
-        ],
-        "keep": [
-          "_time",
-          "index",
-          "source",
-          "sourcetype",
-          "host",
-          "cribl_breaker",
-          "cribl_pipe",
-          "class_uid",
-          "class_uid.*",
-          "category_uid",
-          "category_uid.*",
-          "activity_id",
-          "activity_id.*",
-          "type_uid",
-          "type_uid.*",
-          "severity_id",
-          "severity_id.*",
-          "src_endpoint",
-          "src_endpoint.*",
-          "dst_endpoint",
-          "dst_endpoint.*",
-          "connection_info",
-          "connection_info.*",
-          "traffic",
-          "traffic.*",
-          "actor",
-          "actor.*",
-          "device",
-          "device.*",
-          "metadata",
-          "metadata.*",
-          "time",
-          "time.*"
-        ]
-      },
-      "description": "Keep only OCSF 1.4 fields + routing"
+      "id": "drop",
+      "filter": "src_ip && src_ip.startsWith('169.254.')",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop PA management/health check traffic (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "action == 'allow' && dest_port == '53'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine allowed DNS queries (enable in Cribl UI to activate)",
+      "final": true
     }
   ],
   "recipe": null,
   "report": {
-    "pipelineId": "palo_alto_traffic_ocsf",
+    "pipelineId": "PanTraffic_OCSF",
     "destFormat": "ocsf",
-    "score": 28,
+    "score": 0,
     "band": "fail",
+    "aiSkipped": true,
     "sampleFormatOk": true,
-    "sampleFormatNote": "Valid Palo Alto Networks PAN-OS CSV traffic logs with standard field ordering including subtype, timestamps, IPs, ports, zones, interfaces, bytes, packets, and session metadata.",
-    "outputFormatOk": false,
-    "findings": [
-      {
-        "severity": "high",
-        "field": "connection_info.protocol_name",
-        "issue": "Field contains the firewall action (allow/drop/deny) instead of the network transport protocol (udp/tcp). The protocol is in field index 29 of the CSV. OCSF connection_info.protocol_name should be 'udp' or 'tcp'.",
-        "example": "Event 1: protocol_name='allow' but source has 'udp'; Event 2: protocol_name='drop' but source has 'tcp'"
-      },
-      {
-        "severity": "high",
-        "field": "activity_id",
-        "issue": "activity_id is hardcoded to 1 (Open) for all events regardless of action. OCSF 4001 activity_ids: 1=Open, 2=Close, 3=Reset, 4=Fail, 6=Traffic. Blocked/denied traffic should map to 4 (Fail) or 6, allowed end-session should map to 2 (Close). The action (allow/drop/deny) and subtype (end/drop/deny) are both present and must drive this.",
-        "example": "Event 2 (drop/policy-deny) has activity_id=1; Event 3 (end/allow) has activity_id=1"
-      },
-      {
-        "severity": "high",
-        "field": "type_uid",
-        "issue": "type_uid is hardcoded to 400101 for all events. type_uid = class_uid * 100 + activity_id, so it must vary with activity_id. A close event should be 400102, a fail/block should be 400104, etc.",
-        "example": "All 8 events show type_uid=400101 regardless of action"
-      },
-      {
-        "severity": "high",
-        "field": "dst_endpoint.port",
-        "issue": "Destination port is wrong or zeroed for many events. The source CSV has destination port in field index 23 (column 24). For event 1 dst port should be 53, event 2 should be 445, event 4 should be 1433, event 8 should be 22. Instead the pipeline appears to have swapped src/dst ports or misidentified columns.",
-        "example": "Event 1: dst_endpoint.port=0 but source dst_port=53; Event 4: dst_endpoint.port=0 but source dst_port=1433; Event 8: dst_endpoint.port=0 but source dst_port=22"
-      },
-      {
-        "severity": "high",
-        "field": "src_endpoint.port",
-        "issue": "Source port is mapped to what appears to be the destination port. Event 1 src port should be 54321 (ephemeral), not 53. The pipeline seems to have swapped source and destination ports.",
-        "example": "Event 1: src_endpoint.port=53 but source src_port=54321; Event 2: src_endpoint.port=445 but source src_port=44512"
-      },
-      {
-        "severity": "high",
-        "field": "traffic.bytes_in / traffic.bytes_out",
-        "issue": "Bytes fields are mis-mapped. OCSF bytes_in/bytes_out should be total bytes received and sent. The source CSV has total_bytes at index 30, bytes_sent at 31, bytes_received at 32, packets at 33. The pipeline maps packet count to bytes_in and bytes_received to bytes_out instead of the correct byte fields.",
-        "example": "Event 1: bytes_in=1 (is packet count), bytes_out=64 (is bytes_received); should be bytes_in=64 bytes_received, bytes_out=64 bytes_sent"
-      },
-      {
-        "severity": "high",
-        "field": "traffic.packets_in / traffic.packets_out",
-        "issue": "OCSF Network Activity traffic object supports packets_in and packets_out. The source CSV contains packets_received and packets_sent fields which are present in the input but entirely unmapped.",
-        "example": "Event 3 source has pkts_sent=35, pkts_received=3; these are absent from output"
-      },
-      {
-        "severity": "high",
-        "field": "disposition / disposition_id",
-        "issue": "OCSF Network Activity requires disposition_id to reflect whether traffic was allowed or blocked. This critical field is completely absent. Source action field (allow/drop/deny) must map to disposition_id (1=Allowed, 2=Blocked, etc.).",
-        "example": "Event 2 action=drop → should be disposition_id=2 (Blocked); Event 1 action=allow → disposition_id=1 (Allowed); all disposition fields missing"
-      },
-      {
-        "severity": "high",
-        "field": "firewall_rule.name",
-        "issue": "The policy/rule name is present in the source (field index 11: Allow-DNS-Out, Default-Deny, Allow-Web-Out, etc.) but is completely unmapped to OCSF firewall_rule.name.",
-        "example": "Event 1 rule='Allow-DNS-Out'; Event 2 rule='Default-Deny'; all absent from output"
-      },
-      {
-        "severity": "high",
-        "field": "src_endpoint.zone / dst_endpoint.zone",
-        "issue": "Source and destination security zones are present in the source (fields: trust/untrust/dmz) but not mapped to OCSF src_endpoint.zone and dst_endpoint.zone.",
-        "example": "Event 1: from_zone='trust', to_zone='untrust'; Event 4: from_zone='trust', to_zone='dmz'; all absent"
-      },
-      {
-        "severity": "high",
-        "field": "src_endpoint.intermediate_ips / NAT mapping",
-        "issue": "NAT translated source IP (field index 8) and translated destination IP (field index 9) are present in the source but entirely unmapped.",
-        "example": "Event 3: nat_src='203.0.113.1', nat_dst='172.217.14.100'; absent from output"
-      },
-      {
-        "severity": "high",
-        "field": "session_uid / connection_info.session_id",
-        "issue": "Session ID is present in source (field index 43: 123456789...) but not mapped to OCSF connection_info.session_id or equivalent.",
-        "example": "Event 1 session_id=123456789; Event 2 session_id=123456790; all absent"
-      },
-      {
-        "severity": "medium",
-        "field": "end_time / start_time",
-        "issue": "OCSF supports start_time and end_time. The PAN-OS log contains both session start time (field index 6) and log receive time (field index 1). These are present but not mapped.",
-        "example": "Event 3: session_start='2026/06/25 00:30:12', log_time='2026/06/25 00:31:55'; both absent from output"
-      },
-      {
-        "severity": "medium",
-        "field": "duration",
-        "issue": "Session elapsed time (field index 46: e.g., 103, 600, 4) is present in the source but not mapped to OCSF duration or equivalent field.",
-        "example": "Event 3: elapsed=103; Event 6: elapsed=600; all absent"
-      },
-      {
-        "severity": "medium",
-        "field": "connection_info.boundary_id / network_connection_info",
-        "issue": "Session end reason (aged-out, tcp-fin, policy-deny) is present in the source and maps to OCSF connection_info.boundary or a session end reason field, but is entirely absent from output.",
-        "example": "Event 1: session_end_reason='aged-out'; Event 3: session_end_reason='tcp-fin'; all absent"
-      },
-      {
-        "severity": "medium",
-        "field": "app",
-        "issue": "Application name is present in source (field index 13: dns, ssl, ms-sql-db, youtube, ms-office365) but not mapped to any OCSF field such as app_name or connection_info.protocol_ver.",
-        "example": "Event 1: app='dns'; Event 3: app='ssl'; Event 5: app='youtube'; all absent"
-      },
-      {
-        "severity": "medium",
-        "field": "device.name / observables",
-        "issue": "Device model/serial (PA-3220, serial 001234567890) and virtual system (vsys1) are present in source but device object is empty in all output events.",
-        "example": "device={} in all events; source has serial=001234567890, device_name=PA-3220"
-      },
-      {
-        "severity": "medium",
-        "field": "src_endpoint.interface_uid / dst_endpoint.interface_uid",
-        "issue": "Ingress and egress interface names (ethernet1/1, ethernet1/3, ethernet1/2) are present in source but not mapped to OCSF endpoint interface fields.",
-        "example": "Event 1: inbound_if='ethernet1/1', outbound_if='ethernet1/3'; absent"
-      },
-      {
-        "severity": "medium",
-        "field": "severity_id",
-        "issue": "severity_id is hardcoded to 1 (Informational) for all events including drops and denies. While traffic logs don't carry an explicit severity, blocked/denied actions could reasonably warrant a different severity_id and this should be configurable rather than hardcoded the same for all.",
-        "example": "Event 2 (drop) and Event 5 (deny) both have severity_id=1"
-      },
-      {
-        "severity": "low",
-        "field": "metadata.log_name / metadata.logged_time",
-        "issue": "OCSF metadata.log_name and metadata.logged_time (log receipt time) are mappable from the source but absent.",
-        "example": "metadata contains only product and version; log_name='TRAFFIC' and logged_time from field index 1 absent"
-      },
-      {
-        "severity": "low",
-        "field": "actor.user.name for 'unknown'",
-        "issue": "When the username field in source is 'unknown', this is not a real user but a PAN-OS placeholder. It is mapped literally as actor.user.name='unknown' which may cause false attribution.",
-        "example": "Event 2: actor.user.name='unknown' from source field 'unknown'"
-      }
-    ],
-    "missingFields": [
-      "disposition / disposition_id (action: allow/drop/deny is present)",
-      "firewall_rule.name (policy name field is present)",
-      "src_endpoint.zone (from_zone field is present)",
-      "dst_endpoint.zone (to_zone field is present)",
-      "connection_info.session_id (session_id field is present)",
-      "traffic.packets_in / traffic.packets_out (pkts_received/pkts_sent fields are present)",
-      "start_time (session_start_time field is present)",
-      "end_time (log receive time / session end time fields present)",
-      "duration (elapsed time field is present)",
-      "connection_info.boundary (session_end_reason field is present)",
-      "app / application name (app field index 13 is present)",
-      "device.name (devicename PA-3220 is present)",
-      "device.uid (serial number 001234567890 is present)",
-      "src_endpoint.interface_uid (inbound_if is present)",
-      "dst_endpoint.interface_uid (outbound_if is present)",
-      "nat_src_ip / nat_dst_ip (translated IP fields are present)"
-    ],
-    "emptyFields": [
-      "device (object present but always empty {})"
-    ],
-    "summary": "The pipeline produces structurally valid OCSF Network Activity (4001) events but with severe mapping errors throughout. The most critical failures are: (1) connection_info.protocol_name is set to the firewall action (allow/drop/deny) instead of the transport protocol (tcp/udp); (2) source and destination ports are swapped; (3) bytes_in/bytes_out are mapped to packet counts and wrong byte columns; (4) activity_id and type_uid are hardcoded to 1/400101 for all events ignoring the actual action; and (5) the majority of available source fields — disposition, rule name, zones, session ID, app name, NAT IPs, end reason, duration, packets, and device details — are completely absent from the output. Of roughly 25 distinct values the source provides, fewer than 7 are correctly mapped.",
-    "lessons": [
-      "For PAN-OS CSV traffic logs, carefully index all columns: the transport protocol (tcp/udp) is at index 29, source port at index 24, destination port at index 23, bytes_sent at index 31, bytes_received at index 32, packets_sent at index 35, packets_received at index 34 — do not confuse action (index 30) with protocol, and do not confuse packet count (index 33) with bytes.",
-      "OCSF activity_id for Network Activity (4001) MUST be derived from the firewall action and session subtype: allow+end→2 (Close), drop or deny→4 (Fail); type_uid must always equal class_uid*100+activity_id and never be hardcoded.",
-      "disposition_id is a mandatory OCSF field for firewall traffic events — always map the firewall action (allow=1 Allowed, drop/deny=2 Blocked) to this field; omitting it makes the event non-conformant.",
-      "Never leave the device{} object empty when the source provides serial number and model (PA-3220, 001234567890); map these to device.uid and device.name respectively.",
-      "Map all contextually rich fields the source provides: firewall_rule.name from policy name, src/dst endpoint zones, session_id, app name, NAT translated IPs, session end reason, elapsed duration, and interface names — these are all present in PAN-OS traffic logs and have clear OCSF target fields."
-    ],
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
     "inputCount": 8,
-    "outputCount": 56,
+    "outputCount": 8,
     "outputSample": [
       {
-        "_time": 1782345797,
+        "_raw": "Nov 30 16:09:08 PA-220 1,2018/11/30 16:09:07,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:07,192.168.15.207,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,apple-maps,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:07,22751,1,55113,443,16418,443,0x400053,tcp,allow,7734,1758,5976,36,2018/11/30 15:59:04,586,computer-and-internet-info,0,32091112,0x0,192.168.0.0-192.168.255.255,United States,0,16,20,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594147,
+        "future_use1": "Nov 30 16:09:08 PA-220 1",
+        "receive_time": "2018/11/30 16:09:07",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:07",
+        "src_ip": "192.168.15.207",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "apple-maps",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:07",
+        "session_id": "22751",
+        "repeat_count": "1",
+        "src_port": "55113",
+        "dest_port": "443",
+        "nat_src_port": "16418",
+        "nat_dest_port": "443",
+        "flags": "0x400053",
+        "protocol": "tcp",
+        "action": "allow",
+        "bytes": "7734",
+        "bytes_out": "1758",
+        "bytes_in": "5976",
+        "packets": "36",
+        "start_time": "2018/11/30 15:59:04",
+        "duration": "586",
+        "category": "computer-and-internet-info",
+        "future_use4": "0",
+        "sequence_number": "32091112",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "16",
+        "packets_in": "20",
+        "session_end_reason": "tcp-fin",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:09:07",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "10.1.10.45",
-          "port": 53
+          "ip": "192.168.15.207",
+          "port": 55113
         },
         "dst_endpoint": {
-          "ip": "8.8.8.53",
-          "port": 0
-        },
-        "connection_info": {
-          "protocol_name": "allow"
-        },
-        "traffic": {
-          "bytes_in": 1,
-          "bytes_out": 64
-        },
-        "actor": {
-          "user": {
-            "name": "jsmith"
-          }
-        },
-        "device": {},
-        "metadata": {
-          "product": {
-            "name": "PAN-OS",
-            "vendor_name": "Palo Alto Networks"
-          },
-          "version": "1.9.0"
-        },
-        "class_uid": 4001,
-        "category_uid": 4,
-        "activity_id": 1,
-        "type_uid": 400101,
-        "severity_id": 1,
-        "time": 1782345797000,
-        "sourcetype": "palo_alto_traffic:ocsf"
-      },
-      {
-        "_time": 1782346662,
-        "src_endpoint": {
-          "ip": "203.0.113.88",
-          "port": 445
-        },
-        "dst_endpoint": {
-          "ip": "10.0.0.1",
-          "port": 0
-        },
-        "connection_info": {
-          "protocol_name": "drop"
-        },
-        "traffic": {
-          "bytes_in": 0,
-          "bytes_out": 0
-        },
-        "actor": {
-          "user": {
-            "name": "unknown"
-          }
-        },
-        "device": {},
-        "metadata": {
-          "product": {
-            "name": "PAN-OS",
-            "vendor_name": "Palo Alto Networks"
-          },
-          "version": "1.9.0"
-        },
-        "class_uid": 4001,
-        "category_uid": 4,
-        "activity_id": 1,
-        "type_uid": 400101,
-        "severity_id": 1,
-        "time": 1782346662000,
-        "sourcetype": "palo_alto_traffic:ocsf"
-      },
-      {
-        "_time": 1782347412,
-        "src_endpoint": {
-          "ip": "192.168.1.105",
+          "ip": "175.16.199.1",
           "port": 443
         },
-        "dst_endpoint": {
-          "ip": "172.217.14.100",
-          "port": 1025
-        },
         "connection_info": {
-          "protocol_name": "allow"
+          "protocol_name": "tcp"
         },
         "traffic": {
-          "bytes_in": 38,
-          "bytes_out": 23120
+          "bytes_in": 5976,
+          "bytes_out": 1758
         },
-        "actor": {
-          "user": {
-            "name": "aparker"
-          }
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -633,32 +425,77 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782347412000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594147000,
+        "sourcetype": "pan:traffic"
       },
       {
-        "_time": 1782348265,
+        "_raw": "Nov 30 16:09:10 PA-220 1,2018/11/30 16:09:09,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:09,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:09,24223,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:08:55,0,any,0,32091113,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594149,
+        "future_use1": "Nov 30 16:09:10 PA-220 1",
+        "receive_time": "2018/11/30 16:09:09",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:09",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ping",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:09",
+        "session_id": "24223",
+        "repeat_count": "6",
+        "src_port": "0",
+        "dest_port": "0",
+        "nat_src_port": "0",
+        "nat_dest_port": "0",
+        "flags": "0x500019",
+        "protocol": "icmp",
+        "action": "allow",
+        "bytes": "1176",
+        "bytes_out": "588",
+        "bytes_in": "588",
+        "packets": "12",
+        "start_time": "2018/11/30 16:08:55",
+        "duration": "0",
+        "category": "any",
+        "future_use4": "0",
+        "sequence_number": "32091113",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "6",
+        "packets_in": "6",
+        "session_end_reason": "aged-out",
+        "transport": "icmp",
+        "log_time": "2018/11/30 16:09:09",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "10.10.20.33",
-          "port": 1433
+          "ip": "192.168.15.224",
+          "port": 0
         },
         "dst_endpoint": {
-          "ip": "10.10.30.5",
+          "ip": "175.16.199.1",
           "port": 0
         },
         "connection_info": {
-          "protocol_name": "allow"
+          "protocol_name": "icmp"
         },
         "traffic": {
-          "bytes_in": 12,
-          "bytes_out": 5501
+          "bytes_in": 588,
+          "bytes_out": 588
         },
-        "actor": {
-          "user": {
-            "name": "dbadmin"
-          }
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -671,32 +508,243 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782348265000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594149000,
+        "sourcetype": "pan:traffic"
       },
       {
-        "_time": 1782349328,
+        "_raw": "Nov 30 16:09:10 PA-220 1,2018/11/30 16:09:09,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:09,192.168.15.207,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,web-browsing,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:09,24138,1,55114,80,51990,80,0x40001c,tcp,allow,1574,539,1035,11,2018/11/30 16:08:51,1,computer-and-internet-info,0,32091114,0x0,192.168.0.0-192.168.255.255,United States,0,6,5,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594149,
+        "future_use1": "Nov 30 16:09:10 PA-220 1",
+        "receive_time": "2018/11/30 16:09:09",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:09",
+        "src_ip": "192.168.15.207",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "web-browsing",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:09",
+        "session_id": "24138",
+        "repeat_count": "1",
+        "src_port": "55114",
+        "dest_port": "80",
+        "nat_src_port": "51990",
+        "nat_dest_port": "80",
+        "flags": "0x40001c",
+        "protocol": "tcp",
+        "action": "allow",
+        "bytes": "1574",
+        "bytes_out": "539",
+        "bytes_in": "1035",
+        "packets": "11",
+        "start_time": "2018/11/30 16:08:51",
+        "duration": "1",
+        "category": "computer-and-internet-info",
+        "future_use4": "0",
+        "sequence_number": "32091114",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "6",
+        "packets_in": "5",
+        "session_end_reason": "tcp-fin",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:09:09",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "10.5.5.77",
+          "ip": "192.168.15.207",
+          "port": 55114
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 80
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "traffic": {
+          "bytes_in": 1035,
+          "bytes_out": 539
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1543594149000,
+        "sourcetype": "pan:traffic"
+      },
+      {
+        "_raw": "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,24043,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:09:01,0,any,0,32091115,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594155,
+        "future_use1": "Nov 30 16:09:16 PA-220 1",
+        "receive_time": "2018/11/30 16:09:15",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:15",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ping",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:15",
+        "session_id": "24043",
+        "repeat_count": "6",
+        "src_port": "0",
+        "dest_port": "0",
+        "nat_src_port": "0",
+        "nat_dest_port": "0",
+        "flags": "0x500019",
+        "protocol": "icmp",
+        "action": "allow",
+        "bytes": "1176",
+        "bytes_out": "588",
+        "bytes_in": "588",
+        "packets": "12",
+        "start_time": "2018/11/30 16:09:01",
+        "duration": "0",
+        "category": "any",
+        "future_use4": "0",
+        "sequence_number": "32091115",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "6",
+        "packets_in": "6",
+        "session_end_reason": "aged-out",
+        "transport": "icmp",
+        "log_time": "2018/11/30 16:09:15",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 0
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 0
+        },
+        "connection_info": {
+          "protocol_name": "icmp"
+        },
+        "traffic": {
+          "bytes_in": 588,
+          "bytes_out": 588
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4001,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400101,
+        "severity_id": 1,
+        "time": 1543594155000,
+        "sourcetype": "pan:traffic"
+      },
+      {
+        "_raw": "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.196,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,quic,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,23003,1,46774,443,15252,443,0x400019,udp,allow,3627,2014,1613,8,2018/11/30 16:07:13,0,any,0,32091116,0x0,192.168.0.0-192.168.255.255,United States,0,5,3,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594155,
+        "future_use1": "Nov 30 16:09:16 PA-220 1",
+        "receive_time": "2018/11/30 16:09:15",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:15",
+        "src_ip": "192.168.15.196",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "quic",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:15",
+        "session_id": "23003",
+        "repeat_count": "1",
+        "src_port": "46774",
+        "dest_port": "443",
+        "nat_src_port": "15252",
+        "nat_dest_port": "443",
+        "flags": "0x400019",
+        "protocol": "udp",
+        "action": "allow",
+        "bytes": "3627",
+        "bytes_out": "2014",
+        "bytes_in": "1613",
+        "packets": "8",
+        "start_time": "2018/11/30 16:07:13",
+        "duration": "0",
+        "category": "any",
+        "future_use4": "0",
+        "sequence_number": "32091116",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "5",
+        "packets_in": "3",
+        "session_end_reason": "aged-out",
+        "transport": "udp",
+        "log_time": "2018/11/30 16:09:15",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "src_endpoint": {
+          "ip": "192.168.15.196",
+          "port": 46774
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
           "port": 443
         },
-        "dst_endpoint": {
-          "ip": "104.18.32.68",
-          "port": 0
-        },
         "connection_info": {
-          "protocol_name": "deny"
+          "protocol_name": "udp"
         },
         "traffic": {
-          "bytes_in": 0,
-          "bytes_out": 0
+          "bytes_in": 1613,
+          "bytes_out": 2014
         },
-        "actor": {
-          "user": {
-            "name": "tlee"
-          }
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -709,32 +757,77 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782349328000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594155000,
+        "sourcetype": "pan:traffic"
       },
       {
-        "_time": 1782349533,
+        "_raw": "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,23919,1,52408,443,40763,443,0x400053,tcp,allow,41753,20642,21111,113,2018/11/30 16:07:33,85,web-advertisements,0,32091117,0x0,192.168.0.0-192.168.255.255,United States,0,62,51,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594155,
+        "future_use1": "Nov 30 16:09:16 PA-220 1",
+        "receive_time": "2018/11/30 16:09:15",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:15",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:15",
+        "session_id": "23919",
+        "repeat_count": "1",
+        "src_port": "52408",
+        "dest_port": "443",
+        "nat_src_port": "40763",
+        "nat_dest_port": "443",
+        "flags": "0x400053",
+        "protocol": "tcp",
+        "action": "allow",
+        "bytes": "41753",
+        "bytes_out": "20642",
+        "bytes_in": "21111",
+        "packets": "113",
+        "start_time": "2018/11/30 16:07:33",
+        "duration": "85",
+        "category": "web-advertisements",
+        "future_use4": "0",
+        "sequence_number": "32091117",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "62",
+        "packets_in": "51",
+        "session_end_reason": "tcp-fin",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:09:15",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "172.16.50.22",
+          "ip": "192.168.15.224",
+          "port": 52408
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
           "port": 443
         },
-        "dst_endpoint": {
-          "ip": "40.99.184.16",
-          "port": 1025
-        },
         "connection_info": {
-          "protocol_name": "allow"
+          "protocol_name": "tcp"
         },
         "traffic": {
-          "bytes_in": 720,
-          "bytes_out": 524288
+          "bytes_in": 21111,
+          "bytes_out": 20642
         },
-        "actor": {
-          "user": {
-            "name": "svc_office365"
-          }
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -747,32 +840,77 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782349533000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594155000,
+        "sourcetype": "pan:traffic"
       },
       {
-        "_time": 1782350926,
+        "_raw": "Nov 30 16:09:22 PA-220 1,2018/11/30 16:09:21,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:21,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:21,21394,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:09:07,0,any,0,32091118,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594161,
+        "future_use1": "Nov 30 16:09:22 PA-220 1",
+        "receive_time": "2018/11/30 16:09:21",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:21",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ping",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:21",
+        "session_id": "21394",
+        "repeat_count": "6",
+        "src_port": "0",
+        "dest_port": "0",
+        "nat_src_port": "0",
+        "nat_dest_port": "0",
+        "flags": "0x500019",
+        "protocol": "icmp",
+        "action": "allow",
+        "bytes": "1176",
+        "bytes_out": "588",
+        "bytes_in": "588",
+        "packets": "12",
+        "start_time": "2018/11/30 16:09:07",
+        "duration": "0",
+        "category": "any",
+        "future_use4": "0",
+        "sequence_number": "32091118",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "6",
+        "packets_in": "6",
+        "session_end_reason": "aged-out",
+        "transport": "icmp",
+        "log_time": "2018/11/30 16:09:21",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "10.20.10.9",
-          "port": 53
+          "ip": "192.168.15.224",
+          "port": 0
         },
         "dst_endpoint": {
-          "ip": "8.8.8.8",
+          "ip": "175.16.199.1",
           "port": 0
         },
         "connection_info": {
-          "protocol_name": "allow"
+          "protocol_name": "icmp"
         },
         "traffic": {
-          "bytes_in": 1,
-          "bytes_out": 32
+          "bytes_in": 588,
+          "bytes_out": 588
         },
-        "actor": {
-          "user": {
-            "name": "resolver"
-          }
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -785,30 +923,77 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782350926000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594161000,
+        "sourcetype": "pan:traffic"
       },
       {
-        "_time": 1782351679,
+        "_raw": "Nov 30 16:09:22 PA-220 1,2018/11/30 16:09:21,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:21,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,quic,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:21,23698,1,59190,443,52881,443,0x400019,udp,allow,7097,3365,3732,16,2018/11/30 16:07:04,15,any,0,32091119,0x0,192.168.0.0-192.168.255.255,United States,0,7,9,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+        "_time": 1543594161,
+        "future_use1": "Nov 30 16:09:22 PA-220 1",
+        "receive_time": "2018/11/30 16:09:21",
+        "serial_number": "012801096514",
+        "type": "TRAFFIC",
+        "threat_content_type": "end",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:09:21",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "quic",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:09:21",
+        "session_id": "23698",
+        "repeat_count": "1",
+        "src_port": "59190",
+        "dest_port": "443",
+        "nat_src_port": "52881",
+        "nat_dest_port": "443",
+        "flags": "0x400019",
+        "protocol": "udp",
+        "action": "allow",
+        "bytes": "7097",
+        "bytes_out": "3365",
+        "bytes_in": "3732",
+        "packets": "16",
+        "start_time": "2018/11/30 16:07:04",
+        "duration": "15",
+        "category": "any",
+        "future_use4": "0",
+        "sequence_number": "32091119",
+        "action_flags": "0x0",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use5": "0",
+        "packets_out": "7",
+        "packets_in": "9",
+        "session_end_reason": "aged-out",
+        "transport": "udp",
+        "log_time": "2018/11/30 16:09:21",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
         "src_endpoint": {
-          "ip": "198.51.100.44",
-          "port": 22
+          "ip": "192.168.15.224",
+          "port": 59190
         },
         "dst_endpoint": {
-          "ip": "192.168.1.1",
-          "port": 0
+          "ip": "175.16.199.1",
+          "port": 443
         },
         "connection_info": {
-          "protocol_name": "drop"
+          "protocol_name": "udp"
         },
         "traffic": {
-          "bytes_in": 0,
-          "bytes_out": 0
+          "bytes_in": 3732,
+          "bytes_out": 3365
         },
-        "actor": {
-          "user": {}
-        },
-        "device": {},
         "metadata": {
           "product": {
             "name": "PAN-OS",
@@ -821,20 +1006,20 @@
         "activity_id": 1,
         "type_uid": 400101,
         "severity_id": 1,
-        "time": 1782351679000,
-        "sourcetype": "palo_alto_traffic:ocsf"
+        "time": 1543594161000,
+        "sourcetype": "pan:traffic"
       }
     ],
     "sampleKeys": [],
     "sampleRaw": [
-      "1,2026/06/25 00:03:17,001234567890,TRAFFIC,end,2816,2026/06/25 00:03:17,10.1.10.45,8.8.8.53,10.1.10.45,8.8.8.53,Allow-DNS-Out,jsmith,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 00:03:17,12345,1,54321,53,0,0,0x0,udp,allow,128,64,64,1,2026/06/25 00:03:17,0,any,0,123456789,0x0,United States,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223344,0",
-      "1,2026/06/25 00:17:42,001234567890,TRAFFIC,drop,2816,2026/06/25 00:17:42,203.0.113.88,10.0.0.1,203.0.113.88,10.0.0.1,Default-Deny,unknown,not-applicable,vsys1,untrust,untrust,ethernet1/3,ethernet1/3,Sinkhole-Zone,2026/06/25 00:17:42,0,0,44512,445,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 00:17:42,0,any,0,123456790,0x0,United States,10.0.0.0-10.255.255.255,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223345,0",
-      "1,2026/06/25 00:31:55,001234567890,TRAFFIC,end,2816,2026/06/25 00:30:12,192.168.1.105,172.217.14.100,203.0.113.1,172.217.14.100,Allow-Web-Out,aparker,ssl,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 00:31:55,22301,1,52441,443,1025,0,0x400000,tcp,allow,45230,22110,23120,38,2026/06/25 00:30:12,103,any,0,123456791,0x0,10.0.0.0-10.255.255.255,United States,0,35,3,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223346,0",
-      "1,2026/06/25 00:44:29,001234567890,TRAFFIC,end,2816,2026/06/25 00:44:25,10.10.20.33,10.10.30.5,10.10.20.33,10.10.30.5,Allow-Internal,dbadmin,ms-sql-db,vsys1,trust,dmz,ethernet1/1,ethernet1/2,Forward-Zone,2026/06/25 00:44:29,61234,1,55100,1433,0,0,0x400000,tcp,allow,8902,3401,5501,12,2026/06/25 00:44:25,4,any,0,123456792,0x0,10.0.0.0-10.255.255.255,10.0.0.0-10.255.255.255,0,10,2,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223347,0",
-      "1,2026/06/25 01:02:08,001234567890,TRAFFIC,deny,2816,2026/06/25 01:02:08,10.5.5.77,104.18.32.68,10.5.5.77,104.18.32.68,Block-Streaming,tlee,youtube,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:02:08,0,0,56221,443,0,0,0x0,tcp,deny,0,0,0,0,2026/06/25 01:02:08,0,any,0,123456793,0x0,10.0.0.0-10.255.255.255,United States,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223348,0",
-      "1,2026/06/25 01:15:33,001234567890,TRAFFIC,end,2816,2026/06/25 01:05:33,172.16.50.22,40.99.184.16,203.0.113.1,40.99.184.16,Allow-O365,svc_office365,ms-office365,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:15:33,49021,1,51000,443,1025,0,0x400000,tcp,allow,1048576,524288,524288,720,2026/06/25 01:05:33,600,any,0,123456794,0x0,172.16.0.0-172.31.255.255,United States,0,512,128,tcp-fin,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223349,0",
-      "1,2026/06/25 01:28:47,001234567890,TRAFFIC,end,2816,2026/06/25 01:28:46,10.20.10.9,8.8.8.8,10.20.10.9,8.8.8.8,Allow-DNS-Out,resolver,dns,vsys1,trust,untrust,ethernet1/1,ethernet1/3,Forward-Zone,2026/06/25 01:28:47,33211,1,44322,53,0,0,0x0,udp,allow,74,42,32,1,2026/06/25 01:28:46,1,any,0,123456795,0x0,10.0.0.0-10.255.255.255,United States,0,1,0,aged-out,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223350,0",
-      "1,2026/06/25 01:41:19,001234567890,TRAFFIC,drop,2816,2026/06/25 01:41:19,198.51.100.44,192.168.1.1,198.51.100.44,192.168.1.1,Default-Deny,,not-applicable,vsys1,untrust,untrust,ethernet1/3,ethernet1/3,Sinkhole-Zone,2026/06/25 01:41:19,0,0,4532,22,0,0,0x0,tcp,drop,0,0,0,0,2026/06/25 01:41:19,0,any,0,123456796,0x0,United States,192.168.0.0-192.168.255.255,0,0,0,policy-deny,0,0,0,0,,PA-3220,from-policy,,,0,,0,,N/A,0,0,0,0,11223351,0"
+      "Nov 30 16:09:08 PA-220 1,2018/11/30 16:09:07,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:07,192.168.15.207,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,apple-maps,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:07,22751,1,55113,443,16418,443,0x400053,tcp,allow,7734,1758,5976,36,2018/11/30 15:59:04,586,computer-and-internet-info,0,32091112,0x0,192.168.0.0-192.168.255.255,United States,0,16,20,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:10 PA-220 1,2018/11/30 16:09:09,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:09,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:09,24223,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:08:55,0,any,0,32091113,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:10 PA-220 1,2018/11/30 16:09:09,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:09,192.168.15.207,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,web-browsing,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:09,24138,1,55114,80,51990,80,0x40001c,tcp,allow,1574,539,1035,11,2018/11/30 16:08:51,1,computer-and-internet-info,0,32091114,0x0,192.168.0.0-192.168.255.255,United States,0,6,5,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,24043,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:09:01,0,any,0,32091115,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.196,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,quic,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,23003,1,46774,443,15252,443,0x400019,udp,allow,3627,2014,1613,8,2018/11/30 16:07:13,0,any,0,32091116,0x0,192.168.0.0-192.168.255.255,United States,0,5,3,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:16 PA-220 1,2018/11/30 16:09:15,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:15,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:15,23919,1,52408,443,40763,443,0x400053,tcp,allow,41753,20642,21111,113,2018/11/30 16:07:33,85,web-advertisements,0,32091117,0x0,192.168.0.0-192.168.255.255,United States,0,62,51,tcp-fin,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:22 PA-220 1,2018/11/30 16:09:21,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:21,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ping,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:21,21394,6,0,0,0,0,0x500019,icmp,allow,1176,588,588,12,2018/11/30 16:09:07,0,any,0,32091118,0x0,192.168.0.0-192.168.255.255,United States,0,6,6,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0",
+      "Nov 30 16:09:22 PA-220 1,2018/11/30 16:09:21,012801096514,TRAFFIC,end,2049,2018/11/30 16:09:21,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,quic,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:09:21,23698,1,59190,443,52881,443,0x400019,udp,allow,7097,3365,3732,16,2018/11/30 16:07:04,15,any,0,32091119,0x0,192.168.0.0-192.168.255.255,United States,0,7,9,aged-out,0,0,0,0,,PA-220,from-policy,,,0,,0,,N/A,0,0,0,0"
     ],
     "sourcetype": "palo_alto_traffic"
   }
