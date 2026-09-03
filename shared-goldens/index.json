@@ -7745,14 +7745,14 @@
       "key": "linux_syslog::ocsf",
       "sourcetype": "linux_syslog",
       "dest_format": "ocsf",
-      "score": 91,
+      "score": 100,
       "part": null,
-      "author": "wvdlinde",
-      "build": 273,
-      "updated_at": "2026-07-16T18:16:18.632Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:56:55.579Z",
       "path": "shared-goldens/linux_syslog__ocsf.json",
       "report": {
-        "score": 91,
+        "score": 100,
         "band": "good"
       }
     },
