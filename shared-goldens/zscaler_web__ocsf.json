@@ -2,122 +2,90 @@
   "key": "zscaler_web::ocsf",
   "sourcetype": "zscaler_web",
   "dest_format": "ocsf",
-  "score": 91,
+  "score": 100,
   "part": null,
-  "author": "wvdlinde",
-  "build": 273,
-  "updated_at": "2026-07-16T18:17:46.176Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-03T05:56:59.828Z",
   "functions": [
     {
-      "id": "comment",
+      "id": "eval",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "comment": "zscaler_web to OCSF pipeline.\nParses events, drops noise, maps to OCSF schema, and outputs compact JSON."
-      }
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 1: Parse raw events ---"
-      }
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.length > 2 && _raw.charAt(0) == '\"' && _raw.charAt(_raw.length - 1) == '\"' ? _raw.slice(1, -1) : _raw"
+          }
+        ]
+      },
+      "description": "Strip outer quotes from _raw (Zscaler NSS sometimes wraps the entire line)"
     },
     {
       "id": "serde",
-      "filter": "true",
+      "filter": "_raw.charAt(0) == \"{\"",
       "disabled": false,
       "conf": {
         "mode": "extract",
         "type": "json",
         "srcField": "_raw"
       },
-      "description": "Extract all JSON fields from Zscaler Web log"
+      "description": "JSON variant: parse JSON-format Zscaler events"
     },
     {
       "id": "eval",
-      "filter": "true",
+      "filter": "typeof event === \"object\" && event !== null",
+      "disabled": false,
+      "conf": {
+        "add": [],
+        "remove": [
+          "event",
+          "sourcetype"
+        ]
+      },
+      "description": "JSON variant: unwrap nested event object"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "/CEF:\\d+\\|/.test(_raw)",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/CEF:\\d+\\|(?<device_vendor>[^|]*)\\|(?<device_product>[^|]*)\\|(?<device_version>[^|]*)\\|(?<action>[^|]*)\\|(?<reason>[^|]*)\\|(?<severity>[^|]*)\\|(?<cef_extension>.*)$/"
+      },
+      "description": "CEF variant: extract CEF header fields"
+    },
+    {
+      "id": "eval",
+      "filter": "typeof cef_extension !== \"undefined\"",
       "disabled": false,
       "conf": {
         "add": [
           {
-            "name": "_time",
-            "value": "timestamp ? Date.parse(timestamp) / 1000 : _time"
-          },
-          {
-            "name": "action",
-            "value": "action == 'Blocked' ? 'block' : action == 'Allowed' ? 'allow' : action == 'Cautioned' ? 'caution' : action"
-          },
-          {
-            "name": "protocol",
-            "value": "protocol ? protocol.toLowerCase() : protocol"
-          },
-          {
-            "name": "transport",
-            "value": "'tcp'"
-          },
-          {
-            "name": "direction",
-            "value": "(src_ip && (src_ip.startsWith('10.') || src_ip.startsWith('172.16.') || src_ip.startsWith('192.168.'))) ? 'outbound' : 'inbound'"
-          },
-          {
-            "name": "severity",
-            "value": "risk_score >= 90 ? 'critical' : risk_score >= 70 ? 'high' : risk_score >= 40 ? 'medium' : risk_score >= 20 ? 'low' : 'info'"
-          },
-          {
-            "name": "has_threat",
-            "value": "threat_name && threat_name != '' ? true : false"
-          },
-          {
-            "name": "has_dlp",
-            "value": "dlp_rule && dlp_rule != '' ? true : false"
-          },
-          {
-            "name": "dst_port",
-            "value": "dst_port ? Number(dst_port) : dst_port"
-          },
-          {
-            "name": "request_size",
-            "value": "request_size ? Number(request_size) : request_size"
-          },
-          {
-            "name": "response_size",
-            "value": "response_size ? Number(response_size) : response_size"
-          },
-          {
-            "name": "risk_score",
-            "value": "risk_score ? Number(risk_score) : risk_score"
+            "name": "_raw",
+            "value": "cef_extension"
           }
+        ],
+        "remove": [
+          "cef_extension"
         ]
       },
-      "description": "Normalize timestamp, action, protocol, and derive direction/severity"
+      "description": "CEF variant: replace _raw with extension for KVP extraction"
     },
     {
-      "id": "eval",
-      "filter": "true",
+      "id": "serde",
+      "filter": "_raw.charAt(0) != \"{\"",
       "disabled": false,
       "conf": {
-        "add": [
-          {
-            "name": "user",
-            "value": "user == 'unknown' || user == '' ? 'anonymous' : user"
-          },
-          {
-            "name": "department",
-            "value": "department && department != '' ? department : 'Unknown'"
-          },
-          {
-            "name": "threat_name",
-            "value": "threat_name && threat_name != '' ? threat_name : undefined"
-          },
-          {
-            "name": "dlp_rule",
-            "value": "dlp_rule && dlp_rule != '' ? dlp_rule : undefined"
-          }
-        ]
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true,
+        "allowedKeyChars": [],
+        "allowedValueChars": []
       },
-      "description": "Normalize anonymous/unknown user and empty department fields"
+      "description": "KV variant: extract key=value pairs from Zscaler web log"
     },
     {
       "id": "eval",
@@ -127,35 +95,67 @@
         "add": [
           {
             "name": "log_time",
-            "value": "_time"
+            "value": "datetime || rt || undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "clientip || ClientIP || clientpublicIP || src || undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "serverip || ServerIP || dst || undefined"
+          },
+          {
+            "name": "host",
+            "value": "devicehostname || hostname || host || undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "serverport || dpt || undefined"
+          },
+          {
+            "name": "bytes_in",
+            "value": "responsesize ? Number(responsesize) : (typeof in_ !== 'undefined' ? Number(in_) : undefined)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "requestsize ? Number(requestsize) : (typeof out_ !== 'undefined' ? Number(out_) : undefined)"
+          },
+          {
+            "name": "user",
+            "value": "login || user || undefined"
+          },
+          {
+            "name": "url",
+            "value": "url || request || undefined"
+          },
+          {
+            "name": "url_category",
+            "value": "urlcategory || cat || undefined"
+          },
+          {
+            "name": "app",
+            "value": "appname || app || undefined"
+          },
+          {
+            "name": "http_method",
+            "value": "requestmethod || requestMethod || undefined"
+          },
+          {
+            "name": "user_agent",
+            "value": "useragent || requestClientApplication || undefined"
+          },
+          {
+            "name": "http_status",
+            "value": "status || outcome || undefined"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Zscaler ZIA'"
           }
         ]
       },
-      "description": "Alias _time to log_time"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 2: Reduction ---"
-      }
-    },
-    {
-      "id": "drop",
-      "filter": "_raw && _raw.trim().length < 10",
-      "disabled": true,
-      "conf": {},
-      "description": "Drop events shorter than 10 characters (enable in Cribl UI to activate)",
-      "final": true
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 3: Map fields to OCSF schema ---"
-      }
+      "description": "Normalize common field names and derive log_time"
     },
     {
       "id": "eval",
@@ -163,6 +163,142 @@
       "disabled": false,
       "conf": {
         "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Zscaler'"
+          },
+          {
+            "name": "product",
+            "value": "'Internet Access'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '') || ((src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '') || ((dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(((url || uri) != null && String(url || uri) != 'undefined' && String(url || uri) != 'null' && String(url || uri) != '-' && String(url || uri) != '') || ((http_method) != null && String(http_method) != 'undefined' && String(http_method) != 'null' && String(http_method) != '-' && String(http_method) != '') || ((user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_response",
+            "value": "(((status || http_status) != null && String(status || http_status) != 'undefined' && String(status || http_status) != 'null' && String(status || http_status) != '-' && String(status || http_status) != '')) ? {} : undefined"
+          },
+          {
+            "name": "traffic",
+            "value": "(((bytes_in || response_bytes) != null && String(bytes_in || response_bytes) != 'undefined' && String(bytes_in || response_bytes) != 'null' && String(bytes_in || response_bytes) != '-' && String(bytes_in || response_bytes) != '') || ((bytes_out || request_bytes) != null && String(bytes_out || request_bytes) != 'undefined' && String(bytes_out || request_bytes) != 'null' && String(bytes_out || request_bytes) != '-' && String(bytes_out || request_bytes) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "(((transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "((('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '') || ((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata.product",
+            "value": "(((product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '') || ((vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '')) ? {} : undefined"
+          },
           {
             "name": "class_uid",
             "value": "4002"
@@ -172,98 +308,108 @@
             "value": "4"
           },
           {
-            "name": "event_type",
-            "value": "'HTTP Activity'"
-          },
-          {
-            "name": "time",
-            "value": "log_time ? log_time * 1000 : Date.parse(timestamp)"
-          },
-          {
             "name": "activity_id",
-            "value": "action == 'allow' ? 1 : action == 'block' ? 5 : action == 'caution' ? 3 : 0"
+            "value": "(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != null && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != 'undefined' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != 'null' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != '-' && String(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) != '' ? Number(/denied|blocked|reject/i.test(String(action)) ? 2 : 1) : undefined"
           },
           {
             "name": "type_uid",
-            "value": "action == 'allow' ? 400201 : action == 'block' ? 400205 : action == 'caution' ? 400203 : 400200"
+            "value": "(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != null && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != 'undefined' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != 'null' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != '-' && String(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) != '' ? Number(400200 + (/denied|blocked|reject/i.test(String(action)) ? 2 : 1)) : undefined"
           },
           {
             "name": "severity_id",
-            "value": "Number(risk_score) >= 90 ? 5 : Number(risk_score) >= 70 ? 4 : Number(risk_score) >= 50 ? 3 : Number(risk_score) >= 30 ? 2 : Number(risk_score) >= 10 ? 1 : 0"
-          },
-          {
-            "name": "src_endpoint",
-            "value": "{'ip': src_ip || ''}"
-          },
-          {
-            "name": "dst_endpoint",
-            "value": "{'ip': dst_ip || '', 'port': Number(dst_port) || 0}"
-          },
-          {
-            "name": "connection_info",
-            "value": "{'protocol_name': protocol ? protocol.toUpperCase() : '', 'direction': direction, 'protocol_ver': '4'}"
-          },
-          {
-            "name": "actor",
-            "value": "{'user': {'name': user || '', 'email_addr': user || ''}}"
-          },
-          {
-            "name": "traffic",
-            "value": "{'bytes_out': Number(request_size) || 0, 'bytes_in': Number(response_size) || 0}"
-          },
-          {
-            "name": "device",
-            "value": "{'hostname': src_ip || ''}"
-          },
-          {
-            "name": "metadata",
-            "value": "{'version': '1.4.0', 'product': {'name': 'Zscaler Internet Access', 'vendor_name': 'Zscaler'}}"
-          },
-          {
-            "name": "http_request",
-            "value": "{'url': {'text': url || ''}, 'user_agent': user_agent || ''}"
-          },
-          {
-            "name": "web_resources_activity",
-            "value": "{'category': url_category || ''}"
-          },
-          {
-            "name": "risk_details",
-            "value": "{'score': Number(risk_score) || 0, 'has_threat': has_threat, 'has_dlp': has_dlp}"
+            "value": "(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != null && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'undefined' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != 'null' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '-' && String(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) != '' ? Number(severity != null && severity !== '' ? Math.max(1, Math.min(6, Math.round(Number(severity) * 0.85))) : 1) : undefined"
           }
         ]
       },
-      "description": "Map fields to OCSF schema"
-    },
-    {
-      "id": "comment",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "comment": "--- STEP 4: Final cleanup ---"
-      }
+      "description": "Map canonical fields → OCSF 1.4 HTTP Activity"
     },
     {
       "id": "eval",
       "filter": "true",
       "disabled": false,
       "conf": {
-        "remove": [
-          "_raw",
-          "msg_body",
-          "msg_format",
-          "event_category",
-          "event_action",
-          "__kvp_src",
-          "__*"
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip) != null && String(src_ip) != 'undefined' && String(src_ip) != 'null' && String(src_ip) != '-' && String(src_ip) != '' ? (src_ip) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port) != null && String(src_port) != 'undefined' && String(src_port) != 'null' && String(src_port) != '-' && String(src_port) != '' ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip) != null && String(dest_ip) != 'undefined' && String(dest_ip) != 'null' && String(dest_ip) != '-' && String(dest_ip) != '' ? (dest_ip) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port) != null && String(dest_port) != 'undefined' && String(dest_port) != 'null' && String(dest_port) != '-' && String(dest_port) != '' ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user) != null && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' && String(user || src_user) != '' ? (user || src_user) : undefined"
+          },
+          {
+            "name": "http_request.url",
+            "value": "(url || uri) != null && String(url || uri) != 'undefined' && String(url || uri) != 'null' && String(url || uri) != '-' && String(url || uri) != '' ? (url || uri) : undefined"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(http_method) != null && String(http_method) != 'undefined' && String(http_method) != 'null' && String(http_method) != '-' && String(http_method) != '' ? (http_method) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(user_agent) != null && String(user_agent) != 'undefined' && String(user_agent) != 'null' && String(user_agent) != '-' && String(user_agent) != '' ? (user_agent) : undefined"
+          },
+          {
+            "name": "http_response.code",
+            "value": "(status || http_status) != null && String(status || http_status) != 'undefined' && String(status || http_status) != 'null' && String(status || http_status) != '-' && String(status || http_status) != '' ? Number(status || http_status) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in || response_bytes) != null && String(bytes_in || response_bytes) != 'undefined' && String(bytes_in || response_bytes) != 'null' && String(bytes_in || response_bytes) != '-' && String(bytes_in || response_bytes) != '' ? Number(bytes_in || response_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out || request_bytes) != null && String(bytes_out || request_bytes) != 'undefined' && String(bytes_out || request_bytes) != 'null' && String(bytes_out || request_bytes) != '-' && String(bytes_out || request_bytes) != '' ? Number(bytes_out || request_bytes) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "(transport || protocol) != null && String(transport || protocol) != 'undefined' && String(transport || protocol) != 'null' && String(transport || protocol) != '-' && String(transport || protocol) != '' ? (transport || protocol) : undefined"
+          },
+          {
+            "name": "category_name",
+            "value": "(url_category || category) != null && String(url_category || category) != 'undefined' && String(url_category || category) != 'null' && String(url_category || category) != '-' && String(url_category || category) != '' ? (url_category || category) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "('1.9.0') != null && String('1.9.0') != 'undefined' && String('1.9.0') != 'null' && String('1.9.0') != '-' && String('1.9.0') != '' ? ('1.9.0') : undefined"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "(product) != null && String(product) != 'undefined' && String(product) != 'null' && String(product) != '-' && String(product) != '' ? (product) : undefined"
+          }
         ]
       },
-      "description": "Drop raw and intermediate fields, retain all OCSF-mapped fields"
+      "description": "Map (cont. 16)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "(vendor) != null && String(vendor) != 'undefined' && String(vendor) != 'null' && String(vendor) != '-' && String(vendor) != '' ? (vendor) : undefined"
+          }
+        ]
+      }
     }
   ],
   "recipe": null,
   "report": {
-    "pipelineId": "zscaler_web_ocsf",
+    "pipelineId": "ZscalerNssweblog_OCSF",
     "destFormat": "ocsf",
     "score": 0,
     "band": "fail",
@@ -277,648 +423,880 @@
     "summary": "Deterministic live preview completed.",
     "lessons": [],
     "inputCount": 8,
-    "outputCount": 53,
+    "outputCount": 8,
     "outputSample": [
       {
-        "_time": 1705276992,
-        "timestamp": "2024-01-15T00:03:12Z",
-        "user": "jsmith@corp.local",
-        "department": "Finance",
-        "src_ip": "10.1.4.22",
-        "dst_ip": "185.220.101.45",
-        "url": "http://malware-drop.ru/payload.exe",
-        "action": "block",
-        "url_category": "Malware",
-        "risk_score": 98,
-        "request_size": 342,
-        "response_size": 0,
-        "threat_name": "Trojan.GenericKD.47829",
-        "protocol": "http",
-        "dst_port": 80,
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "critical",
-        "has_threat": true,
-        "has_dlp": false,
-        "log_time": 1705276992,
-        "class_uid": 4002,
-        "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705276992000,
-        "activity_id": 5,
-        "type_uid": 400205,
-        "severity_id": 5,
+        "_raw": "2022-06-22 11:11:11    reason=Allowed  event_id=6468217230471004175    protocol=HTTPS  action=Allowed  transactionsize=1689    responsesize=245        requestsize=1444        urlcategory=Professional Services       serverip=10.1.2.3       clienttranstime=11      requestmethod=GET       refererURL=some.where.com/e/is/5fe011609a91fb63958a721da7e9a1dd/impi?b=IrDycE5aTknXm8MDQFgTI60AAAFepIvRsQEAAATiAVsuxq8&w=KRIGmAcLOREuyqlaUNzAYbN4xFPNM9ittSfK-f3BiK29wVQp4oW-vkl1bgXmau5Y&bi=IdKZRc9GcxVLpBZC8MLq0W-Ul9k1tVVl9ITS29DbVvZLnBa3KCN62LqWbnREjhHGo2bsKoI2CDLRoMOkdY0ACobSpxD70B6t5QfIRNt5kY0yD4q4kufr07b.fSVst8IAfw4mQvUAd8qEpUnJN6Bb.DTA6m-7BVvayuawjAb9-qK85wLyFr7u8Lx0tQqrflgkWnAHf-BmrSBnDydH7KvJeP4R1Daa7CHHBSVbWc5I5kBy4sUpePF4g91BCWGJgfchtE8bMeiwp3BPZm5ZcYEig1nlTcZ4GHy7KG5t0AQ4zQKaYgIc4Ckgt.AsVTG0J2MOtYlwTxUtx9DcjgFr3UsMFHelibfJUNa9aY7looFh4SWHrZHzasoMAt1hsqqvYybl9VYLset-7e0E6JNIyONaMUU9xTzQPwporhtNZksDhVdcASPVRCUHEnG2NUDf00Zdkhjwm.4iLfnKHPCA8X7rTawa5zhTMoyw.Wo4t7INIQ8epdRypD.rAMubUcsehjaCiiD1vfwRyv1vv-rFu5pTaXjdnlSevnejDcRtCbIm4S0_       useragent=Google Chrome (60.x)  product=NSS     location=DC1_Internal   ClientIP=192.168.4.10   status=200      user=src_user@domain.com   url=some.where.com/x/px/qulrsvj9pgfxultipvaqrogaaafepivtmgeaaatiaxkoaby/v/{\"v\":{\"p\":100,\"t\":0,\"def\":\"groupm\"},\"vs\":\"visible\",\"ah\":250,\"aw\":300,\"ttv\":0.56,\"ts\":1505999181256,\"pixelid\":\"q60r1o6n7ne\",\"ver\":1.8}?cb=5086099  vendor=Zscaler  hostname=some.where.com clientpublicIP=192.168.4.10     threatcategory=Clean Transaction        threatname=None filetype=Gif Files      appname=Amazon  pagerisk=0      department=Planners     urlsupercategory=Business and Economy   appclass=Consumer Apps  dlpengine=None  urlclass=Business Use   threatclass=Clean Transaction   dlpdictionaries=None    fileclass=Images        bwthrottle=NO   servertranstime=11",
+        "_time": 1788257441.816,
+        "reason": "Allowed",
+        "event_id": "6468217230471004175",
+        "protocol": "HTTPS",
+        "action": "Allowed",
+        "transactionsize": "1689",
+        "responsesize": "245",
+        "requestsize": "1444",
+        "urlcategory": "Professional Services",
+        "serverip": "10.1.2.3",
+        "clienttranstime": "11",
+        "requestmethod": "GET",
+        "refererURL": "some.where.com/e/is/5fe011609a91fb63958a721da7e9a1dd/impi",
+        "b": "IrDycE5aTknXm8MDQFgTI60AAAFepIvRsQEAAATiAVsuxq8",
+        "w": "KRIGmAcLOREuyqlaUNzAYbN4xFPNM9ittSfK-f3BiK29wVQp4oW-vkl1bgXmau5Y",
+        "bi": "IdKZRc9GcxVLpBZC8MLq0W-Ul9k1tVVl9ITS29DbVvZLnBa3KCN62LqWbnREjhHGo2bsKoI2CDLRoMOkdY0ACobSpxD70B6t5QfIRNt5kY0yD4q4kufr07b.fSVst8IAfw4mQvUAd8qEpUnJN6Bb.DTA6m-7BVvayuawjAb9-qK85wLyFr7u8Lx0tQqrflgkWnAHf-BmrSBnDydH7KvJeP4R1Daa7CHHBSVbWc5I5kBy4sUpePF4g91BCWGJgfchtE8bMeiwp3BPZm5ZcYEig1nlTcZ4GHy7KG5t0AQ4zQKaYgIc4Ckgt.AsVTG0J2MOtYlwTxUtx9DcjgFr3UsMFHelibfJUNa9aY7looFh4SWHrZHzasoMAt1hsqqvYybl9VYLset-7e0E6JNIyONaMUU9xTzQPwporhtNZksDhVdcASPVRCUHEnG2NUDf00Zdkhjwm.4iLfnKHPCA8X7rTawa5zhTMoyw.Wo4t7INIQ8epdRypD.rAMubUcsehjaCiiD1vfwRyv1vv-rFu5pTaXjdnlSevnejDcRtCbIm4S0_",
+        "useragent": "Google Chrome (60.x",
+        "product": "Internet Access",
+        "location": "DC1_Internal",
+        "ClientIP": "192.168.4.10",
+        "status": "200",
+        "user": "src_user@domain.com",
+        "url": "some.where.com/x/px/qulrsvj9pgfxultipvaqrogaaafepivtmgeaaatiaxkoaby/v/{\"v\":{\"p\":100,\"t\":0,\"def\":\"groupm\"},\"vs\":\"visible\",\"ah\":250,\"aw\":300,\"ttv\":0.56,\"ts\":1505999181256,\"pixelid\":\"q60r1o6n7ne\",\"ver\":1.8",
+        "cb": "5086099",
+        "vendor": "Zscaler",
+        "hostname": "some.where.com",
+        "clientpublicIP": "192.168.4.10",
+        "threatcategory": "Clean Transaction",
+        "threatname": "None",
+        "filetype": "Gif Files",
+        "appname": "Amazon",
+        "pagerisk": "0",
+        "department": "Planners",
+        "urlsupercategory": "Business and Economy",
+        "appclass": "Consumer Apps",
+        "dlpengine": "None",
+        "urlclass": "Business Use",
+        "threatclass": "Clean Transaction",
+        "dlpdictionaries": "None",
+        "fileclass": "Images",
+        "bwthrottle": "NO",
+        "servertranstime": "11",
+        "src_ip": "192.168.4.10",
+        "dest_ip": "10.1.2.3",
+        "host": "some.where.com",
+        "bytes_in": 245,
+        "bytes_out": 1444,
+        "url_category": "Professional Services",
+        "app": "Amazon",
+        "http_method": "GET",
+        "user_agent": "Google Chrome (60.x",
+        "http_status": "200",
+        "vendor_product": "Zscaler ZIA",
+        "transport": "HTTPS",
+        "application": "Amazon",
+        "version": "1.0",
         "src_endpoint": {
-          "ip": "10.1.4.22"
+          "ip": "192.168.4.10"
         },
         "dst_endpoint": {
-          "ip": "185.220.101.45",
-          "port": 80
-        },
-        "connection_info": {
-          "protocol_name": "HTTP",
-          "direction": "outbound",
-          "protocol_ver": "4"
+          "ip": "10.1.2.3"
         },
         "actor": {
           "user": {
-            "name": "jsmith@corp.local",
-            "email_addr": "jsmith@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 342,
-          "bytes_in": 0
-        },
-        "device": {
-          "hostname": "10.1.4.22"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
+            "name": "src_user@domain.com"
           }
         },
         "http_request": {
-          "url": {
-            "text": "http://malware-drop.ru/payload.exe"
+          "url": "some.where.com/x/px/qulrsvj9pgfxultipvaqrogaaafepivtmgeaaatiaxkoaby/v/{\"v\":{\"p\":100,\"t\":0,\"def\":\"groupm\"},\"vs\":\"visible\",\"ah\":250,\"aw\":300,\"ttv\":0.56,\"ts\":1505999181256,\"pixelid\":\"q60r1o6n7ne\",\"ver\":1.8",
+          "http_method": "GET",
+          "user_agent": "Google Chrome (60.x"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "traffic": {
+          "bytes_in": 245,
+          "bytes_out": 1444
+        },
+        "connection_info": {
+          "protocol_name": "HTTPS"
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
           },
-          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          "version": "1.9.0"
         },
-        "web_resources_activity": {
-          "category": "Malware"
-        },
-        "risk_details": {
-          "score": 98,
-          "has_threat": true,
-          "has_dlp": false
-        }
-      },
-      {
-        "_time": 1705277864,
-        "timestamp": "2024-01-15T00:17:44Z",
-        "user": "agarcia@corp.local",
-        "department": "HR",
-        "src_ip": "10.2.1.88",
-        "dst_ip": "52.84.125.201",
-        "url": "https://drive.google.com/file/d/1BxSY8k9XcZ4P",
-        "action": "allow",
-        "url_category": "Cloud Storage",
-        "risk_score": 15,
-        "request_size": 1024,
-        "response_size": 204800,
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "info",
-        "has_threat": false,
-        "has_dlp": false,
-        "log_time": 1705277864,
         "class_uid": 4002,
         "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705277864000,
         "activity_id": 1,
         "type_uid": 400201,
         "severity_id": 1,
+        "category_name": "Professional Services"
+      },
+      {
+        "_raw": "datetime=Mon JUN 22 11:11:11 2022 tz=GMT reason=Allowed event_id=7173802975225184257 protocol=HTTP_PROXY action=Allowed transactionsize=674 responsesize=65 requestsize=609 urlcategory=Allow List serverip=20.212.96.199 clienttranstime=0 requestmethod=CONNECT refererURL=None useragent=Windows Microsoft Windows 10 Enterprise ZTunnel/1.0 product=NSS location=Enterprise Charlotte to Zscaler India->Charlotte VDI ClientIP=10.134.137.203 status=200 user=src_user@domain.com url=checkappexec.microsoft.com:443 vendor=Zscaler hostname=checkappexec.microsoft.com clientpublicIP=4.18.205.102 threatcategory=None threatname=None filetype=None fileext=None filename=None appname=General Browsing pagerisk=0 department=INDIA-TFS-CS-PAY OUT urlsupercategory=User-defined appclass=General Browsing dlpengine=None urlclass=Bandwidth Loss threatclass=None dlpdictionaries=None dlphtct=None dlpid=0 fileclass=None ruletype=None bwthrottle=NO servertranstime=0 contenttype=Other unscannabletype=None devicehostname=VPCLD-P1836 deviceowner=nilkant md5=None dlpmd5=None ssldec=No urlfilterrulename=URL Allow List apprulename=None mobappname=None mobappcat=None mobdevtype=None devicemodel=VMware7,1 devicename=VMware-42-32-ef-96-bc-5f-bb-c5-54-7e-19-c2-cc-ac-b5-f3:276AF7D572210A7E039A24E125C099BBF767E0CB deviceostype=Windows OS deviceosversion=Microsoft Windows 10 Enterprise;64 bit rulelabel=None uploadfiletype=None uploadfilename=None uploadfilesubtype=None",
+        "_time": 1788257441.816,
+        "datetime": "Mon JUN 22 11:11:11 2022",
+        "tz": "GMT",
+        "reason": "Allowed",
+        "event_id": "7173802975225184257",
+        "protocol": "HTTP_PROXY",
+        "action": "Allowed",
+        "transactionsize": "674",
+        "responsesize": "65",
+        "requestsize": "609",
+        "urlcategory": "Allow List",
+        "serverip": "20.212.96.199",
+        "clienttranstime": "0",
+        "requestmethod": "CONNECT",
+        "refererURL": "None",
+        "useragent": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0",
+        "product": "Internet Access",
+        "location": "Enterprise Charlotte to Zscaler India->Charlotte VDI",
+        "ClientIP": "10.134.137.203",
+        "status": "200",
+        "user": "src_user@domain.com",
+        "url": "checkappexec.microsoft.com:443",
+        "vendor": "Zscaler",
+        "hostname": "checkappexec.microsoft.com",
+        "clientpublicIP": "4.18.205.102",
+        "threatcategory": "None",
+        "threatname": "None",
+        "filetype": "None",
+        "fileext": "None",
+        "filename": "None",
+        "appname": "General Browsing",
+        "pagerisk": "0",
+        "department": "INDIA-TFS-CS-PAY OUT",
+        "urlsupercategory": "User-defined",
+        "appclass": "General Browsing",
+        "dlpengine": "None",
+        "urlclass": "Bandwidth Loss",
+        "threatclass": "None",
+        "dlpdictionaries": "None",
+        "dlphtct": "None",
+        "dlpid": "0",
+        "fileclass": "None",
+        "ruletype": "None",
+        "bwthrottle": "NO",
+        "servertranstime": "0",
+        "contenttype": "Other",
+        "unscannabletype": "None",
+        "devicehostname": "VPCLD-P1836",
+        "deviceowner": "nilkant",
+        "md5": "None",
+        "dlpmd5": "None",
+        "ssldec": "No",
+        "urlfilterrulename": "URL Allow List",
+        "apprulename": "None",
+        "mobappname": "None",
+        "mobappcat": "None",
+        "mobdevtype": "None",
+        "devicemodel": "VMware7,1",
+        "devicename": "VMware-42-32-ef-96-bc-5f-bb-c5-54-7e-19-c2-cc-ac-b5-f3:276AF7D572210A7E039A24E125C099BBF767E0CB",
+        "deviceostype": "Windows OS",
+        "deviceosversion": "Microsoft Windows 10 Enterprise;64 bit",
+        "rulelabel": "None",
+        "uploadfiletype": "None",
+        "uploadfilename": "None",
+        "uploadfilesubtype": "None",
+        "log_time": "Mon JUN 22 11:11:11 2022",
+        "src_ip": "10.134.137.203",
+        "dest_ip": "20.212.96.199",
+        "host": "VPCLD-P1836",
+        "bytes_in": 65,
+        "bytes_out": 609,
+        "url_category": "Allow List",
+        "app": "General Browsing",
+        "http_method": "CONNECT",
+        "user_agent": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0",
+        "http_status": "200",
+        "vendor_product": "Zscaler ZIA",
+        "transport": "HTTP_PROXY",
+        "application": "General Browsing",
+        "version": "1.0",
         "src_endpoint": {
-          "ip": "10.2.1.88"
+          "ip": "10.134.137.203"
         },
         "dst_endpoint": {
-          "ip": "52.84.125.201",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
+          "ip": "20.212.96.199"
         },
         "actor": {
           "user": {
-            "name": "agarcia@corp.local",
-            "email_addr": "agarcia@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 1024,
-          "bytes_in": 204800
-        },
-        "device": {
-          "hostname": "10.2.1.88"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
+            "name": "src_user@domain.com"
           }
         },
         "http_request": {
-          "url": {
-            "text": "https://drive.google.com/file/d/1BxSY8k9XcZ4P"
-          },
-          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+          "url": "checkappexec.microsoft.com:443",
+          "http_method": "CONNECT",
+          "user_agent": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0"
         },
-        "web_resources_activity": {
-          "category": "Cloud Storage"
+        "http_response": {
+          "code": 200
         },
-        "risk_details": {
-          "score": 15,
-          "has_threat": false,
-          "has_dlp": false
-        }
-      },
-      {
-        "_time": 1705278895,
-        "timestamp": "2024-01-15T00:34:55Z",
-        "user": "anonymous",
-        "department": "Unknown",
-        "src_ip": "172.16.8.103",
-        "dst_ip": "91.108.4.200",
-        "url": "https://t.me/c/darkmarket_channel",
-        "action": "block",
-        "url_category": "Malware",
-        "risk_score": 87,
-        "request_size": 512,
-        "response_size": 0,
-        "threat_name": "C2.Telegram.Abuse",
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "python-requests/2.28.0",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "high",
-        "has_threat": true,
-        "has_dlp": false,
-        "log_time": 1705278895,
-        "class_uid": 4002,
-        "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705278895000,
-        "activity_id": 5,
-        "type_uid": 400205,
-        "severity_id": 4,
-        "src_endpoint": {
-          "ip": "172.16.8.103"
-        },
-        "dst_endpoint": {
-          "ip": "91.108.4.200",
-          "port": 443
+        "traffic": {
+          "bytes_in": 65,
+          "bytes_out": 609
         },
         "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "anonymous",
-            "email_addr": "anonymous"
-          }
-        },
-        "traffic": {
-          "bytes_out": 512,
-          "bytes_in": 0
-        },
-        "device": {
-          "hostname": "172.16.8.103"
+          "protocol_name": "HTTP_PROXY"
         },
         "metadata": {
-          "version": "1.4.0",
           "product": {
-            "name": "Zscaler Internet Access",
+            "name": "Internet Access",
             "vendor_name": "Zscaler"
-          }
-        },
-        "http_request": {
-          "url": {
-            "text": "https://t.me/c/darkmarket_channel"
           },
-          "user_agent": "python-requests/2.28.0"
+          "version": "1.9.0"
         },
-        "web_resources_activity": {
-          "category": "Malware"
-        },
-        "risk_details": {
-          "score": 87,
-          "has_threat": true,
-          "has_dlp": false
-        }
-      },
-      {
-        "_time": 1705279938,
-        "timestamp": "2024-01-15T00:52:18Z",
-        "user": "bwilliams@corp.local",
-        "department": "Engineering",
-        "src_ip": "10.5.3.14",
-        "dst_ip": "104.18.25.152",
-        "url": "https://github.com/torvalds/linux",
-        "action": "allow",
-        "url_category": "Business",
-        "risk_score": 5,
-        "request_size": 856,
-        "response_size": 45312,
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Git/2.39.0",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "info",
-        "has_threat": false,
-        "has_dlp": false,
-        "log_time": 1705279938,
         "class_uid": 4002,
         "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705279938000,
         "activity_id": 1,
         "type_uid": 400201,
-        "severity_id": 0,
-        "src_endpoint": {
-          "ip": "10.5.3.14"
-        },
-        "dst_endpoint": {
-          "ip": "104.18.25.152",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "bwilliams@corp.local",
-            "email_addr": "bwilliams@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 856,
-          "bytes_in": 45312
-        },
-        "device": {
-          "hostname": "10.5.3.14"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
-          }
-        },
-        "http_request": {
-          "url": {
-            "text": "https://github.com/torvalds/linux"
-          },
-          "user_agent": "Git/2.39.0"
-        },
-        "web_resources_activity": {
-          "category": "Business"
-        },
-        "risk_details": {
-          "score": 5,
-          "has_threat": false,
-          "has_dlp": false
-        }
-      },
-      {
-        "_time": 1705280913,
-        "timestamp": "2024-01-15T01:08:33Z",
-        "user": "mchen@corp.local",
-        "department": "Legal",
-        "src_ip": "192.168.10.45",
-        "dst_ip": "216.58.213.110",
-        "url": "https://www.google.com/search?q=confidential+merger+documents",
-        "action": "caution",
-        "url_category": "Business",
-        "risk_score": 42,
-        "request_size": 678,
-        "response_size": 32100,
-        "dlp_rule": "DLP-CONFIDENTIAL-SEARCH",
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "medium",
-        "has_threat": false,
-        "has_dlp": true,
-        "log_time": 1705280913,
-        "class_uid": 4002,
-        "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705280913000,
-        "activity_id": 3,
-        "type_uid": 400203,
-        "severity_id": 2,
-        "src_endpoint": {
-          "ip": "192.168.10.45"
-        },
-        "dst_endpoint": {
-          "ip": "216.58.213.110",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "mchen@corp.local",
-            "email_addr": "mchen@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 678,
-          "bytes_in": 32100
-        },
-        "device": {
-          "hostname": "192.168.10.45"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
-          }
-        },
-        "http_request": {
-          "url": {
-            "text": "https://www.google.com/search?q=confidential+merger+documents"
-          },
-          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-        },
-        "web_resources_activity": {
-          "category": "Business"
-        },
-        "risk_details": {
-          "score": 42,
-          "has_threat": false,
-          "has_dlp": true
-        }
-      },
-      {
-        "_time": 1705281787,
-        "timestamp": "2024-01-15T01:23:07Z",
-        "user": "ptaylor@corp.local",
-        "department": "Sales",
-        "src_ip": "10.3.7.201",
-        "dst_ip": "157.240.229.35",
-        "url": "https://www.facebook.com/groups/competitors",
-        "action": "caution",
-        "url_category": "Social Networking",
-        "risk_score": 28,
-        "request_size": 1240,
-        "response_size": 89600,
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "low",
-        "has_threat": false,
-        "has_dlp": false,
-        "log_time": 1705281787,
-        "class_uid": 4002,
-        "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705281787000,
-        "activity_id": 3,
-        "type_uid": 400203,
         "severity_id": 1,
-        "src_endpoint": {
-          "ip": "10.3.7.201"
-        },
-        "dst_endpoint": {
-          "ip": "157.240.229.35",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "ptaylor@corp.local",
-            "email_addr": "ptaylor@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 1240,
-          "bytes_in": 89600
-        },
-        "device": {
-          "hostname": "10.3.7.201"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
-          }
-        },
-        "http_request": {
-          "url": {
-            "text": "https://www.facebook.com/groups/competitors"
-          },
-          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
-        },
-        "web_resources_activity": {
-          "category": "Social Networking"
-        },
-        "risk_details": {
-          "score": 28,
-          "has_threat": false,
-          "has_dlp": false
-        }
+        "category_name": "Allow List"
       },
       {
-        "_time": 1705282910,
-        "timestamp": "2024-01-15T01:41:50Z",
-        "user": "rjohnson@corp.local",
-        "department": "IT",
-        "src_ip": "10.0.0.15",
-        "dst_ip": "45.33.32.156",
-        "url": "https://phishing-site.net/office365-login",
-        "action": "block",
-        "url_category": "Phishing",
-        "risk_score": 96,
-        "request_size": 421,
-        "response_size": 0,
-        "threat_name": "Phish.Office365.Credential.Harvest",
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "critical",
-        "has_threat": true,
-        "has_dlp": false,
-        "log_time": 1705282910,
-        "class_uid": 4002,
-        "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705282910000,
-        "activity_id": 5,
-        "type_uid": 400205,
-        "severity_id": 5,
+        "_raw": "act=Allowed app=HTTP_PROXY cat=Corporate Marketing dhost=teams.events.data.microsoft.com dst=52.114.88.28 src=192.168.254.13 in=65 outcome=200 out=619 request=teams.events.data.microsoft.com:443 rt=Aug 18 2020 07:59:32 sourceTranslatedAddress=69.40.29.87 requestClientApplication=Windows Microsoft Windows 10 Enterprise ZTunnel/1.0 requestMethod=CONNECT suser=src_user@domain.com spriv=Road Warrior externalId=6862307929050382338 fileType=None reason=Allowed destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=USPS cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None DLPhit=None sourcehost=USREMWFH6G31PH2 destinationhost=teams.events.data.microsoft.com requestContext=None|Zscaler-ZIA-Web|",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Allowed",
+        "reason": "Allowed",
+        "severity": "3",
+        "act": "Allowed",
+        "app": "HTTP_PROXY",
+        "cat": "Corporate Marketing",
+        "dhost": "teams.events.data.microsoft.com",
+        "dst": "52.114.88.28",
+        "src": "192.168.254.13",
+        "in": "65",
+        "outcome": "200",
+        "out": "619",
+        "request": "teams.events.data.microsoft.com:443",
+        "rt": "Aug 18 2020 07:59:32",
+        "sourceTranslatedAddress": "69.40.29.87",
+        "requestClientApplication": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0",
+        "requestMethod": "CONNECT",
+        "suser": "src_user@domain.com",
+        "spriv": "Road Warrior",
+        "externalId": "6862307929050382338",
+        "fileType": "None",
+        "destinationServiceName": "General Browsing",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "USPS",
+        "cs1Label": "dept",
+        "cs2": "Business and Economy",
+        "cs2Label": "urlsupercat",
+        "cs3": "General Browsing",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "None",
+        "cs5Label": "threatname",
+        "cs6": "None",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Business Use",
+        "ZscalerNSSWeblogDLPDictionaries": "None",
+        "DLPhit": "None",
+        "sourcehost": "USREMWFH6G31PH2",
+        "destinationhost": "teams.events.data.microsoft.com",
+        "requestContext": "None|Zscaler-ZIA-Web|",
+        "log_time": "Aug 18 2020 07:59:32",
+        "src_ip": "192.168.254.13",
+        "dest_ip": "52.114.88.28",
+        "url": "teams.events.data.microsoft.com:443",
+        "url_category": "Corporate Marketing",
+        "http_method": "CONNECT",
+        "user_agent": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0",
+        "http_status": "200",
+        "vendor_product": "Zscaler ZIA",
+        "application": "HTTP_PROXY",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
         "src_endpoint": {
-          "ip": "10.0.0.15"
+          "ip": "192.168.254.13"
         },
         "dst_endpoint": {
-          "ip": "45.33.32.156",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "rjohnson@corp.local",
-            "email_addr": "rjohnson@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 421,
-          "bytes_in": 0
-        },
-        "device": {
-          "hostname": "10.0.0.15"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
-          }
+          "ip": "52.114.88.28"
         },
         "http_request": {
-          "url": {
-            "text": "https://phishing-site.net/office365-login"
+          "url": "teams.events.data.microsoft.com:443",
+          "http_method": "CONNECT",
+          "user_agent": "Windows Microsoft Windows 10 Enterprise ZTunnel/1.0"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
           },
-          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+          "version": "1.9.0"
         },
-        "web_resources_activity": {
-          "category": "Phishing"
-        },
-        "risk_details": {
-          "score": 96,
-          "has_threat": true,
-          "has_dlp": false
-        }
-      },
-      {
-        "_time": 1705284329,
-        "timestamp": "2024-01-15T02:05:29Z",
-        "user": "slee@corp.local",
-        "department": "Marketing",
-        "src_ip": "172.16.2.67",
-        "dst_ip": "99.84.104.33",
-        "url": "https://www.betmgm.com/sports",
-        "action": "block",
-        "url_category": "Gambling",
-        "risk_score": 55,
-        "request_size": 934,
-        "response_size": 0,
-        "protocol": "https",
-        "dst_port": 443,
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
-        "transport": "tcp",
-        "direction": "outbound",
-        "severity": "medium",
-        "has_threat": false,
-        "has_dlp": false,
-        "log_time": 1705284329,
         "class_uid": 4002,
         "category_uid": 4,
-        "event_type": "HTTP Activity",
-        "time": 1705284329000,
-        "activity_id": 5,
-        "type_uid": 400205,
+        "activity_id": 1,
+        "type_uid": 400201,
         "severity_id": 3,
+        "category_name": "Corporate Marketing"
+      },
+      {
+        "_raw": "act=Allowed app=SSL cat=Professional Services dhost=assets.falcon.crowdstrike.com dst=13.224.217.44 src=82.44.68.64 in=19724647 outcome=NA out=106327 request=assets.falcon.crowdstrike.com rt=Sep 15 2020 15:00:10 sourceTranslatedAddress=82.44.68.64 requestClientApplication=Macintosh Version 10.15.6 (Build 19G2021) Ztunnel/1.0 requestMethod=NA suser=src_user@domain.com spriv=Road Warrior externalId=6872729401059508226 fileType=None reason=Allowed destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=Legal, Risk Management & Compliance cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=joe devicehostname=secops-mbp",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Allowed",
+        "reason": "Allowed",
+        "severity": "3",
+        "act": "Allowed",
+        "app": "SSL",
+        "cat": "Professional Services",
+        "dhost": "assets.falcon.crowdstrike.com",
+        "dst": "13.224.217.44",
+        "src": "82.44.68.64",
+        "in": "19724647",
+        "outcome": "NA",
+        "out": "106327",
+        "request": "assets.falcon.crowdstrike.com",
+        "rt": "Sep 15 2020 15:00:10",
+        "sourceTranslatedAddress": "82.44.68.64",
+        "requestClientApplication": "Macintosh Version 10.15.6 (Build 19G2021) Ztunnel/1.0",
+        "requestMethod": "NA",
+        "suser": "src_user@domain.com",
+        "spriv": "Road Warrior",
+        "externalId": "6872729401059508226",
+        "fileType": "None",
+        "destinationServiceName": "General Browsing",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "Legal, Risk Management & Compliance",
+        "cs1Label": "dept",
+        "cs2": "Business and Economy",
+        "cs2Label": "urlsupercat",
+        "cs3": "General Browsing",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "None",
+        "cs5Label": "threatname",
+        "cs6": "None",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Business Use",
+        "ZscalerNSSWeblogDLPDictionaries": "None",
+        "requestContext": "None",
+        "contenttype": "Other",
+        "unscannabletype": "None",
+        "deviceowner": "joe",
+        "devicehostname": "secops-mbp",
+        "log_time": "Sep 15 2020 15:00:10",
+        "src_ip": "82.44.68.64",
+        "dest_ip": "13.224.217.44",
+        "host": "secops-mbp",
+        "url": "assets.falcon.crowdstrike.com",
+        "url_category": "Professional Services",
+        "http_method": "NA",
+        "user_agent": "Macintosh Version 10.15.6 (Build 19G2021) Ztunnel/1.0",
+        "http_status": "NA",
+        "vendor_product": "Zscaler ZIA",
+        "application": "SSL",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
         "src_endpoint": {
-          "ip": "172.16.2.67"
+          "ip": "82.44.68.64"
         },
         "dst_endpoint": {
-          "ip": "99.84.104.33",
-          "port": 443
-        },
-        "connection_info": {
-          "protocol_name": "HTTPS",
-          "direction": "outbound",
-          "protocol_ver": "4"
-        },
-        "actor": {
-          "user": {
-            "name": "slee@corp.local",
-            "email_addr": "slee@corp.local"
-          }
-        },
-        "traffic": {
-          "bytes_out": 934,
-          "bytes_in": 0
-        },
-        "device": {
-          "hostname": "172.16.2.67"
-        },
-        "metadata": {
-          "version": "1.4.0",
-          "product": {
-            "name": "Zscaler Internet Access",
-            "vendor_name": "Zscaler"
-          }
+          "ip": "13.224.217.44"
         },
         "http_request": {
-          "url": {
-            "text": "https://www.betmgm.com/sports"
+          "url": "assets.falcon.crowdstrike.com",
+          "http_method": "NA",
+          "user_agent": "Macintosh Version 10.15.6 (Build 19G2021) Ztunnel/1.0"
+        },
+        "http_response": {
+          "code": null
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
           },
-          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
+          "version": "1.9.0"
         },
-        "web_resources_activity": {
-          "category": "Gambling"
+        "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400201,
+        "severity_id": 3,
+        "category_name": "Professional Services"
+      },
+      {
+        "_raw": "act=Blocked app=HTTPS cat=Professional Services dhost=www.riministreet.com dst=184.154.210.203 src=192.168.15.7 in=14981 outcome=403 out=1314775 request=www.riministreet.com/salesforce/uploadfile rt=Mar 19 2020 14:06:40 sourceTranslatedAddress=189.213.224.18 requestClientApplication=Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko requestMethod=POST suser=src_user@domain.com spriv=Road Warrior externalId=6805997592063901701 fileType=ZIP reason=Violates Compliance Category, archived to mailbox destinationServiceName=generalbrowsing cn1=0 cn1Label=riskscore cs1=40048 cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=GLBA cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=Social security number|Financial statement requestContext=www.riministreet.com/streetcentral/support-cases/no-case-information?case=5000z00001QddU3AAJ|Zscaler-ZIA-Web|",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Blocked",
+        "reason": "Violates Compliance Category, archived to mailbox",
+        "severity": "3",
+        "act": "Blocked",
+        "app": "HTTPS",
+        "cat": "Professional Services",
+        "dhost": "www.riministreet.com",
+        "dst": "184.154.210.203",
+        "src": "192.168.15.7",
+        "in": "14981",
+        "outcome": "403",
+        "out": "1314775",
+        "request": "www.riministreet.com/salesforce/uploadfile",
+        "rt": "Mar 19 2020 14:06:40",
+        "sourceTranslatedAddress": "189.213.224.18",
+        "requestClientApplication": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko",
+        "requestMethod": "POST",
+        "suser": "src_user@domain.com",
+        "spriv": "Road Warrior",
+        "externalId": "6805997592063901701",
+        "fileType": "ZIP",
+        "destinationServiceName": "generalbrowsing",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "40048",
+        "cs1Label": "dept",
+        "cs2": "Business and Economy",
+        "cs2Label": "urlsupercat",
+        "cs3": "General Browsing",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "None",
+        "cs5Label": "threatname",
+        "cs6": "GLBA",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Business Use",
+        "ZscalerNSSWeblogDLPDictionaries": "Social security number|Financial statement",
+        "requestContext": "www.riministreet.com/streetcentral/support-cases/no-case-information",
+        "case": "5000z00001QddU3AAJ|Zscaler-ZIA-Web|",
+        "log_time": "Mar 19 2020 14:06:40",
+        "src_ip": "192.168.15.7",
+        "dest_ip": "184.154.210.203",
+        "url": "www.riministreet.com/salesforce/uploadfile",
+        "url_category": "Professional Services",
+        "http_method": "POST",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko",
+        "http_status": "403",
+        "vendor_product": "Zscaler ZIA",
+        "application": "HTTPS",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
+        "src_endpoint": {
+          "ip": "192.168.15.7"
         },
-        "risk_details": {
-          "score": 55,
-          "has_threat": false,
-          "has_dlp": false
-        }
+        "dst_endpoint": {
+          "ip": "184.154.210.203"
+        },
+        "http_request": {
+          "url": "www.riministreet.com/salesforce/uploadfile",
+          "http_method": "POST",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko"
+        },
+        "http_response": {
+          "code": 403
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400202,
+        "severity_id": 3,
+        "category_name": "Professional Services"
+      },
+      {
+        "_raw": "act=Allowed app=HTTPS cat=Web Search dhost=addons-pa.clients6.google.com dst=142.250.191.106 src=192.168.1.19 in=1222 outcome=200 out=2250 request=addons-pa.clients6.google.com/$rpc/google.internal.apps.addons.v1.addonservice/listinstallations rt=Nov 17 2021 17:41:26 sourceTranslatedAddress=173.73.172.25 requestClientApplication=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 requestMethod=POST suser=src_user@domain.com spriv=Road Warrior externalId=7031688185345736707 fileType=GZIP reason=Allowed destinationServiceName=Google Search cn1=0 cn1Label=riskscore cs1=40012 cs1Label=dept cs2=Information Technology cs2Label=urlsupercat cs3=WebSearch cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None DLPhit=None sourcehost=USDSREM9MYB6H2 destinationhost=addons-pa.clients6.google.com requestContext=calendar.google.com/|Zscaler-ZIA-Web|",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Allowed",
+        "reason": "Allowed",
+        "severity": "3",
+        "act": "Allowed",
+        "app": "HTTPS",
+        "cat": "Web Search",
+        "dhost": "addons-pa.clients6.google.com",
+        "dst": "142.250.191.106",
+        "src": "192.168.1.19",
+        "in": "1222",
+        "outcome": "200",
+        "out": "2250",
+        "request": "addons-pa.clients6.google.com/$rpc/google.internal.apps.addons.v1.addonservice/listinstallations",
+        "rt": "Nov 17 2021 17:41:26",
+        "sourceTranslatedAddress": "173.73.172.25",
+        "requestClientApplication": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
+        "requestMethod": "POST",
+        "suser": "src_user@domain.com",
+        "spriv": "Road Warrior",
+        "externalId": "7031688185345736707",
+        "fileType": "GZIP",
+        "destinationServiceName": "Google Search",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "40012",
+        "cs1Label": "dept",
+        "cs2": "Information Technology",
+        "cs2Label": "urlsupercat",
+        "cs3": "WebSearch",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "None",
+        "cs5Label": "threatname",
+        "cs6": "None",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Business Use",
+        "ZscalerNSSWeblogDLPDictionaries": "None",
+        "DLPhit": "None",
+        "sourcehost": "USDSREM9MYB6H2",
+        "destinationhost": "addons-pa.clients6.google.com",
+        "requestContext": "calendar.google.com/|Zscaler-ZIA-Web|",
+        "log_time": "Nov 17 2021 17:41:26",
+        "src_ip": "192.168.1.19",
+        "dest_ip": "142.250.191.106",
+        "url": "addons-pa.clients6.google.com/$rpc/google.internal.apps.addons.v1.addonservice/listinstallations",
+        "url_category": "Web Search",
+        "http_method": "POST",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
+        "http_status": "200",
+        "vendor_product": "Zscaler ZIA",
+        "application": "HTTPS",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
+        "src_endpoint": {
+          "ip": "192.168.1.19"
+        },
+        "dst_endpoint": {
+          "ip": "142.250.191.106"
+        },
+        "http_request": {
+          "url": "addons-pa.clients6.google.com/$rpc/google.internal.apps.addons.v1.addonservice/listinstallations",
+          "http_method": "POST",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400201,
+        "severity_id": 3,
+        "category_name": "Web Search"
+      },
+      {
+        "_raw": "act=Allowed app=SSL cat=InsightVM dhost=eu.api.endpoint.ingress.rapid7.com dst=3.120.196.152 src=10.120.94.52 in=5961 outcome=NA out=950 request=eu.api.endpoint.ingress.rapid7.com rt=June 22 2022 11:11:11 sourceTranslatedAddress=83.110.19.158 requestClientApplication=Unknown requestMethod=NA suser=userName@tasnee.local spriv=SDWAN->PAW externalId=7163783155840516097 fileType=None reason=Allowed destinationServiceName=Rapid7 cn1=0 cn1Label=riskscore cs1=Digital Infrastructure & Operation cs1Label=dept cs2=User-defined cs2Label=urlsupercat cs3=IT Services cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Bandwidth Loss ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=NA devicehostname=NA",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Allowed",
+        "reason": "Allowed",
+        "severity": "3",
+        "act": "Allowed",
+        "app": "SSL",
+        "cat": "InsightVM",
+        "dhost": "eu.api.endpoint.ingress.rapid7.com",
+        "dst": "3.120.196.152",
+        "src": "10.120.94.52",
+        "in": "5961",
+        "outcome": "NA",
+        "out": "950",
+        "request": "eu.api.endpoint.ingress.rapid7.com",
+        "rt": "June 22 2022 11:11:11",
+        "sourceTranslatedAddress": "83.110.19.158",
+        "requestClientApplication": "Unknown",
+        "requestMethod": "NA",
+        "suser": "userName@tasnee.local",
+        "spriv": "SDWAN->PAW",
+        "externalId": "7163783155840516097",
+        "fileType": "None",
+        "destinationServiceName": "Rapid7",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "Digital Infrastructure & Operation",
+        "cs1Label": "dept",
+        "cs2": "User-defined",
+        "cs2Label": "urlsupercat",
+        "cs3": "IT Services",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "None",
+        "cs5Label": "threatname",
+        "cs6": "None",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Bandwidth Loss",
+        "ZscalerNSSWeblogDLPDictionaries": "None",
+        "requestContext": "None",
+        "contenttype": "Other",
+        "unscannabletype": "None",
+        "deviceowner": "NA",
+        "devicehostname": "NA",
+        "log_time": "June 22 2022 11:11:11",
+        "src_ip": "10.120.94.52",
+        "dest_ip": "3.120.196.152",
+        "host": "NA",
+        "url": "eu.api.endpoint.ingress.rapid7.com",
+        "url_category": "InsightVM",
+        "http_method": "NA",
+        "user_agent": "Unknown",
+        "http_status": "NA",
+        "vendor_product": "Zscaler ZIA",
+        "application": "SSL",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
+        "src_endpoint": {
+          "ip": "10.120.94.52"
+        },
+        "dst_endpoint": {
+          "ip": "3.120.196.152"
+        },
+        "http_request": {
+          "url": "eu.api.endpoint.ingress.rapid7.com",
+          "http_method": "NA",
+          "user_agent": "Unknown"
+        },
+        "http_response": {
+          "code": null
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 1,
+        "type_uid": 400201,
+        "severity_id": 3,
+        "category_name": "InsightVM"
+      },
+      {
+        "_raw": "act=Blocked app=SSL cat=Adware/Spyware Sites dhost=illuminatelocks.com dst=192.243.59.13 src=192.168.50.73 in=0 outcome=NA out=0 request=illuminatelocks.com rt=Jan 23 2023 22:17:56 sourceTranslatedAddress=67.235.143.9 requestClientApplication=Unknown requestMethod=NA suser=src_user@domain.com spriv=Road Warrior externalId=7191975463014301701 fileType=None reason=Reputation block outbound request: adware/spyware site destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=IT Information Security cs1Label=dept cs2=Advanced Security cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=HTML.Adware.Popads.LZ cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Advanced Security Risk ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=edperez devicehostname=PF1CYQ9C-L",
+        "_time": 1788257441.816,
+        "device_vendor": "Zscaler",
+        "device_product": "NSSWeblog",
+        "device_version": "5.0",
+        "action": "Blocked",
+        "reason": "Reputation block outbound request: adware/spyware site",
+        "severity": "3",
+        "act": "Blocked",
+        "app": "SSL",
+        "cat": "Adware/Spyware Sites",
+        "dhost": "illuminatelocks.com",
+        "dst": "192.243.59.13",
+        "src": "192.168.50.73",
+        "in": "0",
+        "outcome": "NA",
+        "out": "0",
+        "request": "illuminatelocks.com",
+        "rt": "Jan 23 2023 22:17:56",
+        "sourceTranslatedAddress": "67.235.143.9",
+        "requestClientApplication": "Unknown",
+        "requestMethod": "NA",
+        "suser": "src_user@domain.com",
+        "spriv": "Road Warrior",
+        "externalId": "7191975463014301701",
+        "fileType": "None",
+        "destinationServiceName": "General Browsing",
+        "cn1": "0",
+        "cn1Label": "riskscore",
+        "cs1": "IT Information Security",
+        "cs1Label": "dept",
+        "cs2": "Advanced Security",
+        "cs2Label": "urlsupercat",
+        "cs3": "General Browsing",
+        "cs3Label": "appclass",
+        "cs4": "None",
+        "cs4Label": "malwarecat",
+        "cs5": "HTML.Adware.Popads.LZ",
+        "cs5Label": "threatname",
+        "cs6": "None",
+        "cs6Label": "dlpeng",
+        "ZscalerNSSWeblogURLClass": "Advanced Security Risk",
+        "ZscalerNSSWeblogDLPDictionaries": "None",
+        "requestContext": "None",
+        "contenttype": "Other",
+        "unscannabletype": "None",
+        "deviceowner": "edperez",
+        "devicehostname": "PF1CYQ9C-L",
+        "log_time": "Jan 23 2023 22:17:56",
+        "src_ip": "192.168.50.73",
+        "dest_ip": "192.243.59.13",
+        "host": "PF1CYQ9C-L",
+        "url": "illuminatelocks.com",
+        "url_category": "Adware/Spyware Sites",
+        "http_method": "NA",
+        "user_agent": "Unknown",
+        "http_status": "NA",
+        "vendor_product": "Zscaler ZIA",
+        "application": "SSL",
+        "vendor": "Zscaler",
+        "product": "Internet Access",
+        "version": "1.0",
+        "src_endpoint": {
+          "ip": "192.168.50.73"
+        },
+        "dst_endpoint": {
+          "ip": "192.243.59.13"
+        },
+        "http_request": {
+          "url": "illuminatelocks.com",
+          "http_method": "NA",
+          "user_agent": "Unknown"
+        },
+        "http_response": {
+          "code": null
+        },
+        "metadata": {
+          "product": {
+            "name": "Internet Access",
+            "vendor_name": "Zscaler"
+          },
+          "version": "1.9.0"
+        },
+        "class_uid": 4002,
+        "category_uid": 4,
+        "activity_id": 2,
+        "type_uid": 400202,
+        "severity_id": 3,
+        "category_name": "Adware/Spyware Sites"
       }
     ],
     "sampleKeys": [
-      "timestamp",
-      "user",
-      "department",
-      "src_ip",
-      "dst_ip",
-      "url",
-      "action",
-      "url_category",
-      "risk_score",
-      "request_size",
-      "response_size",
-      "threat_name",
-      "dlp_rule",
+      "reason",
+      "event_id",
       "protocol",
-      "dst_port",
-      "user_agent"
+      "action",
+      "transactionsize",
+      "responsesize",
+      "requestsize",
+      "urlcategory",
+      "serverip",
+      "clienttranstime",
+      "requestmethod",
+      "refererURL",
+      "useragent",
+      "product",
+      "location",
+      "ClientIP",
+      "status",
+      "user",
+      "url",
+      "vendor",
+      "hostname",
+      "clientpublicIP",
+      "threatcategory",
+      "threatname",
+      "filetype",
+      "appname",
+      "pagerisk",
+      "department",
+      "urlsupercategory",
+      "appclass",
+      "dlpengine",
+      "urlclass",
+      "threatclass",
+      "dlpdictionaries",
+      "fileclass",
+      "bwthrottle",
+      "servertranstime",
+      "datetime",
+      "tz",
+      "fileext",
+      "filename",
+      "dlphtct",
+      "dlpid",
+      "ruletype",
+      "contenttype",
+      "unscannabletype",
+      "devicehostname",
+      "deviceowner",
+      "md5",
+      "dlpmd5",
+      "ssldec",
+      "urlfilterrulename",
+      "apprulename",
+      "mobappname",
+      "mobappcat",
+      "mobdevtype",
+      "devicemodel",
+      "devicename",
+      "deviceostype",
+      "deviceosversion",
+      "rulelabel",
+      "uploadfiletype",
+      "uploadfilename",
+      "uploadfilesubtype",
+      "app",
+      "cat",
+      "dhost",
+      "dst",
+      "src",
+      "in",
+      "outcome",
+      "out",
+      "request",
+      "rt",
+      "sourceTranslatedAddress",
+      "requestClientApplication",
+      "requestMethod",
+      "suser",
+      "spriv",
+      "externalId",
+      "fileType",
+      "destinationServiceName",
+      "cn1",
+      "cn1Label",
+      "cs1",
+      "cs1Label",
+      "cs2",
+      "cs2Label",
+      "cs3",
+      "cs3Label",
+      "cs4",
+      "cs4Label",
+      "cs5",
+      "cs5Label",
+      "cs6",
+      "cs6Label",
+      "ZscalerNSSWeblogURLClass",
+      "ZscalerNSSWeblogDLPDictionaries",
+      "DLPhit",
+      "sourcehost",
+      "destinationhost",
+      "requestContext"
     ],
     "sampleRaw": [
-      "{\"timestamp\":\"2024-01-15T00:03:12Z\",\"user\":\"jsmith@corp.local\",\"department\":\"Finance\",\"src_ip\":\"10.1.4.22\",\"dst_ip\":\"185.220.101.45\",\"url\":\"http://malware-drop.ru/payload.exe\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":98,\"request_size\":342,\"response_size\":0,\"threat_name\":\"Trojan.GenericKD.47829\",\"dlp_rule\":\"\",\"protocol\":\"HTTP\",\"dst_port\":80,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
-      "{\"timestamp\":\"2024-01-15T00:17:44Z\",\"user\":\"agarcia@corp.local\",\"department\":\"HR\",\"src_ip\":\"10.2.1.88\",\"dst_ip\":\"52.84.125.201\",\"url\":\"https://drive.google.com/file/d/1BxSY8k9XcZ4P\",\"action\":\"Allowed\",\"url_category\":\"Cloud Storage\",\"risk_score\":15,\"request_size\":1024,\"response_size\":204800,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"}",
-      "{\"timestamp\":\"2024-01-15T00:34:55Z\",\"user\":\"unknown\",\"department\":\"\",\"src_ip\":\"172.16.8.103\",\"dst_ip\":\"91.108.4.200\",\"url\":\"https://t.me/c/darkmarket_channel\",\"action\":\"Blocked\",\"url_category\":\"Malware\",\"risk_score\":87,\"request_size\":512,\"response_size\":0,\"threat_name\":\"C2.Telegram.Abuse\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"python-requests/2.28.0\"}",
-      "{\"timestamp\":\"2024-01-15T00:52:18Z\",\"user\":\"bwilliams@corp.local\",\"department\":\"Engineering\",\"src_ip\":\"10.5.3.14\",\"dst_ip\":\"104.18.25.152\",\"url\":\"https://github.com/torvalds/linux\",\"action\":\"Allowed\",\"url_category\":\"Business\",\"risk_score\":5,\"request_size\":856,\"response_size\":45312,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Git/2.39.0\"}",
-      "{\"timestamp\":\"2024-01-15T01:08:33Z\",\"user\":\"mchen@corp.local\",\"department\":\"Legal\",\"src_ip\":\"192.168.10.45\",\"dst_ip\":\"216.58.213.110\",\"url\":\"https://www.google.com/search?q=confidential+merger+documents\",\"action\":\"Cautioned\",\"url_category\":\"Business\",\"risk_score\":42,\"request_size\":678,\"response_size\":32100,\"threat_name\":\"\",\"dlp_rule\":\"DLP-CONFIDENTIAL-SEARCH\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}",
-      "{\"timestamp\":\"2024-01-15T01:23:07Z\",\"user\":\"ptaylor@corp.local\",\"department\":\"Sales\",\"src_ip\":\"10.3.7.201\",\"dst_ip\":\"157.240.229.35\",\"url\":\"https://www.facebook.com/groups/competitors\",\"action\":\"Cautioned\",\"url_category\":\"Social Networking\",\"risk_score\":28,\"request_size\":1240,\"response_size\":89600,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)\"}",
-      "{\"timestamp\":\"2024-01-15T01:41:50Z\",\"user\":\"rjohnson@corp.local\",\"department\":\"IT\",\"src_ip\":\"10.0.0.15\",\"dst_ip\":\"45.33.32.156\",\"url\":\"https://phishing-site.net/office365-login\",\"action\":\"Blocked\",\"url_category\":\"Phishing\",\"risk_score\":96,\"request_size\":421,\"response_size\":0,\"threat_name\":\"Phish.Office365.Credential.Harvest\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\"}",
-      "{\"timestamp\":\"2024-01-15T02:05:29Z\",\"user\":\"slee@corp.local\",\"department\":\"Marketing\",\"src_ip\":\"172.16.2.67\",\"dst_ip\":\"99.84.104.33\",\"url\":\"https://www.betmgm.com/sports\",\"action\":\"Blocked\",\"url_category\":\"Gambling\",\"risk_score\":55,\"request_size\":934,\"response_size\":0,\"threat_name\":\"\",\"dlp_rule\":\"\",\"protocol\":\"HTTPS\",\"dst_port\":443,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0\"}"
+      "2022-06-22 11:11:11    reason=Allowed  event_id=6468217230471004175    protocol=HTTPS  action=Allowed  transactionsize=1689    responsesize=245        requestsize=1444        urlcategory=Professional Services       serverip=10.1.2.3       clienttranstime=11      requestmethod=GET       refererURL=some.where.com/e/is/5fe011609a91fb63958a721da7e9a1dd/impi?b=IrDycE5aTknXm8MDQFgTI60AAAFepIvRsQEAAATiAVsuxq8&w=KRIGmAcLOREuyqlaUNzAYbN4xFPNM9ittSfK-f3BiK29wVQp4oW-vkl1bgXmau5Y&bi=IdKZRc9GcxVLpBZC8MLq0W-Ul9k1tVVl9ITS29DbVvZLnBa3KCN62LqWbnREjhHGo2bsKoI2CDLRoMOkdY0ACobSpxD70B6t5QfIRNt5kY0yD4q4kufr07b.fSVst8IAfw4mQvUAd8qEpUnJN6Bb.DTA6m-7BVvayuawjAb9-qK85wLyFr7u8Lx0tQqrflgkWnAHf-BmrSBnDydH7KvJeP4R1Daa7CHHBSVbWc5I5kBy4sUpePF4g91BCWGJgfchtE8bMeiwp3BPZm5ZcYEig1nlTcZ4GHy7KG5t0AQ4zQKaYgIc4Ckgt.AsVTG0J2MOtYlwTxUtx9DcjgFr3UsMFHelibfJUNa9aY7looFh4SWHrZHzasoMAt1hsqqvYybl9VYLset-7e0E6JNIyONaMUU9xTzQPwporhtNZksDhVdcASPVRCUHEnG2NUDf00Zdkhjwm.4iLfnKHPCA8X7rTawa5zhTMoyw.Wo4t7INIQ8epdRypD.rAMubUcsehjaCiiD1vfwRyv1vv-rFu5pTaXjdnlSevnejDcRtCbIm4S0_       useragent=Google Chrome (60.x)  product=NSS     location=DC1_Internal   ClientIP=192.168.4.10   status=200      user=src_user@domain.com   url=some.where.com/x/px/qulrsvj9pgfxultipvaqrogaaafepivtmgeaaatiaxkoaby/v/{\"v\":{\"p\":100,\"t\":0,\"def\":\"groupm\"},\"vs\":\"visible\",\"ah\":250,\"aw\":300,\"ttv\":0.56,\"ts\":1505999181256,\"pixelid\":\"q60r1o6n7ne\",\"ver\":1.8}?cb=5086099  vendor=Zscaler  hostname=some.where.com clientpublicIP=192.168.4.10     threatcategory=Clean Transaction        threatname=None filetype=Gif Files      appname=Amazon  pagerisk=0      department=Planners     urlsupercategory=Business and Economy   appclass=Consumer Apps  dlpengine=None  urlclass=Business Use   threatclass=Clean Transaction   dlpdictionaries=None    fileclass=Images        bwthrottle=NO   servertranstime=11",
+      "datetime=Mon JUN 22 11:11:11 2022 tz=GMT reason=Allowed event_id=7173802975225184257 protocol=HTTP_PROXY action=Allowed transactionsize=674 responsesize=65 requestsize=609 urlcategory=Allow List serverip=20.212.96.199 clienttranstime=0 requestmethod=CONNECT refererURL=None useragent=Windows Microsoft Windows 10 Enterprise ZTunnel/1.0 product=NSS location=Enterprise Charlotte to Zscaler India->Charlotte VDI ClientIP=10.134.137.203 status=200 user=src_user@domain.com url=checkappexec.microsoft.com:443 vendor=Zscaler hostname=checkappexec.microsoft.com clientpublicIP=4.18.205.102 threatcategory=None threatname=None filetype=None fileext=None filename=None appname=General Browsing pagerisk=0 department=INDIA-TFS-CS-PAY OUT urlsupercategory=User-defined appclass=General Browsing dlpengine=None urlclass=Bandwidth Loss threatclass=None dlpdictionaries=None dlphtct=None dlpid=0 fileclass=None ruletype=None bwthrottle=NO servertranstime=0 contenttype=Other unscannabletype=None devicehostname=VPCLD-P1836 deviceowner=nilkant md5=None dlpmd5=None ssldec=No urlfilterrulename=URL Allow List apprulename=None mobappname=None mobappcat=None mobdevtype=None devicemodel=VMware7,1 devicename=VMware-42-32-ef-96-bc-5f-bb-c5-54-7e-19-c2-cc-ac-b5-f3:276AF7D572210A7E039A24E125C099BBF767E0CB deviceostype=Windows OS deviceosversion=Microsoft Windows 10 Enterprise;64 bit rulelabel=None uploadfiletype=None uploadfilename=None uploadfilesubtype=None",
+      "%{host} exameta(docid=lms.kafka.topic_86_2610309806_809120991eb1&idx=exabeam-2020.08.18&cluster=809120991eb1)KAFKA_CONNECT_SYSLOG: Aug 18 07:59:32 zscaler-nss CEF:0|Zscaler|NSSWeblog|5.0|Allowed|Allowed|3|act=Allowed app=HTTP_PROXY cat=Corporate Marketing dhost=teams.events.data.microsoft.com dst=52.114.88.28 src=192.168.254.13 in=65 outcome=200 out=619 request=teams.events.data.microsoft.com:443 rt=Aug 18 2020 07:59:32 sourceTranslatedAddress=69.40.29.87 requestClientApplication=Windows Microsoft Windows 10 Enterprise ZTunnel/1.0 requestMethod=CONNECT suser=src_user@domain.com spriv=Road Warrior externalId=6862307929050382338 fileType=None reason=Allowed destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=USPS cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None DLPhit=None sourcehost=USREMWFH6G31PH2 destinationhost=teams.events.data.microsoft.com requestContext=None|Zscaler-ZIA-Web|",
+      "Sep 15 15:00:10 zscaler-nss CEF:0|Zscaler|NSSWeblog|5.0|Allowed|Allowed|3|act=Allowed app=SSL cat=Professional Services dhost=assets.falcon.crowdstrike.com dst=13.224.217.44 src=82.44.68.64 in=19724647 outcome=NA out=106327 request=assets.falcon.crowdstrike.com rt=Sep 15 2020 15:00:10 sourceTranslatedAddress=82.44.68.64 requestClientApplication=Macintosh Version 10.15.6 (Build 19G2021) Ztunnel/1.0 requestMethod=NA suser=src_user@domain.com spriv=Road Warrior externalId=6872729401059508226 fileType=None reason=Allowed destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=Legal, Risk Management & Compliance cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=joe devicehostname=secops-mbp",
+      "Mar 19 14:06:40 zscaler-nss CEF:0|Zscaler|NSSWeblog|5.0|Blocked|Violates Compliance Category, archived to mailbox|3|act=Blocked app=HTTPS cat=Professional Services dhost=www.riministreet.com dst=184.154.210.203 src=192.168.15.7 in=14981 outcome=403 out=1314775 request=www.riministreet.com/salesforce/uploadfile rt=Mar 19 2020 14:06:40 sourceTranslatedAddress=189.213.224.18 requestClientApplication=Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko requestMethod=POST suser=src_user@domain.com spriv=Road Warrior externalId=6805997592063901701 fileType=ZIP reason=Violates Compliance Category, archived to mailbox destinationServiceName=generalbrowsing cn1=0 cn1Label=riskscore cs1=40048 cs1Label=dept cs2=Business and Economy cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=GLBA cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=Social security number|Financial statement requestContext=www.riministreet.com/streetcentral/support-cases/no-case-information?case=5000z00001QddU3AAJ|Zscaler-ZIA-Web|",
+      "<13>Nov 17 23:43:58 %{host} exameta(docid=lms.kafka.topic_37_4817286148_809120991eb1&idx=exabeam-2021.11.17&cluster=809120991eb1)KAFKA_CONNECT_SYSLOG: Nov 17 17:41:26 zscaler-nss CEF:0|Zscaler|NSSWeblog|5.0|Allowed|Allowed|3|act=Allowed app=HTTPS cat=Web Search dhost=addons-pa.clients6.google.com dst=142.250.191.106 src=192.168.1.19 in=1222 outcome=200 out=2250 request=addons-pa.clients6.google.com/$rpc/google.internal.apps.addons.v1.addonservice/listinstallations rt=Nov 17 2021 17:41:26 sourceTranslatedAddress=173.73.172.25 requestClientApplication=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 requestMethod=POST suser=src_user@domain.com spriv=Road Warrior externalId=7031688185345736707 fileType=GZIP reason=Allowed destinationServiceName=Google Search cn1=0 cn1Label=riskscore cs1=40012 cs1Label=dept cs2=Information Technology cs2Label=urlsupercat cs3=WebSearch cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Business Use ZscalerNSSWeblogDLPDictionaries=None DLPhit=None sourcehost=USDSREM9MYB6H2 destinationhost=addons-pa.clients6.google.com requestContext=calendar.google.com/|Zscaler-ZIA-Web|",
+      "Nov 09 01:57:23 zscaler-nss CEF:0|Zscaler|NSSWeblog|5.0|Allowed|Allowed|3|act=Allowed app=SSL cat=InsightVM dhost=eu.api.endpoint.ingress.rapid7.com dst=3.120.196.152 src=10.120.94.52 in=5961 outcome=NA out=950 request=eu.api.endpoint.ingress.rapid7.com rt=June 22 2022 11:11:11 sourceTranslatedAddress=83.110.19.158 requestClientApplication=Unknown requestMethod=NA suser=userName@tasnee.local spriv=SDWAN->PAW externalId=7163783155840516097 fileType=None reason=Allowed destinationServiceName=Rapid7 cn1=0 cn1Label=riskscore cs1=Digital Infrastructure & Operation cs1Label=dept cs2=User-defined cs2Label=urlsupercat cs3=IT Services cs3Label=appclass cs4=None cs4Label=malwarecat cs5=None cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Bandwidth Loss ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=NA devicehostname=NA",
+      "Jan 23 22:17:56 zscaler-nssCEF:0|Zscaler|NSSWeblog|5.0|Blocked|Reputation block outbound request: adware/spyware site|3|act=Blocked app=SSL cat=Adware/Spyware Sites dhost=illuminatelocks.com dst=192.243.59.13 src=192.168.50.73 in=0 outcome=NA out=0 request=illuminatelocks.com rt=Jan 23 2023 22:17:56 sourceTranslatedAddress=67.235.143.9 requestClientApplication=Unknown requestMethod=NA suser=src_user@domain.com spriv=Road Warrior externalId=7191975463014301701 fileType=None reason=Reputation block outbound request: adware/spyware site destinationServiceName=General Browsing cn1=0 cn1Label=riskscore cs1=IT Information Security cs1Label=dept cs2=Advanced Security cs2Label=urlsupercat cs3=General Browsing cs3Label=appclass cs4=None cs4Label=malwarecat cs5=HTML.Adware.Popads.LZ cs5Label=threatname cs6=None cs6Label=dlpeng ZscalerNSSWeblogURLClass=Advanced Security Risk ZscalerNSSWeblogDLPDictionaries=None requestContext=None contenttype=Other unscannabletype=None deviceowner=edperez devicehostname=PF1CYQ9C-L"
     ],
     "sourcetype": "zscaler_web"
   }
