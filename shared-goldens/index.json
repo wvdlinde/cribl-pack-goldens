@@ -7640,15 +7640,15 @@
       "key": "linux_audit::ocsf",
       "sourcetype": "linux_audit",
       "dest_format": "ocsf",
-      "score": 83,
+      "score": 100,
       "part": null,
-      "author": "wvdlinde",
-      "build": 273,
-      "updated_at": "2026-07-16T18:15:15.868Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-03T05:56:43.571Z",
       "path": "shared-goldens/linux_audit__ocsf.json",
       "report": {
-        "score": 83,
-        "band": "warn"
+        "score": 100,
+        "band": "good"
       }
     },
     {
