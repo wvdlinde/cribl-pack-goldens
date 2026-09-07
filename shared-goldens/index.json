@@ -1265,14 +1265,14 @@
       "key": "cisco_asa::__extraction__",
       "sourcetype": "cisco_asa",
       "dest_format": "__extraction__",
-      "score": 85,
+      "score": 93,
       "part": "extraction",
-      "author": "extraction-golden-migration",
+      "author": "push",
       "build": 0,
-      "updated_at": "2026-07-15T17:24:30.061Z",
+      "updated_at": "2026-09-07T14:10:54.044Z",
       "path": "shared-goldens/cisco_asa____extraction__.json",
       "report": {
-        "score": 85,
+        "score": 93,
         "band": "good"
       }
     },
