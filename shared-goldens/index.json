@@ -16650,6 +16650,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_firepower::cim#network::__mapping__",
+      "sourcetype": "cisco_firepower",
+      "dest_format": "cim#network::__mapping__",
+      "score": 96,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 675,
+      "updated_at": "2026-09-07T14:56:47.605Z",
+      "path": "shared-goldens/cisco_firepower__cim#network____mapping__.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
