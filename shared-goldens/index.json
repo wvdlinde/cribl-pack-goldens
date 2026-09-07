@@ -16635,6 +16635,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_firepower::__extraction__",
+      "sourcetype": "cisco_firepower",
+      "dest_format": "__extraction__",
+      "score": 93,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 675,
+      "updated_at": "2026-09-07T14:55:21.052Z",
+      "path": "shared-goldens/cisco_firepower____extraction__.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
