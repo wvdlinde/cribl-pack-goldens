@@ -16680,6 +16680,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_asa::cef::__mapping__",
+      "sourcetype": "cisco_asa",
+      "dest_format": "cef::__mapping__",
+      "score": 95,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 676,
+      "updated_at": "2026-09-08T12:47:42.406Z",
+      "path": "shared-goldens/cisco_asa__cef____mapping__.json",
+      "report": {
+        "score": 95,
+        "band": "good"
+      }
     }
   ]
 }
