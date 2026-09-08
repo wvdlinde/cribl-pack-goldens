@@ -16665,6 +16665,21 @@
         "score": 96,
         "band": "good"
       }
+    },
+    {
+      "key": "checkpoint_firewall::cef::__mapping__",
+      "sourcetype": "checkpoint_firewall",
+      "dest_format": "cef::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 676,
+      "updated_at": "2026-09-08T06:23:05.202Z",
+      "path": "shared-goldens/checkpoint_firewall__cef____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
