@@ -16695,6 +16695,21 @@
         "score": 95,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco_asa::cim#network::__mapping__",
+      "sourcetype": "cisco_asa",
+      "dest_format": "cim#network::__mapping__",
+      "score": 96,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 677,
+      "updated_at": "2026-09-09T04:40:15.381Z",
+      "path": "shared-goldens/cisco_asa__cim#network____mapping__.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
