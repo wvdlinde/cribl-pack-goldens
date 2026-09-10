@@ -16935,6 +16935,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "f5:bigip:syslog::ocsf",
+      "sourcetype": "f5:bigip:syslog",
+      "dest_format": "ocsf",
+      "score": 97,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:16.663Z",
+      "path": "shared-goldens/f5:bigip:syslog__ocsf.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
