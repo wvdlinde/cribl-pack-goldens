@@ -1,0 +1,457 @@
+{
+  "key": "linux_audit::cef::__mapping__",
+  "sourcetype": "linux_audit",
+  "dest_format": "cef::__mapping__",
+  "score": 100,
+  "part": "mapping",
+  "author": "unknown",
+  "build": 687,
+  "updated_at": "2026-09-10T15:28:25.485Z",
+  "functions": [
+    {
+      "id": "eval",
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Set device vendor/product/version",
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Linux'"
+          },
+          {
+            "name": "product",
+            "value": "'Auditd'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Build CEF header",
+      "conf": {
+        "add": [
+          {
+            "name": "__sig",
+            "value": "signature || 'audit'"
+          },
+          {
+            "name": "__name",
+            "value": "signature || 'Audit Event'"
+          },
+          {
+            "name": "__sev",
+            "value": "severity == null || severity === '' ? 5 : Number(severity) <= 1 ? 10 : Number(severity) == 2 ? 9 : Number(severity) == 3 ? 8 : Number(severity) == 4 ? 6 : Number(severity) == 5 ? 4 : Number(severity) == 6 ? 3 : 1"
+          },
+          {
+            "name": "__hdr",
+            "value": "'CEF:0|Linux|Auditd|1.0|' + String(__sig) + '|' + String(__name) + '|' + String(__sev) + '|'"
+          },
+          {
+            "name": "__ext",
+            "value": "''"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Build CEF extension",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(user || src_user) && String(user || src_user) != 'undefined' && String(user || src_user) != 'null' && String(user || src_user) != '-' ? __ext + 'suser=' + String(user || src_user) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(user_id) && String(user_id) != 'undefined' && String(user_id) != 'null' && String(user_id) != '-' && (user_id) ? __ext + 'suid=' + String(user_id) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(host || hostname) && String(host || hostname) != 'undefined' && String(host || hostname) != 'null' && String(host || hostname) != '-' && (host || hostname) ? __ext + 'dhost=' + String(host || hostname) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(host || hostname) && String(host || hostname) != 'undefined' && String(host || hostname) != 'null' && String(host || hostname) != '-' && (host || hostname) ? __ext + 'dvchost=' + String(host || hostname) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(action) && String(action) != 'undefined' && String(action) != 'null' && String(action) != '-' ? __ext + 'act=' + String(action) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(outcome) && String(outcome) != 'undefined' && String(outcome) != 'null' && String(outcome) != '-' && (outcome) ? __ext + 'outcome=' + String(outcome) + ' ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 7)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(process_name || process) && String(process_name || process) != 'undefined' && String(process_name || process) != 'null' && String(process_name || process) != '-' && (process_name || process) ? __ext + 'deviceProcessName=' + String(process_name || process) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(process) && String(process) != 'undefined' && String(process) != 'null' && String(process) != '-' && (process) ? __ext + 'dproc=' + String(process) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(process_id) && String(process_id) != 'undefined' && String(process_id) != 'null' && String(process_id) != '-' && (process_id) ? __ext + 'dpid=' + String(process_id) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(audit_serial) && String(audit_serial) != 'undefined' && String(audit_serial) != 'null' && String(audit_serial) != '-' && (audit_serial) ? __ext + 'externalId=' + String(audit_serial) + ' ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(parent_process_id) && String(parent_process_id) != 'undefined' && String(parent_process_id) != 'null' && String(parent_process_id) != '-' && (parent_process_id) ? __ext + 'cn1=' + String(parent_process_id) + ' cn1Label=ParentProcessId ' : __ext"
+          },
+          {
+            "name": "__ext",
+            "value": "(object) && String(object) != 'undefined' && String(object) != 'null' && String(object) != '-' && (object) ? __ext + 'cs1=' + String(object) + ' cs1Label=AuditKey ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "CEF extension (cont. 13)",
+      "conf": {
+        "add": [
+          {
+            "name": "__ext",
+            "value": "(signature) && String(signature) != 'undefined' && String(signature) != 'null' && String(signature) != '-' && (signature) ? __ext + 'cs2=' + String(signature) + ' cs2Label=AuditType ' : __ext"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "Assemble CEF _raw + set _time + sourcetype",
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "__hdr + __ext.trim()"
+          },
+          {
+            "name": "sourcetype",
+            "value": "'linux_audit'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "a0",
+        "a1",
+        "a10",
+        "a10091",
+        "a10092",
+        "a10093",
+        "a10094",
+        "a10095",
+        "a10096",
+        "a10097",
+        "a10098",
+        "a10099",
+        "a10100",
+        "a10101",
+        "a10102",
+        "a10103",
+        "a10104",
+        "a10105",
+        "a10106",
+        "a10107",
+        "a10108",
+        "a10109",
+        "a10110",
+        "a10111",
+        "a10112",
+        "a10113",
+        "a10114",
+        "a10115",
+        "a10116",
+        "a10117",
+        "a10118",
+        "a10119",
+        "a10120",
+        "a10121",
+        "a10122",
+        "a10123",
+        "a10124",
+        "a10125",
+        "a10126",
+        "a10127",
+        "a10128",
+        "a10129",
+        "a10130",
+        "a10131",
+        "a10132",
+        "a10133",
+        "a10134",
+        "a10135",
+        "a10136",
+        "a10137",
+        "a10138",
+        "a10139",
+        "a10140",
+        "a10141",
+        "a10142",
+        "a10143",
+        "a10144",
+        "a10145",
+        "a10146",
+        "a10147",
+        "a10148",
+        "a10149",
+        "a10150",
+        "a10151",
+        "a10152",
+        "a10153",
+        "a10154",
+        "a10155",
+        "a10156",
+        "a10157",
+        "a10158",
+        "a10159",
+        "a10160",
+        "a10161_len",
+        "a10517",
+        "a10518",
+        "a10519",
+        "a10520",
+        "a10521",
+        "a10522",
+        "a10523",
+        "a10524",
+        "a10525",
+        "a10526",
+        "a10527",
+        "a10528",
+        "a10529",
+        "a10530",
+        "a10531",
+        "a10532",
+        "a10533",
+        "a10534",
+        "a10535",
+        "a10536",
+        "a10537",
+        "a10538",
+        "a10539",
+        "a10540",
+        "a10541",
+        "a10542",
+        "a10543",
+        "a10544",
+        "a10545",
+        "a10546",
+        "a10547",
+        "a10548",
+        "a10549",
+        "a10550",
+        "a10551",
+        "a10552",
+        "a10553",
+        "a10554",
+        "a10555",
+        "a10556",
+        "a10557",
+        "a10558",
+        "a10559",
+        "a10560",
+        "a10561",
+        "a10562",
+        "a10563",
+        "a10564",
+        "a10565",
+        "a10566",
+        "a10567",
+        "a10568",
+        "a10569",
+        "a10570",
+        "a10571",
+        "a10572",
+        "a10573",
+        "a10574",
+        "a10575",
+        "a10576",
+        "a10577",
+        "a10578",
+        "a10579",
+        "a10580",
+        "a10581",
+        "a10582",
+        "a10583",
+        "a10584",
+        "a10585",
+        "a10586",
+        "a10587_len",
+        "a2",
+        "a3",
+        "a74",
+        "a75",
+        "a76",
+        "a77",
+        "a78",
+        "a79",
+        "a80",
+        "a81",
+        "a82",
+        "a83",
+        "a84",
+        "a85",
+        "a86",
+        "a87",
+        "a8_len",
+        "a9",
+        "acct",
+        "addr",
+        "arch",
+        "auid",
+        "auid",
+        "cipher",
+        "cmd",
+        "comm",
+        "data",
+        "direction",
+        "dst",
+        "dst_prefixlen",
+        "egid",
+        "egid",
+        "euid",
+        "euid",
+        "exe",
+        "exit",
+        "fsgid",
+        "fsgid",
+        "fsuid",
+        "fsuid",
+        "gid",
+        "gid",
+        "hostname",
+        "id",
+        "items",
+        "key",
+        "ksize",
+        "laddr",
+        "lport",
+        "mac",
+        "major",
+        "minor",
+        "msg",
+        "node",
+        "op",
+        "pfs",
+        "pid",
+        "ppid",
+        "res",
+        "reset",
+        "rport",
+        "saddr",
+        "saddr_fam",
+        "ses",
+        "sgid",
+        "sgid",
+        "spid",
+        "src",
+        "src_prefixlen",
+        "subj",
+        "success",
+        "suid",
+        "suid",
+        "syscall",
+        "syscall",
+        "terminal",
+        "tty",
+        "type",
+        "uid",
+        "uid"
+      ]
+    }
+  },
+  "report": null
+}
