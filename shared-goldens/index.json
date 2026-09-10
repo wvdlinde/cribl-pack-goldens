@@ -17370,6 +17370,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:Vpxa::ocsf",
+      "sourcetype": "vmware:esxlog:Vpxa",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:50:28.173Z",
+      "path": "shared-goldens/vmware:esxlog:Vpxa__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
