@@ -17220,6 +17220,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:envoy-access::ocsf",
+      "sourcetype": "vmware:esxlog:envoy-access",
+      "dest_format": "ocsf",
+      "score": 91,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:43.853Z",
+      "path": "shared-goldens/vmware:esxlog:envoy-access__ocsf.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
