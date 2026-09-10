@@ -16710,6 +16710,21 @@
         "score": 96,
         "band": "good"
       }
+    },
+    {
+      "key": "pan:traffic::ocsf",
+      "sourcetype": "pan:traffic",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:03.899Z",
+      "path": "shared-goldens/pan:traffic__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
