@@ -17085,6 +17085,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "splunk_app_soar:daemon::ocsf",
+      "sourcetype": "splunk_app_soar:daemon",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:01.333Z",
+      "path": "shared-goldens/splunk_app_soar:daemon__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
