@@ -1,0 +1,1060 @@
+{
+  "key": "aws:elb:accesslogs::ocsf",
+  "sourcetype": "aws:elb:accesslogs",
+  "dest_format": "ocsf",
+  "score": 90,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:44.841Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<protocol_type>\\S+) (?<timestamp>\\S+) (?<elb>\\S+) (?<src_ip>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<src_port>\\d+) (?:(?<dst_ip>[\\d.]+):(?<dst_port>\\d+)|(?<dst_dash>-)) (?<request_processing_time>[\\d.-]+) (?<target_processing_time>[\\d.-]+) (?<response_processing_time>[\\d.-]+) (?<elb_status_code>\\d+) (?<target_status_code>\\S+) (?<received_bytes>\\d+) (?<sent_bytes>\\d+) \"(?<request>[^\"]*)\" \"(?<user_agent>[^\"]*)\" (?<ssl_cipher>\\S+) (?<ssl_protocol>\\S+) (?<target_group_arn>\\S+) \"(?<trace_id>[^\"]*)\" \"(?<domain_name>[^\"]*)\" \"(?<chosen_cert_arn>[^\"]*)\" (?<matched_rule_priority>\\S+) (?<request_creation_time>\\S+) \"(?<actions_executed>[^\"]*)\" \"(?<redirect_url>[^\"]*)\" \"(?<error_reason>[^\"]*)\" \"(?<target_port_list>[^\"]*)\" \"(?<target_status_code_list>[^\"]*)\" \"(?<classification>[^\"]*)\" \"(?<classification_reason>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse AWS ELB (ALB) access log fields from _raw, handling IPv4/IPv6 client addresses and missing target fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "request && request !== '-'",
+      "disabled": false,
+      "conf": {
+        "source": "request",
+        "regex": "/^(?<http_method>\\S+) (?<url_scheme>\\S+):\\/\\/(?<url_host>[^:\\/]+):(?<url_port>\\d+)(?<url_path>\\S*) (?<http_version>\\S+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Break out HTTP method, host, port, path, and version from the quoted request string"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip && src_ip.startsWith('[') ? src_ip.slice(1,-1) : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? dst_port : null"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol_type ? protocol_type.toUpperCase() : 'HTTP'"
+          },
+          {
+            "name": "action",
+            "value": "elb_status_code>=500 ? 'error' : elb_status_code>=400 ? 'deny' : 'allow'"
+          },
+          {
+            "name": "severity",
+            "value": "elb_status_code>=500 ? 'critical' : elb_status_code>=400 ? 'warning' : 'info'"
+          },
+          {
+            "name": "direction",
+            "value": "'inbound'"
+          },
+          {
+            "name": "dst_host",
+            "value": "domain_name && domain_name !== '-' ? domain_name : url_host"
+          }
+        ],
+        "remove": [
+          "dst_dash",
+          "protocol_type"
+        ]
+      },
+      "description": "Clean IPv6 bracket notation, normalize dst fields, derive _time, action, severity, direction, and protocol"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'aws elb accesslog'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF HTTP Activity (4002) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "class_name",
+            "value": "'HTTP Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '') || ((dest_port || dst_port || dstport) != null && String(dest_port || dst_port || dstport) != 'undefined' && String(dest_port || dst_port || dstport) != 'null' && String(dest_port || dst_port || dstport) != '-' && String(dest_port || dst_port || dstport) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(((url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '') || ((http_method || method || requestMethod) != null && String(http_method || method || requestMethod) != 'undefined' && String(http_method || method || requestMethod) != 'null' && String(http_method || method || requestMethod) != '-' && String(http_method || method || requestMethod) != '') || ((http_user_agent || user_agent || useragent) != null && String(http_user_agent || user_agent || useragent) != 'undefined' && String(http_user_agent || user_agent || useragent) != 'null' && String(http_user_agent || user_agent || useragent) != '-' && String(http_user_agent || user_agent || useragent) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request.url",
+            "value": "(((url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_response",
+            "value": "(((status || status_code || http_status || response_code) != null && String(status || status_code || http_status || response_code) != 'undefined' && String(status || status_code || http_status || response_code) != 'null' && String(status || status_code || http_status || response_code) != '-' && String(status || status_code || http_status || response_code) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port || dst_port || dstport) != null && String(dest_port || dst_port || dstport) != 'undefined' && String(dest_port || dst_port || dstport) != 'null' && String(dest_port || dst_port || dstport) != '-' && String(dest_port || dst_port || dstport) != '' ? Number(dest_port || dst_port || dstport) : undefined"
+          },
+          {
+            "name": "http_request.url.text",
+            "value": "(url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '' ? (url || uri || request || http_url) : undefined"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(http_method || method || requestMethod) != null && String(http_method || method || requestMethod) != 'undefined' && String(http_method || method || requestMethod) != 'null' && String(http_method || method || requestMethod) != '-' && String(http_method || method || requestMethod) != '' ? (http_method || method || requestMethod) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(http_user_agent || user_agent || useragent) != null && String(http_user_agent || user_agent || useragent) != 'undefined' && String(http_user_agent || user_agent || useragent) != 'null' && String(http_user_agent || user_agent || useragent) != '-' && String(http_user_agent || user_agent || useragent) != '' ? (http_user_agent || user_agent || useragent) : undefined"
+          },
+          {
+            "name": "http_response.code",
+            "value": "(status || status_code || http_status || response_code) != null && String(status || status_code || http_status || response_code) != 'undefined' && String(status || status_code || http_status || response_code) != 'null' && String(status || status_code || http_status || response_code) != '-' && String(status || status_code || http_status || response_code) != '' ? Number(status || status_code || http_status || response_code) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'aws elb accesslogs'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws:elb:accesslogs'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__*"
+        ]
+      },
+      "description": "Keep mapped CIM fields + all extracted source fields before serialization"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AwsElbAccesslogs_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_time": 1718115791.123,
+        "timestamp": "2024-06-11T14:23:11.123456Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "203.0.113.45",
+        "src_port": "53211",
+        "dst_ip": "10.0.1.15",
+        "dst_port": "80",
+        "request_processing_time": "0.000032",
+        "target_processing_time": "0.001204",
+        "response_processing_time": "0.000021",
+        "elb_status_code": "200",
+        "target_status_code": "200",
+        "received_bytes": "0",
+        "sent_bytes": "1543",
+        "request": "GET https://shop.example.com:443/api/products HTTP/1.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a1cf-3e1c2b6f7a8d9e0f1a2b3c4d",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:23:11.100000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.15:80",
+        "target_status_code_list": "200",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "GET",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/products",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "allow",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.15",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "1543",
+        "log_time": "2024-06-11T14:23:11.123456Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718115791123,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.15",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "GET https://shop.example.com:443/api/products HTTP/1.1"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718115842.987,
+        "timestamp": "2024-06-11T14:24:02.987654Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "198.51.100.22",
+        "src_port": "41022",
+        "dst_ip": "10.0.1.16",
+        "dst_port": "80",
+        "request_processing_time": "0.000045",
+        "target_processing_time": "0.002331",
+        "response_processing_time": "0.000019",
+        "elb_status_code": "401",
+        "target_status_code": "401",
+        "received_bytes": "0",
+        "sent_bytes": "289",
+        "request": "POST https://shop.example.com:443/api/login HTTP/1.1",
+        "user_agent": "python-requests/2.28.1",
+        "ssl_cipher": "ECDHE-RSA-AES256-GCM-SHA384",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a20a-8f9e0d1c2b3a4b5c6d7e8f9a",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:24:02.950000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.16:80",
+        "target_status_code_list": "401",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "POST",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/login",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "deny",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.16",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "289",
+        "log_time": "2024-06-11T14:24:02.987654Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718115842987,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.16",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "POST https://shop.example.com:443/api/login HTTP/1.1"
+          },
+          "http_method": "POST",
+          "user_agent": "python-requests/2.28.1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718115843.001,
+        "timestamp": "2024-06-11T14:24:03.001122Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "198.51.100.22",
+        "src_port": "41023",
+        "dst_ip": "10.0.1.16",
+        "dst_port": "80",
+        "request_processing_time": "0.000041",
+        "target_processing_time": "0.002198",
+        "response_processing_time": "0.000015",
+        "elb_status_code": "401",
+        "target_status_code": "401",
+        "received_bytes": "0",
+        "sent_bytes": "289",
+        "request": "POST https://shop.example.com:443/api/login HTTP/1.1",
+        "user_agent": "python-requests/2.28.1",
+        "ssl_cipher": "ECDHE-RSA-AES256-GCM-SHA384",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a20b-9a0b1c2d3e4f5a6b7c8d9e0f",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:24:02.980000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.16:80",
+        "target_status_code_list": "401",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "POST",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/login",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "deny",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.16",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "289",
+        "log_time": "2024-06-11T14:24:03.001122Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718115843001,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.16",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "POST https://shop.example.com:443/api/login HTTP/1.1"
+          },
+          "http_method": "POST",
+          "user_agent": "python-requests/2.28.1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718115947.334,
+        "timestamp": "2024-06-11T14:25:47.334455Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "45.33.32.156",
+        "src_port": "60123",
+        "dst_ip": "10.0.1.17",
+        "dst_port": "80",
+        "request_processing_time": "0.000038",
+        "target_processing_time": "0.981234",
+        "response_processing_time": "0.000028",
+        "elb_status_code": "504",
+        "target_status_code": "-",
+        "received_bytes": "0",
+        "sent_bytes": "0",
+        "request": "GET https://shop.example.com:443/api/reports/export HTTP/1.1",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a2bb-1a2b3c4d5e6f7a8b9c0d1e2f",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:25:46.350000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.17:80",
+        "target_status_code_list": "-",
+        "classification": "Target.Timeout",
+        "classification_reason": "-",
+        "http_method": "GET",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/reports/export",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "error",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.17",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "0",
+        "log_time": "2024-06-11T14:25:47.334455Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718115947334,
+        "src_endpoint": {
+          "ip": "45.33.32.156"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.17",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "GET https://shop.example.com:443/api/reports/export HTTP/1.1"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718115970.556,
+        "timestamp": "2024-06-11T14:26:10.556677Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "10.0.5.201",
+        "src_port": "33456",
+        "dst_ip": "10.0.1.18",
+        "dst_port": "80",
+        "request_processing_time": "0.000029",
+        "target_processing_time": "0.000512",
+        "response_processing_time": "0.000012",
+        "elb_status_code": "200",
+        "target_status_code": "200",
+        "received_bytes": "342",
+        "sent_bytes": "512",
+        "request": "GET https://shop.example.com:443/health HTTP/1.1",
+        "user_agent": "ELB-HealthChecker/2.0",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a2d2-2b3c4d5e6f7a8b9c0d1e2f3a",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "0",
+        "request_creation_time": "2024-06-11T14:26:10.540000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.18:80",
+        "target_status_code_list": "200",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "GET",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/health",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "allow",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.18",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "512",
+        "log_time": "2024-06-11T14:26:10.556677Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718115970556,
+        "src_endpoint": {
+          "ip": "10.0.5.201"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.18",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "GET https://shop.example.com:443/health HTTP/1.1"
+          },
+          "http_method": "GET",
+          "user_agent": "ELB-HealthChecker/2.0"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718116053.778,
+        "timestamp": "2024-06-11T14:27:33.778899Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "172.16.4.88",
+        "src_port": "52011",
+        "dst_ip": "10.0.1.19",
+        "dst_port": "80",
+        "request_processing_time": "0.000051",
+        "target_processing_time": "0.003421",
+        "response_processing_time": "0.000031",
+        "elb_status_code": "500",
+        "target_status_code": "500",
+        "received_bytes": "128",
+        "sent_bytes": "892",
+        "request": "POST https://shop.example.com:443/api/checkout HTTP/1.1",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a2f5-3c4d5e6f7a8b9c0d1e2f3a4b",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:27:33.740000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.19:80",
+        "target_status_code_list": "500",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "POST",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/checkout",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "error",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.19",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "892",
+        "log_time": "2024-06-11T14:27:33.778899Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718116053778,
+        "src_endpoint": {
+          "ip": "172.16.4.88"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.19",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "POST https://shop.example.com:443/api/checkout HTTP/1.1"
+          },
+          "http_method": "POST",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718116139.112,
+        "timestamp": "2024-06-11T14:28:59.112233Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "src_port": "44556",
+        "dst_ip": "10.0.1.20",
+        "dst_port": "80",
+        "request_processing_time": "0.000037",
+        "target_processing_time": "0.001102",
+        "response_processing_time": "0.000018",
+        "elb_status_code": "200",
+        "target_status_code": "200",
+        "received_bytes": "0",
+        "sent_bytes": "4521",
+        "request": "GET https://shop.example.com:443/api/catalog?page=2 HTTP/1.1",
+        "user_agent": "Mozilla/5.0 (Linux; Android 13)",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a327-4d5e6f7a8b9c0d1e2f3a4b5c",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:28:59.090000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.20:80",
+        "target_status_code_list": "200",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "GET",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/api/catalog?page=2",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "allow",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.20",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "4521",
+        "log_time": "2024-06-11T14:28:59.112233Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718116139112,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.20",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "GET https://shop.example.com:443/api/catalog?page=2 HTTP/1.1"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (Linux; Android 13)"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      },
+      {
+        "_time": 1718116155.445,
+        "timestamp": "2024-06-11T14:29:15.445566Z",
+        "elb": "app/prod-web-elb/50dc6c495c0c9188",
+        "src_ip": "89.248.165.42",
+        "src_port": "39812",
+        "dst_ip": "10.0.1.21",
+        "dst_port": "80",
+        "request_processing_time": "0.000022",
+        "target_processing_time": "0.000891",
+        "response_processing_time": "0.000014",
+        "elb_status_code": "403",
+        "target_status_code": "403",
+        "received_bytes": "0",
+        "sent_bytes": "187",
+        "request": "GET https://shop.example.com:443/wp-admin/setup.php HTTP/1.1",
+        "user_agent": "Mozilla/5.0 (compatible; masscan/1.3)",
+        "ssl_cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+        "ssl_protocol": "TLSv1.2",
+        "target_group_arn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09",
+        "trace_id": "Root=1-6489a33b-5e6f7a8b9c0d1e2f3a4b5c6d",
+        "domain_name": "shop.example.com",
+        "chosen_cert_arn": "arn:aws:acm:us-east-1:123456789012:certificate/abcd1234",
+        "matched_rule_priority": "1",
+        "request_creation_time": "2024-06-11T14:29:15.420000Z",
+        "actions_executed": "forward",
+        "redirect_url": "-",
+        "error_reason": "-",
+        "target_port_list": "10.0.1.21:80",
+        "target_status_code_list": "403",
+        "classification": "-",
+        "classification_reason": "-",
+        "http_method": "GET",
+        "url_scheme": "https",
+        "url_host": "shop.example.com",
+        "url_port": "443",
+        "url_path": "/wp-admin/setup.php",
+        "http_version": "HTTP/1.1",
+        "protocol": "HTTP",
+        "action": "deny",
+        "severity": "Informational",
+        "direction": "inbound",
+        "dst_host": "shop.example.com",
+        "dest_ip": "10.0.1.21",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "bytes_out": "187",
+        "log_time": "2024-06-11T14:29:15.445566Z",
+        "vendor": "aws elb accesslog",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "time": 1718116155445,
+        "src_endpoint": {
+          "ip": "89.248.165.42"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.21",
+          "port": 80
+        },
+        "http_request": {
+          "url": {
+            "text": "GET https://shop.example.com:443/wp-admin/setup.php HTTP/1.1"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (compatible; masscan/1.3)"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aws elb accesslogs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:elb:accesslogs"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "http 2024-06-11T14:23:11.123456Z app/prod-web-elb/50dc6c495c0c9188 203.0.113.45:53211 10.0.1.15:80 0.000032 0.001204 0.000021 200 200 0 1543 \"GET https://shop.example.com:443/api/products HTTP/1.1\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a1cf-3e1c2b6f7a8d9e0f1a2b3c4d\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:23:11.100000Z \"forward\" \"-\" \"-\" \"10.0.1.15:80\" \"200\" \"-\" \"-\"",
+      "http 2024-06-11T14:24:02.987654Z app/prod-web-elb/50dc6c495c0c9188 198.51.100.22:41022 10.0.1.16:80 0.000045 0.002331 0.000019 401 401 0 289 \"POST https://shop.example.com:443/api/login HTTP/1.1\" \"python-requests/2.28.1\" ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a20a-8f9e0d1c2b3a4b5c6d7e8f9a\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:24:02.950000Z \"forward\" \"-\" \"-\" \"10.0.1.16:80\" \"401\" \"-\" \"-\"",
+      "http 2024-06-11T14:24:03.001122Z app/prod-web-elb/50dc6c495c0c9188 198.51.100.22:41023 10.0.1.16:80 0.000041 0.002198 0.000015 401 401 0 289 \"POST https://shop.example.com:443/api/login HTTP/1.1\" \"python-requests/2.28.1\" ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a20b-9a0b1c2d3e4f5a6b7c8d9e0f\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:24:02.980000Z \"forward\" \"-\" \"-\" \"10.0.1.16:80\" \"401\" \"-\" \"-\"",
+      "http 2024-06-11T14:25:47.334455Z app/prod-web-elb/50dc6c495c0c9188 45.33.32.156:60123 10.0.1.17:80 0.000038 0.981234 0.000028 504 - 0 0 \"GET https://shop.example.com:443/api/reports/export HTTP/1.1\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a2bb-1a2b3c4d5e6f7a8b9c0d1e2f\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:25:46.350000Z \"forward\" \"-\" \"-\" \"10.0.1.17:80\" \"-\" \"Target.Timeout\" \"-\"",
+      "http 2024-06-11T14:26:10.556677Z app/prod-web-elb/50dc6c495c0c9188 10.0.5.201:33456 10.0.1.18:80 0.000029 0.000512 0.000012 200 200 342 512 \"GET https://shop.example.com:443/health HTTP/1.1\" \"ELB-HealthChecker/2.0\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a2d2-2b3c4d5e6f7a8b9c0d1e2f3a\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 0 2024-06-11T14:26:10.540000Z \"forward\" \"-\" \"-\" \"10.0.1.18:80\" \"200\" \"-\" \"-\"",
+      "http 2024-06-11T14:27:33.778899Z app/prod-web-elb/50dc6c495c0c9188 172.16.4.88:52011 10.0.1.19:80 0.000051 0.003421 0.000031 500 500 128 892 \"POST https://shop.example.com:443/api/checkout HTTP/1.1\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a2f5-3c4d5e6f7a8b9c0d1e2f3a4b\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:27:33.740000Z \"forward\" \"-\" \"-\" \"10.0.1.19:80\" \"500\" \"-\" \"-\"",
+      "http 2024-06-11T14:28:59.112233Z app/prod-web-elb/50dc6c495c0c9188 [2001:db8:85a3::8a2e:370:7334]:44556 10.0.1.20:80 0.000037 0.001102 0.000018 200 200 0 4521 \"GET https://shop.example.com:443/api/catalog?page=2 HTTP/1.1\" \"Mozilla/5.0 (Linux; Android 13)\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a327-4d5e6f7a8b9c0d1e2f3a4b5c\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:28:59.090000Z \"forward\" \"-\" \"-\" \"10.0.1.20:80\" \"200\" \"-\" \"-\"",
+      "http 2024-06-11T14:29:15.445566Z app/prod-web-elb/50dc6c495c0c9188 89.248.165.42:39812 10.0.1.21:80 0.000022 0.000891 0.000014 403 403 0 187 \"GET https://shop.example.com:443/wp-admin/setup.php HTTP/1.1\" \"Mozilla/5.0 (compatible; masscan/1.3)\" ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/web-targets/6d0ecf831eec9f09 \"Root=1-6489a33b-5e6f7a8b9c0d1e2f3a4b5c6d\" \"shop.example.com\" \"arn:aws:acm:us-east-1:123456789012:certificate/abcd1234\" 1 2024-06-11T14:29:15.420000Z \"forward\" \"-\" \"-\" \"10.0.1.21:80\" \"403\" \"-\" \"-\""
+    ],
+    "sourcetype": "aws:elb:accesslogs"
+  }
+}
