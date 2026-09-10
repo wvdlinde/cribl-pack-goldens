@@ -17310,6 +17310,21 @@
         "score": 98,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:Hostd::ocsf",
+      "sourcetype": "vmware:esxlog:Hostd",
+      "dest_format": "ocsf",
+      "score": 96,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:50:10.633Z",
+      "path": "shared-goldens/vmware:esxlog:Hostd__ocsf.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
