@@ -17295,6 +17295,21 @@
         "score": 98,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:healthd::ocsf",
+      "sourcetype": "vmware:esxlog:healthd",
+      "dest_format": "ocsf",
+      "score": 98,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:50:05.481Z",
+      "path": "shared-goldens/vmware:esxlog:healthd__ocsf.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
