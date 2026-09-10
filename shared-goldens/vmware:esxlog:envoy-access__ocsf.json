@@ -1,0 +1,801 @@
+{
+  "key": "vmware:esxlog:envoy-access::ocsf",
+  "sourcetype": "vmware:esxlog:envoy-access",
+  "dest_format": "ocsf",
+  "score": 91,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:43.853Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<timestamp>[^ ]+) (?<host>[^ ]+) Envoy: \\[(?<log_timestamp>[^\\]]+)\\] \"(?<http_method>[^ ]+) (?<http_path>[^ ]+) (?<http_version>[^\"]+)\" (?<http_status>\\d+) (?<response_flags>[^ ]+) (?<bytes_received>\\d+) (?<bytes_sent>\\d+) (?<duration_ms>[^ ]+) (?<upstream_time_ms>[^ ]+) \"(?<forwarded_for>[^\"]*)\" \"(?<user_agent>[^\"]*)\" \"(?<request_id>[^\"]*)\" \"(?<dst_host>[^\"]*)\" \"(?<__upstream_addr>[^\"]*)\" (?<__src_addr>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Envoy access log syslog wrapper and HTTP request/response fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "__src_addr && __src_addr.startsWith('[')",
+      "disabled": false,
+      "conf": {
+        "source": "__src_addr",
+        "regex": "/^\\[(?<src_ip>[^\\]]+)\\]:(?<src_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract IPv6 client src_ip/src_port from bracketed address"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "__src_addr && !__src_addr.startsWith('[')",
+      "disabled": false,
+      "conf": {
+        "source": "__src_addr",
+        "regex": "/^(?<src_ip>[^:]+):(?<src_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract IPv4 client src_ip/src_port"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "__upstream_addr && __upstream_addr !== '-'",
+      "disabled": false,
+      "conf": {
+        "source": "__upstream_addr",
+        "regex": "/^(?<dst_ip>[^:]+):(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract upstream/backend dst_ip and dst_port"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "'http'"
+          },
+          {
+            "name": "action",
+            "value": "http_status && parseInt(http_status) < 400 ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "severity",
+            "value": "http_status && parseInt(http_status) >= 500 ? 'high' : (http_status && parseInt(http_status) >= 400 ? 'medium' : 'low')"
+          },
+          {
+            "name": "message",
+            "value": "http_method + ' ' + http_path + ' -> ' + http_status"
+          }
+        ],
+        "remove": [
+          "__src_addr",
+          "__upstream_addr"
+        ]
+      },
+      "description": "Normalize protocol, action, severity, and build message; remove scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog envoy access'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:envoy-access'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogEnvoyAccess_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<131>2024-05-14T08:23:41.123Z esxi-host01.corp.local Envoy: [2024-05-14T08:23:41.123Z] \"GET /sdk HTTP/1.1\" 200 - 0 1834 4 4 \"-\" \"VMware vSphere Client/7.0.0\" \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\" \"esxi-host01.corp.local\" \"127.0.0.1:8309\" 192.168.1.45:52341",
+        "_time": 1715675021.123,
+        "priority": "131",
+        "timestamp": "2024-05-14T08:23:41.123Z",
+        "host": "esxi-host01.corp.local",
+        "log_timestamp": "2024-05-14T08:23:41.123Z",
+        "http_method": "GET",
+        "http_path": "/sdk",
+        "http_version": "HTTP/1.1",
+        "http_status": "200",
+        "response_flags": "-",
+        "bytes_received": "0",
+        "bytes_sent": "1834",
+        "duration_ms": "4",
+        "upstream_time_ms": "4",
+        "forwarded_for": "-",
+        "user_agent": "VMware vSphere Client/7.0.0",
+        "request_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "dst_host": "esxi-host01.corp.local",
+        "src_ip": "192.168.1.45",
+        "src_port": "52341",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "GET /sdk -> 200",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T08:23:41.123Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675021123,
+        "src_endpoint": {
+          "ip": "192.168.1.45"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T09:01:12.556Z esxi-host02.corp.local Envoy: [2024-05-14T09:01:12.556Z] \"POST /vsan/health HTTP/1.1\" 200 - 512 2210 12 12 \"-\" \"vSAN-Health-Check/1.0\" \"b2c3d4e5-f6a7-8901-bcde-f21345678901\" \"esxi-host02.corp.local\" \"127.0.0.1:8309\" 10.20.30.5:44210",
+        "_time": 1715677272.556,
+        "priority": "131",
+        "timestamp": "2024-05-14T09:01:12.556Z",
+        "host": "esxi-host02.corp.local",
+        "log_timestamp": "2024-05-14T09:01:12.556Z",
+        "http_method": "POST",
+        "http_path": "/vsan/health",
+        "http_version": "HTTP/1.1",
+        "http_status": "200",
+        "response_flags": "-",
+        "bytes_received": "512",
+        "bytes_sent": "2210",
+        "duration_ms": "12",
+        "upstream_time_ms": "12",
+        "forwarded_for": "-",
+        "user_agent": "vSAN-Health-Check/1.0",
+        "request_id": "b2c3d4e5-f6a7-8901-bcde-f21345678901",
+        "dst_host": "esxi-host02.corp.local",
+        "src_ip": "10.20.30.5",
+        "src_port": "44210",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "POST /vsan/health -> 200",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T09:01:12.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715677272556,
+        "src_endpoint": {
+          "ip": "10.20.30.5"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T09:15:33.891Z esxi-host03.corp.local Envoy: [2024-05-14T09:15:33.891Z] \"GET /folder?dcPath=ha-datacenter HTTP/1.1\" 401 UAEX 0 0 2 - \"-\" \"curl/7.68.0\" \"c3d4e5f6-a7b8-9012-cdef-321456789012\" \"esxi-host03.corp.local\" \"-\" 45.33.22.101:60123",
+        "_time": 1715678133.891,
+        "priority": "131",
+        "timestamp": "2024-05-14T09:15:33.891Z",
+        "host": "esxi-host03.corp.local",
+        "log_timestamp": "2024-05-14T09:15:33.891Z",
+        "http_method": "GET",
+        "http_path": "/folder?dcPath=ha-datacenter",
+        "http_version": "HTTP/1.1",
+        "http_status": "401",
+        "response_flags": "UAEX",
+        "bytes_received": "0",
+        "bytes_sent": "0",
+        "duration_ms": "2",
+        "upstream_time_ms": "-",
+        "forwarded_for": "-",
+        "user_agent": "curl/7.68.0",
+        "request_id": "c3d4e5f6-a7b8-9012-cdef-321456789012",
+        "dst_host": "esxi-host03.corp.local",
+        "src_ip": "45.33.22.101",
+        "src_port": "60123",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "GET /folder?dcPath=ha-datacenter -> 401",
+        "transport": "http",
+        "log_time": "2024-05-14T09:15:33.891Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715678133891,
+        "src_endpoint": {
+          "ip": "45.33.22.101"
+        },
+        "device": {
+          "hostname": "esxi-host03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T10:02:47.204Z esxi-host01.corp.local Envoy: [2024-05-14T10:02:47.204Z] \"GET /mob/ HTTP/1.1\" 403 - 0 145 1 1 \"-\" \"Mozilla/5.0 (X11; Linux x86_64)\" \"d4e5f6a7-b8c9-0123-def4-432156789012\" \"esxi-host01.corp.local\" \"127.0.0.1:8309\" 172.16.5.90:39281",
+        "_time": 1715680967.204,
+        "priority": "131",
+        "timestamp": "2024-05-14T10:02:47.204Z",
+        "host": "esxi-host01.corp.local",
+        "log_timestamp": "2024-05-14T10:02:47.204Z",
+        "http_method": "GET",
+        "http_path": "/mob/",
+        "http_version": "HTTP/1.1",
+        "http_status": "403",
+        "response_flags": "-",
+        "bytes_received": "0",
+        "bytes_sent": "145",
+        "duration_ms": "1",
+        "upstream_time_ms": "1",
+        "forwarded_for": "-",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "request_id": "d4e5f6a7-b8c9-0123-def4-432156789012",
+        "dst_host": "esxi-host01.corp.local",
+        "src_ip": "172.16.5.90",
+        "src_port": "39281",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "GET /mob/ -> 403",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T10:02:47.204Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715680967204,
+        "src_endpoint": {
+          "ip": "172.16.5.90"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T10:44:19.667Z esxi-host04.corp.local Envoy: [2024-05-14T10:44:19.667Z] \"PUT /nfc/ HTTP/1.1\" 200 - 10485760 128 3421 3421 \"-\" \"VMware-VirtualCenter/7.0.3\" \"e5f6a7b8-c9d0-1234-ef45-543267890123\" \"esxi-host04.corp.local\" \"127.0.0.1:8309\" 10.20.30.11:50122",
+        "_time": 1715683459.667,
+        "priority": "131",
+        "timestamp": "2024-05-14T10:44:19.667Z",
+        "host": "esxi-host04.corp.local",
+        "log_timestamp": "2024-05-14T10:44:19.667Z",
+        "http_method": "PUT",
+        "http_path": "/nfc/",
+        "http_version": "HTTP/1.1",
+        "http_status": "200",
+        "response_flags": "-",
+        "bytes_received": "10485760",
+        "bytes_sent": "128",
+        "duration_ms": "3421",
+        "upstream_time_ms": "3421",
+        "forwarded_for": "-",
+        "user_agent": "VMware-VirtualCenter/7.0.3",
+        "request_id": "e5f6a7b8-c9d0-1234-ef45-543267890123",
+        "dst_host": "esxi-host04.corp.local",
+        "src_ip": "10.20.30.11",
+        "src_port": "50122",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "PUT /nfc/ -> 200",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T10:44:19.667Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715683459667,
+        "src_endpoint": {
+          "ip": "10.20.30.11"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host04.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T11:12:05.334Z esxi-host02.corp.local Envoy: [2024-05-14T11:12:05.334Z] \"GET /sdk HTTP/1.1\" 200 - 0 986 6 6 \"-\" \"pyvmomi/8.0.1\" \"f6a7b8c9-d0e1-2345-f456-654378901234\" \"esxi-host02.corp.local\" \"127.0.0.1:8309\" [2001:db8:85a3::8a2e:370:7334]:51234",
+        "_time": 1715685125.334,
+        "priority": "131",
+        "timestamp": "2024-05-14T11:12:05.334Z",
+        "host": "esxi-host02.corp.local",
+        "log_timestamp": "2024-05-14T11:12:05.334Z",
+        "http_method": "GET",
+        "http_path": "/sdk",
+        "http_version": "HTTP/1.1",
+        "http_status": "200",
+        "response_flags": "-",
+        "bytes_received": "0",
+        "bytes_sent": "986",
+        "duration_ms": "6",
+        "upstream_time_ms": "6",
+        "forwarded_for": "-",
+        "user_agent": "pyvmomi/8.0.1",
+        "request_id": "f6a7b8c9-d0e1-2345-f456-654378901234",
+        "dst_host": "esxi-host02.corp.local",
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "src_port": "51234",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "GET /sdk -> 200",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T11:12:05.334Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715685125334,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T11:30:52.812Z esxi-host05.corp.local Envoy: [2024-05-14T11:30:52.812Z] \"GET /ui/ HTTP/1.1\" 200 - 0 34211 9 9 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" \"a7b8c9d0-e1f2-3456-a567-765489012345\" \"esxi-host05.corp.local\" \"127.0.0.1:8309\" 192.168.10.22:63201",
+        "_time": 1715686252.812,
+        "priority": "131",
+        "timestamp": "2024-05-14T11:30:52.812Z",
+        "host": "esxi-host05.corp.local",
+        "log_timestamp": "2024-05-14T11:30:52.812Z",
+        "http_method": "GET",
+        "http_path": "/ui/",
+        "http_version": "HTTP/1.1",
+        "http_status": "200",
+        "response_flags": "-",
+        "bytes_received": "0",
+        "bytes_sent": "34211",
+        "duration_ms": "9",
+        "upstream_time_ms": "9",
+        "forwarded_for": "-",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "request_id": "a7b8c9d0-e1f2-3456-a567-765489012345",
+        "dst_host": "esxi-host05.corp.local",
+        "src_ip": "192.168.10.22",
+        "src_port": "63201",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "GET /ui/ -> 200",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T11:30:52.812Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715686252812,
+        "src_endpoint": {
+          "ip": "192.168.10.22"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host05.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      },
+      {
+        "_raw": "<131>2024-05-14T12:05:18.445Z esxi-host03.corp.local Envoy: [2024-05-14T12:05:18.445Z] \"POST /sdk HTTP/1.1\" 503 UF 0 0 5000 - \"-\" \"govmomi/0.30.0\" \"b8c9d0e1-f2a3-4567-b678-876590123456\" \"esxi-host03.corp.local\" \"127.0.0.1:8309\" 10.10.10.15:41022",
+        "_time": 1715688318.445,
+        "priority": "131",
+        "timestamp": "2024-05-14T12:05:18.445Z",
+        "host": "esxi-host03.corp.local",
+        "log_timestamp": "2024-05-14T12:05:18.445Z",
+        "http_method": "POST",
+        "http_path": "/sdk",
+        "http_version": "HTTP/1.1",
+        "http_status": "503",
+        "response_flags": "UF",
+        "bytes_received": "0",
+        "bytes_sent": "0",
+        "duration_ms": "5000",
+        "upstream_time_ms": "-",
+        "forwarded_for": "-",
+        "user_agent": "govmomi/0.30.0",
+        "request_id": "b8c9d0e1-f2a3-4567-b678-876590123456",
+        "dst_host": "esxi-host03.corp.local",
+        "src_ip": "10.10.10.15",
+        "src_port": "41022",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "8309",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "message": "POST /sdk -> 503",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8309",
+        "transport": "http",
+        "log_time": "2024-05-14T12:05:18.445Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715688318445,
+        "src_endpoint": {
+          "ip": "10.10.10.15"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esxi-host03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy-access"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "<131>2024-05-14T08:23:41.123Z esxi-host01.corp.local Envoy: [2024-05-14T08:23:41.123Z] \"GET /sdk HTTP/1.1\" 200 - 0 1834 4 4 \"-\" \"VMware vSphere Client/7.0.0\" \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\" \"esxi-host01.corp.local\" \"127.0.0.1:8309\" 192.168.1.45:52341",
+      "<131>2024-05-14T09:01:12.556Z esxi-host02.corp.local Envoy: [2024-05-14T09:01:12.556Z] \"POST /vsan/health HTTP/1.1\" 200 - 512 2210 12 12 \"-\" \"vSAN-Health-Check/1.0\" \"b2c3d4e5-f6a7-8901-bcde-f21345678901\" \"esxi-host02.corp.local\" \"127.0.0.1:8309\" 10.20.30.5:44210",
+      "<131>2024-05-14T09:15:33.891Z esxi-host03.corp.local Envoy: [2024-05-14T09:15:33.891Z] \"GET /folder?dcPath=ha-datacenter HTTP/1.1\" 401 UAEX 0 0 2 - \"-\" \"curl/7.68.0\" \"c3d4e5f6-a7b8-9012-cdef-321456789012\" \"esxi-host03.corp.local\" \"-\" 45.33.22.101:60123",
+      "<131>2024-05-14T10:02:47.204Z esxi-host01.corp.local Envoy: [2024-05-14T10:02:47.204Z] \"GET /mob/ HTTP/1.1\" 403 - 0 145 1 1 \"-\" \"Mozilla/5.0 (X11; Linux x86_64)\" \"d4e5f6a7-b8c9-0123-def4-432156789012\" \"esxi-host01.corp.local\" \"127.0.0.1:8309\" 172.16.5.90:39281",
+      "<131>2024-05-14T10:44:19.667Z esxi-host04.corp.local Envoy: [2024-05-14T10:44:19.667Z] \"PUT /nfc/ HTTP/1.1\" 200 - 10485760 128 3421 3421 \"-\" \"VMware-VirtualCenter/7.0.3\" \"e5f6a7b8-c9d0-1234-ef45-543267890123\" \"esxi-host04.corp.local\" \"127.0.0.1:8309\" 10.20.30.11:50122",
+      "<131>2024-05-14T11:12:05.334Z esxi-host02.corp.local Envoy: [2024-05-14T11:12:05.334Z] \"GET /sdk HTTP/1.1\" 200 - 0 986 6 6 \"-\" \"pyvmomi/8.0.1\" \"f6a7b8c9-d0e1-2345-f456-654378901234\" \"esxi-host02.corp.local\" \"127.0.0.1:8309\" [2001:db8:85a3::8a2e:370:7334]:51234",
+      "<131>2024-05-14T11:30:52.812Z esxi-host05.corp.local Envoy: [2024-05-14T11:30:52.812Z] \"GET /ui/ HTTP/1.1\" 200 - 0 34211 9 9 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" \"a7b8c9d0-e1f2-3456-a567-765489012345\" \"esxi-host05.corp.local\" \"127.0.0.1:8309\" 192.168.10.22:63201",
+      "<131>2024-05-14T12:05:18.445Z esxi-host03.corp.local Envoy: [2024-05-14T12:05:18.445Z] \"POST /sdk HTTP/1.1\" 503 UF 0 0 5000 - \"-\" \"govmomi/0.30.0\" \"b8c9d0e1-f2a3-4567-b678-876590123456\" \"esxi-host03.corp.local\" \"127.0.0.1:8309\" 10.10.10.15:41022"
+    ],
+    "sourcetype": "vmware:esxlog:envoy-access"
+  }
+}
