@@ -16725,6 +16725,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "access_common::ocsf",
+      "sourcetype": "access_common",
+      "dest_format": "ocsf",
+      "score": 84,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:08.866Z",
+      "path": "shared-goldens/access_common__ocsf.json",
+      "report": {
+        "score": 84,
+        "band": "warn"
+      }
     }
   ]
 }
