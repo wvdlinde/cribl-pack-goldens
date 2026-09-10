@@ -1,0 +1,701 @@
+{
+  "key": "citrix:netscaler:appfw:cef::ocsf",
+  "sourcetype": "citrix:netscaler:appfw:cef",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:12.648Z",
+  "functions": [
+    {
+      "id": "comment",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "comment": "Parser derived from Cribl Search datatype \"imperva_incapsula_waf\" (raw)."
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]+)\\|(?<product>[^|]+)\\|(?<product_version>[^|]+)\\|(?<signature_id>[^|]+)\\|(?<name>[^|]+)\\|(?<severity>[^|]+)\\|(?<__cef_payload>.*)$/"
+      },
+      "description": "parse_cef_header"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__cef_payload",
+        "delimChar": " ",
+        "pairDelim": "=",
+        "cleanFields": true
+      },
+      "description": "parse_cef_kvp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'citrix netscaler appfw cef'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'citrix:netscaler:appfw:cef'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "CitrixNetscalerAppfwCef_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "1": "'1",
+        "_raw": "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_SQL|SQL Injection Violation|8|rt=Feb 03 2025 14:23:11 src=203.0.113.45 spt=51422 dst=10.20.30.5 dpt=443 requestClientApplication=Mozilla/5.0 cs1=vsvr01_ssl cs1Label=vserver request=https://portal.example.com/login.php?id=1' OR '1'='1 cs2=BLOCK cs2Label=action cn1=1002 cn1Label=transactionID msg=SQL keyword check failed for field id",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.1-49.15",
+        "signature_id": "APPFW_SQL",
+        "name": "SQL Injection Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 14:23:11 src=203.0.113.45 spt=51422 dst=10.20.30.5 dpt=443 requestClientApplication=Mozilla/5.0 cs1=vsvr01_ssl cs1Label=vserver request=https://portal.example.com/login.php?id=1' OR '1'='1 cs2=BLOCK cs2Label=action cn1=1002 cn1Label=transactionID msg=SQL keyword check failed for field id",
+        "rt": "Feb 03 2025 14:23:11",
+        "src": "203.0.113.45",
+        "spt": "51422",
+        "dst": "10.20.30.5",
+        "dpt": "443",
+        "requestClientApplication": "Mozilla/5.0",
+        "cs1": "vsvr01_ssl",
+        "cs1Label": "vserver",
+        "request": "https://portal.example.com/login.php",
+        "id": "1' OR",
+        "cs2": "BLOCK",
+        "cs2Label": "action",
+        "cn1": "1002",
+        "cn1Label": "transactionID",
+        "msg": "SQL keyword check failed for field id",
+        "src_port": "51422",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.30.5"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "SQL keyword check failed for field id",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.0-88.12|APPFW_XSS|Cross-Site Scripting Violation|7|rt=Feb 03 2025 09:11:02 src=198.51.100.22 spt=48912 dst=172.16.5.10 dpt=80 request=http://app.internal.local/search?q=<script>alert(1)</script> cs1=vsvr_web01 cs1Label=vserver cs2=BLOCK cs2Label=action msg=XSS tag <script> detected in query parameter q",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.0-88.12",
+        "signature_id": "APPFW_XSS",
+        "name": "Cross-Site Scripting Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 09:11:02 src=198.51.100.22 spt=48912 dst=172.16.5.10 dpt=80 request=http://app.internal.local/search?q=<script>alert(1)</script> cs1=vsvr_web01 cs1Label=vserver cs2=BLOCK cs2Label=action msg=XSS tag <script> detected in query parameter q",
+        "rt": "Feb 03 2025 09:11:02",
+        "src": "198.51.100.22",
+        "spt": "48912",
+        "dst": "172.16.5.10",
+        "dpt": "80",
+        "request": "http://app.internal.local/search",
+        "q": "script>alert(1)</script",
+        "cs1": "vsvr_web01",
+        "cs1Label": "vserver",
+        "cs2": "BLOCK",
+        "cs2Label": "action",
+        "msg": "XSS tag <script> detected in query parameter q",
+        "src_port": "48912",
+        "dest_port": "80",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.5.10"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "XSS tag <script> detected in query parameter q",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_STARTURL|Start URL Violation|4|rt=Feb 03 2025 03:44:56 src=10.45.2.19 spt=59211 dst=10.20.30.6 dpt=443 request=https://portal.example.com/admin/../../etc/passwd cs1=vsvr01_ssl cs1Label=vserver cs2=BLOCK cs2Label=action msg=Requested URL does not match configured start URL list",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.1-49.15",
+        "signature_id": "APPFW_STARTURL",
+        "name": "Start URL Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 03:44:56 src=10.45.2.19 spt=59211 dst=10.20.30.6 dpt=443 request=https://portal.example.com/admin/../../etc/passwd cs1=vsvr01_ssl cs1Label=vserver cs2=BLOCK cs2Label=action msg=Requested URL does not match configured start URL list",
+        "rt": "Feb 03 2025 03:44:56",
+        "src": "10.45.2.19",
+        "spt": "59211",
+        "dst": "10.20.30.6",
+        "dpt": "443",
+        "request": "https://portal.example.com/admin/../../etc/passwd",
+        "cs1": "vsvr01_ssl",
+        "cs1Label": "vserver",
+        "cs2": "BLOCK",
+        "cs2Label": "action",
+        "msg": "Requested URL does not match configured start URL list",
+        "src_port": "59211",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "10.45.2.19"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.30.6"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Requested URL does not match configured start URL list",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|12.1-55.13|APPFW_FIELDFORMAT|Field Format Violation|3|rt=Feb 03 2025 16:02:33 src=192.168.10.44 spt=33210 dst=192.168.10.100 dpt=8080 request=http://intranet.corp/update?zip=ABCDE cs1=vsvr_hr cs1Label=vserver cs2=LOG cs2Label=action msg=Field zip failed format check regex",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "12.1-55.13",
+        "signature_id": "APPFW_FIELDFORMAT",
+        "name": "Field Format Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 16:02:33 src=192.168.10.44 spt=33210 dst=192.168.10.100 dpt=8080 request=http://intranet.corp/update?zip=ABCDE cs1=vsvr_hr cs1Label=vserver cs2=LOG cs2Label=action msg=Field zip failed format check regex",
+        "rt": "Feb 03 2025 16:02:33",
+        "src": "192.168.10.44",
+        "spt": "33210",
+        "dst": "192.168.10.100",
+        "dpt": "8080",
+        "request": "http://intranet.corp/update",
+        "zip": "ABCDE",
+        "cs1": "vsvr_hr",
+        "cs1Label": "vserver",
+        "cs2": "LOG",
+        "cs2Label": "action",
+        "msg": "Field zip failed format check regex",
+        "src_port": "33210",
+        "dest_port": "8080",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "192.168.10.44"
+        },
+        "dst_endpoint": {
+          "ip": "192.168.10.100"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Field zip failed format check regex",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_LOGIN|Authentication Success|2|rt=Feb 03 2025 05:15:44 src=10.10.10.12 spt=44011 dst=10.20.30.5 dpt=443 duser=jsmith outcome=success msg=User authenticated successfully via LDAP",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.1-49.15",
+        "signature_id": "APPFW_LOGIN",
+        "name": "Authentication Success",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 05:15:44 src=10.10.10.12 spt=44011 dst=10.20.30.5 dpt=443 duser=jsmith outcome=success msg=User authenticated successfully via LDAP",
+        "rt": "Feb 03 2025 05:15:44",
+        "src": "10.10.10.12",
+        "spt": "44011",
+        "dst": "10.20.30.5",
+        "dpt": "443",
+        "duser": "jsmith",
+        "outcome": "success",
+        "msg": "User authenticated successfully via LDAP",
+        "src_port": "44011",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "10.10.10.12"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.30.5"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "User authenticated successfully via LDAP",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.0-88.12|APPFW_LOGIN|Authentication Failure|6|rt=Feb 03 2025 05:16:02 src=203.0.113.77 spt=41022 dst=10.20.30.5 dpt=443 duser=admin outcome=failure msg=Invalid credentials supplied - attempt 4 of 5",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.0-88.12",
+        "signature_id": "APPFW_LOGIN",
+        "name": "Authentication Failure",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 05:16:02 src=203.0.113.77 spt=41022 dst=10.20.30.5 dpt=443 duser=admin outcome=failure msg=Invalid credentials supplied - attempt 4 of 5",
+        "rt": "Feb 03 2025 05:16:02",
+        "src": "203.0.113.77",
+        "spt": "41022",
+        "dst": "10.20.30.5",
+        "dpt": "443",
+        "duser": "admin",
+        "outcome": "failure",
+        "msg": "Invalid credentials supplied - attempt 4 of 5",
+        "src_port": "41022",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "203.0.113.77"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.30.5"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Invalid credentials supplied - attempt 4 of 5",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_BUFOVERFLOW|Buffer Overflow Violation|9|rt=Feb 03 2025 22:10:19 src=45.33.32.156 spt=52001 dst=10.20.30.7 dpt=443 request=https://api.example.com/upload cs1=vsvr_api cs1Label=vserver cs2=BLOCK cs2Label=action cn1=8192 cn1Label=payloadSize msg=Request body exceeded maximum buffer size threshold",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.1-49.15",
+        "signature_id": "APPFW_BUFOVERFLOW",
+        "name": "Buffer Overflow Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 22:10:19 src=45.33.32.156 spt=52001 dst=10.20.30.7 dpt=443 request=https://api.example.com/upload cs1=vsvr_api cs1Label=vserver cs2=BLOCK cs2Label=action cn1=8192 cn1Label=payloadSize msg=Request body exceeded maximum buffer size threshold",
+        "rt": "Feb 03 2025 22:10:19",
+        "src": "45.33.32.156",
+        "spt": "52001",
+        "dst": "10.20.30.7",
+        "dpt": "443",
+        "request": "https://api.example.com/upload",
+        "cs1": "vsvr_api",
+        "cs1Label": "vserver",
+        "cs2": "BLOCK",
+        "cs2Label": "action",
+        "cn1": "8192",
+        "cn1Label": "payloadSize",
+        "msg": "Request body exceeded maximum buffer size threshold",
+        "src_port": "52001",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "45.33.32.156"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.30.7"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Request body exceeded maximum buffer size threshold",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      },
+      {
+        "_raw": "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_COOKIE|Cookie Consistency Violation|5|rt=Feb 03 2025 11:39:47 src=172.16.8.33 spt=39012 dst=172.16.8.100 dpt=443 request=https://app.internal.local/dashboard cs1=vsvr_web02 cs1Label=vserver cs2=LOG cs2Label=action msg=Cookie value modified outside of expected session parameters",
+        "_time": 1788257128.952,
+        "cef_version": "0",
+        "vendor": "Citrix",
+        "product": "NetScaler",
+        "product_version": "13.1-49.15",
+        "signature_id": "APPFW_COOKIE",
+        "name": "Cookie Consistency Violation",
+        "severity": "Informational",
+        "__cef_payload": "rt=Feb 03 2025 11:39:47 src=172.16.8.33 spt=39012 dst=172.16.8.100 dpt=443 request=https://app.internal.local/dashboard cs1=vsvr_web02 cs1Label=vserver cs2=LOG cs2Label=action msg=Cookie value modified outside of expected session parameters",
+        "rt": "Feb 03 2025 11:39:47",
+        "src": "172.16.8.33",
+        "spt": "39012",
+        "dst": "172.16.8.100",
+        "dpt": "443",
+        "request": "https://app.internal.local/dashboard",
+        "cs1": "vsvr_web02",
+        "cs1Label": "vserver",
+        "cs2": "LOG",
+        "cs2Label": "action",
+        "msg": "Cookie value modified outside of expected session parameters",
+        "src_port": "39012",
+        "dest_port": "443",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257128952,
+        "src_endpoint": {
+          "ip": "172.16.8.33"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.8.100"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw cef",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Cookie value modified outside of expected session parameters",
+        "sourcetype": "citrix:netscaler:appfw:cef"
+      }
+    ],
+    "sampleKeys": [
+      "src",
+      "spt",
+      "dst",
+      "dpt",
+      "requestClientApplication",
+      "cs1",
+      "cs1Label",
+      "request",
+      "cs2",
+      "cs2Label",
+      "cn1",
+      "cn1Label",
+      "msg",
+      "duser",
+      "outcome"
+    ],
+    "sampleRaw": [
+      "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_SQL|SQL Injection Violation|8|rt=Feb 03 2025 14:23:11 src=203.0.113.45 spt=51422 dst=10.20.30.5 dpt=443 requestClientApplication=Mozilla/5.0 cs1=vsvr01_ssl cs1Label=vserver request=https://portal.example.com/login.php?id=1' OR '1'='1 cs2=BLOCK cs2Label=action cn1=1002 cn1Label=transactionID msg=SQL keyword check failed for field id",
+      "CEF:0|Citrix|NetScaler|13.0-88.12|APPFW_XSS|Cross-Site Scripting Violation|7|rt=Feb 03 2025 09:11:02 src=198.51.100.22 spt=48912 dst=172.16.5.10 dpt=80 request=http://app.internal.local/search?q=<script>alert(1)</script> cs1=vsvr_web01 cs1Label=vserver cs2=BLOCK cs2Label=action msg=XSS tag <script> detected in query parameter q",
+      "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_STARTURL|Start URL Violation|4|rt=Feb 03 2025 03:44:56 src=10.45.2.19 spt=59211 dst=10.20.30.6 dpt=443 request=https://portal.example.com/admin/../../etc/passwd cs1=vsvr01_ssl cs1Label=vserver cs2=BLOCK cs2Label=action msg=Requested URL does not match configured start URL list",
+      "CEF:0|Citrix|NetScaler|12.1-55.13|APPFW_FIELDFORMAT|Field Format Violation|3|rt=Feb 03 2025 16:02:33 src=192.168.10.44 spt=33210 dst=192.168.10.100 dpt=8080 request=http://intranet.corp/update?zip=ABCDE cs1=vsvr_hr cs1Label=vserver cs2=LOG cs2Label=action msg=Field zip failed format check regex",
+      "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_LOGIN|Authentication Success|2|rt=Feb 03 2025 05:15:44 src=10.10.10.12 spt=44011 dst=10.20.30.5 dpt=443 duser=jsmith outcome=success msg=User authenticated successfully via LDAP",
+      "CEF:0|Citrix|NetScaler|13.0-88.12|APPFW_LOGIN|Authentication Failure|6|rt=Feb 03 2025 05:16:02 src=203.0.113.77 spt=41022 dst=10.20.30.5 dpt=443 duser=admin outcome=failure msg=Invalid credentials supplied - attempt 4 of 5",
+      "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_BUFOVERFLOW|Buffer Overflow Violation|9|rt=Feb 03 2025 22:10:19 src=45.33.32.156 spt=52001 dst=10.20.30.7 dpt=443 request=https://api.example.com/upload cs1=vsvr_api cs1Label=vserver cs2=BLOCK cs2Label=action cn1=8192 cn1Label=payloadSize msg=Request body exceeded maximum buffer size threshold",
+      "CEF:0|Citrix|NetScaler|13.1-49.15|APPFW_COOKIE|Cookie Consistency Violation|5|rt=Feb 03 2025 11:39:47 src=172.16.8.33 spt=39012 dst=172.16.8.100 dpt=443 request=https://app.internal.local/dashboard cs1=vsvr_web02 cs1Label=vserver cs2=LOG cs2Label=action msg=Cookie value modified outside of expected session parameters"
+    ],
+    "sourcetype": "citrix:netscaler:appfw:cef"
+  }
+}
