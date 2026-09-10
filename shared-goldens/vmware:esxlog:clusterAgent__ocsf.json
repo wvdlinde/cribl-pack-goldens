@@ -1,0 +1,606 @@
+{
+  "key": "vmware:esxlog:clusterAgent::ocsf",
+  "sourcetype": "vmware:esxlog:clusterAgent",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:29.065Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Clusteragent:\\s+\\[(?<thread_id>\\S+)\\s+(?<severity>\\w+)\\s+'(?<component>[^']+)'\\]\\s+(?<message>.+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base ESXi Clusteragent log line into timestamp, host, thread id, severity, component and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('vCenter')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/vCenter\\s+(?<src_ip>\\d{1,3}(?:\\.\\d{1,3}){3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract vCenter source IP from configuration update messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('master')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/master(?: node)?\\s+(?<dst_ip>[0-9a-fA-F:.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract master node destination IP and port from heartbeat/SSL/reconnect messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('Authentication failure')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Authentication failure for user\\s+(?<user>\\S+)\\s+from\\s+(?<src_ip>[\\d.]+):/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and source IP from authentication failure messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.includes('authenticated successfully')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/User\\s+(?<user>\\S+)\\s+authenticated successfully/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user from successful authentication messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.includes('Authentication failure') ? 'blocked' : message.includes('authenticated successfully') ? 'allowed' : message.includes('Network partition') ? 'isolated' : message.includes('elected') || message.includes('Master election') ? 'elected' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "message.includes('SSL') ? 'ssl' : dst_port ? 'tcp' : null"
+          }
+        ]
+      },
+      "description": "Normalize action classification and protocol based on message content and severity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog clusteragent'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:clusterAgent'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogClusterAgent_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-30T02:14:07.331Z esxi-prod01.corp.local Clusteragent: [7FA23FFE9700 info 'ClusterAgent'] HA agent on esxi-prod01.corp.local received configuration update from vCenter 10.20.4.15",
+        "_time": 1717035247.331,
+        "timestamp": "2024-05-30T02:14:07.331Z",
+        "dst_host": "esxi-prod01.corp.local",
+        "thread_id": "7FA23FFE9700",
+        "severity": "Informational",
+        "component": "ClusterAgent",
+        "message": "HA agent on esxi-prod01.corp.local received configuration update from vCenter 10.20.4.15",
+        "src_ip": "10.20.4.15",
+        "action": "info",
+        "log_time": "2024-05-30T02:14:07.331Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717035247331,
+        "src_endpoint": {
+          "ip": "10.20.4.15"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T02:47:52.918Z esxi-prod02.corp.local Clusteragent: [7FA23FFE9701 warning 'ClusterAgent.FDM'] Lost network heartbeat to peer host 10.20.4.22, initiating isolation check",
+        "_time": 1717037272.918,
+        "timestamp": "2024-05-30T02:47:52.918Z",
+        "dst_host": "esxi-prod02.corp.local",
+        "thread_id": "7FA23FFE9701",
+        "severity": "Informational",
+        "component": "ClusterAgent.FDM",
+        "message": "Lost network heartbeat to peer host 10.20.4.22, initiating isolation check",
+        "action": "info",
+        "log_time": "2024-05-30T02:47:52.918Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717037272918,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T03:11:19.004Z esxi-dr03.branch.local Clusteragent: [7FA24001A200 error 'ClusterAgent.FDM'] Failed to establish SSL connection to master node 172.16.8.9:8182, retrying in 5s",
+        "_time": 1717038679.004,
+        "timestamp": "2024-05-30T03:11:19.004Z",
+        "dst_host": "esxi-dr03.branch.local",
+        "thread_id": "7FA24001A200",
+        "severity": "Informational",
+        "component": "ClusterAgent.FDM",
+        "message": "Failed to establish SSL connection to master node 172.16.8.9:8182, retrying in 5s",
+        "dst_ip": "172.16.8.9",
+        "dst_port": "8182",
+        "action": "info",
+        "protocol": "ssl",
+        "dest_ip": "172.16.8.9",
+        "dest_port": "8182",
+        "transport": "ssl",
+        "log_time": "2024-05-30T03:11:19.004Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717038679004,
+        "dst_endpoint": {
+          "ip": "172.16.8.9"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T03:12:44.552Z esxi-dr03.branch.local Clusteragent: [7FA24001A200 info 'ClusterAgent.FDM'] Reconnected to master node 172.16.8.9:8182 after 1 retry",
+        "_time": 1717038764.552,
+        "timestamp": "2024-05-30T03:12:44.552Z",
+        "dst_host": "esxi-dr03.branch.local",
+        "thread_id": "7FA24001A200",
+        "severity": "Informational",
+        "component": "ClusterAgent.FDM",
+        "message": "Reconnected to master node 172.16.8.9:8182 after 1 retry",
+        "dst_ip": "172.16.8.9",
+        "dst_port": "8182",
+        "action": "info",
+        "protocol": "tcp",
+        "dest_ip": "172.16.8.9",
+        "dest_port": "8182",
+        "transport": "tcp",
+        "log_time": "2024-05-30T03:12:44.552Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717038764552,
+        "dst_endpoint": {
+          "ip": "172.16.8.9"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T04:02:31.775Z esxi-prod05.corp.local Clusteragent: [7FA23FFEBB10 info 'ClusterAgent.Election'] Host elected as new HA master for cluster ProdCluster01",
+        "_time": 1717041751.775,
+        "timestamp": "2024-05-30T04:02:31.775Z",
+        "dst_host": "esxi-prod05.corp.local",
+        "thread_id": "7FA23FFEBB10",
+        "severity": "Informational",
+        "component": "ClusterAgent.Election",
+        "message": "Host elected as new HA master for cluster ProdCluster01",
+        "action": "elected",
+        "log_time": "2024-05-30T04:02:31.775Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717041751775,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T04:33:09.120Z esxi-prod05.corp.local Clusteragent: [7FA23FFEBB10 warning 'ClusterAgent.Datastore'] Datastore heartbeat datastore1 (uuid 5f2a1b3c-...) not accessible from 3 of 8 hosts",
+        "_time": 1717043589.12,
+        "timestamp": "2024-05-30T04:33:09.120Z",
+        "dst_host": "esxi-prod05.corp.local",
+        "thread_id": "7FA23FFEBB10",
+        "severity": "Informational",
+        "component": "ClusterAgent.Datastore",
+        "message": "Datastore heartbeat datastore1 (uuid 5f2a1b3c-...) not accessible from 3 of 8 hosts",
+        "action": "info",
+        "log_time": "2024-05-30T04:33:09.120Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717043589120,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T05:19:47.660Z esxi-test09.qa.local Clusteragent: [7FA24003C400 info 'ClusterAgent'] User root authenticated successfully via vpxa on behalf of vCenter service account",
+        "_time": 1717046387.66,
+        "timestamp": "2024-05-30T05:19:47.660Z",
+        "dst_host": "esxi-test09.qa.local",
+        "thread_id": "7FA24003C400",
+        "severity": "Informational",
+        "component": "ClusterAgent",
+        "message": "User root authenticated successfully via vpxa on behalf of vCenter service account",
+        "user": "root",
+        "action": "allowed",
+        "log_time": "2024-05-30T05:19:47.660Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717046387660,
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      },
+      {
+        "_raw": "2024-05-30T05:52:03.291Z esxi-test09.qa.local Clusteragent: [7FA24003C400 error 'ClusterAgent.Security'] Authentication failure for user svc_ha_agent from 192.168.55.44: invalid credentials (attempt 3)",
+        "_time": 1717048323.291,
+        "timestamp": "2024-05-30T05:52:03.291Z",
+        "dst_host": "esxi-test09.qa.local",
+        "thread_id": "7FA24003C400",
+        "severity": "Informational",
+        "component": "ClusterAgent.Security",
+        "message": "Authentication failure for user svc_ha_agent from 192.168.55.44: invalid credentials (attempt 3)",
+        "user": "svc_ha_agent",
+        "src_ip": "192.168.55.44",
+        "action": "blocked",
+        "log_time": "2024-05-30T05:52:03.291Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717048323291,
+        "src_endpoint": {
+          "ip": "192.168.55.44"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_ha_agent"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog clusteragent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:clusterAgent"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-05-30T02:14:07.331Z esxi-prod01.corp.local Clusteragent: [7FA23FFE9700 info 'ClusterAgent'] HA agent on esxi-prod01.corp.local received configuration update from vCenter 10.20.4.15",
+      "2024-05-30T02:47:52.918Z esxi-prod02.corp.local Clusteragent: [7FA23FFE9701 warning 'ClusterAgent.FDM'] Lost network heartbeat to peer host 10.20.4.22, initiating isolation check",
+      "2024-05-30T03:11:19.004Z esxi-dr03.branch.local Clusteragent: [7FA24001A200 error 'ClusterAgent.FDM'] Failed to establish SSL connection to master node 172.16.8.9:8182, retrying in 5s",
+      "2024-05-30T03:12:44.552Z esxi-dr03.branch.local Clusteragent: [7FA24001A200 info 'ClusterAgent.FDM'] Reconnected to master node 172.16.8.9:8182 after 1 retry",
+      "2024-05-30T04:02:31.775Z esxi-prod05.corp.local Clusteragent: [7FA23FFEBB10 info 'ClusterAgent.Election'] Host elected as new HA master for cluster ProdCluster01",
+      "2024-05-30T04:33:09.120Z esxi-prod05.corp.local Clusteragent: [7FA23FFEBB10 warning 'ClusterAgent.Datastore'] Datastore heartbeat datastore1 (uuid 5f2a1b3c-...) not accessible from 3 of 8 hosts",
+      "2024-05-30T05:19:47.660Z esxi-test09.qa.local Clusteragent: [7FA24003C400 info 'ClusterAgent'] User root authenticated successfully via vpxa on behalf of vCenter service account",
+      "2024-05-30T05:52:03.291Z esxi-test09.qa.local Clusteragent: [7FA24003C400 error 'ClusterAgent.Security'] Authentication failure for user svc_ha_agent from 192.168.55.44: invalid credentials (attempt 3)"
+    ],
+    "sourcetype": "vmware:esxlog:clusterAgent"
+  }
+}
