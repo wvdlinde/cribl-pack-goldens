@@ -16875,6 +16875,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco:ios::ocsf",
+      "sourcetype": "cisco:ios",
+      "dest_format": "ocsf",
+      "score": 97,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:59.257Z",
+      "path": "shared-goldens/cisco:ios__ocsf.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
