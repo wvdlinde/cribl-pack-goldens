@@ -1,0 +1,638 @@
+{
+  "key": "vmware:esxlog:envoy::ocsf",
+  "sourcetype": "vmware:esxlog:envoy",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:33.760Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Envoy:\\s+\\[Originator@\\d+\\s+sub=(?<sub>\\w+)\\]\\s+(?:(?<severity>Info|Warning|Error):\\s+)?(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base Envoy log structure: timestamp, host, sub-component, optional severity, and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Accepted TCP connection')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Accepted TCP connection from (?<__src_addr>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<src_port>\\d+) to (?<__dst_addr>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract src/dst address:port for accepted TCP connections"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Request')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Request (?<http_method>\\w+) (?<url>\\S+) from (?<__src_addr>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<src_port>\\d+) completed with status (?<status>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract HTTP request method, url, client address:port and response status"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.startsWith('Authentication failed')",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Authentication failed for user (?<user>\\S+) from (?<__src_addr>\\[[0-9a-fA-F:]+\\]|[\\d.]+):(?<src_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and client address:port for failed authentication events"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "__src_addr ? __src_addr.replace(/[\\[\\]]/g,'') : undefined"
+          },
+          {
+            "name": "dst_ip",
+            "value": "__dst_addr ? __dst_addr.replace(/[\\[\\]]/g,'') : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message && message.startsWith('Accepted') ? 'accepted' : message && message.startsWith('Authentication failed') ? 'denied' : message && message.startsWith('Request') ? 'completed' : severity === 'Error' ? 'error' : severity === 'Warning' ? 'warning' : 'info'"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && dst_ip ? 'inbound' : undefined"
+          }
+        ],
+        "remove": [
+          "__src_addr",
+          "__dst_addr"
+        ]
+      },
+      "description": "Normalize IP fields (strip IPv6 brackets), set protocol/action/severity/direction, and clean up scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog envoy'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:envoy'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogEnvoy_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14T03:12:07.441Z esxi01.corp.local Envoy: [Originator@6876 sub=Default] Accepted TCP connection from 10.20.4.55:54211 to 127.0.0.1:8307",
+        "_time": 1715656327.441,
+        "timestamp": "2024-05-14T03:12:07.441Z",
+        "dst_host": "esxi01.corp.local",
+        "sub": "Default",
+        "severity": "Informational",
+        "message": "Accepted TCP connection from 10.20.4.55:54211 to 127.0.0.1:8307",
+        "src_port": "54211",
+        "dst_port": "8307",
+        "src_ip": "10.20.4.55",
+        "dst_ip": "127.0.0.1",
+        "protocol": "tcp",
+        "action": "accepted",
+        "direction": "inbound",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "8307",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:12:07.441Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656327441,
+        "src_endpoint": {
+          "ip": "10.20.4.55"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:14:22.019Z esxi02.corp.local Envoy: [Originator@6876 sub=Http] Info: Request GET /sdk from 192.168.10.44:51322 completed with status 200",
+        "_time": 1715656462.019,
+        "timestamp": "2024-05-14T03:14:22.019Z",
+        "dst_host": "esxi02.corp.local",
+        "sub": "Http",
+        "severity": "Informational",
+        "message": "Request GET /sdk from 192.168.10.44:51322 completed with status 200",
+        "http_method": "GET",
+        "url": "/sdk",
+        "src_port": "51322",
+        "status": "200",
+        "src_ip": "192.168.10.44",
+        "protocol": "tcp",
+        "vendor_severity": "Info",
+        "action": "completed",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:14:22.019Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656462019,
+        "src_endpoint": {
+          "ip": "192.168.10.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:15:01.883Z esxi01.corp.local Envoy: [Originator@6876 sub=Proxy] Warning: TLS handshake failed with peer 203.0.113.77:44890: unknown protocol",
+        "_time": 1715656501.883,
+        "timestamp": "2024-05-14T03:15:01.883Z",
+        "dst_host": "esxi01.corp.local",
+        "sub": "Proxy",
+        "severity": "Informational",
+        "message": "TLS handshake failed with peer 203.0.113.77:44890: unknown protocol",
+        "protocol": "tcp",
+        "vendor_severity": "Warning",
+        "action": "info",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:15:01.883Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656501883,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:16:45.220Z esxi03.corp.local Envoy: [Originator@6876 sub=Default] Error: Failed to bind to port 902, address already in use",
+        "_time": 1715656605.22,
+        "timestamp": "2024-05-14T03:16:45.220Z",
+        "dst_host": "esxi03.corp.local",
+        "sub": "Default",
+        "severity": "Informational",
+        "message": "Failed to bind to port 902, address already in use",
+        "protocol": "tcp",
+        "vendor_severity": "Error",
+        "action": "info",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:16:45.220Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656605220,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:18:09.552Z esxi01.corp.local Envoy: [Originator@6876 sub=Http] Info: Request POST /sdk/vim25 from 10.20.4.60:22981 completed with status 401",
+        "_time": 1715656689.552,
+        "timestamp": "2024-05-14T03:18:09.552Z",
+        "dst_host": "esxi01.corp.local",
+        "sub": "Http",
+        "severity": "Informational",
+        "message": "Request POST /sdk/vim25 from 10.20.4.60:22981 completed with status 401",
+        "http_method": "POST",
+        "url": "/sdk/vim25",
+        "src_port": "22981",
+        "status": "401",
+        "src_ip": "10.20.4.60",
+        "protocol": "tcp",
+        "vendor_severity": "Info",
+        "action": "completed",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:18:09.552Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656689552,
+        "src_endpoint": {
+          "ip": "10.20.4.60"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:20:33.771Z esxi02.corp.local Envoy: [Originator@6876 sub=Default] Accepted TCP connection from 172.16.5.10:60122 to 127.0.0.1:443",
+        "_time": 1715656833.771,
+        "timestamp": "2024-05-14T03:20:33.771Z",
+        "dst_host": "esxi02.corp.local",
+        "sub": "Default",
+        "severity": "Informational",
+        "message": "Accepted TCP connection from 172.16.5.10:60122 to 127.0.0.1:443",
+        "src_port": "60122",
+        "dst_port": "443",
+        "src_ip": "172.16.5.10",
+        "dst_ip": "127.0.0.1",
+        "protocol": "tcp",
+        "action": "accepted",
+        "direction": "inbound",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "443",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:20:33.771Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656833771,
+        "src_endpoint": {
+          "ip": "172.16.5.10"
+        },
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:21:17.994Z esxi01.corp.local Envoy: [Originator@6876 sub=Proxy] Info: Closed idle connection from 198.51.100.32:33456 after 300s",
+        "_time": 1715656877.994,
+        "timestamp": "2024-05-14T03:21:17.994Z",
+        "dst_host": "esxi01.corp.local",
+        "sub": "Proxy",
+        "severity": "Informational",
+        "message": "Closed idle connection from 198.51.100.32:33456 after 300s",
+        "protocol": "tcp",
+        "vendor_severity": "Info",
+        "action": "info",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:21:17.994Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656877994,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      },
+      {
+        "_raw": "2024-05-14T03:23:44.108Z esxi04.corp.local Envoy: [Originator@6876 sub=Http] Warning: Rate limit exceeded for client 45.33.19.201, throttling requests",
+        "_time": 1715657024.108,
+        "timestamp": "2024-05-14T03:23:44.108Z",
+        "dst_host": "esxi04.corp.local",
+        "sub": "Http",
+        "severity": "Informational",
+        "message": "Rate limit exceeded for client 45.33.19.201, throttling requests",
+        "protocol": "tcp",
+        "vendor_severity": "Warning",
+        "action": "info",
+        "transport": "tcp",
+        "log_time": "2024-05-14T03:23:44.108Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715657024108,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog envoy",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:envoy"
+      }
+    ],
+    "sampleKeys": [
+      "sub"
+    ],
+    "sampleRaw": [
+      "2024-05-14T03:12:07.441Z esxi01.corp.local Envoy: [Originator@6876 sub=Default] Accepted TCP connection from 10.20.4.55:54211 to 127.0.0.1:8307",
+      "2024-05-14T03:14:22.019Z esxi02.corp.local Envoy: [Originator@6876 sub=Http] Info: Request GET /sdk from 192.168.10.44:51322 completed with status 200",
+      "2024-05-14T03:15:01.883Z esxi01.corp.local Envoy: [Originator@6876 sub=Proxy] Warning: TLS handshake failed with peer 203.0.113.77:44890: unknown protocol",
+      "2024-05-14T03:16:45.220Z esxi03.corp.local Envoy: [Originator@6876 sub=Default] Error: Failed to bind to port 902, address already in use",
+      "2024-05-14T03:18:09.552Z esxi01.corp.local Envoy: [Originator@6876 sub=Http] Info: Request POST /sdk/vim25 from 10.20.4.60:22981 completed with status 401",
+      "2024-05-14T03:20:33.771Z esxi02.corp.local Envoy: [Originator@6876 sub=Default] Accepted TCP connection from 172.16.5.10:60122 to 127.0.0.1:443",
+      "2024-05-14T03:21:17.994Z esxi01.corp.local Envoy: [Originator@6876 sub=Proxy] Info: Closed idle connection from 198.51.100.32:33456 after 300s",
+      "2024-05-14T03:23:44.108Z esxi04.corp.local Envoy: [Originator@6876 sub=Http] Warning: Rate limit exceeded for client 45.33.19.201, throttling requests"
+    ],
+    "sourcetype": "vmware:esxlog:envoy"
+  }
+}
