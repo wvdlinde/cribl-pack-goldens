@@ -16740,6 +16740,21 @@
         "score": 84,
         "band": "warn"
       }
+    },
+    {
+      "key": "access_log::ocsf",
+      "sourcetype": "access_log",
+      "dest_format": "ocsf",
+      "score": 89,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:14.130Z",
+      "path": "shared-goldens/access_log__ocsf.json",
+      "report": {
+        "score": 89,
+        "band": "good"
+      }
     }
   ]
 }
