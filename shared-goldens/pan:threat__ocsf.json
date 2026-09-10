@@ -1,0 +1,984 @@
+{
+  "key": "pan:threat::ocsf",
+  "sourcetype": "pan:threat",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:56.556Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial_number",
+          "type",
+          "threat_content_type",
+          "future_use2",
+          "generated_time",
+          "src_ip",
+          "dest_ip",
+          "nat_src_ip",
+          "nat_dest_ip",
+          "rule_name",
+          "src_user",
+          "dest_user",
+          "application",
+          "virtual_system",
+          "src_zone",
+          "dest_zone",
+          "inbound_if",
+          "outbound_if",
+          "log_action",
+          "future_use3",
+          "session_id",
+          "repeat_count",
+          "src_port",
+          "dest_port",
+          "nat_src_port",
+          "nat_dest_port",
+          "flags",
+          "protocol",
+          "action",
+          "url_filename",
+          "threat_id",
+          "category",
+          "severity",
+          "direction",
+          "sequence_number",
+          "action_flags",
+          "src_location",
+          "dest_location",
+          "future_use4",
+          "content_type",
+          "pcap_id",
+          "filedigest",
+          "cloud",
+          "url_idx",
+          "user_agent",
+          "file_type",
+          "xff",
+          "referer",
+          "sender",
+          "subject",
+          "recipient"
+        ]
+      },
+      "description": "Parse PAN-OS CSV threat log with named columns"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "product",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "version",
+            "value": "'10.x'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Network Activity (4001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '') || ((src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '') || ((dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "((((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '')) ? {} : undefined"
+          },
+          {
+            "name": "traffic",
+            "value": "(((bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '') || ((bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '' ? Number(src_port || srcport || spt) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '' ? Number(dest_port || dst_port || dstport || dpt) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '' ? ((transport || protocol || proto || '').toString().toLowerCase() || undefined) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '' ? Number(bytes_in || rcvdbyte || in_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '' ? Number(bytes_out || sentbyte || out_bytes) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'PAN-OS'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Palo Alto Networks'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'10.x'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'pan:threat'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "PanThreat_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28191,1,52984,443,37679,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7726,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28191",
+        "repeat_count": "1",
+        "src_port": "52984",
+        "dest_port": "443",
+        "nat_src_port": "37679",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7726",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52984
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28219,1,52983,443,28249,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7727,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28219",
+        "repeat_count": "1",
+        "src_port": "52983",
+        "dest_port": "443",
+        "nat_src_port": "28249",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7727",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52983
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,27723,1,52986,443,63898,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7728,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "27723",
+        "repeat_count": "1",
+        "src_port": "52986",
+        "dest_port": "443",
+        "nat_src_port": "63898",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7728",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52986
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28172,1,52985,443,7515,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7729,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28172",
+        "repeat_count": "1",
+        "src_port": "52985",
+        "dest_port": "443",
+        "nat_src_port": "7515",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7729",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52985
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28151,1,52987,443,3225,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7730,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28151",
+        "repeat_count": "1",
+        "src_port": "52987",
+        "dest_port": "443",
+        "nat_src_port": "3225",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7730",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52987
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28076,1,52988,443,60449,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7731,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28076",
+        "repeat_count": "1",
+        "src_port": "52988",
+        "dest_port": "443",
+        "nat_src_port": "60449",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7731",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52988
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28173,1,52990,443,60559,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7732,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28173",
+        "repeat_count": "1",
+        "src_port": "52990",
+        "dest_port": "443",
+        "nat_src_port": "60559",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7732",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52990
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      },
+      {
+        "_raw": "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28186,1,52989,443,47414,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7733,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+        "_time": 1543596276,
+        "future_use1": "Nov 30 16:44:36 PA-220 1",
+        "receive_time": "2018/11/30 16:44:36",
+        "serial_number": "012801096514",
+        "type": "THREAT",
+        "threat_content_type": "url",
+        "future_use2": "2049",
+        "generated_time": "2018/11/30 16:44:36",
+        "src_ip": "192.168.15.224",
+        "dest_ip": "175.16.199.1",
+        "nat_src_ip": "192.168.1.63",
+        "nat_dest_ip": "175.16.199.1",
+        "rule_name": "new_outbound_from_trust",
+        "application": "ssl",
+        "virtual_system": "vsys1",
+        "src_zone": "trust",
+        "dest_zone": "untrust",
+        "inbound_if": "ethernet1/2",
+        "outbound_if": "ethernet1/1",
+        "log_action": "send_to_mac",
+        "future_use3": "2018/11/30 16:44:36",
+        "session_id": "28186",
+        "repeat_count": "1",
+        "src_port": "52989",
+        "dest_port": "443",
+        "nat_src_port": "47414",
+        "nat_dest_port": "443",
+        "flags": "0x403000",
+        "protocol": "tcp",
+        "action": "block-url",
+        "url_filename": "consent.cmp.oath.com/",
+        "threat_id": "(9999)",
+        "category": "business-and-economy",
+        "severity": "Informational",
+        "direction": "client-to-server",
+        "sequence_number": "7733",
+        "action_flags": "0x2000000000000000",
+        "src_location": "192.168.0.0-192.168.255.255",
+        "dest_location": "United States",
+        "future_use4": "0",
+        "pcap_id": "0",
+        "url_idx": "0",
+        "transport": "tcp",
+        "log_time": "2018/11/30 16:44:36",
+        "vendor": "Palo Alto Networks",
+        "product": "PAN-OS",
+        "version": "10.x",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788254996949,
+        "src_endpoint": {
+          "ip": "192.168.15.224",
+          "port": 52989
+        },
+        "dst_endpoint": {
+          "ip": "175.16.199.1",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "metadata": {
+          "product": {
+            "name": "PAN-OS",
+            "vendor_name": "Palo Alto Networks",
+            "version": "10.x"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:threat"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28191,1,52984,443,37679,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7726,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28219,1,52983,443,28249,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7727,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,27723,1,52986,443,63898,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7728,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28172,1,52985,443,7515,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7729,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28151,1,52987,443,3225,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7730,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28076,1,52988,443,60449,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7731,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28173,1,52990,443,60559,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7732,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,",
+      "Nov 30 16:44:36 PA-220 1,2018/11/30 16:44:36,012801096514,THREAT,url,2049,2018/11/30 16:44:36,192.168.15.224,175.16.199.1,192.168.1.63,175.16.199.1,new_outbound_from_trust,,,ssl,vsys1,trust,untrust,ethernet1/2,ethernet1/1,send_to_mac,2018/11/30 16:44:36,28186,1,52989,443,47414,443,0x403000,tcp,block-url,\"consent.cmp.oath.com/\",(9999),business-and-economy,informational,client-to-server,7733,0x2000000000000000,192.168.0.0-192.168.255.255,United States,0,,0,,,0,,,,,,,,0,0,0,0,0,,PA-220,,,,,0,,0,,N/A,unknown,AppThreat-0-0,0x0,0,4294967295,"
+    ],
+    "sourcetype": "pan:threat"
+  }
+}
