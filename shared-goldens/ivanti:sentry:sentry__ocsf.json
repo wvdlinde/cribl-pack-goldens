@@ -1,0 +1,674 @@
+{
+  "key": "ivanti:sentry:sentry::ocsf",
+  "sourcetype": "ivanti:sentry:sentry",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:25.305Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<sentry_host>\\S+)\\s+Sentry\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+)\\s+\\[(?<module>\\w+)\\]\\s+(?<message>[^=]+?)\\s*(?<__kvp_string>\\S+=.*)?$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse Sentry syslog-style header: timestamp, host, pid, severity, module, message, and trailing key=value string"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "__kvp_string",
+        "cleanFields": true
+      },
+      "description": "Extract embedded key=value pairs (user, deviceId, clientIP, backend, host, port, action, reason, etc.) from the scratch kvp string"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "clientIP ? clientIP.replace(/^\\[|\\]$/g,'') : undefined"
+          },
+          {
+            "name": "dst_host",
+            "value": "backend ? backend : (host ? host : (serverName ? serverName : undefined))"
+          },
+          {
+            "name": "dst_port",
+            "value": "port ? Number(port) : undefined"
+          }
+        ],
+        "remove": [
+          "__kvp_string",
+          "clientIP",
+          "host",
+          "port",
+          "backend",
+          "serverName"
+        ]
+      },
+      "description": "Normalize network fields: strip IPv6 brackets from clientIP into src_ip, derive dst_host/dst_port, and clean up scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? (action.match(/^(BLOCK|BLOCKED|REJECT)$/) ? 'blocked' : (action.match(/^THROTTLE$/) ? 'throttled' : (action.match(/^FLAGGED$/) ? 'flagged' : action.toLowerCase()))) : (result === 'compliant' ? 'allowed' : undefined)"
+          },
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ],
+        "remove": []
+      },
+      "description": "Normalize action values into standard categories and set event time from parsed timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'ivanti sentry sentry'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti:sentry:sentry'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "IvantiSentrySentry_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14T08:12:33.102Z sentry-prod-01 Sentry[4521]: INFO [ActiveSync] Device authentication successful user=jsmith@corp.com deviceId=A1B2C3D4E5 clientIP=192.168.14.22 backend=exch01.corp.local status=200",
+        "_time": 1715674353.102,
+        "timestamp": "2024-05-14T08:12:33.102Z",
+        "sentry_host": "sentry-prod-01",
+        "pid": "4521",
+        "severity": "Informational",
+        "module": "ActiveSync",
+        "message": "Device authentication successful",
+        "user": "jsmith@corp.com",
+        "deviceId": "A1B2C3D4E5",
+        "status": "200",
+        "src_ip": "192.168.14.22",
+        "dst_host": "exch01.corp.local",
+        "log_time": "2024-05-14T08:12:33.102Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674353102,
+        "src_endpoint": {
+          "ip": "192.168.14.22"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith@corp.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:14:07.556Z sentry-prod-01 Sentry[4521]: WARN [ActiveSync] Device authentication failed user=mrodriguez@corp.com deviceId=F9E8D7C6B5 clientIP=203.0.113.44 reason=\"invalid_credentials\" attempt=3",
+        "_time": 1715674447.556,
+        "timestamp": "2024-05-14T08:14:07.556Z",
+        "sentry_host": "sentry-prod-01",
+        "pid": "4521",
+        "severity": "Informational",
+        "module": "ActiveSync",
+        "message": "Device authentication failed",
+        "user": "mrodriguez@corp.com",
+        "deviceId": "F9E8D7C6B5",
+        "reason": "invalid_credentials",
+        "attempt": "3",
+        "src_ip": "203.0.113.44",
+        "log_time": "2024-05-14T08:14:07.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674447556,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "actor": {
+          "user": {
+            "name": "mrodriguez@corp.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:19:45.891Z sentry-prod-02 Sentry[7810]: ERROR [Gatekeeper] Certificate validation failed user=tlee@corp.com deviceId=112233AABBCC clientIP=198.51.100.77 cert_serial=0x4F2A91 reason=\"certificate_expired\"",
+        "_time": 1715674785.891,
+        "timestamp": "2024-05-14T08:19:45.891Z",
+        "sentry_host": "sentry-prod-02",
+        "pid": "7810",
+        "severity": "Informational",
+        "module": "Gatekeeper",
+        "message": "Certificate validation failed",
+        "user": "tlee@corp.com",
+        "deviceId": "112233AABBCC",
+        "cert_serial": "0x4F2A91",
+        "reason": "certificate_expired",
+        "src_ip": "198.51.100.77",
+        "log_time": "2024-05-14T08:19:45.891Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674785891,
+        "src_endpoint": {
+          "ip": "198.51.100.77"
+        },
+        "actor": {
+          "user": {
+            "name": "tlee@corp.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:22:11.203Z sentry-prod-01 Sentry[4521]: INFO [PolicyEngine] Compliance check passed user=achen@corp.com deviceId=7788CCDDEE clientIP=10.20.5.14 policy=\"corp_baseline_v3\" result=compliant",
+        "_time": 1715674931.203,
+        "timestamp": "2024-05-14T08:22:11.203Z",
+        "sentry_host": "sentry-prod-01",
+        "pid": "4521",
+        "severity": "Informational",
+        "module": "PolicyEngine",
+        "message": "Compliance check passed",
+        "user": "achen@corp.com",
+        "deviceId": "7788CCDDEE",
+        "policy": "corp_baseline_v3",
+        "result": "compliant",
+        "src_ip": "10.20.5.14",
+        "action": "allowed",
+        "log_time": "2024-05-14T08:22:11.203Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674931203,
+        "src_endpoint": {
+          "ip": "10.20.5.14"
+        },
+        "actor": {
+          "user": {
+            "name": "achen@corp.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:25:59.442Z sentry-prod-03 Sentry[9012]: CRITICAL [Backend] Connection to Exchange backend lost host=exch02.corp.local port=443 error=\"connection_timeout\" retry=1",
+        "_time": 1715675159.442,
+        "timestamp": "2024-05-14T08:25:59.442Z",
+        "sentry_host": "sentry-prod-03",
+        "pid": "9012",
+        "severity": "Informational",
+        "module": "Backend",
+        "message": "Connection to Exchange backend lost",
+        "error": "connection_timeout",
+        "retry": "1",
+        "dst_host": "exch02.corp.local",
+        "dst_port": 443,
+        "dest_port": 443,
+        "log_time": "2024-05-14T08:25:59.442Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675159442,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:31:02.678Z sentry-prod-01 Sentry[4521]: WARN [ActiveSync] Blocked device attempted access user=unknown deviceId= clientIP=185.220.101.33 reason=\"unregistered_device\" action=BLOCK",
+        "_time": 1715675462.678,
+        "timestamp": "2024-05-14T08:31:02.678Z",
+        "sentry_host": "sentry-prod-01",
+        "pid": "4521",
+        "severity": "Informational",
+        "module": "ActiveSync",
+        "message": "Blocked device attempted access",
+        "user": "unknown",
+        "deviceId": "",
+        "reason": "unregistered_device",
+        "action": "blocked",
+        "src_ip": "185.220.101.33",
+        "vendor_action": "BLOCK",
+        "log_time": "2024-05-14T08:31:02.678Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675462678,
+        "src_endpoint": {
+          "ip": "185.220.101.33"
+        },
+        "actor": {
+          "user": {
+            "name": "unknown"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:35:17.994Z sentry-prod-02 Sentry[7810]: INFO [TLS] Handshake completed cipher=TLS_AES_256_GCM_SHA384 clientIP=172.16.9.201 serverName=sentry.corp.local tlsVersion=1.3",
+        "_time": 1715675717.994,
+        "timestamp": "2024-05-14T08:35:17.994Z",
+        "sentry_host": "sentry-prod-02",
+        "pid": "7810",
+        "severity": "Informational",
+        "module": "TLS",
+        "message": "Handshake completed",
+        "cipher": "TLS_AES_256_GCM_SHA384",
+        "tlsVersion": "1.3",
+        "src_ip": "172.16.9.201",
+        "dst_host": "sentry.corp.local",
+        "log_time": "2024-05-14T08:35:17.994Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675717994,
+        "src_endpoint": {
+          "ip": "172.16.9.201"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      },
+      {
+        "_raw": "2024-05-14T08:41:38.115Z sentry-prod-01 Sentry[4521]: ERROR [ActiveSync] Throttling triggered user=bwilson@corp.com deviceId=00AA11BB22 clientIP=10.10.10.5 requestsPerMin=452 threshold=300 action=THROTTLE",
+        "_time": 1715676098.115,
+        "timestamp": "2024-05-14T08:41:38.115Z",
+        "sentry_host": "sentry-prod-01",
+        "pid": "4521",
+        "severity": "Informational",
+        "module": "ActiveSync",
+        "message": "Throttling triggered",
+        "user": "bwilson@corp.com",
+        "deviceId": "00AA11BB22",
+        "requestsPerMin": "452",
+        "threshold": "300",
+        "action": "throttled",
+        "src_ip": "10.10.10.5",
+        "vendor_action": "THROTTLE",
+        "log_time": "2024-05-14T08:41:38.115Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715676098115,
+        "src_endpoint": {
+          "ip": "10.10.10.5"
+        },
+        "actor": {
+          "user": {
+            "name": "bwilson@corp.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti sentry sentry",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti:sentry:sentry"
+      }
+    ],
+    "sampleKeys": [
+      "user",
+      "deviceId",
+      "clientIP",
+      "backend",
+      "status",
+      "reason",
+      "attempt",
+      "cert_serial",
+      "policy",
+      "result",
+      "host",
+      "port",
+      "error",
+      "retry",
+      "action",
+      "cipher",
+      "serverName",
+      "tlsVersion",
+      "requestsPerMin",
+      "threshold"
+    ],
+    "sampleRaw": [
+      "2024-05-14T08:12:33.102Z sentry-prod-01 Sentry[4521]: INFO [ActiveSync] Device authentication successful user=jsmith@corp.com deviceId=A1B2C3D4E5 clientIP=192.168.14.22 backend=exch01.corp.local status=200",
+      "2024-05-14T08:14:07.556Z sentry-prod-01 Sentry[4521]: WARN [ActiveSync] Device authentication failed user=mrodriguez@corp.com deviceId=F9E8D7C6B5 clientIP=203.0.113.44 reason=\"invalid_credentials\" attempt=3",
+      "2024-05-14T08:19:45.891Z sentry-prod-02 Sentry[7810]: ERROR [Gatekeeper] Certificate validation failed user=tlee@corp.com deviceId=112233AABBCC clientIP=198.51.100.77 cert_serial=0x4F2A91 reason=\"certificate_expired\"",
+      "2024-05-14T08:22:11.203Z sentry-prod-01 Sentry[4521]: INFO [PolicyEngine] Compliance check passed user=achen@corp.com deviceId=7788CCDDEE clientIP=10.20.5.14 policy=\"corp_baseline_v3\" result=compliant",
+      "2024-05-14T08:25:59.442Z sentry-prod-03 Sentry[9012]: CRITICAL [Backend] Connection to Exchange backend lost host=exch02.corp.local port=443 error=\"connection_timeout\" retry=1",
+      "2024-05-14T08:31:02.678Z sentry-prod-01 Sentry[4521]: WARN [ActiveSync] Blocked device attempted access user=unknown deviceId= clientIP=185.220.101.33 reason=\"unregistered_device\" action=BLOCK",
+      "2024-05-14T08:35:17.994Z sentry-prod-02 Sentry[7810]: INFO [TLS] Handshake completed cipher=TLS_AES_256_GCM_SHA384 clientIP=172.16.9.201 serverName=sentry.corp.local tlsVersion=1.3",
+      "2024-05-14T08:41:38.115Z sentry-prod-01 Sentry[4521]: ERROR [ActiveSync] Throttling triggered user=bwilson@corp.com deviceId=00AA11BB22 clientIP=10.10.10.5 requestsPerMin=452 threshold=300 action=THROTTLE"
+    ],
+    "sourcetype": "ivanti:sentry:sentry"
+  }
+}
