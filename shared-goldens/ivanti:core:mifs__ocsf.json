@@ -1,0 +1,718 @@
+{
+  "key": "ivanti:core:mifs::ocsf",
+  "sourcetype": "ivanti:core:mifs",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:21.286Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "_raw",
+        "cleanFields": true
+      },
+      "description": "Parse space-delimited key=value pairs (KVP) format from Ivanti Core MIFS logs"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          }
+        ]
+      },
+      "description": "Derive event time from extracted timestamp field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "source_ip ? source_ip : undefined"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dest_ip ? dest_ip : undefined"
+          }
+        ],
+        "remove": [
+          "source_ip",
+          "dest_ip"
+        ]
+      },
+      "description": "Normalize source/destination IP fields and remove originals to avoid duplicate field semantics"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "proto ? proto.toLowerCase() : undefined"
+          }
+        ],
+        "remove": [
+          "proto"
+        ]
+      },
+      "description": "Normalize protocol casing and remove original proto field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : (status ? status.toLowerCase() : undefined)"
+          }
+        ]
+      },
+      "description": "Normalize action field, falling back to status when action is absent"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'ivanti core mifs'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ivanti:core:mifs'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "IvantiCoreMifs_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "timestamp=2024-06-03T08:12:45.123Z severity=INFO host=EPM-CORE01 module=CoreServer event_id=AUTH-0001 user=jdoe action=login status=success source_ip=10.20.14.55 session_id=8a3f1c2e port=443 proto=HTTPS duration=0.842s",
+        "_time": 1717402365.123,
+        "timestamp": "2024-06-03T08:12:45.123Z",
+        "severity": "Informational",
+        "host": "EPM-CORE01",
+        "module": "CoreServer",
+        "event_id": "AUTH-0001",
+        "user": "jdoe",
+        "action": "login",
+        "status": "success",
+        "session_id": "8a3f1c2e",
+        "port": "443",
+        "duration": "0.842s",
+        "src_ip": "10.20.14.55",
+        "protocol": "https",
+        "vendor_action": "login",
+        "transport": "https",
+        "log_time": "2024-06-03T08:12:45.123Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717402365123,
+        "src_endpoint": {
+          "ip": "10.20.14.55"
+        },
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "device": {
+          "hostname": "EPM-CORE01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T08:12:45.123Z severity=INFO host=EPM-CORE01 module=CoreServer event_id=AUTH-0001 user=jdoe action=login status=success source_ip=10.20.14.55 session_id=8a3f1c2e port=443 proto=HTTPS duration=0.842s",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T09:03:12.884Z severity=WARN host=EPM-CORE01 module=AuthService event_id=AUTH-0002 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=3 port=443 proto=HTTPS",
+        "_time": 1717405392.884,
+        "timestamp": "2024-06-03T09:03:12.884Z",
+        "severity": "Informational",
+        "host": "EPM-CORE01",
+        "module": "AuthService",
+        "event_id": "AUTH-0002",
+        "user": "admin",
+        "action": "login",
+        "status": "failure",
+        "reason": "invalid_password",
+        "attempts": "3",
+        "port": "443",
+        "src_ip": "203.0.113.44",
+        "protocol": "https",
+        "vendor_action": "login",
+        "transport": "https",
+        "log_time": "2024-06-03T09:03:12.884Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717405392884,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "EPM-CORE01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T09:03:12.884Z severity=WARN host=EPM-CORE01 module=AuthService event_id=AUTH-0002 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=3 port=443 proto=HTTPS",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T09:04:01.221Z severity=ERROR host=EPM-CORE01 module=AuthService event_id=AUTH-0003 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=5 lockout=true blocked=true port=443 proto=HTTPS",
+        "_time": 1717405441.221,
+        "timestamp": "2024-06-03T09:04:01.221Z",
+        "severity": "Informational",
+        "host": "EPM-CORE01",
+        "module": "AuthService",
+        "event_id": "AUTH-0003",
+        "user": "admin",
+        "action": "login",
+        "status": "failure",
+        "reason": "invalid_password",
+        "attempts": "5",
+        "lockout": "true",
+        "blocked": "true",
+        "port": "443",
+        "src_ip": "203.0.113.44",
+        "protocol": "https",
+        "vendor_action": "login",
+        "transport": "https",
+        "log_time": "2024-06-03T09:04:01.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717405441221,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "EPM-CORE01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T09:04:01.221Z severity=ERROR host=EPM-CORE01 module=AuthService event_id=AUTH-0003 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=5 lockout=true blocked=true port=443 proto=HTTPS",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T09:15:33.001Z severity=INFO host=EPM-PATCH03 module=PatchManager event_id=PATCH-1102 patch_id=KB5027231 target_host=WKSTN-4471 status=deployed duration=142.3s bytes_transferred=48213908 queue_name=default_patch_q task_id=T-88213",
+        "_time": 1717406133.001,
+        "timestamp": "2024-06-03T09:15:33.001Z",
+        "severity": "Informational",
+        "host": "EPM-PATCH03",
+        "module": "PatchManager",
+        "event_id": "PATCH-1102",
+        "patch_id": "KB5027231",
+        "target_host": "WKSTN-4471",
+        "status": "deployed",
+        "duration": "142.3s",
+        "bytes_transferred": "48213908",
+        "queue_name": "default_patch_q",
+        "task_id": "T-88213",
+        "action": "deployed",
+        "log_time": "2024-06-03T09:15:33.001Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717406133001,
+        "device": {
+          "hostname": "EPM-PATCH03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T09:15:33.001Z severity=INFO host=EPM-PATCH03 module=PatchManager event_id=PATCH-1102 patch_id=KB5027231 target_host=WKSTN-4471 status=deployed duration=142.3s bytes_transferred=48213908 queue_name=default_patch_q task_id=T-88213",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T09:22:10.550Z severity=CRITICAL host=EPM-CORE01 module=CertManager event_id=CERT-0044 cert_thumbprint=3F:2A:9D:11:C7:00:AB:E4 endpoint=/api/v2/cert/renew status=failed error=\"certificate_expired\" expires_in_days=-2",
+        "_time": 1717406530.55,
+        "timestamp": "2024-06-03T09:22:10.550Z",
+        "severity": "Informational",
+        "host": "EPM-CORE01",
+        "module": "CertManager",
+        "event_id": "CERT-0044",
+        "cert_thumbprint": "3F:2A:9D:11:C7:00:AB:E4",
+        "endpoint": "api/v2/cert/renew",
+        "status": "failed",
+        "error": "certificate_expired",
+        "expires_in_days": "-2",
+        "action": "failed",
+        "log_time": "2024-06-03T09:22:10.550Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717406530550,
+        "device": {
+          "hostname": "EPM-CORE01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T09:22:10.550Z severity=CRITICAL host=EPM-CORE01 module=CertManager event_id=CERT-0044 cert_thumbprint=3F:2A:9D:11:C7:00:AB:E4 endpoint=/api/v2/cert/renew status=failed error=\"certificate_expired\" expires_in_days=-2",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T09:41:07.998Z severity=WARN host=EPM-CORE01 module=RBAC event_id=RBAC-0091 user=svc_helpdesk attempted_role=SuperAdmin initiated_by=jdoe status=denied reason=\"privilege_escalation_attempt\" source_ip=192.168.10.22",
+        "_time": 1717407667.998,
+        "timestamp": "2024-06-03T09:41:07.998Z",
+        "severity": "Informational",
+        "host": "EPM-CORE01",
+        "module": "RBAC",
+        "event_id": "RBAC-0091",
+        "user": "svc_helpdesk",
+        "attempted_role": "SuperAdmin",
+        "initiated_by": "jdoe",
+        "status": "denied",
+        "reason": "privilege_escalation_attempt",
+        "src_ip": "192.168.10.22",
+        "action": "denied",
+        "log_time": "2024-06-03T09:41:07.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717407667998,
+        "src_endpoint": {
+          "ip": "192.168.10.22"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_helpdesk"
+          }
+        },
+        "device": {
+          "hostname": "EPM-CORE01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T09:41:07.998Z severity=WARN host=EPM-CORE01 module=RBAC event_id=RBAC-0091 user=svc_helpdesk attempted_role=SuperAdmin initiated_by=jdoe status=denied reason=\"privilege_escalation_attempt\" source_ip=192.168.10.22",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T10:02:44.312Z severity=INFO host=EPM-DB01 module=Backup event_id=DB-2201 task_id=T-88220 action=backup status=success export_size=2147483648 duration=310.5s queue_name=nightly_backup_q",
+        "_time": 1717408964.312,
+        "timestamp": "2024-06-03T10:02:44.312Z",
+        "severity": "Informational",
+        "host": "EPM-DB01",
+        "module": "Backup",
+        "event_id": "DB-2201",
+        "task_id": "T-88220",
+        "action": "backup",
+        "status": "success",
+        "export_size": "2147483648",
+        "duration": "310.5s",
+        "queue_name": "nightly_backup_q",
+        "vendor_action": "backup",
+        "log_time": "2024-06-03T10:02:44.312Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717408964312,
+        "device": {
+          "hostname": "EPM-DB01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T10:02:44.312Z severity=INFO host=EPM-DB01 module=Backup event_id=DB-2201 task_id=T-88220 action=backup status=success export_size=2147483648 duration=310.5s queue_name=nightly_backup_q",
+        "sourcetype": "ivanti:core:mifs"
+      },
+      {
+        "_raw": "timestamp=2024-06-03T10:15:19.402Z severity=ERROR host=EPM-PATCH03 module=PatchManager event_id=PATCH-1105 patch_id=KB5028166 target_host=WKSTN-9012 status=failed error=\"checksum_verification_failed\" checksum_mismatch=true",
+        "_time": 1717409719.402,
+        "timestamp": "2024-06-03T10:15:19.402Z",
+        "severity": "Informational",
+        "host": "EPM-PATCH03",
+        "module": "PatchManager",
+        "event_id": "PATCH-1105",
+        "patch_id": "KB5028166",
+        "target_host": "WKSTN-9012",
+        "status": "failed",
+        "error": "checksum_verification_failed",
+        "checksum_mismatch": "true",
+        "action": "failed",
+        "log_time": "2024-06-03T10:15:19.402Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717409719402,
+        "device": {
+          "hostname": "EPM-PATCH03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti core mifs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "timestamp=2024-06-03T10:15:19.402Z severity=ERROR host=EPM-PATCH03 module=PatchManager event_id=PATCH-1105 patch_id=KB5028166 target_host=WKSTN-9012 status=failed error=\"checksum_verification_failed\" checksum_mismatch=true",
+        "sourcetype": "ivanti:core:mifs"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "severity",
+      "host",
+      "module",
+      "event_id",
+      "user",
+      "action",
+      "status",
+      "source_ip",
+      "session_id",
+      "port",
+      "proto",
+      "duration",
+      "reason",
+      "attempts",
+      "lockout",
+      "blocked",
+      "patch_id",
+      "target_host",
+      "bytes_transferred",
+      "queue_name",
+      "task_id",
+      "cert_thumbprint",
+      "endpoint",
+      "error",
+      "expires_in_days",
+      "attempted_role",
+      "initiated_by",
+      "export_size",
+      "checksum_mismatch"
+    ],
+    "sampleRaw": [
+      "timestamp=2024-06-03T08:12:45.123Z severity=INFO host=EPM-CORE01 module=CoreServer event_id=AUTH-0001 user=jdoe action=login status=success source_ip=10.20.14.55 session_id=8a3f1c2e port=443 proto=HTTPS duration=0.842s",
+      "timestamp=2024-06-03T09:03:12.884Z severity=WARN host=EPM-CORE01 module=AuthService event_id=AUTH-0002 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=3 port=443 proto=HTTPS",
+      "timestamp=2024-06-03T09:04:01.221Z severity=ERROR host=EPM-CORE01 module=AuthService event_id=AUTH-0003 user=admin action=login status=failure reason=\"invalid_password\" source_ip=203.0.113.44 attempts=5 lockout=true blocked=true port=443 proto=HTTPS",
+      "timestamp=2024-06-03T09:15:33.001Z severity=INFO host=EPM-PATCH03 module=PatchManager event_id=PATCH-1102 patch_id=KB5027231 target_host=WKSTN-4471 status=deployed duration=142.3s bytes_transferred=48213908 queue_name=default_patch_q task_id=T-88213",
+      "timestamp=2024-06-03T09:22:10.550Z severity=CRITICAL host=EPM-CORE01 module=CertManager event_id=CERT-0044 cert_thumbprint=3F:2A:9D:11:C7:00:AB:E4 endpoint=/api/v2/cert/renew status=failed error=\"certificate_expired\" expires_in_days=-2",
+      "timestamp=2024-06-03T09:41:07.998Z severity=WARN host=EPM-CORE01 module=RBAC event_id=RBAC-0091 user=svc_helpdesk attempted_role=SuperAdmin initiated_by=jdoe status=denied reason=\"privilege_escalation_attempt\" source_ip=192.168.10.22",
+      "timestamp=2024-06-03T10:02:44.312Z severity=INFO host=EPM-DB01 module=Backup event_id=DB-2201 task_id=T-88220 action=backup status=success export_size=2147483648 duration=310.5s queue_name=nightly_backup_q",
+      "timestamp=2024-06-03T10:15:19.402Z severity=ERROR host=EPM-PATCH03 module=PatchManager event_id=PATCH-1105 patch_id=KB5028166 target_host=WKSTN-9012 status=failed error=\"checksum_verification_failed\" checksum_mismatch=true"
+    ],
+    "sourcetype": "ivanti:core:mifs"
+  }
+}
