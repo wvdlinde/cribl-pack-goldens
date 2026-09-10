@@ -1,0 +1,640 @@
+{
+  "key": "vmware:esxlog:etcd::ocsf",
+  "sourcetype": "vmware:esxlog:etcd",
+  "dest_format": "ocsf",
+  "score": 87,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:57.191Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_timestamp>\\S+)\\s+(?<host>\\S+)\\s+etcd\\[(?<pid>\\d+)\\]:\\s+\\{\"level\":\"(?<level>\\w+)\",\"ts\":\"(?<timestamp>[^\"]+)\",\"caller\":\"(?<caller>[^\"]+)\",\"msg\":\"(?<message>[^\"]+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog-style header (timestamp, host, pid) and core etcd JSON fields (level, ts, caller, msg) from _raw"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message === 'authentication failed, invalid password or user' || message === 'rejected too many failed authentication attempts'",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"user-name\":\"(?<user>[^\"]+)\"(?:.*\"client-address\":\"(?<__src_ip>[0-9\\.]+):(?<__src_port>\\d+)\")?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and optional client address from authentication-related etcd log messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message === 'rejected connection on peer endpoint' || message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!'",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\"(?:remote-addr|target-addr|address)\":\"(?<__net_ip>[0-9\\.]+):(?<__net_port>\\d+)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract generic network address/port (remote-addr, target-addr, or address) into scratch fields for later role assignment"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "level === 'error' ? 'critical' : level === 'warn' ? 'warning' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message === 'authentication failed, invalid password or user' ? 'login_failure' : message === 'rejected too many failed authentication attempts' ? 'blocked' : message === 'rejected connection on peer endpoint' ? 'blocked' : message === 'failed to dial peer' ? 'connection_failed' : message === 'grpc: addrConn.createTransport failed to connect' ? 'connection_failed' : message === 'leader changed' ? 'leader_changed' : 'info'"
+          },
+          {
+            "name": "protocol",
+            "value": "(__net_ip || __src_ip) ? 'tcp' : null"
+          },
+          {
+            "name": "src_ip",
+            "value": "__src_ip ? __src_ip : (message === 'rejected connection on peer endpoint' ? __net_ip : null)"
+          },
+          {
+            "name": "src_port",
+            "value": "__src_port ? __src_port : (message === 'rejected connection on peer endpoint' ? __net_port : null)"
+          },
+          {
+            "name": "dst_ip",
+            "value": "(message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!') ? __net_ip : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "(message === 'grpc: addrConn.createTransport failed to connect' || message === 'serving client traffic insecurely; this is strongly discouraged!') ? __net_port : null"
+          }
+        ],
+        "remove": [
+          "__net_ip",
+          "__net_port",
+          "__src_ip",
+          "__src_port"
+        ]
+      },
+      "description": "Normalize severity, classify action, assign protocol and src/dst ip:port based on message type, then clean up scratch fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog etcd'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:etcd'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogEtcd_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-06-03T02:14:07.221Z esx01.corp.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:14:07.221Z\",\"caller\":\"etcdserver/server.go:1234\",\"msg\":\"finished applying snapshot\",\"current-snapshot-index\":48213,\"applied-index\":48213}",
+        "_time": 1717380847.221,
+        "syslog_timestamp": "2024-06-03T02:14:07.221Z",
+        "host": "esx01.corp.local",
+        "pid": "54219",
+        "level": "info",
+        "timestamp": "2024-06-03T02:14:07.221Z",
+        "caller": "etcdserver/server.go:1234",
+        "message": "finished applying snapshot",
+        "severity": "Informational",
+        "action": "info",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:14:07.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717380847221,
+        "device": {
+          "hostname": "esx01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:15:33.884Z esx02.corp.local etcd[54301]: {\"level\":\"warn\",\"ts\":\"2024-06-03T02:15:33.884Z\",\"caller\":\"rafthttp/peer.go:456\",\"msg\":\"failed to dial peer\",\"remote-peer-id\":\"a1b2c3d4e5f6\",\"error\":\"dial tcp 10.20.4.15:2380: connect: connection refused\"}",
+        "_time": 1717380933.884,
+        "syslog_timestamp": "2024-06-03T02:15:33.884Z",
+        "host": "esx02.corp.local",
+        "pid": "54301",
+        "level": "warn",
+        "timestamp": "2024-06-03T02:15:33.884Z",
+        "caller": "rafthttp/peer.go:456",
+        "message": "failed to dial peer",
+        "severity": "Informational",
+        "action": "connection_failed",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:15:33.884Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717380933884,
+        "device": {
+          "hostname": "esx02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:17:02.019Z esxi-prod07.dc1.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:17:02.019Z\",\"caller\":\"etcdserver/server.go:889\",\"msg\":\"leader changed\",\"local-member-id\":\"9f8e7d6c\",\"old-leader-member-id\":\"0\",\"new-leader-member-id\":\"9f8e7d6c\"}",
+        "_time": 1717381022.019,
+        "syslog_timestamp": "2024-06-03T02:17:02.019Z",
+        "host": "esxi-prod07.dc1.local",
+        "pid": "54219",
+        "level": "info",
+        "timestamp": "2024-06-03T02:17:02.019Z",
+        "caller": "etcdserver/server.go:889",
+        "message": "leader changed",
+        "severity": "Informational",
+        "action": "leader_changed",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:17:02.019Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381022019,
+        "device": {
+          "hostname": "esxi-prod07.dc1.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:19:45.552Z esx04.corp.local etcd[54390]: {\"level\":\"error\",\"ts\":\"2024-06-03T02:19:45.552Z\",\"caller\":\"embed/config_logging.go:170\",\"msg\":\"rejected connection on peer endpoint\",\"remote-addr\":\"192.168.55.201:2380\",\"server-name\":\"\",\"error\":\"tls: failed to verify client certificate: x509: certificate signed by unknown authority\"}",
+        "_time": 1717381185.552,
+        "syslog_timestamp": "2024-06-03T02:19:45.552Z",
+        "host": "esx04.corp.local",
+        "pid": "54390",
+        "level": "error",
+        "timestamp": "2024-06-03T02:19:45.552Z",
+        "caller": "embed/config_logging.go:170",
+        "message": "rejected connection on peer endpoint",
+        "severity": "Informational",
+        "action": "blocked",
+        "protocol": "tcp",
+        "src_ip": "192.168.55.201",
+        "src_port": "2380",
+        "dst_ip": null,
+        "dst_port": null,
+        "transport": "tcp",
+        "log_time": "2024-06-03T02:19:45.552Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381185552,
+        "src_endpoint": {
+          "ip": "192.168.55.201"
+        },
+        "device": {
+          "hostname": "esx04.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:21:10.330Z esxi-host12.branch.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:21:10.330Z\",\"caller\":\"mvcc/kvstore_compaction.go:57\",\"msg\":\"finished scheduled compaction\",\"compact-revision\":102345,\"took\":\"12.3ms\"}",
+        "_time": 1717381270.33,
+        "syslog_timestamp": "2024-06-03T02:21:10.330Z",
+        "host": "esxi-host12.branch.local",
+        "pid": "54219",
+        "level": "info",
+        "timestamp": "2024-06-03T02:21:10.330Z",
+        "caller": "mvcc/kvstore_compaction.go:57",
+        "message": "finished scheduled compaction",
+        "severity": "Informational",
+        "action": "info",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:21:10.330Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381270330,
+        "device": {
+          "hostname": "esxi-host12.branch.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:23:58.771Z esx06.corp.local etcd[54401]: {\"level\":\"warn\",\"ts\":\"2024-06-03T02:23:58.771Z\",\"caller\":\"etcdserver/v3_server.go:815\",\"msg\":\"waiting for ReadIndex response took too long, retrying\",\"sent-request-id\":9483726150,\"retry-timeout\":\"500ms\"}",
+        "_time": 1717381438.771,
+        "syslog_timestamp": "2024-06-03T02:23:58.771Z",
+        "host": "esx06.corp.local",
+        "pid": "54401",
+        "level": "warn",
+        "timestamp": "2024-06-03T02:23:58.771Z",
+        "caller": "etcdserver/v3_server.go:815",
+        "message": "waiting for ReadIndex response took too long, retrying",
+        "severity": "Informational",
+        "action": "info",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:23:58.771Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381438771,
+        "device": {
+          "hostname": "esx06.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:25:12.104Z esx01.corp.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:25:12.104Z\",\"caller\":\"embed/etcd.go:565\",\"msg\":\"serving client traffic insecurely; this is strongly discouraged!\",\"address\":\"127.0.0.1:2379\"}",
+        "_time": 1717381512.104,
+        "syslog_timestamp": "2024-06-03T02:25:12.104Z",
+        "host": "esx01.corp.local",
+        "pid": "54219",
+        "level": "info",
+        "timestamp": "2024-06-03T02:25:12.104Z",
+        "caller": "embed/etcd.go:565",
+        "message": "serving client traffic insecurely; this is strongly discouraged!",
+        "severity": "Informational",
+        "action": "info",
+        "protocol": "tcp",
+        "dst_ip": "127.0.0.1",
+        "dst_port": "2379",
+        "dest_ip": "127.0.0.1",
+        "dest_port": "2379",
+        "transport": "tcp",
+        "log_time": "2024-06-03T02:25:12.104Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381512104,
+        "dst_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "device": {
+          "hostname": "esx01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      },
+      {
+        "_raw": "2024-06-03T02:26:44.998Z 172.16.9.44 etcd[54502]: {\"level\":\"error\",\"ts\":\"2024-06-03T02:26:44.998Z\",\"caller\":\"etcdserver/server.go:2101\",\"msg\":\"failed to send out heartbeat on time\",\"to\":\"a1b2c3d4\",\"heartbeat-interval\":\"100ms\",\"expected-duration\":\"200ms\",\"exceeded-duration\":\"87ms\"}",
+        "_time": 1717381604.998,
+        "syslog_timestamp": "2024-06-03T02:26:44.998Z",
+        "host": "172.16.9.44",
+        "pid": "54502",
+        "level": "error",
+        "timestamp": "2024-06-03T02:26:44.998Z",
+        "caller": "etcdserver/server.go:2101",
+        "message": "failed to send out heartbeat on time",
+        "severity": "Informational",
+        "action": "info",
+        "dst_ip": null,
+        "dst_port": null,
+        "log_time": "2024-06-03T02:26:44.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381604998,
+        "device": {
+          "hostname": "172.16.9.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog etcd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:etcd"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-06-03T02:14:07.221Z esx01.corp.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:14:07.221Z\",\"caller\":\"etcdserver/server.go:1234\",\"msg\":\"finished applying snapshot\",\"current-snapshot-index\":48213,\"applied-index\":48213}",
+      "2024-06-03T02:15:33.884Z esx02.corp.local etcd[54301]: {\"level\":\"warn\",\"ts\":\"2024-06-03T02:15:33.884Z\",\"caller\":\"rafthttp/peer.go:456\",\"msg\":\"failed to dial peer\",\"remote-peer-id\":\"a1b2c3d4e5f6\",\"error\":\"dial tcp 10.20.4.15:2380: connect: connection refused\"}",
+      "2024-06-03T02:17:02.019Z esxi-prod07.dc1.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:17:02.019Z\",\"caller\":\"etcdserver/server.go:889\",\"msg\":\"leader changed\",\"local-member-id\":\"9f8e7d6c\",\"old-leader-member-id\":\"0\",\"new-leader-member-id\":\"9f8e7d6c\"}",
+      "2024-06-03T02:19:45.552Z esx04.corp.local etcd[54390]: {\"level\":\"error\",\"ts\":\"2024-06-03T02:19:45.552Z\",\"caller\":\"embed/config_logging.go:170\",\"msg\":\"rejected connection on peer endpoint\",\"remote-addr\":\"192.168.55.201:2380\",\"server-name\":\"\",\"error\":\"tls: failed to verify client certificate: x509: certificate signed by unknown authority\"}",
+      "2024-06-03T02:21:10.330Z esxi-host12.branch.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:21:10.330Z\",\"caller\":\"mvcc/kvstore_compaction.go:57\",\"msg\":\"finished scheduled compaction\",\"compact-revision\":102345,\"took\":\"12.3ms\"}",
+      "2024-06-03T02:23:58.771Z esx06.corp.local etcd[54401]: {\"level\":\"warn\",\"ts\":\"2024-06-03T02:23:58.771Z\",\"caller\":\"etcdserver/v3_server.go:815\",\"msg\":\"waiting for ReadIndex response took too long, retrying\",\"sent-request-id\":9483726150,\"retry-timeout\":\"500ms\"}",
+      "2024-06-03T02:25:12.104Z esx01.corp.local etcd[54219]: {\"level\":\"info\",\"ts\":\"2024-06-03T02:25:12.104Z\",\"caller\":\"embed/etcd.go:565\",\"msg\":\"serving client traffic insecurely; this is strongly discouraged!\",\"address\":\"127.0.0.1:2379\"}",
+      "2024-06-03T02:26:44.998Z 172.16.9.44 etcd[54502]: {\"level\":\"error\",\"ts\":\"2024-06-03T02:26:44.998Z\",\"caller\":\"etcdserver/server.go:2101\",\"msg\":\"failed to send out heartbeat on time\",\"to\":\"a1b2c3d4\",\"heartbeat-interval\":\"100ms\",\"expected-duration\":\"200ms\",\"exceeded-duration\":\"87ms\"}"
+    ],
+    "sourcetype": "vmware:esxlog:etcd"
+  }
+}
