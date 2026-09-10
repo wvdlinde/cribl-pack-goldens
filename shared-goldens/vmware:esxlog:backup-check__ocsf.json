@@ -1,0 +1,695 @@
+{
+  "key": "vmware:esxlog:backup-check::ocsf",
+  "sourcetype": "vmware:esxlog:backup-check",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:24.710Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<__pri>\\d{1,3})>(?<__ts>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<process>[^\\[]+)\\[(?<pid>\\d+)\\]:\\s+\\[BackupCheck\\]\\s+(?<severity>[A-Z]+)\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse syslog PRI, timestamp, host, process/pid and BackupCheck severity + message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:VM\\s+'(?<vm_name>[^']+)')?(?:.*?\\(vmid=(?<vm_id>\\d+)\\))?(?:.*?(?:by |user=|User ')(?<user>[A-Za-z0-9._\\-]+(?:@[A-Za-z0-9._\\-]+)?))?(?:.*?job\\s+'(?<backup_job>[^']+)')?(?:.*?duration=(?<duration>\\d+)s)?(?:.*?size=(?<size>\\d+GB))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract VM name, vmid, user, IPs and job/metric details from the message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|([0-9a-fA-F]{1,4}:[0-9a-fA-F:]{2,})/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:source=|from |dest=|@)(?<src_ip>(?:\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})|(?:[0-9a-fA-F]{0,4}:[0-9a-fA-F:]{2,}[0-9a-fA-F]))|(?<src_ip_bare>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract source IPv4 or IPv6 address referenced in the message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? Date.parse(__ts)/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "syslog_facility",
+            "value": "__pri ? Math.floor(Number(__pri)/8) : null"
+          },
+          {
+            "name": "syslog_severity",
+            "value": "__pri ? Number(__pri)%8 : null"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip : src_ip_bare"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':') > -1 ? 'ipv6' : 'ipv4') : null"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/blocked|access denied|Unauthorized|aborted|denied/i) ? 'blocked' : (message.match(/failed|error|Failed/i) ? 'failure' : (message.match(/completed|verified|success/i) ? 'success' : 'info'))"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : null"
+          },
+          {
+            "name": "event_type",
+            "value": "message.match(/snapshot|Snapshot|CBT/) ? 'snapshot' : (message.match(/Backup job|backup started|Backup completed|verification/i) ? 'backup_job' : 'backup_check')"
+          },
+          {
+            "name": "vm_id",
+            "value": "vm_id ? Number(vm_id) : null"
+          },
+          {
+            "name": "duration",
+            "value": "duration ? Number(duration) : null"
+          }
+        ],
+        "remove": [
+          "__pri",
+          "__ts",
+          "src_ip_bare"
+        ]
+      },
+      "description": "Normalize timestamp, syslog facility/severity, action classification and IP fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog backup check'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:backup-check'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogBackupCheck_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<134>2024-06-01T02:15:33.482Z esx01-prod.corp.local Backup.check[2098234]: [BackupCheck] INFO VM 'DB-PROD-01' (vmid=42) snapshot consistency verified successfully, size=182GB, duration=412s",
+        "_time": 1717208133.482,
+        "dst_host": "esx01-prod.corp.local",
+        "process": "Backup.check",
+        "pid": "2098234",
+        "severity": "Informational",
+        "message": "VM 'DB-PROD-01' (vmid=42) snapshot consistency verified successfully, size=182GB, duration=412s",
+        "vm_name": "DB-PROD-01",
+        "vm_id": 42,
+        "duration": 412,
+        "timestamp": "2024-06-01T02:15:33.482Z",
+        "syslog_facility": 16,
+        "syslog_severity": 6,
+        "ip_version": null,
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "success",
+        "vendor_severity": "INFO",
+        "event_type": "snapshot",
+        "log_time": "2024-06-01T02:15:33.482Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717208133482,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<131>2024-06-01T03:47:12.119Z esx02-dmz.corp.local Backup.check[1029384]: [BackupCheck] WARNING VM 'WEB-EDGE-07' (vmid=17) quiesce operation timed out after 300s, retrying with VSS provider fallback",
+        "_time": 1717213632.119,
+        "dst_host": "esx02-dmz.corp.local",
+        "process": "Backup.check",
+        "pid": "1029384",
+        "severity": "Informational",
+        "message": "VM 'WEB-EDGE-07' (vmid=17) quiesce operation timed out after 300s, retrying with VSS provider fallback",
+        "vm_name": "WEB-EDGE-07",
+        "vm_id": 17,
+        "timestamp": "2024-06-01T03:47:12.119Z",
+        "syslog_facility": 16,
+        "syslog_severity": 3,
+        "ip_version": null,
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "info",
+        "vendor_severity": "WARNING",
+        "event_type": "backup_check",
+        "log_time": "2024-06-01T03:47:12.119Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717213632119,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<130>2024-06-01T04:02:55.774Z esx01-prod.corp.local Backup.check[2098301]: [BackupCheck] ERROR Failed to open disk 'scsi0:0' for VM 'FIN-APP-03' (vmid=55) - file locked by process pid=45213, user=svc_backup",
+        "_time": 1717214575.774,
+        "dst_host": "esx01-prod.corp.local",
+        "process": "Backup.check",
+        "pid": "2098301",
+        "severity": "Informational",
+        "message": "Failed to open disk 'scsi0:0' for VM 'FIN-APP-03' (vmid=55) - file locked by process pid=45213, user=svc_backup",
+        "vm_id": 55,
+        "user": "process",
+        "timestamp": "2024-06-01T04:02:55.774Z",
+        "syslog_facility": 16,
+        "syslog_severity": 2,
+        "ip_version": null,
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "failure",
+        "vendor_severity": "ERROR",
+        "event_type": "backup_check",
+        "log_time": "2024-06-01T04:02:55.774Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717214575774,
+        "actor": {
+          "user": {
+            "name": "process"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<134>2024-06-01T05:11:04.203Z esx03-branch.corp.local Backup.check[884213]: [BackupCheck] INFO CBT (Changed Block Tracking) reset requested for VM 'HR-PORTAL' (vmid=9) by user=admin@vsphere.local from 10.20.4.55",
+        "_time": 1717218664.203,
+        "dst_host": "esx03-branch.corp.local",
+        "process": "Backup.check",
+        "pid": "884213",
+        "severity": "Informational",
+        "message": "CBT (Changed Block Tracking) reset requested for VM 'HR-PORTAL' (vmid=9) by user=admin@vsphere.local from 10.20.4.55",
+        "vm_id": 9,
+        "user": "user",
+        "src_ip": "10.20.4.55",
+        "timestamp": "2024-06-01T05:11:04.203Z",
+        "syslog_facility": 16,
+        "syslog_severity": 6,
+        "ip_version": "ipv4",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "info",
+        "vendor_severity": "INFO",
+        "event_type": "snapshot",
+        "log_time": "2024-06-01T05:11:04.203Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717218664203,
+        "src_endpoint": {
+          "ip": "10.20.4.55"
+        },
+        "actor": {
+          "user": {
+            "name": "user"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<133>2024-06-01T06:33:19.910Z esx04-lab.corp.local Backup.check[772011]: [BackupCheck] NOTICE Snapshot consolidation required for VM 'TEST-CI-RUNNER' (vmid=88), 4 delta disks detected",
+        "_time": 1717223599.91,
+        "dst_host": "esx04-lab.corp.local",
+        "process": "Backup.check",
+        "pid": "772011",
+        "severity": "Informational",
+        "message": "Snapshot consolidation required for VM 'TEST-CI-RUNNER' (vmid=88), 4 delta disks detected",
+        "vm_id": 88,
+        "timestamp": "2024-06-01T06:33:19.910Z",
+        "syslog_facility": 16,
+        "syslog_severity": 5,
+        "ip_version": null,
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "info",
+        "vendor_severity": "NOTICE",
+        "event_type": "snapshot",
+        "log_time": "2024-06-01T06:33:19.910Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717223599910,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<135>2024-06-01T07:05:47.335Z esx01-prod.corp.local Backup.check[2098455]: [BackupCheck] CRITICAL Backup job 'Nightly-DB-Cluster' aborted - datastore 'ds-san-02' reported 0 bytes free, 172.16.5.20",
+        "_time": 1717225547.335,
+        "dst_host": "esx01-prod.corp.local",
+        "process": "Backup.check",
+        "pid": "2098455",
+        "severity": "Informational",
+        "message": "Backup job 'Nightly-DB-Cluster' aborted - datastore 'ds-san-02' reported 0 bytes free, 172.16.5.20",
+        "vm_id": null,
+        "backup_job": "Nightly-DB-Cluster",
+        "src_ip": "172.16.5.20",
+        "timestamp": "2024-06-01T07:05:47.335Z",
+        "syslog_facility": 16,
+        "syslog_severity": 7,
+        "ip_version": "ipv4",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "blocked",
+        "vendor_severity": "CRITICAL",
+        "event_type": "backup_job",
+        "log_time": "2024-06-01T07:05:47.335Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717225547335,
+        "src_endpoint": {
+          "ip": "172.16.5.20"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<134>2024-06-01T08:22:03.667Z esx05-dr.corp.local Backup.check[113920]: [BackupCheck] INFO Backup verification completed for VM 'DR-REPLICA-01' (vmid=71), checksum match, source=192.168.10.44",
+        "_time": 1717230123.667,
+        "dst_host": "esx05-dr.corp.local",
+        "process": "Backup.check",
+        "pid": "113920",
+        "severity": "Informational",
+        "message": "Backup verification completed for VM 'DR-REPLICA-01' (vmid=71), checksum match, source=192.168.10.44",
+        "vm_id": 71,
+        "src_ip": "192.168.10.44",
+        "timestamp": "2024-06-01T08:22:03.667Z",
+        "syslog_facility": 16,
+        "syslog_severity": 6,
+        "ip_version": "ipv4",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "success",
+        "vendor_severity": "INFO",
+        "event_type": "backup_job",
+        "log_time": "2024-06-01T08:22:03.667Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717230123667,
+        "src_endpoint": {
+          "ip": "192.168.10.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      },
+      {
+        "_raw": "<132>2024-06-01T09:14:58.412Z esx02-dmz.corp.local Backup.check[1029410]: [BackupCheck] WARNING User 'jsmith' attempted backup trigger without sufficient privileges on VM 'PAYMENT-GW' (vmid=23), access denied",
+        "_time": 1717233298.412,
+        "dst_host": "esx02-dmz.corp.local",
+        "process": "Backup.check",
+        "pid": "1029410",
+        "severity": "Informational",
+        "message": "User 'jsmith' attempted backup trigger without sufficient privileges on VM 'PAYMENT-GW' (vmid=23), access denied",
+        "vm_id": 23,
+        "timestamp": "2024-06-01T09:14:58.412Z",
+        "syslog_facility": 16,
+        "syslog_severity": 4,
+        "ip_version": null,
+        "vendor": "VMware",
+        "product": "ESXi",
+        "action": "blocked",
+        "vendor_severity": "WARNING",
+        "event_type": "backup_check",
+        "log_time": "2024-06-01T09:14:58.412Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717233298412,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog backup check",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:backup-check"
+      }
+    ],
+    "sampleKeys": [
+      "size",
+      "duration",
+      "pid",
+      "user",
+      "source"
+    ],
+    "sampleRaw": [
+      "<134>2024-06-01T02:15:33.482Z esx01-prod.corp.local Backup.check[2098234]: [BackupCheck] INFO VM 'DB-PROD-01' (vmid=42) snapshot consistency verified successfully, size=182GB, duration=412s",
+      "<131>2024-06-01T03:47:12.119Z esx02-dmz.corp.local Backup.check[1029384]: [BackupCheck] WARNING VM 'WEB-EDGE-07' (vmid=17) quiesce operation timed out after 300s, retrying with VSS provider fallback",
+      "<130>2024-06-01T04:02:55.774Z esx01-prod.corp.local Backup.check[2098301]: [BackupCheck] ERROR Failed to open disk 'scsi0:0' for VM 'FIN-APP-03' (vmid=55) - file locked by process pid=45213, user=svc_backup",
+      "<134>2024-06-01T05:11:04.203Z esx03-branch.corp.local Backup.check[884213]: [BackupCheck] INFO CBT (Changed Block Tracking) reset requested for VM 'HR-PORTAL' (vmid=9) by user=admin@vsphere.local from 10.20.4.55",
+      "<133>2024-06-01T06:33:19.910Z esx04-lab.corp.local Backup.check[772011]: [BackupCheck] NOTICE Snapshot consolidation required for VM 'TEST-CI-RUNNER' (vmid=88), 4 delta disks detected",
+      "<135>2024-06-01T07:05:47.335Z esx01-prod.corp.local Backup.check[2098455]: [BackupCheck] CRITICAL Backup job 'Nightly-DB-Cluster' aborted - datastore 'ds-san-02' reported 0 bytes free, 172.16.5.20",
+      "<134>2024-06-01T08:22:03.667Z esx05-dr.corp.local Backup.check[113920]: [BackupCheck] INFO Backup verification completed for VM 'DR-REPLICA-01' (vmid=71), checksum match, source=192.168.10.44",
+      "<132>2024-06-01T09:14:58.412Z esx02-dmz.corp.local Backup.check[1029410]: [BackupCheck] WARNING User 'jsmith' attempted backup trigger without sufficient privileges on VM 'PAYMENT-GW' (vmid=23), access denied"
+    ],
+    "sourcetype": "vmware:esxlog:backup-check"
+  }
+}
