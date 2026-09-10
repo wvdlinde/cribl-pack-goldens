@@ -16460,14 +16460,14 @@
       "key": "ldap_access_log::ocsf",
       "sourcetype": "ldap_access_log",
       "dest_format": "ocsf",
-      "score": 90,
+      "score": 95,
       "part": null,
-      "author": "wlinde@cribl.io",
-      "build": 652,
-      "updated_at": "2026-09-01T15:03:09.479Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:46:58.316Z",
       "path": "shared-goldens/ldap_access_log__ocsf.json",
       "report": {
-        "score": 90,
+        "score": 95,
         "band": "good"
       }
     },
