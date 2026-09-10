@@ -1,0 +1,593 @@
+{
+  "key": "vmware:esxlog:vsantraceUrgent::ocsf",
+  "sourcetype": "vmware:esxlog:vsantraceUrgent",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:41.517Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<syslog_pri>\\d+)>(?<syslog_ver>\\d)\\s+(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<app_name>\\S+)\\s+-\\s+-\\s+-\\s+vsantrace:\\s*(?<module>[^:]+):\\s*(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse RFC5424 syslog header and vsantrace module/message from _raw"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__sev_num",
+            "value": "syslog_pri % 8"
+          },
+          {
+            "name": "severity",
+            "value": "__sev_num==0?'emergency':__sev_num==1?'alert':__sev_num==2?'critical':__sev_num==3?'error':__sev_num==4?'warning':__sev_num==5?'notice':__sev_num==6?'info':'debug'"
+          }
+        ],
+        "remove": [
+          "__sev_num"
+        ]
+      },
+      "description": "Derive numeric and text severity from syslog PRI value (facility*8+severity)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.length > 0",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{0,4}){2,7})(?::(?<src_port>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract source IP (IPv4 or IPv6) and optional port referenced in the vsantrace message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/blocking traffic/) ? 'blocked' : message.match(/rejected/) ? 'rejected' : message.match(/removed from cluster/) ? 'removed' : message.match(/completed successfully/) ? 'completed' : message.match(/failure|inaccessible|lost quorum|data loss/) ? 'failed' : 'observed'"
+          },
+          {
+            "name": "protocol",
+            "value": "'vsan'"
+          }
+        ]
+      },
+      "description": "Classify vSAN trace event action based on message content keywords"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog vsantraceurgent'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:vsantraceUrgent'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogVsantraceUrgent_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<134>1 2024-05-21T03:14:22.104Z esx01-prod.corp.local Vsantraceurgent - - - vsantrace: DOMOwner: Object 5b2f3a1c-8e44-4a91-b3c0-9d1e7f6a2c33 lost quorum, component 3 of 5 offline, degraded resilience",
+        "_time": 1716261262.104,
+        "syslog_pri": "134",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T03:14:22.104Z",
+        "dst_host": "esx01-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "DOMOwner",
+        "message": "Object 5b2f3a1c-8e44-4a91-b3c0-9d1e7f6a2c33 lost quorum, component 3 of 5 offline, degraded resilience",
+        "severity": "Informational",
+        "action": "failed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T03:14:22.104Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716261262104,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<134>1 2024-05-21T03:15:01.887Z esx02-prod.corp.local Vsantraceurgent - - - vsantrace: CMMDS: Node 5241a7c1-92b3-4e10-8a2f-1c3d4e5f6789 removed from cluster, master election triggered",
+        "_time": 1716261301.887,
+        "syslog_pri": "134",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T03:15:01.887Z",
+        "dst_host": "esx02-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "CMMDS",
+        "message": "Node 5241a7c1-92b3-4e10-8a2f-1c3d4e5f6789 removed from cluster, master election triggered",
+        "severity": "Informational",
+        "action": "removed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T03:15:01.887Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716261301887,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<133>1 2024-05-21T04:02:47.221Z esx03-prod.corp.local Vsantraceurgent - - - vsantrace: LSOM: Disk group naa.6001438005deadbeef0000000000012a entered PDL state, component reconstruction initiated",
+        "_time": 1716264167.221,
+        "syslog_pri": "133",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T04:02:47.221Z",
+        "dst_host": "esx03-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "LSOM",
+        "message": "Disk group naa.6001438005deadbeef0000000000012a entered PDL state, component reconstruction initiated",
+        "severity": "Informational",
+        "action": "observed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T04:02:47.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716264167221,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<134>1 2024-05-21T05:11:09.556Z esx04-prod.corp.local Vsantraceurgent - - - vsantrace: DOM Client: I/O failure on object 8ac1f2e3-4b5c-4d6e-9f01-234567890abc, retry count exceeded threshold 3",
+        "_time": 1716268269.556,
+        "syslog_pri": "134",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T05:11:09.556Z",
+        "dst_host": "esx04-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "DOM Client",
+        "message": "I/O failure on object 8ac1f2e3-4b5c-4d6e-9f01-234567890abc, retry count exceeded threshold 3",
+        "severity": "Informational",
+        "action": "failed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T05:11:09.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716268269556,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<131>1 2024-05-21T06:33:14.902Z esx01-prod.corp.local Vsantraceurgent - - - vsantrace: CLOM: Resync operation stalled for object 3f4e5d6c-7b8a-9012-3456-789abcdef012, bytesLeft=15728640000, elapsed=3600s",
+        "_time": 1716273194.902,
+        "syslog_pri": "131",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T06:33:14.902Z",
+        "dst_host": "esx01-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "CLOM",
+        "message": "Resync operation stalled for object 3f4e5d6c-7b8a-9012-3456-789abcdef012, bytesLeft=15728640000, elapsed=3600s",
+        "severity": "Informational",
+        "action": "observed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T06:33:14.902Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716273194902,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<134>1 2024-05-21T07:45:59.330Z esx05-prod.corp.local Vsantraceurgent - - - vsantrace: DOMOwner: Witness component unreachable for object aa11bb22-cc33-dd44-ee55-ff6677889900, network partition suspected",
+        "_time": 1716277559.33,
+        "syslog_pri": "134",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T07:45:59.330Z",
+        "dst_host": "esx05-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "DOMOwner",
+        "message": "Witness component unreachable for object aa11bb22-cc33-dd44-ee55-ff6677889900, network partition suspected",
+        "severity": "Informational",
+        "action": "observed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T07:45:59.330Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716277559330,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<130>1 2024-05-21T08:20:03.114Z esx02-prod.corp.local Vsantraceurgent - - - vsantrace: RDT: Connection reset by peer 10.20.30.41:2233, transient network error, reconnect attempt 2/5",
+        "_time": 1716279603.114,
+        "syslog_pri": "130",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T08:20:03.114Z",
+        "dst_host": "esx02-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "RDT",
+        "message": "Connection reset by peer 10.20.30.41:2233, transient network error, reconnect attempt 2/5",
+        "severity": "Informational",
+        "src_ip": "10.20.30.41",
+        "src_port": "2233",
+        "action": "observed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T08:20:03.114Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716279603114,
+        "src_endpoint": {
+          "ip": "10.20.30.41"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      },
+      {
+        "_raw": "<134>1 2024-05-21T09:05:47.678Z esx06-prod.corp.local Vsantraceurgent - - - vsantrace: LSOM: SSD naa.6001438005deadbeef0000000000045b reporting elevated write latency 850ms, threshold exceeded",
+        "_time": 1716282347.678,
+        "syslog_pri": "134",
+        "syslog_ver": "1",
+        "timestamp": "2024-05-21T09:05:47.678Z",
+        "dst_host": "esx06-prod.corp.local",
+        "app_name": "Vsantraceurgent",
+        "module": "LSOM",
+        "message": "SSD naa.6001438005deadbeef0000000000045b reporting elevated write latency 850ms, threshold exceeded",
+        "severity": "Informational",
+        "action": "observed",
+        "protocol": "vsan",
+        "transport": "vsan",
+        "log_time": "2024-05-21T09:05:47.678Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1716282347678,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsantraceurgent",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsantraceUrgent"
+      }
+    ],
+    "sampleKeys": [
+      "bytesLeft",
+      "elapsed"
+    ],
+    "sampleRaw": [
+      "<134>1 2024-05-21T03:14:22.104Z esx01-prod.corp.local Vsantraceurgent - - - vsantrace: DOMOwner: Object 5b2f3a1c-8e44-4a91-b3c0-9d1e7f6a2c33 lost quorum, component 3 of 5 offline, degraded resilience",
+      "<134>1 2024-05-21T03:15:01.887Z esx02-prod.corp.local Vsantraceurgent - - - vsantrace: CMMDS: Node 5241a7c1-92b3-4e10-8a2f-1c3d4e5f6789 removed from cluster, master election triggered",
+      "<133>1 2024-05-21T04:02:47.221Z esx03-prod.corp.local Vsantraceurgent - - - vsantrace: LSOM: Disk group naa.6001438005deadbeef0000000000012a entered PDL state, component reconstruction initiated",
+      "<134>1 2024-05-21T05:11:09.556Z esx04-prod.corp.local Vsantraceurgent - - - vsantrace: DOM Client: I/O failure on object 8ac1f2e3-4b5c-4d6e-9f01-234567890abc, retry count exceeded threshold 3",
+      "<131>1 2024-05-21T06:33:14.902Z esx01-prod.corp.local Vsantraceurgent - - - vsantrace: CLOM: Resync operation stalled for object 3f4e5d6c-7b8a-9012-3456-789abcdef012, bytesLeft=15728640000, elapsed=3600s",
+      "<134>1 2024-05-21T07:45:59.330Z esx05-prod.corp.local Vsantraceurgent - - - vsantrace: DOMOwner: Witness component unreachable for object aa11bb22-cc33-dd44-ee55-ff6677889900, network partition suspected",
+      "<130>1 2024-05-21T08:20:03.114Z esx02-prod.corp.local Vsantraceurgent - - - vsantrace: RDT: Connection reset by peer 10.20.30.41:2233, transient network error, reconnect attempt 2/5",
+      "<134>1 2024-05-21T09:05:47.678Z esx06-prod.corp.local Vsantraceurgent - - - vsantrace: LSOM: SSD naa.6001438005deadbeef0000000000045b reporting elevated write latency 850ms, threshold exceeded"
+    ],
+    "sourcetype": "vmware:esxlog:vsantraceUrgent"
+  }
+}
