@@ -1,0 +1,635 @@
+{
+  "key": "vmware:esxlog:Hostd::ocsf",
+  "sourcetype": "vmware:esxlog:Hostd",
+  "dest_format": "ocsf",
+  "score": 96,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:10.633Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Hostd:\\s+\\S+\\s+(?<severity>\\w+)\\s+hostd\\[(?<pid>\\d+)\\]\\s+\\[Originator@\\d+\\s+sub=(?<sub>\\S+?)\\s+opID=(?<opID>\\S+?)(?:\\s+user=(?<user>\\S+?))?(?:\\s+vm=(?<vm>\\S+?))?(?:\\s+task=(?<task>\\S+?))?(?:\\s+path=(?<path>\\S+?))?(?:\\s+port=(?<port>\\d+))?(?:\\s+sid=(?<sid>\\S+?))?\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base hostd syslog structure: timestamp, host, severity, pid, sub, opID, user, vm, task, path, port, sid, and message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:from|@)\\s*(?<src_ip>[0-9a-fA-F:.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract source IP address from message text (covers 'from <ip>' and '<user>@<ip>' patterns, including IPv6)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "pid",
+            "value": "pid ? Number(pid) : pid"
+          },
+          {
+            "name": "port",
+            "value": "port ? Number(port) : port"
+          }
+        ]
+      },
+      "description": "Normalize numeric fields (pid, port) to integers"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog hostd'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:Hostd'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogHostd_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-06-03T14:22:07.541Z esx01.corp.local Hostd: 2024-06-03T14:22:07.541Z info hostd[2097316] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=52a1b3c4 user=root] Event 1043 : User root@10.20.30.40 logged in as vpxuser",
+        "_time": 1717424527.541,
+        "timestamp": "2024-06-03T14:22:07.541Z",
+        "host": "esx01.corp.local",
+        "severity": "Informational",
+        "pid": 2097316,
+        "sub": "Vimsvc.ha-eventmgr",
+        "opID": "52a1b3c4",
+        "user": "root",
+        "message": "Event 1043 : User root@10.20.30.40 logged in as vpxuser",
+        "src_ip": "10.20.30.40",
+        "log_time": "2024-06-03T14:22:07.541Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717424527541,
+        "src_endpoint": {
+          "ip": "10.20.30.40"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "esx01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:25:11.902Z esx02.corp.local Hostd: 2024-06-03T14:25:11.902Z warning hostd[2101122] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=9f2c11ab user=admin] Event 1050 : Login failed for user 'admin' from 203.0.113.55 - Bad username or password",
+        "_time": 1717424711.902,
+        "timestamp": "2024-06-03T14:25:11.902Z",
+        "host": "esx02.corp.local",
+        "severity": "Informational",
+        "pid": 2101122,
+        "sub": "Vimsvc.ha-eventmgr",
+        "opID": "9f2c11ab",
+        "user": "admin",
+        "message": "Event 1050 : Login failed for user 'admin' from 203.0.113.55 - Bad username or password",
+        "src_ip": "203.0.113.55",
+        "log_time": "2024-06-03T14:25:11.902Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717424711902,
+        "src_endpoint": {
+          "ip": "203.0.113.55"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "esx02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:27:45.113Z esx01.corp.local Hostd: 2024-06-03T14:27:45.113Z info hostd[2097316] [Originator@6876 sub=Vmsvc.vm opID=hostd-1a2b user=administrator@vsphere.local vm=FinanceDB01] Powering on VM 'FinanceDB01' requested by user administrator@vsphere.local",
+        "_time": 1717424865.113,
+        "timestamp": "2024-06-03T14:27:45.113Z",
+        "host": "esx01.corp.local",
+        "severity": "Informational",
+        "pid": 2097316,
+        "sub": "Vmsvc.vm",
+        "opID": "hostd-1a2b",
+        "user": "administrator@vsphere.local",
+        "vm": "FinanceDB01",
+        "message": "Powering on VM 'FinanceDB01' requested by user administrator@vsphere.local",
+        "log_time": "2024-06-03T14:27:45.113Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717424865113,
+        "actor": {
+          "user": {
+            "name": "administrator@vsphere.local"
+          }
+        },
+        "device": {
+          "hostname": "esx01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:30:02.204Z esx03.corp.local Hostd: 2024-06-03T14:30:02.204Z verbose hostd[2103410] [Originator@6876 sub=Vmsvc.vm opID=hostd-3c9d user=svc_backup vm=WebServer02 task=CloneVM_Task] CloneVM_Task completed successfully in 42.311s",
+        "_time": 1717425002.204,
+        "timestamp": "2024-06-03T14:30:02.204Z",
+        "host": "esx03.corp.local",
+        "severity": "Informational",
+        "pid": 2103410,
+        "sub": "Vmsvc.vm",
+        "opID": "hostd-3c9d",
+        "user": "svc_backup",
+        "vm": "WebServer02",
+        "task": "CloneVM_Task",
+        "message": "CloneVM_Task completed successfully in 42.311s",
+        "log_time": "2024-06-03T14:30:02.204Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717425002204,
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "device": {
+          "hostname": "esx03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:33:19.887Z esx01.corp.local Hostd: 2024-06-03T14:33:19.887Z error hostd[2097316] [Originator@6876 sub=Hostsvc.storage opID=host-8877 user=root path=/vmfs/volumes/datastore1] Failed to mount NFS datastore: Timeout waiting for server response",
+        "_time": 1717425199.887,
+        "timestamp": "2024-06-03T14:33:19.887Z",
+        "host": "esx01.corp.local",
+        "severity": "Informational",
+        "pid": 2097316,
+        "sub": "Hostsvc.storage",
+        "opID": "host-8877",
+        "user": "root",
+        "path": "/vmfs/volumes/datastore1",
+        "message": "Failed to mount NFS datastore: Timeout waiting for server response",
+        "log_time": "2024-06-03T14:33:19.887Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717425199887,
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "esx01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:36:44.019Z esx02.corp.local Hostd: 2024-06-03T14:36:44.019Z info hostd[2101122] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=aa11bb22 user=vpxuser sid=52a9f001e3c8] Session created for user vpxuser from 172.16.5.20",
+        "_time": 1717425404.019,
+        "timestamp": "2024-06-03T14:36:44.019Z",
+        "host": "esx02.corp.local",
+        "severity": "Informational",
+        "pid": 2101122,
+        "sub": "Vimsvc.ha-eventmgr",
+        "opID": "aa11bb22",
+        "user": "vpxuser",
+        "sid": "52a9f001e3c8",
+        "message": "Session created for user vpxuser from 172.16.5.20",
+        "src_ip": "172.16.5.20",
+        "log_time": "2024-06-03T14:36:44.019Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717425404019,
+        "src_endpoint": {
+          "ip": "172.16.5.20"
+        },
+        "actor": {
+          "user": {
+            "name": "vpxuser"
+          }
+        },
+        "device": {
+          "hostname": "esx02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:40:05.330Z esx04.corp.local Hostd: 2024-06-03T14:40:05.330Z warning hostd[2109988] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=cc33dd44 user=jsmith] Event 2044 : User jsmith@10.44.2.9 attempted privileged operation without sufficient rights",
+        "_time": 1717425605.33,
+        "timestamp": "2024-06-03T14:40:05.330Z",
+        "host": "esx04.corp.local",
+        "severity": "Informational",
+        "pid": 2109988,
+        "sub": "Vimsvc.ha-eventmgr",
+        "opID": "cc33dd44",
+        "user": "jsmith",
+        "message": "Event 2044 : User jsmith@10.44.2.9 attempted privileged operation without sufficient rights",
+        "src_ip": "10.44.2.9",
+        "log_time": "2024-06-03T14:40:05.330Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717425605330,
+        "src_endpoint": {
+          "ip": "10.44.2.9"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "device": {
+          "hostname": "esx04.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      },
+      {
+        "_raw": "2024-06-03T14:44:12.501Z esx03.corp.local Hostd: 2024-06-03T14:44:12.501Z info hostd[2103410] [Originator@6876 sub=Vmsvc.vm opID=hostd-5e6f user=root vm=DB-Cluster01 task=PowerOffVM_Task] PowerOffVM_Task invoked for DB-Cluster01",
+        "_time": 1717425852.501,
+        "timestamp": "2024-06-03T14:44:12.501Z",
+        "host": "esx03.corp.local",
+        "severity": "Informational",
+        "pid": 2103410,
+        "sub": "Vmsvc.vm",
+        "opID": "hostd-5e6f",
+        "user": "root",
+        "vm": "DB-Cluster01",
+        "task": "PowerOffVM_Task",
+        "message": "PowerOffVM_Task invoked for DB-Cluster01",
+        "log_time": "2024-06-03T14:44:12.501Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717425852501,
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "esx03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:Hostd"
+      }
+    ],
+    "sampleKeys": [
+      "sub",
+      "opID",
+      "user",
+      "vm",
+      "task",
+      "path",
+      "sid"
+    ],
+    "sampleRaw": [
+      "2024-06-03T14:22:07.541Z esx01.corp.local Hostd: 2024-06-03T14:22:07.541Z info hostd[2097316] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=52a1b3c4 user=root] Event 1043 : User root@10.20.30.40 logged in as vpxuser",
+      "2024-06-03T14:25:11.902Z esx02.corp.local Hostd: 2024-06-03T14:25:11.902Z warning hostd[2101122] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=9f2c11ab user=admin] Event 1050 : Login failed for user 'admin' from 203.0.113.55 - Bad username or password",
+      "2024-06-03T14:27:45.113Z esx01.corp.local Hostd: 2024-06-03T14:27:45.113Z info hostd[2097316] [Originator@6876 sub=Vmsvc.vm opID=hostd-1a2b user=administrator@vsphere.local vm=FinanceDB01] Powering on VM 'FinanceDB01' requested by user administrator@vsphere.local",
+      "2024-06-03T14:30:02.204Z esx03.corp.local Hostd: 2024-06-03T14:30:02.204Z verbose hostd[2103410] [Originator@6876 sub=Vmsvc.vm opID=hostd-3c9d user=svc_backup vm=WebServer02 task=CloneVM_Task] CloneVM_Task completed successfully in 42.311s",
+      "2024-06-03T14:33:19.887Z esx01.corp.local Hostd: 2024-06-03T14:33:19.887Z error hostd[2097316] [Originator@6876 sub=Hostsvc.storage opID=host-8877 user=root path=/vmfs/volumes/datastore1] Failed to mount NFS datastore: Timeout waiting for server response",
+      "2024-06-03T14:36:44.019Z esx02.corp.local Hostd: 2024-06-03T14:36:44.019Z info hostd[2101122] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=aa11bb22 user=vpxuser sid=52a9f001e3c8] Session created for user vpxuser from 172.16.5.20",
+      "2024-06-03T14:40:05.330Z esx04.corp.local Hostd: 2024-06-03T14:40:05.330Z warning hostd[2109988] [Originator@6876 sub=Vimsvc.ha-eventmgr opID=cc33dd44 user=jsmith] Event 2044 : User jsmith@10.44.2.9 attempted privileged operation without sufficient rights",
+      "2024-06-03T14:44:12.501Z esx03.corp.local Hostd: 2024-06-03T14:44:12.501Z info hostd[2103410] [Originator@6876 sub=Vmsvc.vm opID=hostd-5e6f user=root vm=DB-Cluster01 task=PowerOffVM_Task] PowerOffVM_Task invoked for DB-Cluster01"
+    ],
+    "sourcetype": "vmware:esxlog:Hostd"
+  }
+}
