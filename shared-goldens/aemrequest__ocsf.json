@@ -2,11 +2,11 @@
   "key": "aemrequest::ocsf",
   "sourcetype": "aemrequest",
   "dest_format": "ocsf",
-  "score": 86,
+  "score": 89,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T14:54:22.843Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:25.787Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -175,107 +175,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4002'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
+            "value": "1"
           },
           {
-            "name": "event_type",
-            "value": "'HTTP Activity'"
-          },
-          {
-            "name": "time",
-            "value": "Math.round(Number(_time || 0) * 1000)"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user && user != '-' ? user : ''"
-          },
-          {
-            "name": "http_request.url",
-            "value": "path || ''"
-          },
-          {
-            "name": "http_request.http_method",
-            "value": "(method || '').toUpperCase()"
-          },
-          {
-            "name": "http_request.user_agent",
-            "value": "user_agent && user_agent != '-' ? user_agent : ''"
-          },
-          {
-            "name": "http_response.code",
-            "value": "Number(status || 0)"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "Number(bytes || 0)"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "(protocol || 'HTTP').toLowerCase().indexOf('https') == 0 ? 'https' : 'http'"
-          },
-          {
-            "name": "activity_id",
-            "value": "(method || '').toUpperCase() == 'CONNECT' ? 1 : ((method || '').toUpperCase() == 'DELETE' ? 2 : ((method || '').toUpperCase() == 'GET' ? 3 : ((method || '').toUpperCase() == 'HEAD' ? 4 : ((method || '').toUpperCase() == 'OPTIONS' ? 5 : ((method || '').toUpperCase() == 'POST' ? 6 : ((method || '').toUpperCase() == 'PUT' ? 7 : ((method || '').toUpperCase() == 'TRACE' ? 8 : ((method || '').toUpperCase() == 'PATCH' ? 9 : 0))))))))"
+            "name": "category_name",
+            "value": "'System Activity'"
           },
           {
             "name": "type_uid",
-            "value": "400200 + ((method || '').toUpperCase() == 'CONNECT' ? 1 : ((method || '').toUpperCase() == 'DELETE' ? 2 : ((method || '').toUpperCase() == 'GET' ? 3 : ((method || '').toUpperCase() == 'HEAD' ? 4 : ((method || '').toUpperCase() == 'OPTIONS' ? 5 : ((method || '').toUpperCase() == 'POST' ? 6 : ((method || '').toUpperCase() == 'PUT' ? 7 : ((method || '').toUpperCase() == 'TRACE' ? 8 : ((method || '').toUpperCase() == 'PATCH' ? 9 : 0)))))))))"
+            "value": "100100"
           },
           {
             "name": "severity_id",
-            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : ((severity || '').toLowerCase() == 'high' || (severity || '').toLowerCase() == 'error' ? 4 : ((severity || '').toLowerCase() == 'medium' || (severity || '').toLowerCase() == 'warning' ? 3 : (Number(status || 0) >= 500 ? 4 : (Number(status || 0) >= 400 ? 3 : 1))))"
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
           }
         ]
-      },
-      "description": "Map fields to destination schema"
+      }
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF envelope (cont. 16)",
       "conf": {
         "add": [
           {
-            "name": "category_name",
-            "value": "'Network Activity'"
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
           },
           {
-            "name": "class_uid",
-            "value": "4002"
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
           },
           {
-            "name": "category_uid",
-            "value": "4"
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
           },
           {
             "name": "metadata.version",
-            "value": "'1.1.0'"
+            "value": "'1.9.0'"
           },
           {
             "name": "metadata.product.name",
-            "value": "'Adobe Experience Manager'"
+            "value": "'Security'"
           },
           {
             "name": "metadata.product.vendor_name",
-            "value": "'Adobe'"
+            "value": "'aemrequest'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-21)"
+      }
     },
     {
       "id": "eval",
@@ -302,66 +310,390 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "Aemrequest_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2024\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"4.3\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2001\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"db8\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"1a2b\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"1.8\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "10.0.2.15 - admin [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 8421 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 45ms",
+        "_time": null,
+        "src_ip": "10.0.2.15",
+        "user": "admin",
+        "timestamp": "12/May/2024:03:14:22 +0000",
+        "method": "GET",
+        "path": "/content/mysite/en/home.html",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 8421,
+        "referrer": "-",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "response_time_ms": 45,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:14:22 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921754,
+        "src_endpoint": {
+          "ip": "10.0.2.15"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.2.15 - admin [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 8421 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 45ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "192.168.1.44 - anonymous [12/May/2024:03:16:07 +0000] \"POST /libs/granite/core/content/login.html HTTP/1.1\" 401 512 \"https://mysite.example.com/login\" \"Mozilla/5.0 (X11; Linux x86_64)\" 122ms",
+        "_time": null,
+        "src_ip": "192.168.1.44",
+        "user": "anonymous",
+        "timestamp": "12/May/2024:03:16:07 +0000",
+        "method": "POST",
+        "path": "/libs/granite/core/content/login.html",
+        "http_version": "HTTP/1.1",
+        "status": 401,
+        "bytes": 512,
+        "referrer": "https://mysite.example.com/login",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "response_time_ms": 122,
+        "protocol": "http",
+        "action": "denied",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:16:07 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921756,
+        "src_endpoint": {
+          "ip": "192.168.1.44"
+        },
+        "actor": {
+          "user": {
+            "name": "anonymous"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "192.168.1.44 - anonymous [12/May/2024:03:16:07 +0000] \"POST /libs/granite/core/content/login.html HTTP/1.1\" 401 512 \"https://mysite.example.com/login\" \"Mozilla/5.0 (X11; Linux x86_64)\" 122ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "172.16.5.12 - jsmith [12/May/2024:03:22:41 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 298 \"-\" \"curl/7.68.0\" 8ms",
+        "_time": null,
+        "src_ip": "172.16.5.12",
+        "user": "jsmith",
+        "timestamp": "12/May/2024:03:22:41 +0000",
+        "method": "GET",
+        "path": "/crx/de/index.jsp",
+        "http_version": "HTTP/1.1",
+        "status": 403,
+        "bytes": 298,
+        "referrer": "-",
+        "user_agent": "curl/7.68.0",
+        "response_time_ms": 8,
+        "protocol": "http",
+        "action": "denied",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:22:41 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921756,
+        "src_endpoint": {
+          "ip": "172.16.5.12"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "172.16.5.12 - jsmith [12/May/2024:03:22:41 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 298 \"-\" \"curl/7.68.0\" 8ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "203.0.113.77 - anonymous [12/May/2024:03:30:15 +0000] \"GET /etc/passwd HTTP/1.1\" 404 210 \"-\" \"python-requests/2.28.1\" 12ms",
+        "_time": null,
+        "src_ip": "203.0.113.77",
+        "user": "anonymous",
+        "timestamp": "12/May/2024:03:30:15 +0000",
+        "method": "GET",
+        "path": "/etc/passwd",
+        "http_version": "HTTP/1.1",
+        "status": 404,
+        "bytes": 210,
+        "referrer": "-",
+        "user_agent": "python-requests/2.28.1",
+        "response_time_ms": 12,
+        "protocol": "http",
+        "action": "not_found",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:30:15 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921757,
+        "src_endpoint": {
+          "ip": "203.0.113.77"
+        },
+        "actor": {
+          "user": {
+            "name": "anonymous"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "203.0.113.77 - anonymous [12/May/2024:03:30:15 +0000] \"GET /etc/passwd HTTP/1.1\" 404 210 \"-\" \"python-requests/2.28.1\" 12ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "10.1.2.3 - service-account HTTP/1.1\" 200 15234 \"-\" \"AEM-Dispatcher/4.3\" 33ms",
+        "_time": 1788256212.082,
+        "src_ip": "10.1.2.3",
+        "user": "service-account",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 15234,
+        "referrer": "-",
+        "user_agent": "AEM-Dispatcher/4.3",
+        "response_time_ms": 33,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788256212082,
+        "src_endpoint": {
+          "ip": "10.1.2.3"
+        },
+        "actor": {
+          "user": {
+            "name": "service-account"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.1.2.3 - service-account HTTP/1.1\" 200 15234 \"-\" \"AEM-Dispatcher/4.3\" 33ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "198.51.100.22 - admin [12/May/2024:04:01:09 +0000] \"PUT /content/dam/mysite/assets/large-video.mp4 HTTP/1.1\" 201 104857600 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 8421ms",
+        "_time": null,
+        "src_ip": "198.51.100.22",
+        "user": "admin",
+        "timestamp": "12/May/2024:04:01:09 +0000",
+        "method": "PUT",
+        "path": "/content/dam/mysite/assets/large-video.mp4",
+        "http_version": "HTTP/1.1",
+        "status": 201,
+        "bytes": 104857600,
+        "referrer": "-",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "response_time_ms": 8421,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:01:09 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921757,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "198.51.100.22 - admin [12/May/2024:04:01:09 +0000] \"PUT /content/dam/mysite/assets/large-video.mp4 HTTP/1.1\" 201 104857600 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 8421ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "[2001:db8::1a2b] - anonymous [12/May/2024:04:05:33 +0000] \"GET /content/mysite/en/products.html HTTP/1.1\" 200 6234 \"https://google.com/search\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)\" 67ms",
+        "_time": null,
+        "src_ip": "2001:db8::1a2b",
+        "user": "anonymous",
+        "timestamp": "12/May/2024:04:05:33 +0000",
+        "method": "GET",
+        "path": "/content/mysite/en/products.html",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 6234,
+        "referrer": "https://google.com/search",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)",
+        "response_time_ms": 67,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:05:33 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921758,
+        "src_endpoint": {
+          "ip": "2001:db8::1a2b"
+        },
+        "actor": {
+          "user": {
+            "name": "anonymous"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "[2001:db8::1a2b] - anonymous [12/May/2024:04:05:33 +0000] \"GET /content/mysite/en/products.html HTTP/1.1\" 200 6234 \"https://google.com/search\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)\" 67ms",
+        "sourcetype": "aemrequest"
+      },
+      {
+        "_raw": "10.0.0.5 - replication-service [12/May/2024:04:10:47 +0000] \"POST /bin/receive HTTP/1.1\" 200 1024 \"-\" \"Java/1.8.0_361\" 15ms",
+        "_time": null,
+        "src_ip": "10.0.0.5",
+        "user": "replication-service",
+        "timestamp": "12/May/2024:04:10:47 +0000",
+        "method": "POST",
+        "path": "/bin/receive",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 1024,
+        "referrer": "-",
+        "user_agent": "Java/1.8.0_361",
+        "response_time_ms": 15,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:10:47 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966921759,
+        "src_endpoint": {
+          "ip": "10.0.0.5"
+        },
+        "actor": {
+          "user": {
+            "name": "replication-service"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemrequest",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.0.5 - replication-service [12/May/2024:04:10:47 +0000] \"POST /bin/receive HTTP/1.1\" 200 1024 \"-\" \"Java/1.8.0_361\" 15ms",
+        "sourcetype": "aemrequest"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "10.0.2.15 - admin [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 8421 \"-\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 45ms",
+      "192.168.1.44 - anonymous [12/May/2024:03:16:07 +0000] \"POST /libs/granite/core/content/login.html HTTP/1.1\" 401 512 \"https://mysite.example.com/login\" \"Mozilla/5.0 (X11; Linux x86_64)\" 122ms",
+      "172.16.5.12 - jsmith [12/May/2024:03:22:41 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 298 \"-\" \"curl/7.68.0\" 8ms",
+      "203.0.113.77 - anonymous [12/May/2024:03:30:15 +0000] \"GET /etc/passwd HTTP/1.1\" 404 210 \"-\" \"python-requests/2.28.1\" 12ms",
+      "10.1.2.3 - service-account HTTP/1.1\" 200 15234 \"-\" \"AEM-Dispatcher/4.3\" 33ms",
+      "198.51.100.22 - admin [12/May/2024:04:01:09 +0000] \"PUT /content/dam/mysite/assets/large-video.mp4 HTTP/1.1\" 201 104857600 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 8421ms",
+      "[2001:db8::1a2b] - anonymous [12/May/2024:04:05:33 +0000] \"GET /content/mysite/en/products.html HTTP/1.1\" 200 6234 \"https://google.com/search\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)\" 67ms",
+      "10.0.0.5 - replication-service [12/May/2024:04:10:47 +0000] \"POST /bin/receive HTTP/1.1\" 200 1024 \"-\" \"Java/1.8.0_361\" 15ms"
+    ],
+    "sourcetype": "aemrequest"
   }
 }
