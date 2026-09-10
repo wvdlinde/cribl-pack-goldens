@@ -1,0 +1,794 @@
+{
+  "key": "vmware:nsx::ocsf",
+  "sourcetype": "vmware:nsx",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:46.192Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<__pri>\\d+)>1\\s+(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+(?<appname>\\S+)\\s+(?<pid>\\d+)\\s+\\S+\\s+\\[nsx@\\d+\\s+comp=\"(?<component>[^\"]+)\"\\s+subcomp=\"(?<subcomponent>[^\"]+)\"\\s+level=\"(?<level>[^\"]+)\"\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse RFC5424 syslog header and NSX structured data (comp/subcomp/level) plus free-form message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof message === 'string'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:src-ip|source-ip|source_ip)=(?<src_ip>[0-9a-fA-F.:]+)/",
+        "regexList": [
+          {
+            "regex": "/(?:dst-ip|dest-ip|destination-ip)=(?<dst_ip>[0-9a-fA-F.:]+)/"
+          },
+          {
+            "regex": "/(?:dst-port|dest-port|port)=(?<dst_port>\\d+)/"
+          },
+          {
+            "regex": "/protocol=(?<__proto>[A-Za-z0-9]+)/"
+          },
+          {
+            "regex": "/action=(?<__action>[A-Za-z_]+)/"
+          },
+          {
+            "regex": "/(?:source-vm|src-vm)=(?<src_host>[\\w.\\-]+)/"
+          },
+          {
+            "regex": "/(?:dest-vm|dst-vm)=(?<dst_host>[\\w.\\-]+)/"
+          },
+          {
+            "regex": "/rule-id=(?<rule_id>[\\w\\-]+)/"
+          },
+          {
+            "regex": "/policy-id=(?<policy_id>[\\w\\-]+)/"
+          },
+          {
+            "regex": "/signature-id=(?<signature_id>\\d+)/"
+          },
+          {
+            "regex": "/tunnel-id=(?<tunnel_id>[\\w\\-]+)/"
+          },
+          {
+            "regex": "/node-id=(?<node_id>[\\w\\-]+)/"
+          },
+          {
+            "regex": "/attempt=(?<attempt_count>\\d+)/"
+          }
+        ],
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract network/entity key-value details from the NSX message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof message === 'string' && /user/i.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:for user|by user|published-by|User|user)[=: ]\\s*\"?(?<user>[A-Za-z0-9._@\\-]+)\"?/",
+        "regexList": [
+          {
+            "regex": "/principal-identity=(?<principal_identity>[\\w.\\-]+)/"
+          }
+        ],
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the user/principal referenced by auth, user-mgmt and config-change messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "timestamp ? strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%LZ') : _time"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'NSX'"
+          },
+          {
+            "name": "syslog_severity",
+            "value": "__pri ? Number(__pri) % 8 : null"
+          },
+          {
+            "name": "syslog_facility",
+            "value": "__pri ? Math.floor(Number(__pri) / 8) : null"
+          },
+          {
+            "name": "severity",
+            "value": "level ? (level === 'CRITICAL' ? 'critical' : level === 'ERROR' ? 'high' : level === 'WARN' ? 'medium' : 'low') : 'low'"
+          },
+          {
+            "name": "protocol",
+            "value": "__proto ? __proto.toLowerCase() : null"
+          },
+          {
+            "name": "action",
+            "value": "__action ? (/BLOCK|DENY|DROP/i.test(__action) ? 'blocked' : /ALERT/i.test(__action) ? 'alerted' : /ALLOW|ACCEPT|PERMIT/i.test(__action) ? 'allowed' : __action.toLowerCase()) : (typeof message === 'string' && /failed|exhaustion|lost connection|down/i.test(message) ? 'failure' : typeof message === 'string' && /successfully|passed|created/i.test(message) ? 'success' : null)"
+          },
+          {
+            "name": "event_type",
+            "value": "subcomponent ? (subcomponent === 'auth' ? 'authentication' : subcomponent === 'ids-ips' ? 'intrusion' : subcomponent === 'firewall' ? 'firewall' : subcomponent === 'user-mgmt' ? 'account_management' : subcomponent === 'vpn' ? 'vpn' : subcomponent === 'routing' || subcomponent === 'nat' || subcomponent === 'lb' ? 'network' : subcomponent) : 'nsx'"
+          }
+        ],
+        "remove": [
+          "__pri",
+          "__proto",
+          "__action"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action and protocol; add vendor metadata and event classification"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'vmware nsx'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Network Activity (4001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '') || ((src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '') || ((dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "((((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '')) ? {} : undefined"
+          },
+          {
+            "name": "traffic",
+            "value": "(((bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '') || ((bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '' ? Number(src_port || srcport || spt) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '' ? Number(dest_port || dst_port || dstport || dpt) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '' ? ((transport || protocol || proto || '').toString().toLowerCase() || undefined) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '' ? Number(bytes_in || rcvdbyte || in_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '' ? Number(bytes_out || sentbyte || out_bytes) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware nsx'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:nsx'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareNsx_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<134>1 2024-01-15T08:23:41.123Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"firewall\" level=\"INFO\"] Firewall rule 1042 applied successfully on DFW section \"App-Tier-Rules\" for VM web-srv-042 vNIC 50012345-abcd-4e3f-9a2b-1234567890ab",
+        "_time": 1705307021.123,
+        "timestamp": "2024-01-15T08:23:41.123Z",
+        "host": "nsx-manager-01",
+        "appname": "NSX",
+        "pid": "5231",
+        "component": "nsx-manager",
+        "subcomponent": "firewall",
+        "level": "INFO",
+        "message": "Firewall rule 1042 applied successfully on DFW section \"App-Tier-Rules\" for VM web-srv-042 vNIC 50012345-abcd-4e3f-9a2b-1234567890ab",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 6,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "success",
+        "event_type": "firewall",
+        "log_time": "2024-01-15T08:23:41.123Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209224,
+        "device": {
+          "hostname": "nsx-manager-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<133>1 2024-01-15T09:41:12.456Z nsx-edge-02 NSX 3312 - [nsx@6876 comp=\"nsx-edge\" subcomp=\"routing\" level=\"WARN\"] BGP neighbor 172.16.10.1 down on Tier-0 Router T0-GW-Prod, reason: hold-timer-expired",
+        "_time": 1705311672.456,
+        "timestamp": "2024-01-15T09:41:12.456Z",
+        "host": "nsx-edge-02",
+        "appname": "NSX",
+        "pid": "3312",
+        "component": "nsx-edge",
+        "subcomponent": "routing",
+        "level": "WARN",
+        "message": "BGP neighbor 172.16.10.1 down on Tier-0 Router T0-GW-Prod, reason: hold-timer-expired",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 5,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "failure",
+        "event_type": "network",
+        "log_time": "2024-01-15T09:41:12.456Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209228,
+        "device": {
+          "hostname": "nsx-edge-02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<131>1 2024-01-15T10:02:55.789Z nsx-manager-01 NSX 4471 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"auth\" level=\"ERROR\"] Authentication failed for user \"admin\" from source-ip=203.0.113.45 reason=\"invalid_credentials\" attempt=3",
+        "_time": 1705312975.789,
+        "timestamp": "2024-01-15T10:02:55.789Z",
+        "host": "nsx-manager-01",
+        "appname": "NSX",
+        "pid": "4471",
+        "component": "nsx-manager",
+        "subcomponent": "auth",
+        "level": "ERROR",
+        "message": "Authentication failed for user \"admin\" from source-ip=203.0.113.45 reason=\"invalid_credentials\" attempt=3",
+        "src_ip": "203.0.113.45",
+        "attempt_count": "3",
+        "user": "admin",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 3,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "failure",
+        "event_type": "authentication",
+        "log_time": "2024-01-15T10:02:55.789Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209229,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "nsx-manager-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<134>1 2024-01-15T10:15:33.012Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"firewall\" level=\"INFO\"] Distributed Firewall policy published successfully, policy-id=policy-8823 total-rules=214 published-by=jdoe@corp.local",
+        "_time": 1705313733.012,
+        "timestamp": "2024-01-15T10:15:33.012Z",
+        "host": "nsx-manager-01",
+        "appname": "NSX",
+        "pid": "5231",
+        "component": "nsx-manager",
+        "subcomponent": "firewall",
+        "level": "INFO",
+        "message": "Distributed Firewall policy published successfully, policy-id=policy-8823 total-rules=214 published-by=jdoe@corp.local",
+        "policy_id": "policy-8823",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 6,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "success",
+        "event_type": "firewall",
+        "log_time": "2024-01-15T10:15:33.012Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209230,
+        "device": {
+          "hostname": "nsx-manager-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<130>1 2024-01-15T11:03:21.334Z nsx-manager-02 NSX 6621 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"security\" level=\"CRITICAL\"] Suspicious lateral movement detected: source-vm=web-srv-012 dest-vm=db-srv-007 port=1433 protocol=TCP action=BLOCKED rule-id=fw-4432",
+        "_time": 1705316601.334,
+        "timestamp": "2024-01-15T11:03:21.334Z",
+        "host": "nsx-manager-02",
+        "appname": "NSX",
+        "pid": "6621",
+        "component": "nsx-manager",
+        "subcomponent": "security",
+        "level": "CRITICAL",
+        "message": "Suspicious lateral movement detected: source-vm=web-srv-012 dest-vm=db-srv-007 port=1433 protocol=TCP action=BLOCKED rule-id=fw-4432",
+        "dst_port": "1433",
+        "src_host": "web-srv-012",
+        "dst_host": "db-srv-007",
+        "rule_id": "fw-4432",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 2,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "protocol": "tcp",
+        "action": "blocked",
+        "event_type": "security",
+        "dest_port": "1433",
+        "transport": "tcp",
+        "log_time": "2024-01-15T11:03:21.334Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209230,
+        "dst_endpoint": {
+          "port": 1433
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "device": {
+          "hostname": "nsx-manager-02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<133>1 2024-01-15T11:45:07.554Z nsx-edge-01 NSX 2210 - [nsx@6876 comp=\"nsx-edge\" subcomp=\"vpn\" level=\"WARN\"] IPSec tunnel to peer 198.51.100.22 flapping, tunnel-id=ipsec-tun-0091, state-changes=5 in 10min",
+        "_time": 1705319107.554,
+        "timestamp": "2024-01-15T11:45:07.554Z",
+        "host": "nsx-edge-01",
+        "appname": "NSX",
+        "pid": "2210",
+        "component": "nsx-edge",
+        "subcomponent": "vpn",
+        "level": "WARN",
+        "message": "IPSec tunnel to peer 198.51.100.22 flapping, tunnel-id=ipsec-tun-0091, state-changes=5 in 10min",
+        "tunnel_id": "ipsec-tun-0091",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 5,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "event_type": "vpn",
+        "log_time": "2024-01-15T11:45:07.554Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209231,
+        "device": {
+          "hostname": "nsx-edge-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<134>1 2024-01-15T12:11:44.221Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"user-mgmt\" level=\"INFO\"] User \"svc-automation\" created role-binding \"enterprise_admin\" for principal-identity=cert-nsx-svc-01",
+        "_time": 1705320704.221,
+        "timestamp": "2024-01-15T12:11:44.221Z",
+        "host": "nsx-manager-01",
+        "appname": "NSX",
+        "pid": "5231",
+        "component": "nsx-manager",
+        "subcomponent": "user-mgmt",
+        "level": "INFO",
+        "message": "User \"svc-automation\" created role-binding \"enterprise_admin\" for principal-identity=cert-nsx-svc-01",
+        "user": "svc-automation",
+        "principal_identity": "cert-nsx-svc-01",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 6,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "success",
+        "event_type": "account_management",
+        "log_time": "2024-01-15T12:11:44.221Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209232,
+        "actor": {
+          "user": {
+            "name": "svc-automation"
+          }
+        },
+        "device": {
+          "hostname": "nsx-manager-01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      },
+      {
+        "_raw": "<131>1 2024-01-15T12:33:19.887Z nsx-controller-03 NSX 7712 - [nsx@6876 comp=\"nsx-controller\" subcomp=\"cluster\" level=\"ERROR\"] Controller node lost connection to management-plane, node-id=ctrl-node-3, retry-count=4",
+        "_time": 1705321999.887,
+        "timestamp": "2024-01-15T12:33:19.887Z",
+        "host": "nsx-controller-03",
+        "appname": "NSX",
+        "pid": "7712",
+        "component": "nsx-controller",
+        "subcomponent": "cluster",
+        "level": "ERROR",
+        "message": "Controller node lost connection to management-plane, node-id=ctrl-node-3, retry-count=4",
+        "node_id": "ctrl-node-3",
+        "vendor": "vmware nsx",
+        "product": "Security",
+        "syslog_severity": 3,
+        "syslog_facility": 16,
+        "severity": "Informational",
+        "action": "failure",
+        "event_type": "cluster",
+        "log_time": "2024-01-15T12:33:19.887Z",
+        "version": "1.0",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "time": 1788967209235,
+        "device": {
+          "hostname": "nsx-controller-03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware nsx",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:nsx"
+      }
+    ],
+    "sampleKeys": [
+      "comp",
+      "subcomp",
+      "level",
+      "reason",
+      "attempt",
+      "port",
+      "protocol",
+      "action"
+    ],
+    "sampleRaw": [
+      "<134>1 2024-01-15T08:23:41.123Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"firewall\" level=\"INFO\"] Firewall rule 1042 applied successfully on DFW section \"App-Tier-Rules\" for VM web-srv-042 vNIC 50012345-abcd-4e3f-9a2b-1234567890ab",
+      "<133>1 2024-01-15T09:41:12.456Z nsx-edge-02 NSX 3312 - [nsx@6876 comp=\"nsx-edge\" subcomp=\"routing\" level=\"WARN\"] BGP neighbor 172.16.10.1 down on Tier-0 Router T0-GW-Prod, reason: hold-timer-expired",
+      "<131>1 2024-01-15T10:02:55.789Z nsx-manager-01 NSX 4471 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"auth\" level=\"ERROR\"] Authentication failed for user \"admin\" from source-ip=203.0.113.45 reason=\"invalid_credentials\" attempt=3",
+      "<134>1 2024-01-15T10:15:33.012Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"firewall\" level=\"INFO\"] Distributed Firewall policy published successfully, policy-id=policy-8823 total-rules=214 published-by=jdoe@corp.local",
+      "<130>1 2024-01-15T11:03:21.334Z nsx-manager-02 NSX 6621 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"security\" level=\"CRITICAL\"] Suspicious lateral movement detected: source-vm=web-srv-012 dest-vm=db-srv-007 port=1433 protocol=TCP action=BLOCKED rule-id=fw-4432",
+      "<133>1 2024-01-15T11:45:07.554Z nsx-edge-01 NSX 2210 - [nsx@6876 comp=\"nsx-edge\" subcomp=\"vpn\" level=\"WARN\"] IPSec tunnel to peer 198.51.100.22 flapping, tunnel-id=ipsec-tun-0091, state-changes=5 in 10min",
+      "<134>1 2024-01-15T12:11:44.221Z nsx-manager-01 NSX 5231 - [nsx@6876 comp=\"nsx-manager\" subcomp=\"user-mgmt\" level=\"INFO\"] User \"svc-automation\" created role-binding \"enterprise_admin\" for principal-identity=cert-nsx-svc-01",
+      "<131>1 2024-01-15T12:33:19.887Z nsx-controller-03 NSX 7712 - [nsx@6876 comp=\"nsx-controller\" subcomp=\"cluster\" level=\"ERROR\"] Controller node lost connection to management-plane, node-id=ctrl-node-3, retry-count=4"
+    ],
+    "sourcetype": "vmware:nsx"
+  }
+}
