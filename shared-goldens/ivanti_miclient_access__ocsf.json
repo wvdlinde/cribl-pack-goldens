@@ -2,11 +2,11 @@
   "key": "ivanti_miclient_access::ocsf",
   "sourcetype": "ivanti_miclient_access",
   "dest_format": "ocsf",
-  "score": 84,
+  "score": 86,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T15:03:01.566Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:53.703Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -179,69 +179,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4001'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
+            "value": "1"
           },
           {
-            "name": "event_type",
-            "value": "'Network Activity'"
+            "name": "category_name",
+            "value": "'System Activity'"
           },
           {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "dst_ip || ''"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "protocol || ''"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "Number(bytes_sent || 0)"
-          },
-          {
-            "name": "traffic.bytes_in",
-            "value": "Number(bytes_received || 0)"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user || ''"
-          },
-          {
-            "name": "device.hostname",
-            "value": "host || ''"
-          },
-          {
-            "name": "time",
-            "value": "timestamp ? Number(new Date(timestamp)) : Number(new Date(_time))"
-          },
-          {
-            "name": "activity_id",
-            "value": "action == 'authentication_success' || action == 'session_established' ? 1 : (action == 'authentication_failed' || action == 'session_terminated' ? 2 : 0)"
+            "name": "type_uid",
+            "value": "100100"
           },
           {
             "name": "severity_id",
-            "value": "Number(severity || 0)"
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'ivanti miclient access'"
           },
           {
             "name": "metadata.product.version",
-            "value": "client_version || ''"
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields to destination schema"
+      }
     },
     {
       "id": "eval",
@@ -268,48 +314,418 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "IvantiMiclientAccess_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2001\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"db8\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"85a3\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"8a2e\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"370\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"7334\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<134>Jan 15 08:23:11 ivanti-gw01 MICLIENT[AUT22930]: 2024-01-15 08:23:11 - ic - [203.0.113.45] jsmith(Users)[Sales] - Primary authentication successful for jsmith/Users from 203.0.113.45 realm 'Users' with client Ivanti Secure Access Client 22.6.1",
+        "_time": 1705306991,
+        "priority": "134",
+        "syslog_timestamp": "Jan 15 08:23:11",
+        "host": "ivanti-gw01",
+        "event_id": "AUT22930",
+        "timestamp": "2024-01-15 08:23:11",
+        "src_ip": "203.0.113.45",
+        "user": "jsmith",
+        "user_group": "Users",
+        "realm": "Sales",
+        "message": "Primary authentication successful for jsmith/Users from 203.0.113.45 realm 'Users' with client Ivanti Secure Access Client 22.6.1",
+        "action": "login_success",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "inbound",
+        "transport": "vpn",
+        "log_time": "2024-01-15 08:23:11",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705306991000,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<131>Jan 15 08:24:02 ivanti-gw01 MICLIENT[AUT22931]: 2024-01-15 08:24:02 - ic - [198.51.100.12] rwilliams(Contractors)[VPN] - Primary authentication failed for rwilliams/Contractors from 198.51.100.12, reason: invalid password",
+        "_time": 1705307042,
+        "priority": "131",
+        "syslog_timestamp": "Jan 15 08:24:02",
+        "host": "ivanti-gw01",
+        "event_id": "AUT22931",
+        "timestamp": "2024-01-15 08:24:02",
+        "src_ip": "198.51.100.12",
+        "user": "rwilliams",
+        "user_group": "Contractors",
+        "realm": "VPN",
+        "message": "Primary authentication failed for rwilliams/Contractors from 198.51.100.12, reason: invalid password",
+        "reason": "invalid password",
+        "action": "login_failure",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "inbound",
+        "transport": "vpn",
+        "log_time": "2024-01-15 08:24:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705307042000,
+        "src_endpoint": {
+          "ip": "198.51.100.12"
+        },
+        "actor": {
+          "user": {
+            "name": "rwilliams"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<134>Jan 15 08:31:47 ivanti-gw02 MICLIENT[NET22960]: 2024-01-15 08:31:47 - ic - [10.20.5.101] mchen(Employees)[Corp] - Session established for mchen, client version 22.7.0, VPN tunnel mode Split-Tunneling, assigned IP 172.16.44.12",
+        "_time": 1705307507,
+        "priority": "134",
+        "syslog_timestamp": "Jan 15 08:31:47",
+        "host": "ivanti-gw02",
+        "event_id": "NET22960",
+        "timestamp": "2024-01-15 08:31:47",
+        "src_ip": "10.20.5.101",
+        "user": "mchen",
+        "user_group": "Employees",
+        "realm": "Corp",
+        "message": "Session established for mchen, client version 22.7.0, VPN tunnel mode Split-Tunneling, assigned IP 172.16.44.12",
+        "client_version": "22.7.0",
+        "tunnel_mode": "Split-Tunneling",
+        "dst_ip": "172.16.44.12",
+        "action": "session_start",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "inbound",
+        "dest_ip": "172.16.44.12",
+        "transport": "vpn",
+        "log_time": "2024-01-15 08:31:47",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705307507000,
+        "src_endpoint": {
+          "ip": "10.20.5.101"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.44.12"
+        },
+        "actor": {
+          "user": {
+            "name": "mchen"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<135>Jan 15 08:45:19 ivanti-gw01 MICLIENT[SYS22940]: 2024-01-15 08:45:19 - ic - [] System()[] - Ivanti Secure Access Client heartbeat missed for session ID 8823f1a2, marking session stale",
+        "_time": 1705308319,
+        "priority": "135",
+        "syslog_timestamp": "Jan 15 08:45:19",
+        "host": "ivanti-gw01",
+        "event_id": "SYS22940",
+        "timestamp": "2024-01-15 08:45:19",
+        "user": "System",
+        "user_group": "",
+        "realm": "",
+        "message": "Ivanti Secure Access Client heartbeat missed for session ID 8823f1a2, marking session stale",
+        "action": "heartbeat_missed",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "unknown",
+        "transport": "vpn",
+        "log_time": "2024-01-15 08:45:19",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705308319000,
+        "actor": {
+          "user": {
+            "name": "System"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<131>Jan 15 09:02:33 ivanti-gw03 MICLIENT[AUT22935]: 2024-01-15 09:02:33 - ic - [45.33.22.156] admin(Administrators)[Corp] - Primary authentication failed for admin/Administrators from 45.33.22.156, reason: account locked after 5 failed attempts",
+        "_time": 1705309353,
+        "priority": "131",
+        "syslog_timestamp": "Jan 15 09:02:33",
+        "host": "ivanti-gw03",
+        "event_id": "AUT22935",
+        "timestamp": "2024-01-15 09:02:33",
+        "src_ip": "45.33.22.156",
+        "user": "admin",
+        "user_group": "Administrators",
+        "realm": "Corp",
+        "message": "Primary authentication failed for admin/Administrators from 45.33.22.156, reason: account locked after 5 failed attempts",
+        "reason": "account locked after 5 failed attempts",
+        "action": "login_failure",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "inbound",
+        "transport": "vpn",
+        "log_time": "2024-01-15 09:02:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705309353000,
+        "src_endpoint": {
+          "ip": "45.33.22.156"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw03"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<134>Jan 15 09:15:04 ivanti-gw02 MICLIENT[NET22961]: 2024-01-15 09:15:04 - ic - [192.168.1.55] klopez(Employees)[Corp] - Session terminated for klopez, duration 00:43:11, bytes sent 4823102 bytes received 9021345",
+        "_time": 1705310104,
+        "priority": "134",
+        "syslog_timestamp": "Jan 15 09:15:04",
+        "host": "ivanti-gw02",
+        "event_id": "NET22961",
+        "timestamp": "2024-01-15 09:15:04",
+        "src_ip": "192.168.1.55",
+        "user": "klopez",
+        "user_group": "Employees",
+        "realm": "Corp",
+        "message": "Session terminated for klopez, duration 00:43:11, bytes sent 4823102 bytes received 9021345",
+        "session_duration": "00:43:11",
+        "bytes_sent": "4823102",
+        "bytes_received": "9021345",
+        "action": "session_end",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "outbound",
+        "transport": "vpn",
+        "log_time": "2024-01-15 09:15:04",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705310104000,
+        "src_endpoint": {
+          "ip": "192.168.1.55"
+        },
+        "actor": {
+          "user": {
+            "name": "klopez"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw02"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<133>Jan 15 09:28:56 ivanti-gw01 MICLIENT[SEC22970]: 2024-01-15 09:28:56 - ic - [10.10.5.220] tnguyen(Employees)[Corp] - Host Checker policy violation: antivirus definitions outdated, session quarantined",
+        "_time": 1705310936,
+        "priority": "133",
+        "syslog_timestamp": "Jan 15 09:28:56",
+        "host": "ivanti-gw01",
+        "event_id": "SEC22970",
+        "timestamp": "2024-01-15 09:28:56",
+        "src_ip": "10.10.5.220",
+        "user": "tnguyen",
+        "user_group": "Employees",
+        "realm": "Corp",
+        "message": "Host Checker policy violation: antivirus definitions outdated, session quarantined",
+        "action": "policy_violation",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "unknown",
+        "transport": "vpn",
+        "log_time": "2024-01-15 09:28:56",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705310936000,
+        "src_endpoint": {
+          "ip": "10.10.5.220"
+        },
+        "actor": {
+          "user": {
+            "name": "tnguyen"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      },
+      {
+        "_raw": "<134>Jan 15 09:41:10 ivanti-gw04 MICLIENT[AUT22932]: 2024-01-15 09:41:10 - ic - [2001:db8:85a3::8a2e:370:7334] gpatel(Users)[Sales] - Primary authentication successful for gpatel/Users from 2001:db8:85a3::8a2e:370:7334 realm 'Users' with client Ivanti Secure Access Client 22.6.2",
+        "_time": 1705311670,
+        "priority": "134",
+        "syslog_timestamp": "Jan 15 09:41:10",
+        "host": "ivanti-gw04",
+        "event_id": "AUT22932",
+        "timestamp": "2024-01-15 09:41:10",
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "user": "gpatel",
+        "user_group": "Users",
+        "realm": "Sales",
+        "message": "Primary authentication successful for gpatel/Users from 2001:db8:85a3::8a2e:370:7334 realm 'Users' with client Ivanti Secure Access Client 22.6.2",
+        "action": "login_success",
+        "severity": "Informational",
+        "protocol": "vpn",
+        "direction": "inbound",
+        "transport": "vpn",
+        "log_time": "2024-01-15 09:41:10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705311670000,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "actor": {
+          "user": {
+            "name": "gpatel"
+          }
+        },
+        "device": {
+          "hostname": "ivanti-gw04"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti miclient access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_miclient_access"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "<134>Jan 15 08:23:11 ivanti-gw01 MICLIENT[AUT22930]: 2024-01-15 08:23:11 - ic - [203.0.113.45] jsmith(Users)[Sales] - Primary authentication successful for jsmith/Users from 203.0.113.45 realm 'Users' with client Ivanti Secure Access Client 22.6.1",
+      "<131>Jan 15 08:24:02 ivanti-gw01 MICLIENT[AUT22931]: 2024-01-15 08:24:02 - ic - [198.51.100.12] rwilliams(Contractors)[VPN] - Primary authentication failed for rwilliams/Contractors from 198.51.100.12, reason: invalid password",
+      "<134>Jan 15 08:31:47 ivanti-gw02 MICLIENT[NET22960]: 2024-01-15 08:31:47 - ic - [10.20.5.101] mchen(Employees)[Corp] - Session established for mchen, client version 22.7.0, VPN tunnel mode Split-Tunneling, assigned IP 172.16.44.12",
+      "<135>Jan 15 08:45:19 ivanti-gw01 MICLIENT[SYS22940]: 2024-01-15 08:45:19 - ic - [] System()[] - Ivanti Secure Access Client heartbeat missed for session ID 8823f1a2, marking session stale",
+      "<131>Jan 15 09:02:33 ivanti-gw03 MICLIENT[AUT22935]: 2024-01-15 09:02:33 - ic - [45.33.22.156] admin(Administrators)[Corp] - Primary authentication failed for admin/Administrators from 45.33.22.156, reason: account locked after 5 failed attempts",
+      "<134>Jan 15 09:15:04 ivanti-gw02 MICLIENT[NET22961]: 2024-01-15 09:15:04 - ic - [192.168.1.55] klopez(Employees)[Corp] - Session terminated for klopez, duration 00:43:11, bytes sent 4823102 bytes received 9021345",
+      "<133>Jan 15 09:28:56 ivanti-gw01 MICLIENT[SEC22970]: 2024-01-15 09:28:56 - ic - [10.10.5.220] tnguyen(Employees)[Corp] - Host Checker policy violation: antivirus definitions outdated, session quarantined",
+      "<134>Jan 15 09:41:10 ivanti-gw04 MICLIENT[AUT22932]: 2024-01-15 09:41:10 - ic - [2001:db8:85a3::8a2e:370:7334] gpatel(Users)[Sales] - Primary authentication successful for gpatel/Users from 2001:db8:85a3::8a2e:370:7334 realm 'Users' with client Ivanti Secure Access Client 22.6.2"
+    ],
+    "sourcetype": "ivanti_miclient_access"
   }
 }
