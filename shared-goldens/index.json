@@ -17190,6 +17190,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:envoy::ocsf",
+      "sourcetype": "vmware:esxlog:envoy",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:33.760Z",
+      "path": "shared-goldens/vmware:esxlog:envoy__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
