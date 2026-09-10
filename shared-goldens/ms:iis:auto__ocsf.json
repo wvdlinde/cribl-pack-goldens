@@ -1,0 +1,604 @@
+{
+  "key": "ms:iis:auto::ocsf",
+  "sourcetype": "ms:iis:auto",
+  "dest_format": "ocsf",
+  "score": 93,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:39.201Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\s+(?:\\S+\\s+\\S+\\s+)?(?<src_ip>[0-9a-fA-F:.%]+)\\s+(?<method>[A-Z]+)\\s+(?<uri_stem>\\S+)\\s+(?<uri_query>\\S+)\\s+(?<dst_port>\\d+)\\s+(?<user>\\S+)\\s+(?<dst_ip>[0-9a-fA-F:.%]+)\\s+(?:HTTP\\/\\S+\\s+)?(?<user_agent>\\S+)\\s+(?<referer>\\S+)\\s+(?:(?<dst_host>[A-Za-z0-9.\\-]+)\\s+)?(?<status>\\d{3})\\s+(?<substatus>\\d+)\\s+(?<win32_status>\\d+)\\s+(?<time_taken>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse IIS W3C extended log fields (date/time, client ip, method, uri, port, user, server ip, user-agent, referer, optional host, status codes, time taken)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/%.*/, '') : src_ip"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst_ip ? dst_ip.replace(/%.*/, '') : dst_ip"
+          },
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "referer",
+            "value": "referer === '-' ? null : referer"
+          }
+        ]
+      },
+      "description": "Clean IPv6 zone identifiers and normalize empty/placeholder user field"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "dst_port === '443' ? 'https' : 'http'"
+          },
+          {
+            "name": "action",
+            "value": "status && Number(status) >= 500 ? 'error' : status && Number(status) >= 400 ? 'denied' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "status && Number(status) >= 500 ? 'critical' : status && Number(status) >= 400 ? 'warning' : 'info'"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? Date.parse(timestamp)/1000 : _time"
+          }
+        ]
+      },
+      "description": "Derive protocol, action, severity from status/port and set event timestamp"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'microsoft iis accesslog'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'ms:iis:auto'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "MsIisAuto_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2020-10-07 23:00:17 192.168.16.11 POST /Production-UI/api/finance/legacy/GeneralLedger/LoadBatchTotals - 443 - 192.168.7.63 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/67.43.156.13+Safari/537.36 https://onesolfarm.ggcity.org/Production-UI/ui/uiscreens/generalledger/GLJEUB 200 0 0 26 192.168.198.23",
+        "_time": 1602111617,
+        "timestamp": "2020-10-07 23:00:17",
+        "src_ip": "192.168.16.11",
+        "method": "POST",
+        "uri_stem": "/Production-UI/api/finance/legacy/GeneralLedger/LoadBatchTotals",
+        "uri_query": "-",
+        "dst_port": "443",
+        "user": null,
+        "dst_ip": "192.168.7.63",
+        "user_agent": "Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/67.43.156.13+Safari/537.36",
+        "referer": "https://onesolfarm.ggcity.org/Production-UI/ui/uiscreens/generalledger/GLJEUB",
+        "status": "200",
+        "substatus": "0",
+        "win32_status": "0",
+        "time_taken": "26",
+        "protocol": "https",
+        "action": "allowed",
+        "severity": "Informational",
+        "dest_ip": "192.168.7.63",
+        "dest_port": "443",
+        "transport": "https",
+        "log_time": "2020-10-07 23:00:17",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1602111617000,
+        "src_endpoint": {
+          "ip": "192.168.16.11"
+        },
+        "dst_endpoint": {
+          "ip": "192.168.7.63"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2020-10-07 23:00:17 192.168.16.11 POST /Production-UI/api/finance/legacy/GeneralLedger/LoadBatchTotals - 443 - 192.168.7.63 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/67.43.156.13+Safari/537.36 https://onesolfarm.ggcity.org/Production-UI/ui/uiscreens/generalledger/GLJEUB 200 0 0 26 192.168.198.23",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2020-10-04 22:00:34 W3SVC2 freca1 10.24.129.162 GET /favicon.ico - 80 - 10.24.136.240 HTTP/1.1 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64;+rv:81.0)+Gecko/20100101+Firefox/81.0 - https://images.hogeschoolrotterdam.nl/Blob/adeec119008c48758c1a6be53aeeb2ac/34ff475072d54117bcb46ea7f023bd87.jpg?width=1200&height=630&mode=crop images.hogeschoolrotterdam.nl 404 0 2 1437 534 0 67.43.156.14",
+        "_time": 1788258799.828,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788258799828,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2020-10-04 22:00:34 W3SVC2 freca1 10.24.129.162 GET /favicon.ico - 80 - 10.24.136.240 HTTP/1.1 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64;+rv:81.0)+Gecko/20100101+Firefox/81.0 - https://images.hogeschoolrotterdam.nl/Blob/adeec119008c48758c1a6be53aeeb2ac/34ff475072d54117bcb46ea7f023bd87.jpg?width=1200&height=630&mode=crop images.hogeschoolrotterdam.nl 404 0 2 1437 534 0 67.43.156.14",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2018-12-31 12:02:53 10.44.0.136 GET /pbserver/..À¯..À¯..À¯..À¯..À¯../winnt/system32/cmd.exe /c+dir+c:\\+/OG 8080 - 10.50.6.188 Mozilla/4.0+(compatible;+MSIE+8.0;+Windows+NT+5.1;+Trident/4.0) - 404 0 64 0",
+        "_time": 1546257773,
+        "timestamp": "2018-12-31 12:02:53",
+        "src_ip": "10.44.0.136",
+        "method": "GET",
+        "uri_stem": "/pbserver/..À¯..À¯..À¯..À¯..À¯../winnt/system32/cmd.exe",
+        "uri_query": "/c+dir+c:\\+/OG",
+        "dst_port": "8080",
+        "user": null,
+        "dst_ip": "10.50.6.188",
+        "user_agent": "Mozilla/4.0+(compatible;+MSIE+8.0;+Windows+NT+5.1;+Trident/4.0)",
+        "referer": null,
+        "status": "404",
+        "substatus": "0",
+        "win32_status": "64",
+        "time_taken": "0",
+        "protocol": "http",
+        "action": "denied",
+        "severity": "Informational",
+        "dest_ip": "10.50.6.188",
+        "dest_port": "8080",
+        "transport": "http",
+        "log_time": "2018-12-31 12:02:53",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1546257773000,
+        "src_endpoint": {
+          "ip": "10.44.0.136"
+        },
+        "dst_endpoint": {
+          "ip": "10.50.6.188"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2018-12-31 12:02:53 10.44.0.136 GET /pbserver/..À¯..À¯..À¯..À¯..À¯../winnt/system32/cmd.exe /c+dir+c:\\+/OG 8080 - 10.50.6.188 Mozilla/4.0+(compatible;+MSIE+8.0;+Windows+NT+5.1;+Trident/4.0) - 404 0 64 0",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2022-05-09 17:10:04 10.119.32.8 POST /civault/Cryptology/Cryptology.svc - 443 - 10.119.0.62 Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+10.0;+Win64;+x64;+Trident/7.0;+.NET4.0C;+.NET4.0E;+.NET+CLR+2.0.50727;+.NET+CLR+3.0.30729;+.NET+CLR+3.5.30729) - [apcvwp00049.corp.acxiom.net](https://apcvwp00049.corp.acxiom.net/) 200 0 0 26",
+        "_time": 1788258799.828,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788258799828,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2022-05-09 17:10:04 10.119.32.8 POST /civault/Cryptology/Cryptology.svc - 443 - 10.119.0.62 Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+10.0;+Win64;+x64;+Trident/7.0;+.NET4.0C;+.NET4.0E;+.NET+CLR+2.0.50727;+.NET+CLR+3.0.30729;+.NET+CLR+3.5.30729) - [apcvwp00049.corp.acxiom.net](https://apcvwp00049.corp.acxiom.net/) 200 0 0 26",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2018-01-01 08:09:10 127.0.0.1 GET / q=100 80 - 67.43.156.13 Mozilla/5.0+(Windows+NT+6.1;+Win64;+x64;+rv:57.0)+Gecko/20100101+Firefox/57.0 - 200 0 0 123",
+        "_time": 1514794150,
+        "timestamp": "2018-01-01 08:09:10",
+        "src_ip": "127.0.0.1",
+        "method": "GET",
+        "uri_stem": "/",
+        "uri_query": "q=100",
+        "dst_port": "80",
+        "user": null,
+        "dst_ip": "67.43.156.13",
+        "user_agent": "Mozilla/5.0+(Windows+NT+6.1;+Win64;+x64;+rv:57.0)+Gecko/20100101+Firefox/57.0",
+        "referer": null,
+        "status": "200",
+        "substatus": "0",
+        "win32_status": "0",
+        "time_taken": "123",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "dest_ip": "67.43.156.13",
+        "dest_port": "80",
+        "transport": "http",
+        "log_time": "2018-01-01 08:09:10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1514794150000,
+        "src_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "dst_endpoint": {
+          "ip": "67.43.156.13"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2018-01-01 08:09:10 127.0.0.1 GET / q=100 80 - 67.43.156.13 Mozilla/5.0+(Windows+NT+6.1;+Win64;+x64;+rv:57.0)+Gecko/20100101+Firefox/57.0 - 200 0 0 123",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2019-08-14 00:09:32 W3SVC1 SE119654 ::1 GET /help/default.aspx area= 80 - ::1 HTTP/1.1 Mozilla/5.0+(compatible;+MSIE+9.0;+Windows+NT+6.1;+Trident/5.0) - - localhost 403 4 5 5279 160 15",
+        "_time": 1788258799.828,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788258799828,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2019-08-14 00:09:32 W3SVC1 SE119654 ::1 GET /help/default.aspx area= 80 - ::1 HTTP/1.1 Mozilla/5.0+(compatible;+MSIE+9.0;+Windows+NT+6.1;+Trident/5.0) - - localhost 403 4 5 5279 160 15",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2018-08-28 18:24:25 [10.100.220.70](http://10.100.220.70) GET / - 80 - [10.100.118.31](http://10.100.118.31) Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+6.3;+WOW64;+Trident/7.0;+.NET4.0E;+.NET4.0C;+.NET+CLR+3.5.30729;+.NET+CLR[+2.0.50727](tel:+2050727);+.NET+CLR+3.0.30729) 404 4 2 792",
+        "_time": 1788258799.828,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788258799828,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2018-08-28 18:24:25 [10.100.220.70](http://10.100.220.70) GET / - 80 - [10.100.118.31](http://10.100.118.31) Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+6.3;+WOW64;+Trident/7.0;+.NET4.0E;+.NET4.0C;+.NET+CLR+3.5.30729;+.NET+CLR[+2.0.50727](tel:+2050727);+.NET+CLR+3.0.30729) 404 4 2 792",
+        "sourcetype": "ms:iis:auto"
+      },
+      {
+        "_raw": "2026-07-06 18:36:16 10.177.11.164 POST /apps/compliance/requirement.aspx RequirementId=1283 443 jdoe@example.com 10.177.2.242 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/120.0.0.0+Safari/537.36 SESSION_ID=e4edcec2803f4301909ba898ec5f3fbb;+DeviceWidth=0;+DeviceHeight=0 https://example.com/apps/compliance/requirement.aspx?RequirementId=1283 200 0 0 20123 36264 597 203.0.113.10",
+        "_time": 1788258799.828,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788258799828,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "microsoft iis accesslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2026-07-06 18:36:16 10.177.11.164 POST /apps/compliance/requirement.aspx RequirementId=1283 443 jdoe@example.com 10.177.2.242 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/120.0.0.0+Safari/537.36 SESSION_ID=e4edcec2803f4301909ba898ec5f3fbb;+DeviceWidth=0;+DeviceHeight=0 https://example.com/apps/compliance/requirement.aspx?RequirementId=1283 200 0 0 20123 36264 597 203.0.113.10",
+        "sourcetype": "ms:iis:auto"
+      }
+    ],
+    "sampleKeys": [
+      "q",
+      "area",
+      "RequirementId",
+      "SESSION_ID"
+    ],
+    "sampleRaw": [
+      "2020-10-07 23:00:17 192.168.16.11 POST /Production-UI/api/finance/legacy/GeneralLedger/LoadBatchTotals - 443 - 192.168.7.63 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/67.43.156.13+Safari/537.36 https://onesolfarm.ggcity.org/Production-UI/ui/uiscreens/generalledger/GLJEUB 200 0 0 26 192.168.198.23",
+      "2020-10-04 22:00:34 W3SVC2 freca1 10.24.129.162 GET /favicon.ico - 80 - 10.24.136.240 HTTP/1.1 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64;+rv:81.0)+Gecko/20100101+Firefox/81.0 - https://images.hogeschoolrotterdam.nl/Blob/adeec119008c48758c1a6be53aeeb2ac/34ff475072d54117bcb46ea7f023bd87.jpg?width=1200&height=630&mode=crop images.hogeschoolrotterdam.nl 404 0 2 1437 534 0 67.43.156.14",
+      "2018-12-31 12:02:53 10.44.0.136 GET /pbserver/..À¯..À¯..À¯..À¯..À¯../winnt/system32/cmd.exe /c+dir+c:\\+/OG 8080 - 10.50.6.188 Mozilla/4.0+(compatible;+MSIE+8.0;+Windows+NT+5.1;+Trident/4.0) - 404 0 64 0",
+      "2022-05-09 17:10:04 10.119.32.8 POST /civault/Cryptology/Cryptology.svc - 443 - 10.119.0.62 Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+10.0;+Win64;+x64;+Trident/7.0;+.NET4.0C;+.NET4.0E;+.NET+CLR+2.0.50727;+.NET+CLR+3.0.30729;+.NET+CLR+3.5.30729) - [apcvwp00049.corp.acxiom.net](https://apcvwp00049.corp.acxiom.net/) 200 0 0 26",
+      "2018-01-01 08:09:10 127.0.0.1 GET / q=100 80 - 67.43.156.13 Mozilla/5.0+(Windows+NT+6.1;+Win64;+x64;+rv:57.0)+Gecko/20100101+Firefox/57.0 - 200 0 0 123",
+      "2019-08-14 00:09:32 W3SVC1 SE119654 ::1 GET /help/default.aspx area= 80 - ::1 HTTP/1.1 Mozilla/5.0+(compatible;+MSIE+9.0;+Windows+NT+6.1;+Trident/5.0) - - localhost 403 4 5 5279 160 15",
+      "2018-08-28 18:24:25 [10.100.220.70](http://10.100.220.70) GET / - 80 - [10.100.118.31](http://10.100.118.31) Mozilla/4.0+(compatible;+MSIE+7.0;+Windows+NT+6.3;+WOW64;+Trident/7.0;+.NET4.0E;+.NET4.0C;+.NET+CLR+3.5.30729;+.NET+CLR[+2.0.50727](tel:+2050727);+.NET+CLR+3.0.30729) 404 4 2 792",
+      "2026-07-06 18:36:16 10.177.11.164 POST /apps/compliance/requirement.aspx RequirementId=1283 443 jdoe@example.com 10.177.2.242 Mozilla/5.0+(Windows+NT+10.0;+Win64;+x64)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Chrome/120.0.0.0+Safari/537.36 SESSION_ID=e4edcec2803f4301909ba898ec5f3fbb;+DeviceWidth=0;+DeviceHeight=0 https://example.com/apps/compliance/requirement.aspx?RequirementId=1283 200 0 0 20123 36264 597 203.0.113.10"
+    ],
+    "sourcetype": "ms:iis:auto"
+  }
+}
