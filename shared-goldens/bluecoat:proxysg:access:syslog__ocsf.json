@@ -1,0 +1,879 @@
+{
+  "key": "bluecoat:proxysg:access:syslog::ocsf",
+  "sourcetype": "bluecoat:proxysg:access:syslog",
+  "dest_format": "ocsf",
+  "score": 97,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:49.843Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<time_taken>\\d+)\\s+(?<src_ip>\\S+)\\s+(?<user>\\S+)\\s+(?<auth_group>\\S+)\\s+(?<proxy_action>\\S+)\\s+(?<status>\\d+)\\s+(?<dst_ip>\\S+)\\s+(?<http_method>\\S+)\\s+(?<content_type>\\S+)\\s+(?<protocol>\\S+)\\s+(?<dst_host>\\S+)\\s+(?<dst_port>\\d+)\\s+(?<uri_path>\\S+)\\s+(?<uri_query>\\S+)\\s+\"(?<http_user_agent>[^\"]*)\"\\s+(?<bytes_out>\\d+)\\s+(?<bytes_in>\\d+)\\s+(?<virus_id>\\S+)\\s*$/"
+      },
+      "description": "Parse Blue Coat ProxySG main access log format (space delimited, quoted user-agent)"
+    },
+    {
+      "id": "eval",
+      "filter": "timestamp",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "strptime(timestamp, '%Y-%m-%d %H:%M:%S')"
+          },
+          {
+            "name": "user",
+            "value": "(user == '-' || user == '') ? undefined : user"
+          },
+          {
+            "name": "auth_group",
+            "value": "(auth_group == '-' || auth_group == '') ? undefined : auth_group"
+          },
+          {
+            "name": "content_type",
+            "value": "content_type == '-' ? undefined : content_type"
+          },
+          {
+            "name": "uri_query",
+            "value": "uri_query == '-' ? undefined : uri_query"
+          },
+          {
+            "name": "uri_path",
+            "value": "uri_path == '-' ? undefined : uri_path"
+          },
+          {
+            "name": "http_user_agent",
+            "value": "(http_user_agent == '-' || http_user_agent == '') ? undefined : http_user_agent"
+          },
+          {
+            "name": "virus_id",
+            "value": "virus_id == '-' ? undefined : virus_id"
+          },
+          {
+            "name": "dst_port",
+            "value": "Number(dst_port)"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes_in",
+            "value": "Number(bytes_in)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "Number(bytes_out)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes_in) + Number(bytes_out)"
+          },
+          {
+            "name": "duration_ms",
+            "value": "Number(time_taken)"
+          }
+        ],
+        "remove": [
+          "time_taken"
+        ]
+      },
+      "description": "Normalize placeholder dashes, numeric types and event time"
+    },
+    {
+      "id": "eval",
+      "filter": "proxy_action",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "proxy_action.match(/DENIED|BLOCK|FAIL/i) ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "cache_result",
+            "value": "proxy_action.match(/^TCP_/) ? proxy_action : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol.toLowerCase()"
+          },
+          {
+            "name": "app_protocol",
+            "value": "protocol.toLowerCase() == 'https' ? 'ssl' : protocol.toLowerCase()"
+          },
+          {
+            "name": "transport",
+            "value": "'tcp'"
+          },
+          {
+            "name": "ip_version",
+            "value": "String(src_ip).indexOf(':') > -1 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "url",
+            "value": "dst_host ? (protocol.toLowerCase() + '://' + dst_host + (uri_path ? uri_path : '') + (uri_query ? '?' + uri_query : '')) : undefined"
+          }
+        ]
+      },
+      "description": "Normalize action, protocol, IP version and derive URL"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "direction",
+            "value": "String(src_ip).match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|fe80:|fc|fd)/i) ? 'outbound' : 'inbound'"
+          },
+          {
+            "name": "severity",
+            "value": "virus_id ? 'high' : (action == 'blocked' ? 'medium' : 'low')"
+          },
+          {
+            "name": "event_type",
+            "value": "virus_id ? 'malware' : (action == 'blocked' ? 'proxy_denied' : 'proxy_allowed')"
+          },
+          {
+            "name": "message",
+            "value": "(action == 'blocked' ? 'Blocked ' : 'Allowed ') + http_method + ' ' + dst_host + ' status=' + status + (virus_id ? ' threat=' + virus_id : '')"
+          }
+        ]
+      },
+      "description": "Derive direction and severity, set summary message"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'bluecoat proxysg access syslog'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'bluecoat:proxysg:access:syslog'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "BluecoatProxysgAccessSyslog_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14 08:12:33 342 10.20.14.55 jsmith CORP\\Domain_Users PROXIED 200 10.20.1.10 GET text/html http www.microsoft.com 443 /en-us/software/download - \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 4521 812 -",
+        "_time": 1715674353,
+        "timestamp": "2024-05-14 08:12:33",
+        "src_ip": "10.20.14.55",
+        "user": "jsmith",
+        "auth_group": "CORP\\Domain_Users",
+        "proxy_action": "PROXIED",
+        "status": 200,
+        "dst_ip": "10.20.1.10",
+        "http_method": "GET",
+        "content_type": "text/html",
+        "protocol": "http",
+        "dst_host": "www.microsoft.com",
+        "dst_port": 443,
+        "uri_path": "/en-us/software/download",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "bytes_out": 4521,
+        "bytes_in": 812,
+        "bytes": 5333,
+        "duration_ms": 342,
+        "action": "allowed",
+        "app_protocol": "http",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "http://www.microsoft.com/en-us/software/download",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_allowed",
+        "message": "Allowed GET www.microsoft.com status=200",
+        "dest_ip": "10.20.1.10",
+        "dest_port": 443,
+        "log_time": "2024-05-14 08:12:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674353000,
+        "src_endpoint": {
+          "ip": "10.20.14.55"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.10"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:15:07 12 10.20.14.87 - - TCP_DENIED 407 10.20.1.10 GET - http ads.doubleclick.net 80 /track - \"Mozilla/5.0 (X11; Linux x86_64)\" 0 445 -",
+        "_time": 1715674507,
+        "timestamp": "2024-05-14 08:15:07",
+        "src_ip": "10.20.14.87",
+        "proxy_action": "TCP_DENIED",
+        "status": 407,
+        "dst_ip": "10.20.1.10",
+        "http_method": "GET",
+        "protocol": "http",
+        "dst_host": "ads.doubleclick.net",
+        "dst_port": 80,
+        "uri_path": "/track",
+        "http_user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "bytes_in": 445,
+        "bytes": 445,
+        "duration_ms": 12,
+        "action": "blocked",
+        "cache_result": "TCP_DENIED",
+        "app_protocol": "http",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "http://ads.doubleclick.net/track",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_denied",
+        "message": "Blocked GET ads.doubleclick.net status=407",
+        "dest_ip": "10.20.1.10",
+        "dest_port": 80,
+        "log_time": "2024-05-14 08:15:07",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674507000,
+        "src_endpoint": {
+          "ip": "10.20.14.87"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.10"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:19:44 890 172.16.5.23 rwilliams CORP\\Sales OBSERVED 200 172.16.0.5 POST application/json https api.salesforce.com 443 /services/data/v58.0/query q=SELECT+Id+FROM+Account \"SFDC-Client/1.0\" 8823 2211 -",
+        "_time": 1715674784,
+        "timestamp": "2024-05-14 08:19:44",
+        "src_ip": "172.16.5.23",
+        "user": "rwilliams",
+        "auth_group": "CORP\\Sales",
+        "proxy_action": "OBSERVED",
+        "status": 200,
+        "dst_ip": "172.16.0.5",
+        "http_method": "POST",
+        "content_type": "application/json",
+        "protocol": "https",
+        "dst_host": "api.salesforce.com",
+        "dst_port": 443,
+        "uri_path": "/services/data/v58.0/query",
+        "uri_query": "q=SELECT+Id+FROM+Account",
+        "http_user_agent": "SFDC-Client/1.0",
+        "bytes_out": 8823,
+        "bytes_in": 2211,
+        "bytes": 11034,
+        "duration_ms": 890,
+        "action": "allowed",
+        "app_protocol": "ssl",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "https://api.salesforce.com/services/data/v58.0/query?q=SELECT+Id+FROM+Account",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_allowed",
+        "message": "Allowed POST api.salesforce.com status=200",
+        "dest_ip": "172.16.0.5",
+        "dest_port": 443,
+        "log_time": "2024-05-14 08:19:44",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715674784000,
+        "src_endpoint": {
+          "ip": "172.16.5.23"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.0.5"
+        },
+        "actor": {
+          "user": {
+            "name": "rwilliams"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:24:19 5 203.0.113.44 - - TCP_DENIED 403 10.20.1.10 GET text/html http malicious-tracker.ru 80 /gate.php - \"Mozilla/4.0 (compatible; MSIE 6.0)\" 512 210 CVE-2019-Trojan.Generic",
+        "_time": 1715675059,
+        "timestamp": "2024-05-14 08:24:19",
+        "src_ip": "203.0.113.44",
+        "proxy_action": "TCP_DENIED",
+        "status": 403,
+        "dst_ip": "10.20.1.10",
+        "http_method": "GET",
+        "content_type": "text/html",
+        "protocol": "http",
+        "dst_host": "malicious-tracker.ru",
+        "dst_port": 80,
+        "uri_path": "/gate.php",
+        "http_user_agent": "Mozilla/4.0 (compatible; MSIE 6.0)",
+        "bytes_out": 512,
+        "bytes_in": 210,
+        "virus_id": "CVE-2019-Trojan.Generic",
+        "bytes": 722,
+        "duration_ms": 5,
+        "action": "blocked",
+        "cache_result": "TCP_DENIED",
+        "app_protocol": "http",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "http://malicious-tracker.ru/gate.php",
+        "direction": "inbound",
+        "severity": "Informational",
+        "event_type": "malware",
+        "message": "Blocked GET malicious-tracker.ru status=403 threat=CVE-2019-Trojan.Generic",
+        "dest_ip": "10.20.1.10",
+        "dest_port": 80,
+        "log_time": "2024-05-14 08:24:19",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675059000,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.10"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:33:02 1204 10.20.14.91 mchen CORP\\Engineering PROXIED 200 10.20.1.11 GET application/octet-stream https github.com 443 /company/repo/archive/main.zip - \"git/2.39.2\" 154892345 3211 -",
+        "_time": 1715675582,
+        "timestamp": "2024-05-14 08:33:02",
+        "src_ip": "10.20.14.91",
+        "user": "mchen",
+        "auth_group": "CORP\\Engineering",
+        "proxy_action": "PROXIED",
+        "status": 200,
+        "dst_ip": "10.20.1.11",
+        "http_method": "GET",
+        "content_type": "application/octet-stream",
+        "protocol": "https",
+        "dst_host": "github.com",
+        "dst_port": 443,
+        "uri_path": "/company/repo/archive/main.zip",
+        "http_user_agent": "git/2.39.2",
+        "bytes_out": 154892345,
+        "bytes_in": 3211,
+        "bytes": 154895556,
+        "duration_ms": 1204,
+        "action": "allowed",
+        "app_protocol": "ssl",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "https://github.com/company/repo/archive/main.zip",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_allowed",
+        "message": "Allowed GET github.com status=200",
+        "dest_ip": "10.20.1.11",
+        "dest_port": 443,
+        "log_time": "2024-05-14 08:33:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715675582000,
+        "src_endpoint": {
+          "ip": "10.20.14.91"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.11"
+        },
+        "actor": {
+          "user": {
+            "name": "mchen"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:41:55 67 192.168.100.12 - - TCP_MISS 502 192.168.1.1 GET - http intranet.internal.local 80 /status - \"curl/7.68.0\" 0 118 -",
+        "_time": 1715676115,
+        "timestamp": "2024-05-14 08:41:55",
+        "src_ip": "192.168.100.12",
+        "proxy_action": "TCP_MISS",
+        "status": 502,
+        "dst_ip": "192.168.1.1",
+        "http_method": "GET",
+        "protocol": "http",
+        "dst_host": "intranet.internal.local",
+        "dst_port": 80,
+        "uri_path": "/status",
+        "http_user_agent": "curl/7.68.0",
+        "bytes_in": 118,
+        "bytes": 118,
+        "duration_ms": 67,
+        "action": "allowed",
+        "cache_result": "TCP_MISS",
+        "app_protocol": "http",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "http://intranet.internal.local/status",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_allowed",
+        "message": "Allowed GET intranet.internal.local status=502",
+        "dest_ip": "192.168.1.1",
+        "dest_port": 80,
+        "log_time": "2024-05-14 08:41:55",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715676115000,
+        "src_endpoint": {
+          "ip": "192.168.100.12"
+        },
+        "dst_endpoint": {
+          "ip": "192.168.1.1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:47:38 3 198.51.100.9 anonymous - TCP_DENIED 407 10.20.1.10 CONNECT - https 45.33.32.156 8443 - - \"-\" 0 96 -",
+        "_time": 1715676458,
+        "timestamp": "2024-05-14 08:47:38",
+        "src_ip": "198.51.100.9",
+        "user": "anonymous",
+        "proxy_action": "TCP_DENIED",
+        "status": 407,
+        "dst_ip": "10.20.1.10",
+        "http_method": "CONNECT",
+        "protocol": "https",
+        "dst_host": "45.33.32.156",
+        "dst_port": 8443,
+        "bytes_in": 96,
+        "bytes": 96,
+        "duration_ms": 3,
+        "action": "blocked",
+        "cache_result": "TCP_DENIED",
+        "app_protocol": "ssl",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "https://45.33.32.156",
+        "direction": "inbound",
+        "severity": "Informational",
+        "event_type": "proxy_denied",
+        "message": "Blocked CONNECT 45.33.32.156 status=407",
+        "dest_ip": "10.20.1.10",
+        "dest_port": 8443,
+        "log_time": "2024-05-14 08:47:38",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715676458000,
+        "src_endpoint": {
+          "ip": "198.51.100.9"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.10"
+        },
+        "actor": {
+          "user": {
+            "name": "anonymous"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      },
+      {
+        "_raw": "2024-05-14 08:59:21 421 10.20.14.102 klopez CORP\\Finance PROXIED 200 10.20.1.12 GET application/pdf https docs.google.com 443 /document/d/1a2b3c/export format=pdf \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 92345 655 -",
+        "_time": 1715677161,
+        "timestamp": "2024-05-14 08:59:21",
+        "src_ip": "10.20.14.102",
+        "user": "klopez",
+        "auth_group": "CORP\\Finance",
+        "proxy_action": "PROXIED",
+        "status": 200,
+        "dst_ip": "10.20.1.12",
+        "http_method": "GET",
+        "content_type": "application/pdf",
+        "protocol": "https",
+        "dst_host": "docs.google.com",
+        "dst_port": 443,
+        "uri_path": "/document/d/1a2b3c/export",
+        "uri_query": "format=pdf",
+        "http_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "bytes_out": 92345,
+        "bytes_in": 655,
+        "bytes": 93000,
+        "duration_ms": 421,
+        "action": "allowed",
+        "app_protocol": "ssl",
+        "transport": "tcp",
+        "ip_version": "ipv4",
+        "url": "https://docs.google.com/document/d/1a2b3c/export?format=pdf",
+        "direction": "outbound",
+        "severity": "Informational",
+        "event_type": "proxy_allowed",
+        "message": "Allowed GET docs.google.com status=200",
+        "dest_ip": "10.20.1.12",
+        "dest_port": 443,
+        "log_time": "2024-05-14 08:59:21",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715677161000,
+        "src_endpoint": {
+          "ip": "10.20.14.102"
+        },
+        "dst_endpoint": {
+          "ip": "10.20.1.12"
+        },
+        "actor": {
+          "user": {
+            "name": "klopez"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "bluecoat proxysg access syslog",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "bluecoat:proxysg:access:syslog"
+      }
+    ],
+    "sampleKeys": [
+      "q",
+      "format"
+    ],
+    "sampleRaw": [
+      "2024-05-14 08:12:33 342 10.20.14.55 jsmith CORP\\Domain_Users PROXIED 200 10.20.1.10 GET text/html http www.microsoft.com 443 /en-us/software/download - \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 4521 812 -",
+      "2024-05-14 08:15:07 12 10.20.14.87 - - TCP_DENIED 407 10.20.1.10 GET - http ads.doubleclick.net 80 /track - \"Mozilla/5.0 (X11; Linux x86_64)\" 0 445 -",
+      "2024-05-14 08:19:44 890 172.16.5.23 rwilliams CORP\\Sales OBSERVED 200 172.16.0.5 POST application/json https api.salesforce.com 443 /services/data/v58.0/query q=SELECT+Id+FROM+Account \"SFDC-Client/1.0\" 8823 2211 -",
+      "2024-05-14 08:24:19 5 203.0.113.44 - - TCP_DENIED 403 10.20.1.10 GET text/html http malicious-tracker.ru 80 /gate.php - \"Mozilla/4.0 (compatible; MSIE 6.0)\" 512 210 CVE-2019-Trojan.Generic",
+      "2024-05-14 08:33:02 1204 10.20.14.91 mchen CORP\\Engineering PROXIED 200 10.20.1.11 GET application/octet-stream https github.com 443 /company/repo/archive/main.zip - \"git/2.39.2\" 154892345 3211 -",
+      "2024-05-14 08:41:55 67 192.168.100.12 - - TCP_MISS 502 192.168.1.1 GET - http intranet.internal.local 80 /status - \"curl/7.68.0\" 0 118 -",
+      "2024-05-14 08:47:38 3 198.51.100.9 anonymous - TCP_DENIED 407 10.20.1.10 CONNECT - https 45.33.32.156 8443 - - \"-\" 0 96 -",
+      "2024-05-14 08:59:21 421 10.20.14.102 klopez CORP\\Finance PROXIED 200 10.20.1.12 GET application/pdf https docs.google.com 443 /document/d/1a2b3c/export format=pdf \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 92345 655 -"
+    ],
+    "sourcetype": "bluecoat:proxysg:access:syslog"
+  }
+}
