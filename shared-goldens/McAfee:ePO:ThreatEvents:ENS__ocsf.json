@@ -1,0 +1,924 @@
+{
+  "key": "McAfee:ePO:ThreatEvents:ENS::ocsf",
+  "sourcetype": "McAfee:ePO:ThreatEvents:ENS",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:29.860Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]*)\\|(?<product>[^|]*)\\|(?<product_version>[^|]*)\\|(?<signature_id>[^|]*)\\|(?<event_name>[^|]*)\\|(?<cef_severity>[^|]*)\\|/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF header (version, vendor, product, signature id, name, severity)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\\brt=(?<__rt>.+?)\\s+src=(?<src_ip>\\S+)\\s+dst=(?<dest_ip>\\S+)(?:\\s+dpt=(?<dest_port>\\d+))?(?:\\s+proto=(?<__proto>\\S+))?\\s+dhost=(?<dest_host>\\S+)\\s+suser=(?<__suser>\\S*)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF extension common/network keys (rt, src, dst, dpt, proto, dhost, suser)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/cs1=(?<__cs1>.*?)\\s+cs1Label=(?<__cs1_label>\\S+)(?:\\s+cs2=(?<__cs2>.*?)\\s+cs2Label=(?<__cs2_label>\\S+))?(?:\\s+cs3=(?<__cs3>.*?)\\s+cs3Label=(?<__cs3_label>\\S+))?\\s+cn1=(?<threat_severity>\\d+)\\s+cn1Label=\\S+\\s+act=(?<action_raw>.+?)(?=\\s+cs\\d=|\\s+sha256=|\\s*$)(?:\\s+cs4=(?<__cs4>.*?)\\s+cs4Label=(?<__cs4_label>\\S+))?(?:\\s+cs5=(?<__cs5>.*?)\\s+cs5Label=(?<__cs5_label>\\S+))?(?:\\s+sha256=(?<file_hash>[0-9a-fA-F]+))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF custom string/number pairs, act and sha256"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "__suser && __suser.length > 0 ? __suser : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "__proto ? __proto.toLowerCase() : undefined"
+          },
+          {
+            "name": "file_path",
+            "value": "(__cs1_label || '') == 'FilePath' ? __cs1 : undefined"
+          },
+          {
+            "name": "url",
+            "value": "(__cs1_label || '') == 'URL' ? __cs1 : undefined"
+          },
+          {
+            "name": "threat_name",
+            "value": "(__cs1_label || '') == 'ThreatName' ? __cs1 : ((__cs2_label || '') == 'ThreatName' ? __cs2 : undefined)"
+          },
+          {
+            "name": "threat_type",
+            "value": "(__cs3_label || '') == 'ThreatType' ? __cs3 : undefined"
+          },
+          {
+            "name": "rule_name",
+            "value": "(__cs2_label || '') == 'RuleName' ? __cs2 : ((__cs4_label || '') == 'RuleName' ? __cs4 : undefined)"
+          },
+          {
+            "name": "signature_name",
+            "value": "(__cs2_label || '') == 'SignatureName' ? __cs2 : undefined"
+          },
+          {
+            "name": "detection_method",
+            "value": "(__cs4_label || '') == 'AnalyzerDetectionMethod' ? __cs4 : undefined"
+          },
+          {
+            "name": "agent_version",
+            "value": "(__cs5_label || '') == 'ProductVersion' ? __cs5 : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action_raw ? (action_raw.match(/Blocked|Denied|Quarantin|Delet|Clean/i) ? 'blocked' : (action_raw.match(/Allow|Excluded/i) ? 'allowed' : 'unknown')) : 'unknown'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(threat_severity) >= 8 ? 'critical' : (Number(threat_severity) >= 6 ? 'high' : (Number(threat_severity) >= 4 ? 'medium' : (Number(threat_severity) >= 1 ? 'low' : 'informational')))"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 6 : 4"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip && src_ip.match(/^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|fe80:|::1)/) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "timestamp",
+            "value": "__rt"
+          },
+          {
+            "name": "_time",
+            "value": "__rt && strptime(__rt, '%b %d %Y %H:%M:%S') ? strptime(__rt, '%b %d %Y %H:%M:%S').getTime() / 1000 : _time"
+          },
+          {
+            "name": "message",
+            "value": "event_name"
+          }
+        ],
+        "remove": [
+          "__*",
+          "action_raw"
+        ]
+      },
+      "description": "Map labeled custom strings to semantic fields, normalize action/protocol/severity, set _time"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'mcafee epo threatevents ens'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'McAfee:ePO:ThreatEvents:ENS'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "McAfeeEPOThreatEventsENS_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|8|rt=Feb 03 2025 08:12:44 src=10.14.22.31 dst=10.14.22.31 dhost=WKS-FIN-0042 suser=jsmith cs1=C:\\Users\\jsmith\\Downloads\\invoice_final.exe cs1Label=FilePath cs2=Trojan-GenericKD.45211 cs2Label=ThreatName cs3=Generic Trojan cs3Label=ThreatType cn1=8 cn1Label=ThreatSeverity act=Deleted cs4=On-Access Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+        "_time": 1738570364,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1092",
+        "event_name": "Anti-malware alert",
+        "cef_severity": "8",
+        "__rt": "Feb 03 2025 08:12:44",
+        "src_ip": "10.14.22.31",
+        "dest_ip": "10.14.22.31",
+        "dest_host": "WKS-FIN-0042",
+        "__suser": "jsmith",
+        "__cs1": "C:\\Users\\jsmith\\Downloads\\invoice_final.exe",
+        "__cs1_label": "FilePath",
+        "__cs2": "Trojan-GenericKD.45211",
+        "__cs2_label": "ThreatName",
+        "__cs3": "Generic Trojan",
+        "__cs3_label": "ThreatType",
+        "threat_severity": "8",
+        "__cs4": "On-Access Scan",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "__cs5": "ENS 10.7.0",
+        "__cs5_label": "ProductVersion",
+        "user": "jsmith",
+        "file_path": "C:\\Users\\jsmith\\Downloads\\invoice_final.exe",
+        "threat_name": "Trojan-GenericKD.45211",
+        "threat_type": "Generic Trojan",
+        "detection_method": "On-Access Scan",
+        "agent_version": "ENS 10.7.0",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 08:12:44",
+        "message": "Anti-malware alert",
+        "log_time": "Feb 03 2025 08:12:44",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738570364000,
+        "src_endpoint": {
+          "ip": "10.14.22.31"
+        },
+        "dst_endpoint": {
+          "ip": "10.14.22.31"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1027|Anti-malware alert|3|rt=Feb 03 2025 09:44:12 src=192.168.10.55 dst=192.168.10.55 dhost=LAPTOP-HR-17 suser=mkovac cs1=C:\\Windows\\Temp\\update.dll cs1Label=FilePath cs2=PUP-Optional.Adware.Gen cs2Label=ThreatName cs3=Potentially Unwanted Program cs3Label=ThreatType cn1=3 cn1Label=ThreatSeverity act=Cleaned cs4=On-Demand Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+        "_time": 1738575852,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1027",
+        "event_name": "Anti-malware alert",
+        "cef_severity": "3",
+        "__rt": "Feb 03 2025 09:44:12",
+        "src_ip": "192.168.10.55",
+        "dest_ip": "192.168.10.55",
+        "dest_host": "LAPTOP-HR-17",
+        "__suser": "mkovac",
+        "__cs1": "C:\\Windows\\Temp\\update.dll",
+        "__cs1_label": "FilePath",
+        "__cs2": "PUP-Optional.Adware.Gen",
+        "__cs2_label": "ThreatName",
+        "__cs3": "Potentially Unwanted Program",
+        "__cs3_label": "ThreatType",
+        "threat_severity": "3",
+        "__cs4": "On-Demand Scan",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "__cs5": "ENS 10.7.0",
+        "__cs5_label": "ProductVersion",
+        "user": "mkovac",
+        "file_path": "C:\\Windows\\Temp\\update.dll",
+        "threat_name": "PUP-Optional.Adware.Gen",
+        "threat_type": "Potentially Unwanted Program",
+        "detection_method": "On-Demand Scan",
+        "agent_version": "ENS 10.7.0",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 09:44:12",
+        "message": "Anti-malware alert",
+        "log_time": "Feb 03 2025 09:44:12",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738575852000,
+        "src_endpoint": {
+          "ip": "192.168.10.55"
+        },
+        "dst_endpoint": {
+          "ip": "192.168.10.55"
+        },
+        "actor": {
+          "user": {
+            "name": "mkovac"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1059|Firewall event|6|rt=Feb 03 2025 10:02:57 src=203.0.113.88 dst=172.16.4.12 dpt=3389 proto=TCP dhost=SRV-RDP-02 suser= cs1=Blocked Inbound Connection cs1Label=Action cs2=Suspicious RDP Attempt cs2Label=ThreatName cn1=6 cn1Label=ThreatSeverity act=Blocked cs4=Firewall Rule 4471 cs4Label=RuleName",
+        "_time": 1738576977,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1059",
+        "event_name": "Firewall event",
+        "cef_severity": "6",
+        "__rt": "Feb 03 2025 10:02:57",
+        "src_ip": "203.0.113.88",
+        "dest_ip": "172.16.4.12",
+        "dest_port": "3389",
+        "__proto": "TCP",
+        "dest_host": "SRV-RDP-02",
+        "__suser": "",
+        "__cs1": "Blocked Inbound Connection",
+        "__cs1_label": "Action",
+        "__cs2": "Suspicious RDP Attempt",
+        "__cs2_label": "ThreatName",
+        "threat_severity": "6",
+        "__cs4": "Firewall Rule 4471",
+        "__cs4_label": "RuleName",
+        "protocol": "tcp",
+        "threat_name": "Suspicious RDP Attempt",
+        "rule_name": "Firewall Rule 4471",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "inbound",
+        "timestamp": "Feb 03 2025 10:02:57",
+        "message": "Firewall event",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 10:02:57",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738576977000,
+        "src_endpoint": {
+          "ip": "203.0.113.88"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.4.12"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|9|rt=Feb 03 2025 10:15:33 src=10.0.0.14 dst=10.0.0.14 dhost=DC-CORP-01 suser=SYSTEM cs1=C:\\Windows\\System32\\svch0st.exe cs1Label=FilePath cs2=Ransom-BitPaymer cs2Label=ThreatName cs3=Ransomware cs3Label=ThreatType cn1=9 cn1Label=ThreatSeverity act=Quarantined cs4=Behavioral Detection cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion sha256=a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef1234",
+        "_time": 1738577733,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1092",
+        "event_name": "Anti-malware alert",
+        "cef_severity": "9",
+        "__rt": "Feb 03 2025 10:15:33",
+        "src_ip": "10.0.0.14",
+        "dest_ip": "10.0.0.14",
+        "dest_host": "DC-CORP-01",
+        "__suser": "SYSTEM",
+        "__cs1": "C:\\Windows\\System32\\svch0st.exe",
+        "__cs1_label": "FilePath",
+        "__cs2": "Ransom-BitPaymer",
+        "__cs2_label": "ThreatName",
+        "__cs3": "Ransomware",
+        "__cs3_label": "ThreatType",
+        "threat_severity": "9",
+        "__cs4": "Behavioral Detection",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "__cs5": "ENS 10.7.0",
+        "__cs5_label": "ProductVersion",
+        "file_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef1234",
+        "user": "SYSTEM",
+        "file_path": "C:\\Windows\\System32\\svch0st.exe",
+        "threat_name": "Ransom-BitPaymer",
+        "threat_type": "Ransomware",
+        "detection_method": "Behavioral Detection",
+        "agent_version": "ENS 10.7.0",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 10:15:33",
+        "message": "Anti-malware alert",
+        "log_time": "Feb 03 2025 10:15:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738577733000,
+        "src_endpoint": {
+          "ip": "10.0.0.14"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.14"
+        },
+        "actor": {
+          "user": {
+            "name": "SYSTEM"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Access Protection|4|rt=Feb 03 2025 11:03:21 src=10.14.30.7 dst=10.14.30.7 dhost=WKS-DEV-09 suser=akhan cs1=Access Protection Rule Violation cs1Label=Action cs2=Prevent Termination of AV Processes cs2Label=RuleName cn1=4 cn1Label=ThreatSeverity act=Blocked cs4=Access Protection cs4Label=AnalyzerDetectionMethod",
+        "_time": 1738580601,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1090",
+        "event_name": "Access Protection",
+        "cef_severity": "4",
+        "__rt": "Feb 03 2025 11:03:21",
+        "src_ip": "10.14.30.7",
+        "dest_ip": "10.14.30.7",
+        "dest_host": "WKS-DEV-09",
+        "__suser": "akhan",
+        "__cs1": "Access Protection Rule Violation",
+        "__cs1_label": "Action",
+        "__cs2": "Prevent Termination of AV Processes",
+        "__cs2_label": "RuleName",
+        "threat_severity": "4",
+        "__cs4": "Access Protection",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "user": "akhan",
+        "rule_name": "Prevent Termination of AV Processes",
+        "detection_method": "Access Protection",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 11:03:21",
+        "message": "Access Protection",
+        "log_time": "Feb 03 2025 11:03:21",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738580601000,
+        "src_endpoint": {
+          "ip": "10.14.30.7"
+        },
+        "dst_endpoint": {
+          "ip": "10.14.30.7"
+        },
+        "actor": {
+          "user": {
+            "name": "akhan"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|2|rt=Feb 03 2025 12:19:05 src=10.10.5.201 dst=10.10.5.201 dhost=WKS-SALES-22 suser=tng cs1=C:\\Users\\tng\\AppData\\Local\\Temp\\setup_v2.exe cs1Label=FilePath cs2=EICAR test file cs2Label=ThreatName cs3=Test File cs3Label=ThreatType cn1=2 cn1Label=ThreatSeverity act=Deleted cs4=On-Access Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+        "_time": 1738585145,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1092",
+        "event_name": "Anti-malware alert",
+        "cef_severity": "2",
+        "__rt": "Feb 03 2025 12:19:05",
+        "src_ip": "10.10.5.201",
+        "dest_ip": "10.10.5.201",
+        "dest_host": "WKS-SALES-22",
+        "__suser": "tng",
+        "__cs1": "C:\\Users\\tng\\AppData\\Local\\Temp\\setup_v2.exe",
+        "__cs1_label": "FilePath",
+        "__cs2": "EICAR test file",
+        "__cs2_label": "ThreatName",
+        "__cs3": "Test File",
+        "__cs3_label": "ThreatType",
+        "threat_severity": "2",
+        "__cs4": "On-Access Scan",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "__cs5": "ENS 10.7.0",
+        "__cs5_label": "ProductVersion",
+        "user": "tng",
+        "file_path": "C:\\Users\\tng\\AppData\\Local\\Temp\\setup_v2.exe",
+        "threat_name": "EICAR test file",
+        "threat_type": "Test File",
+        "detection_method": "On-Access Scan",
+        "agent_version": "ENS 10.7.0",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 12:19:05",
+        "message": "Anti-malware alert",
+        "log_time": "Feb 03 2025 12:19:05",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738585145000,
+        "src_endpoint": {
+          "ip": "10.10.5.201"
+        },
+        "dst_endpoint": {
+          "ip": "10.10.5.201"
+        },
+        "actor": {
+          "user": {
+            "name": "tng"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1203|Web Control alert|5|rt=Feb 03 2025 13:47:58 src=192.168.1.44 dst=185.220.101.42 dpt=443 proto=TCP dhost=LAPTOP-MKT-03 suser=rlopez cs1=http://malicious-c2domain.example/beacon cs1Label=URL cs2=Malicious Site Blocked cs2Label=ThreatName cn1=5 cn1Label=ThreatSeverity act=Blocked cs4=Web Control cs4Label=AnalyzerDetectionMethod",
+        "_time": 1738590478,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1203",
+        "event_name": "Web Control alert",
+        "cef_severity": "5",
+        "__rt": "Feb 03 2025 13:47:58",
+        "src_ip": "192.168.1.44",
+        "dest_ip": "185.220.101.42",
+        "dest_port": "443",
+        "__proto": "TCP",
+        "dest_host": "LAPTOP-MKT-03",
+        "__suser": "rlopez",
+        "__cs1": "http://malicious-c2domain.example/beacon",
+        "__cs1_label": "URL",
+        "__cs2": "Malicious Site Blocked",
+        "__cs2_label": "ThreatName",
+        "threat_severity": "5",
+        "__cs4": "Web Control",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "user": "rlopez",
+        "protocol": "tcp",
+        "url": "http://malicious-c2domain.example/beacon",
+        "threat_name": "Malicious Site Blocked",
+        "detection_method": "Web Control",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 4,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 13:47:58",
+        "message": "Web Control alert",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 13:47:58",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738590478000,
+        "src_endpoint": {
+          "ip": "192.168.1.44"
+        },
+        "dst_endpoint": {
+          "ip": "185.220.101.42"
+        },
+        "actor": {
+          "user": {
+            "name": "rlopez"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|7|rt=Feb 03 2025 14:29:41 src=fe80::a1b2:c3d4:e5f6:7890 dst=fe80::a1b2:c3d4:e5f6:7890 dhost=SRV-EXCH-05 suser=svc_backup cs1=D:\\Backups\\archive_2025.zip cs1Label=FilePath cs2=JS/Downloader.Agent cs2Label=ThreatName cs3=Downloader cs3Label=ThreatType cn1=7 cn1Label=ThreatSeverity act=Quarantined cs4=On-Demand Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+        "_time": 1738592981,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1092",
+        "event_name": "Anti-malware alert",
+        "cef_severity": "7",
+        "__rt": "Feb 03 2025 14:29:41",
+        "src_ip": "fe80::a1b2:c3d4:e5f6:7890",
+        "dest_ip": "fe80::a1b2:c3d4:e5f6:7890",
+        "dest_host": "SRV-EXCH-05",
+        "__suser": "svc_backup",
+        "__cs1": "D:\\Backups\\archive_2025.zip",
+        "__cs1_label": "FilePath",
+        "__cs2": "JS/Downloader.Agent",
+        "__cs2_label": "ThreatName",
+        "__cs3": "Downloader",
+        "__cs3_label": "ThreatType",
+        "threat_severity": "7",
+        "__cs4": "On-Demand Scan",
+        "__cs4_label": "AnalyzerDetectionMethod",
+        "__cs5": "ENS 10.7.0",
+        "__cs5_label": "ProductVersion",
+        "user": "svc_backup",
+        "file_path": "D:\\Backups\\archive_2025.zip",
+        "threat_name": "JS/Downloader.Agent",
+        "threat_type": "Downloader",
+        "detection_method": "On-Demand Scan",
+        "agent_version": "ENS 10.7.0",
+        "action": "blocked",
+        "severity": "Informational",
+        "ip_version": 6,
+        "direction": "internal",
+        "timestamp": "Feb 03 2025 14:29:41",
+        "message": "Anti-malware alert",
+        "log_time": "Feb 03 2025 14:29:41",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1738592981000,
+        "src_endpoint": {
+          "ip": "fe80::a1b2:c3d4:e5f6:7890"
+        },
+        "dst_endpoint": {
+          "ip": "fe80::a1b2:c3d4:e5f6:7890"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+      }
+    ],
+    "sampleKeys": [
+      "src",
+      "dst",
+      "dhost",
+      "suser",
+      "cs1",
+      "cs1Label",
+      "cs2",
+      "cs2Label",
+      "cs3",
+      "cs3Label",
+      "cn1",
+      "cn1Label",
+      "act",
+      "cs4",
+      "cs4Label",
+      "cs5",
+      "cs5Label",
+      "dpt",
+      "proto",
+      "sha256"
+    ],
+    "sampleRaw": [
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|8|rt=Feb 03 2025 08:12:44 src=10.14.22.31 dst=10.14.22.31 dhost=WKS-FIN-0042 suser=jsmith cs1=C:\\Users\\jsmith\\Downloads\\invoice_final.exe cs1Label=FilePath cs2=Trojan-GenericKD.45211 cs2Label=ThreatName cs3=Generic Trojan cs3Label=ThreatType cn1=8 cn1Label=ThreatSeverity act=Deleted cs4=On-Access Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1027|Anti-malware alert|3|rt=Feb 03 2025 09:44:12 src=192.168.10.55 dst=192.168.10.55 dhost=LAPTOP-HR-17 suser=mkovac cs1=C:\\Windows\\Temp\\update.dll cs1Label=FilePath cs2=PUP-Optional.Adware.Gen cs2Label=ThreatName cs3=Potentially Unwanted Program cs3Label=ThreatType cn1=3 cn1Label=ThreatSeverity act=Cleaned cs4=On-Demand Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1059|Firewall event|6|rt=Feb 03 2025 10:02:57 src=203.0.113.88 dst=172.16.4.12 dpt=3389 proto=TCP dhost=SRV-RDP-02 suser= cs1=Blocked Inbound Connection cs1Label=Action cs2=Suspicious RDP Attempt cs2Label=ThreatName cn1=6 cn1Label=ThreatSeverity act=Blocked cs4=Firewall Rule 4471 cs4Label=RuleName",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|9|rt=Feb 03 2025 10:15:33 src=10.0.0.14 dst=10.0.0.14 dhost=DC-CORP-01 suser=SYSTEM cs1=C:\\Windows\\System32\\svch0st.exe cs1Label=FilePath cs2=Ransom-BitPaymer cs2Label=ThreatName cs3=Ransomware cs3Label=ThreatType cn1=9 cn1Label=ThreatSeverity act=Quarantined cs4=Behavioral Detection cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion sha256=a1b2c3d4e5f60718293a4b5c6d7e8f9012345678901234567890abcdef1234",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Access Protection|4|rt=Feb 03 2025 11:03:21 src=10.14.30.7 dst=10.14.30.7 dhost=WKS-DEV-09 suser=akhan cs1=Access Protection Rule Violation cs1Label=Action cs2=Prevent Termination of AV Processes cs2Label=RuleName cn1=4 cn1Label=ThreatSeverity act=Blocked cs4=Access Protection cs4Label=AnalyzerDetectionMethod",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|2|rt=Feb 03 2025 12:19:05 src=10.10.5.201 dst=10.10.5.201 dhost=WKS-SALES-22 suser=tng cs1=C:\\Users\\tng\\AppData\\Local\\Temp\\setup_v2.exe cs1Label=FilePath cs2=EICAR test file cs2Label=ThreatName cs3=Test File cs3Label=ThreatType cn1=2 cn1Label=ThreatSeverity act=Deleted cs4=On-Access Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1203|Web Control alert|5|rt=Feb 03 2025 13:47:58 src=192.168.1.44 dst=185.220.101.42 dpt=443 proto=TCP dhost=LAPTOP-MKT-03 suser=rlopez cs1=http://malicious-c2domain.example/beacon cs1Label=URL cs2=Malicious Site Blocked cs2Label=ThreatName cn1=5 cn1Label=ThreatSeverity act=Blocked cs4=Web Control cs4Label=AnalyzerDetectionMethod",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|Anti-malware alert|7|rt=Feb 03 2025 14:29:41 src=fe80::a1b2:c3d4:e5f6:7890 dst=fe80::a1b2:c3d4:e5f6:7890 dhost=SRV-EXCH-05 suser=svc_backup cs1=D:\\Backups\\archive_2025.zip cs1Label=FilePath cs2=JS/Downloader.Agent cs2Label=ThreatName cs3=Downloader cs3Label=ThreatType cn1=7 cn1Label=ThreatSeverity act=Quarantined cs4=On-Demand Scan cs4Label=AnalyzerDetectionMethod cs5=ENS 10.7.0 cs5Label=ProductVersion"
+    ],
+    "sourcetype": "McAfee:ePO:ThreatEvents:ENS"
+  }
+}
