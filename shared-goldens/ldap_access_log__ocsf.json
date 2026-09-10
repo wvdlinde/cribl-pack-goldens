@@ -2,11 +2,11 @@
   "key": "ldap_access_log::ocsf",
   "sourcetype": "ldap_access_log",
   "dest_format": "ocsf",
-  "score": 90,
+  "score": 95,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T15:03:09.479Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:58.316Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -176,107 +176,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4002'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
-          },
-          {
-            "name": "event_type",
-            "value": "'HTTP Activity'"
-          },
-          {
-            "name": "class_uid",
-            "value": "4002"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
+            "value": "1"
           },
           {
             "name": "category_name",
-            "value": "'Network Activity'"
-          },
-          {
-            "name": "activity_id",
-            "value": "(http_method || '').toUpperCase() == 'GET' ? 3 : (http_method || '').toUpperCase() == 'POST' ? 6 : (http_method || '').toUpperCase() == 'PUT' ? 7 : (http_method || '').toUpperCase() == 'DELETE' ? 2 : (http_method || '').toUpperCase() == 'HEAD' ? 4 : (http_method || '').toUpperCase() == 'OPTIONS' ? 5 : (http_method || '').toUpperCase() == 'TRACE' ? 8 : (http_method || '').toUpperCase() == 'PATCH' ? 9 : 0"
+            "value": "'System Activity'"
           },
           {
             "name": "type_uid",
-            "value": "400200 + ((http_method || '').toUpperCase() == 'GET' ? 3 : (http_method || '').toUpperCase() == 'POST' ? 6 : (http_method || '').toUpperCase() == 'PUT' ? 7 : (http_method || '').toUpperCase() == 'DELETE' ? 2 : (http_method || '').toUpperCase() == 'HEAD' ? 4 : (http_method || '').toUpperCase() == 'OPTIONS' ? 5 : (http_method || '').toUpperCase() == 'TRACE' ? 8 : (http_method || '').toUpperCase() == 'PATCH' ? 9 : 0)"
+            "value": "100100"
           },
           {
             "name": "severity_id",
-            "value": "(severity || '').toLowerCase() == 'critical' ? 5 : (severity || '').toLowerCase() == 'high' ? 4 : (severity || '').toLowerCase() == 'medium' ? 3 : (severity || '').toLowerCase() == 'low' ? 2 : Number(status_code || 0) >= 500 ? 4 : Number(status_code || 0) >= 400 ? 3 : 1"
+            "value": "1"
           },
           {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user && user != '-' ? user : ''"
-          },
-          {
-            "name": "http_request.url",
-            "value": "uri_path || ''"
-          },
-          {
-            "name": "http_request.http_method",
-            "value": "(http_method || '').toUpperCase()"
-          },
-          {
-            "name": "http_request.user_agent",
-            "value": "user_agent && user_agent != '-' ? user_agent : ''"
-          },
-          {
-            "name": "http_response.code",
-            "value": "Number(status_code || 0)"
-          }
-        ]
-      },
-      "description": "Map fields to destination schema"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "traffic.bytes_out",
-            "value": "Number(bytes || 0)"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "protocol ? String(protocol).split('/')[0].toLowerCase() : 'http'"
+            "name": "severity",
+            "value": "'Informational'"
           },
           {
             "name": "time",
-            "value": "Number(new Date(String(timestamp || '').replace(/^(\\d{2})\\/(\\w{3})\\/(\\d{4}):/, '$1 $2 $3 ')).getTime()) || 0"
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
           },
           {
-            "name": "metadata.product.name",
-            "value": "'LDAP Access Log'"
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'Generic'"
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
           },
           {
             "name": "metadata.version",
-            "value": "'1.1.0'"
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'ldap access log'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-21)"
+      }
     },
     {
       "id": "eval",
@@ -303,24 +311,377 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "LdapAccessLog_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2024\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "10.1.5.23 - jsmith [12/Jun/2024:03:14:22 -0700] \"GET /ldap/v1/bind?dn=cn=jsmith,ou=users,dc=corp,dc=local HTTP/1.1\" 200 342 \"-\" \"ldap-client/3.2.1\"",
+        "_time": null,
+        "src_ip": "10.1.5.23",
+        "user": "jsmith",
+        "timestamp": "12/Jun/2024:03:14:22 -0700",
+        "http_method": "GET",
+        "uri_path": "/ldap/v1/bind?dn=cn=jsmith,ou=users,dc=corp,dc=local",
+        "status_code": "200",
+        "bytes": "342",
+        "referer": "-",
+        "user_agent": "ldap-client/3.2.1",
+        "ldap_dn": "cn=jsmith,ou=users,dc=corp,dc=local",
+        "action": "success",
+        "protocol": "http",
+        "ldap_operation": "bind",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:03:14:22 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063849,
+        "src_endpoint": {
+          "ip": "10.1.5.23"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.1.5.23 - jsmith [12/Jun/2024:03:14:22 -0700] \"GET /ldap/v1/bind?dn=cn=jsmith,ou=users,dc=corp,dc=local HTTP/1.1\" 200 342 \"-\" \"ldap-client/3.2.1\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "172.16.4.88 - - [12/Jun/2024:04:02:11 -0700] \"POST /ldap/v1/search?base=dc=corp,dc=local&filter=(objectClass=*) HTTP/1.1\" 401 128 \"-\" \"curl/7.68.0\"",
+        "_time": null,
+        "src_ip": "172.16.4.88",
+        "user": "-",
+        "timestamp": "12/Jun/2024:04:02:11 -0700",
+        "http_method": "POST",
+        "uri_path": "/ldap/v1/search?base=dc=corp,dc=local&filter=(objectClass=*)",
+        "status_code": "401",
+        "bytes": "128",
+        "referer": "-",
+        "user_agent": "curl/7.68.0",
+        "ldap_base": "dc=corp,dc=local",
+        "ldap_filter": "(objectClass=*)",
+        "action": "failure",
+        "protocol": "http",
+        "ldap_operation": "search",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:04:02:11 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063851,
+        "src_endpoint": {
+          "ip": "172.16.4.88"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "172.16.4.88 - - [12/Jun/2024:04:02:11 -0700] \"POST /ldap/v1/search?base=dc=corp,dc=local&filter=(objectClass=*) HTTP/1.1\" 401 128 \"-\" \"curl/7.68.0\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "203.0.113.45 - admin [12/Jun/2024:04:47:59 -0700] \"DELETE /ldap/v1/entry/cn=tempuser,ou=svc,dc=corp,dc=local HTTP/1.1\" 200 0 \"https://internal-admin.corp.local/console\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\"",
+        "_time": null,
+        "src_ip": "203.0.113.45",
+        "user": "admin",
+        "timestamp": "12/Jun/2024:04:47:59 -0700",
+        "http_method": "DELETE",
+        "uri_path": "/ldap/v1/entry/cn=tempuser,ou=svc,dc=corp,dc=local",
+        "status_code": "200",
+        "bytes": "0",
+        "referer": "https://internal-admin.corp.local/console",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "action": "success",
+        "protocol": "http",
+        "ldap_operation": "entry",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:04:47:59 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063851,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "203.0.113.45 - admin [12/Jun/2024:04:47:59 -0700] \"DELETE /ldap/v1/entry/cn=tempuser,ou=svc,dc=corp,dc=local HTTP/1.1\" 200 0 \"https://internal-admin.corp.local/console\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "10.0.9.14 - svc_backup [12/Jun/2024:05:15:03 -0700] \"GET /ldap/v1/search?base=ou=servers,dc=corp,dc=local&scope=sub HTTP/1.1\" 200 88213 \"-\" \"python-ldap/3.4.0\"",
+        "_time": null,
+        "src_ip": "10.0.9.14",
+        "user": "svc_backup",
+        "timestamp": "12/Jun/2024:05:15:03 -0700",
+        "http_method": "GET",
+        "uri_path": "/ldap/v1/search?base=ou=servers,dc=corp,dc=local&scope=sub",
+        "status_code": "200",
+        "bytes": "88213",
+        "referer": "-",
+        "user_agent": "python-ldap/3.4.0",
+        "ldap_base": "ou=servers,dc=corp,dc=local",
+        "action": "success",
+        "protocol": "http",
+        "ldap_operation": "search",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:05:15:03 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063852,
+        "src_endpoint": {
+          "ip": "10.0.9.14"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.9.14 - svc_backup [12/Jun/2024:05:15:03 -0700] \"GET /ldap/v1/search?base=ou=servers,dc=corp,dc=local&scope=sub HTTP/1.1\" 200 88213 \"-\" \"python-ldap/3.4.0\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "198.51.100.201 - - [12/Jun/2024:06:33:47 -0700] \"POST /ldap/v1/bind?dn=cn=root,dc=corp,dc=local HTTP/1.1\" 403 210 \"-\" \"Nikto/2.1.6\"",
+        "_time": null,
+        "src_ip": "198.51.100.201",
+        "user": "-",
+        "timestamp": "12/Jun/2024:06:33:47 -0700",
+        "http_method": "POST",
+        "uri_path": "/ldap/v1/bind?dn=cn=root,dc=corp,dc=local",
+        "status_code": "403",
+        "bytes": "210",
+        "referer": "-",
+        "user_agent": "Nikto/2.1.6",
+        "ldap_dn": "cn=root,dc=corp,dc=local",
+        "action": "failure",
+        "protocol": "http",
+        "ldap_operation": "bind",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:06:33:47 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063852,
+        "src_endpoint": {
+          "ip": "198.51.100.201"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "198.51.100.201 - - [12/Jun/2024:06:33:47 -0700] \"POST /ldap/v1/bind?dn=cn=root,dc=corp,dc=local HTTP/1.1\" 403 210 \"-\" \"Nikto/2.1.6\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "192.168.1.77 - mmartinez [12/Jun/2024:07:05:19 -0700] \"PATCH /ldap/v1/modify/cn=mmartinez,ou=users,dc=corp,dc=local HTTP/1.1\" 200 452 \"https://hr.corp.local/profile\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"",
+        "_time": null,
+        "src_ip": "192.168.1.77",
+        "user": "mmartinez",
+        "timestamp": "12/Jun/2024:07:05:19 -0700",
+        "http_method": "PATCH",
+        "uri_path": "/ldap/v1/modify/cn=mmartinez,ou=users,dc=corp,dc=local",
+        "status_code": "200",
+        "bytes": "452",
+        "referer": "https://hr.corp.local/profile",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "action": "success",
+        "protocol": "http",
+        "ldap_operation": "modify",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:07:05:19 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063852,
+        "src_endpoint": {
+          "ip": "192.168.1.77"
+        },
+        "actor": {
+          "user": {
+            "name": "mmartinez"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "192.168.1.77 - mmartinez [12/Jun/2024:07:05:19 -0700] \"PATCH /ldap/v1/modify/cn=mmartinez,ou=users,dc=corp,dc=local HTTP/1.1\" 200 452 \"https://hr.corp.local/profile\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "2001:db8:85a3::8a2e:370:7334 - - [12/Jun/2024:08:11:02 -0700] \"GET /ldap/v1/search?base=ou=groups,dc=corp,dc=local HTTP/1.1\" 500 96 \"-\" \"-\"",
+        "_time": null,
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "user": "-",
+        "timestamp": "12/Jun/2024:08:11:02 -0700",
+        "http_method": "GET",
+        "uri_path": "/ldap/v1/search?base=ou=groups,dc=corp,dc=local",
+        "status_code": "500",
+        "bytes": "96",
+        "referer": "-",
+        "user_agent": "-",
+        "ldap_base": "ou=groups,dc=corp,dc=local",
+        "action": "failure",
+        "protocol": "http",
+        "ldap_operation": "search",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:08:11:02 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063853,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2001:db8:85a3::8a2e:370:7334 - - [12/Jun/2024:08:11:02 -0700] \"GET /ldap/v1/search?base=ou=groups,dc=corp,dc=local HTTP/1.1\" 500 96 \"-\" \"-\"",
+        "sourcetype": "ldap_access_log"
+      },
+      {
+        "_raw": "10.2.3.55 - jdoe [12/Jun/2024:09:22:40 -0700] \"GET /ldap/v1/whoami HTTP/1.1\" 200 45 \"-\" \"ldap-client/3.2.1\"",
+        "_time": null,
+        "src_ip": "10.2.3.55",
+        "user": "jdoe",
+        "timestamp": "12/Jun/2024:09:22:40 -0700",
+        "http_method": "GET",
+        "uri_path": "/ldap/v1/whoami",
+        "status_code": "200",
+        "bytes": "45",
+        "referer": "-",
+        "user_agent": "ldap-client/3.2.1",
+        "action": "success",
+        "protocol": "http",
+        "ldap_operation": "whoami",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/Jun/2024:09:22:40 -0700",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967063854,
+        "src_endpoint": {
+          "ip": "10.2.3.55"
+        },
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ldap access log",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.2.3.55 - jdoe [12/Jun/2024:09:22:40 -0700] \"GET /ldap/v1/whoami HTTP/1.1\" 200 45 \"-\" \"ldap-client/3.2.1\"",
+        "sourcetype": "ldap_access_log"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "10.1.5.23 - jsmith [12/Jun/2024:03:14:22 -0700] \"GET /ldap/v1/bind?dn=cn=jsmith,ou=users,dc=corp,dc=local HTTP/1.1\" 200 342 \"-\" \"ldap-client/3.2.1\"",
+      "172.16.4.88 - - [12/Jun/2024:04:02:11 -0700] \"POST /ldap/v1/search?base=dc=corp,dc=local&filter=(objectClass=*) HTTP/1.1\" 401 128 \"-\" \"curl/7.68.0\"",
+      "203.0.113.45 - admin [12/Jun/2024:04:47:59 -0700] \"DELETE /ldap/v1/entry/cn=tempuser,ou=svc,dc=corp,dc=local HTTP/1.1\" 200 0 \"https://internal-admin.corp.local/console\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\"",
+      "10.0.9.14 - svc_backup [12/Jun/2024:05:15:03 -0700] \"GET /ldap/v1/search?base=ou=servers,dc=corp,dc=local&scope=sub HTTP/1.1\" 200 88213 \"-\" \"python-ldap/3.4.0\"",
+      "198.51.100.201 - - [12/Jun/2024:06:33:47 -0700] \"POST /ldap/v1/bind?dn=cn=root,dc=corp,dc=local HTTP/1.1\" 403 210 \"-\" \"Nikto/2.1.6\"",
+      "192.168.1.77 - mmartinez [12/Jun/2024:07:05:19 -0700] \"PATCH /ldap/v1/modify/cn=mmartinez,ou=users,dc=corp,dc=local HTTP/1.1\" 200 452 \"https://hr.corp.local/profile\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\"",
+      "2001:db8:85a3::8a2e:370:7334 - - [12/Jun/2024:08:11:02 -0700] \"GET /ldap/v1/search?base=ou=groups,dc=corp,dc=local HTTP/1.1\" 500 96 \"-\" \"-\"",
+      "10.2.3.55 - jdoe [12/Jun/2024:09:22:40 -0700] \"GET /ldap/v1/whoami HTTP/1.1\" 200 45 \"-\" \"ldap-client/3.2.1\""
+    ],
+    "sourcetype": "ldap_access_log"
   }
 }
