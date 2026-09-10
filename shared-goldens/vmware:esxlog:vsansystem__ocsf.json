@@ -1,0 +1,590 @@
+{
+  "key": "vmware:esxlog:vsansystem::ocsf",
+  "sourcetype": "vmware:esxlog:vsansystem",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:37.016Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+Vsansystem\\[(?<pid>\\d+)\\]:\\s+(?<severity>\\w+):\\s+(?<component>[^:]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base Vsansystem log structure: timestamp, host, pid, severity, component, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})(:(?<src_port>\\d+))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract IPv4 address (and optional port) from message text"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/[0-9a-fA-F]{1,4}:[0-9a-fA-F]{1,4}:[0-9a-fA-F:]+/)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4})/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract IPv6 address from message text when present"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          },
+          {
+            "name": "action",
+            "value": "message && message.match(/fail|failure|rejected|unreachable|degraded|timeout/i) ? 'error' : message && message.match(/completed|successfully|joined|passed|repair/i) ? 'success' : 'info'"
+          }
+        ],
+        "remove": []
+      },
+      "description": "Normalize severity to lowercase standard values and derive coarse action classification from message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog vsansystem'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:vsansystem'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogVsansystem_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-30T02:14:07.331Z esxi01.corp.local Vsansystem[2098234]: INFO: CMMDS: Node 52a1b3c4-5678-90ab-cdef-0011223344ab joined the cluster successfully",
+        "_time": 1717035247.331,
+        "timestamp": "2024-05-30T02:14:07.331Z",
+        "host": "esxi01.corp.local",
+        "pid": "2098234",
+        "severity": "Informational",
+        "component": "CMMDS",
+        "message": "Node 52a1b3c4-5678-90ab-cdef-0011223344ab joined the cluster successfully",
+        "vendor_severity": "INFO",
+        "action": "success",
+        "log_time": "2024-05-30T02:14:07.331Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717035247331,
+        "device": {
+          "hostname": "esxi01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T03:02:51.882Z esxi-dc02.lab.local Vsansystem[2101122]: WARNING: LSOM: Disk naa.600508b1001c1234 latency exceeded threshold (45ms) on device mpx.vmhba1:C0:T2:L0",
+        "_time": 1717038171.882,
+        "timestamp": "2024-05-30T03:02:51.882Z",
+        "host": "esxi-dc02.lab.local",
+        "pid": "2101122",
+        "severity": "Informational",
+        "component": "LSOM",
+        "message": "Disk naa.600508b1001c1234 latency exceeded threshold (45ms) on device mpx.vmhba1:C0:T2:L0",
+        "vendor_severity": "WARNING",
+        "action": "info",
+        "log_time": "2024-05-30T03:02:51.882Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717038171882,
+        "device": {
+          "hostname": "esxi-dc02.lab.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T04:18:22.104Z 10.20.5.14 Vsansystem[2099876]: ERROR: DOM: Object 8f3a2c1e-9d4b-4a1e-8c2d-33ff44aa5566 owner change failed, timeout waiting for quorum",
+        "_time": 1717042702.104,
+        "timestamp": "2024-05-30T04:18:22.104Z",
+        "host": "10.20.5.14",
+        "pid": "2099876",
+        "severity": "Informational",
+        "component": "DOM",
+        "message": "Object 8f3a2c1e-9d4b-4a1e-8c2d-33ff44aa5566 owner change failed, timeout waiting for quorum",
+        "vendor_severity": "ERROR",
+        "action": "error",
+        "log_time": "2024-05-30T04:18:22.104Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717042702104,
+        "device": {
+          "hostname": "10.20.5.14"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T05:44:39.998Z esxi03.corp.local Vsansystem[2100543]: INFO: CLOM: Repair job started for policy compliance on cluster domain-c12",
+        "_time": 1717047879.998,
+        "timestamp": "2024-05-30T05:44:39.998Z",
+        "host": "esxi03.corp.local",
+        "pid": "2100543",
+        "severity": "Informational",
+        "component": "CLOM",
+        "message": "Repair job started for policy compliance on cluster domain-c12",
+        "vendor_severity": "INFO",
+        "action": "success",
+        "log_time": "2024-05-30T05:44:39.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717047879998,
+        "device": {
+          "hostname": "esxi03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T06:12:03.412Z esxi-dc02.lab.local Vsansystem[2101987]: WARNING: RDT: Connection reset by peer 172.16.4.22:2233, retrying handshake",
+        "_time": 1717049523.412,
+        "timestamp": "2024-05-30T06:12:03.412Z",
+        "host": "esxi-dc02.lab.local",
+        "pid": "2101987",
+        "severity": "Informational",
+        "component": "RDT",
+        "message": "Connection reset by peer 172.16.4.22:2233, retrying handshake",
+        "src_ip": "172.16.4.22",
+        "src_port": "2233",
+        "vendor_severity": "WARNING",
+        "action": "info",
+        "log_time": "2024-05-30T06:12:03.412Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717049523412,
+        "src_endpoint": {
+          "ip": "172.16.4.22"
+        },
+        "device": {
+          "hostname": "esxi-dc02.lab.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T07:33:18.775Z 192.168.10.11 Vsansystem[2098765]: ERROR: CMMDS: Authentication failure for node 10.20.5.99 - certificate validation rejected",
+        "_time": 1717054398.775,
+        "timestamp": "2024-05-30T07:33:18.775Z",
+        "host": "192.168.10.11",
+        "pid": "2098765",
+        "severity": "Informational",
+        "component": "CMMDS",
+        "message": "Authentication failure for node 10.20.5.99 - certificate validation rejected",
+        "src_ip": "10.20.5.99",
+        "vendor_severity": "ERROR",
+        "action": "error",
+        "log_time": "2024-05-30T07:33:18.775Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717054398775,
+        "src_endpoint": {
+          "ip": "10.20.5.99"
+        },
+        "device": {
+          "hostname": "192.168.10.11"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T08:01:44.221Z esxi01.corp.local Vsansystem[2098234]: INFO: Health: vSAN cluster health check completed, all checks passed",
+        "_time": 1717056104.221,
+        "timestamp": "2024-05-30T08:01:44.221Z",
+        "host": "esxi01.corp.local",
+        "pid": "2098234",
+        "severity": "Informational",
+        "component": "Health",
+        "message": "vSAN cluster health check completed, all checks passed",
+        "vendor_severity": "INFO",
+        "action": "success",
+        "log_time": "2024-05-30T08:01:44.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717056104221,
+        "device": {
+          "hostname": "esxi01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      },
+      {
+        "_raw": "2024-05-30T08:47:59.556Z esxi05.lab.local Vsansystem[2103321]: WARNING: LSOM: Disk group ssd-cache-01 approaching capacity threshold 92%",
+        "_time": 1717058879.556,
+        "timestamp": "2024-05-30T08:47:59.556Z",
+        "host": "esxi05.lab.local",
+        "pid": "2103321",
+        "severity": "Informational",
+        "component": "LSOM",
+        "message": "Disk group ssd-cache-01 approaching capacity threshold 92%",
+        "vendor_severity": "WARNING",
+        "action": "info",
+        "log_time": "2024-05-30T08:47:59.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717058879556,
+        "device": {
+          "hostname": "esxi05.lab.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsansystem",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsansystem"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-05-30T02:14:07.331Z esxi01.corp.local Vsansystem[2098234]: INFO: CMMDS: Node 52a1b3c4-5678-90ab-cdef-0011223344ab joined the cluster successfully",
+      "2024-05-30T03:02:51.882Z esxi-dc02.lab.local Vsansystem[2101122]: WARNING: LSOM: Disk naa.600508b1001c1234 latency exceeded threshold (45ms) on device mpx.vmhba1:C0:T2:L0",
+      "2024-05-30T04:18:22.104Z 10.20.5.14 Vsansystem[2099876]: ERROR: DOM: Object 8f3a2c1e-9d4b-4a1e-8c2d-33ff44aa5566 owner change failed, timeout waiting for quorum",
+      "2024-05-30T05:44:39.998Z esxi03.corp.local Vsansystem[2100543]: INFO: CLOM: Repair job started for policy compliance on cluster domain-c12",
+      "2024-05-30T06:12:03.412Z esxi-dc02.lab.local Vsansystem[2101987]: WARNING: RDT: Connection reset by peer 172.16.4.22:2233, retrying handshake",
+      "2024-05-30T07:33:18.775Z 192.168.10.11 Vsansystem[2098765]: ERROR: CMMDS: Authentication failure for node 10.20.5.99 - certificate validation rejected",
+      "2024-05-30T08:01:44.221Z esxi01.corp.local Vsansystem[2098234]: INFO: Health: vSAN cluster health check completed, all checks passed",
+      "2024-05-30T08:47:59.556Z esxi05.lab.local Vsansystem[2103321]: WARNING: LSOM: Disk group ssd-cache-01 approaching capacity threshold 92%"
+    ],
+    "sourcetype": "vmware:esxlog:vsansystem"
+  }
+}
