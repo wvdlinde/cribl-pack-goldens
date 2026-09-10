@@ -1,0 +1,738 @@
+{
+  "key": "citrix:netscaler:appfw::ocsf",
+  "sourcetype": "citrix:netscaler:appfw",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:08.355Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<syslog_ts>\\w+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+\\S+\\s+(?<netscaler_ts>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\\s+GMT\\s+\\S+\\s+(?<ppe>\\S+)\\s+:\\s+APPFW\\s+(?<sig_category>\\S+)\\s+(?<result>\\S+)\\s+(?<session_id>\\d+)\\s+(?<seq>\\d+)\\s+:\\s+(?<src_ip>\\S+)\\s+(?<port_pair>\\S+)\\s+(?<profile>\\S+)\\s+(?<method>\\S+)\\s+(?<url>\\S+)\\s+(?<policy_name>\\S+)\\s+(?<signature>\\S+)\\s+(?<severity>\\S+)\\s+(?<action>\\S+)\\s+threat_index=(?<threat_index>[\\d.]+)\\s+status=(?<status>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract core Citrix NetScaler AppFW fields from syslog line"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "port_pair && port_pair !== '-' && port_pair.indexOf('-') > -1",
+      "disabled": false,
+      "conf": {
+        "source": "port_pair",
+        "regex": "/^(?<src_port>\\d+)-(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Split combined src-dst port field into separate ports"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "netscaler_ts ? netscaler_ts.replace(/^(\\d{2})\\/(\\d{2})\\/(\\d{4}):/, '$3-$1-$2T') : syslog_ts"
+          }
+        ]
+      },
+      "description": "Build ISO timestamp field from NetScaler timestamp components"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action_normalized",
+            "value": "action === 'BLOCKED' ? 'blocked' : action === 'DROPPED' ? 'dropped' : action === 'RESET' ? 'reset' : action === 'TRANSFORMED' ? 'transformed' : action === 'NONE' ? 'allowed' : 'unknown'"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          }
+        ]
+      },
+      "description": "Normalize action and protocol fields, set static protocol for HTTP-based AppFW events"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "port_pair"
+        ]
+      },
+      "description": "Cleanup scratch fields no longer needed after port split"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'citrix netscaler appfw'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'citrix:netscaler:appfw'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "CitrixNetscalerAppfw_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "Sep 14 08:12:33 ns-appfw-01 03/14/2025:08:12:33 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_SQL_INJECTION SUCCESS 184532 0 : 203.0.113.45 51422-443 profile_prod_web POST /api/v2/login sql_inject_policy SQLi_Signature_1024 CRITICAL BLOCKED threat_index=9.8 status=403",
+        "_time": 1741939953,
+        "syslog_ts": "Sep 14 08:12:33",
+        "netscaler_ts": "03/14/2025:08:12:33",
+        "ppe": "0-PPE-0",
+        "sig_category": "APPFW_SQL_INJECTION",
+        "result": "SUCCESS",
+        "session_id": "184532",
+        "seq": "0",
+        "src_ip": "203.0.113.45",
+        "profile": "profile_prod_web",
+        "method": "POST",
+        "url": "/api/v2/login",
+        "policy_name": "sql_inject_policy",
+        "signature": "SQLi_Signature_1024",
+        "severity": "Informational",
+        "action": "BLOCKED",
+        "threat_index": "9.8",
+        "status": "403",
+        "src_port": "51422",
+        "dst_port": "443",
+        "timestamp": "2025-03-14T08:12:33",
+        "action_normalized": "blocked",
+        "protocol": "tcp",
+        "dest_port": "443",
+        "transport": "tcp",
+        "rule_name": "sql_inject_policy",
+        "log_time": "2025-03-14T08:12:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741939953000,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:12:33 ns-appfw-01 03/14/2025:08:12:33 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_SQL_INJECTION SUCCESS 184532 0 : 203.0.113.45 51422-443 profile_prod_web POST /api/v2/login sql_inject_policy SQLi_Signature_1024 CRITICAL BLOCKED threat_index=9.8 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:14:02 ns-appfw-01 03/14/2025:08:14:02 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_STARTURL SUCCESS 184533 0 : 10.20.30.15 44210-80 profile_default GET /admin/config.php starturl_policy NA WARNING BLOCKED threat_index=6.2 status=403",
+        "_time": 1741940042,
+        "syslog_ts": "Sep 14 08:14:02",
+        "netscaler_ts": "03/14/2025:08:14:02",
+        "ppe": "0-PPE-1",
+        "sig_category": "APPFW_STARTURL",
+        "result": "SUCCESS",
+        "session_id": "184533",
+        "seq": "0",
+        "src_ip": "10.20.30.15",
+        "profile": "profile_default",
+        "method": "GET",
+        "url": "/admin/config.php",
+        "policy_name": "starturl_policy",
+        "signature": "NA",
+        "severity": "Informational",
+        "action": "BLOCKED",
+        "threat_index": "6.2",
+        "status": "403",
+        "src_port": "44210",
+        "dst_port": "80",
+        "timestamp": "2025-03-14T08:14:02",
+        "action_normalized": "blocked",
+        "protocol": "tcp",
+        "dest_port": "80",
+        "transport": "tcp",
+        "rule_name": "starturl_policy",
+        "log_time": "2025-03-14T08:14:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940042000,
+        "src_endpoint": {
+          "ip": "10.20.30.15"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:14:02 ns-appfw-01 03/14/2025:08:14:02 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_STARTURL SUCCESS 184533 0 : 10.20.30.15 44210-80 profile_default GET /admin/config.php starturl_policy NA WARNING BLOCKED threat_index=6.2 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:16:45 ns-appfw-01 03/14/2025:08:16:45 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_XSS SUCCESS 184534 0 : 198.51.100.22 33291-443 profile_ecommerce POST /cart/checkout xss_policy XSS_Signature_512 HIGH TRANSFORMED threat_index=7.5 status=200",
+        "_time": 1741940205,
+        "syslog_ts": "Sep 14 08:16:45",
+        "netscaler_ts": "03/14/2025:08:16:45",
+        "ppe": "0-PPE-0",
+        "sig_category": "APPFW_XSS",
+        "result": "SUCCESS",
+        "session_id": "184534",
+        "seq": "0",
+        "src_ip": "198.51.100.22",
+        "profile": "profile_ecommerce",
+        "method": "POST",
+        "url": "/cart/checkout",
+        "policy_name": "xss_policy",
+        "signature": "XSS_Signature_512",
+        "severity": "Informational",
+        "action": "TRANSFORMED",
+        "threat_index": "7.5",
+        "status": "200",
+        "src_port": "33291",
+        "dst_port": "443",
+        "timestamp": "2025-03-14T08:16:45",
+        "action_normalized": "transformed",
+        "protocol": "tcp",
+        "dest_port": "443",
+        "transport": "tcp",
+        "rule_name": "xss_policy",
+        "log_time": "2025-03-14T08:16:45",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940205000,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:16:45 ns-appfw-01 03/14/2025:08:16:45 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_XSS SUCCESS 184534 0 : 198.51.100.22 33291-443 profile_ecommerce POST /cart/checkout xss_policy XSS_Signature_512 HIGH TRANSFORMED threat_index=7.5 status=200",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:19:11 ns-appfw-01 03/14/2025:08:19:11 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_FIELDFORMAT SUCCESS 184535 0 : 172.16.5.201 40012-8080 profile_internal_app POST /forms/submit fieldformat_policy field=email_addr WARNING BLOCKED threat_index=5.1 status=403",
+        "_time": 1741940351,
+        "syslog_ts": "Sep 14 08:19:11",
+        "netscaler_ts": "03/14/2025:08:19:11",
+        "ppe": "0-PPE-2",
+        "sig_category": "APPFW_FIELDFORMAT",
+        "result": "SUCCESS",
+        "session_id": "184535",
+        "seq": "0",
+        "src_ip": "172.16.5.201",
+        "profile": "profile_internal_app",
+        "method": "POST",
+        "url": "/forms/submit",
+        "policy_name": "fieldformat_policy",
+        "signature": "field=email_addr",
+        "severity": "Informational",
+        "action": "BLOCKED",
+        "threat_index": "5.1",
+        "status": "403",
+        "src_port": "40012",
+        "dst_port": "8080",
+        "timestamp": "2025-03-14T08:19:11",
+        "action_normalized": "blocked",
+        "protocol": "tcp",
+        "dest_port": "8080",
+        "transport": "tcp",
+        "rule_name": "fieldformat_policy",
+        "log_time": "2025-03-14T08:19:11",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940351000,
+        "src_endpoint": {
+          "ip": "172.16.5.201"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:19:11 ns-appfw-01 03/14/2025:08:19:11 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_FIELDFORMAT SUCCESS 184535 0 : 172.16.5.201 40012-8080 profile_internal_app POST /forms/submit fieldformat_policy field=email_addr WARNING BLOCKED threat_index=5.1 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:21:59 ns-appfw-01 03/14/2025:08:21:59 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_COOKIE_TAMPERED SUCCESS 184536 0 : 192.168.10.44 51890-443 profile_prod_web GET /account/profile cookie_consistency_policy NA ERROR RESET threat_index=8.0 status=403",
+        "_time": 1741940519,
+        "syslog_ts": "Sep 14 08:21:59",
+        "netscaler_ts": "03/14/2025:08:21:59",
+        "ppe": "0-PPE-0",
+        "sig_category": "APPFW_COOKIE_TAMPERED",
+        "result": "SUCCESS",
+        "session_id": "184536",
+        "seq": "0",
+        "src_ip": "192.168.10.44",
+        "profile": "profile_prod_web",
+        "method": "GET",
+        "url": "/account/profile",
+        "policy_name": "cookie_consistency_policy",
+        "signature": "NA",
+        "severity": "Informational",
+        "action": "RESET",
+        "threat_index": "8.0",
+        "status": "403",
+        "src_port": "51890",
+        "dst_port": "443",
+        "timestamp": "2025-03-14T08:21:59",
+        "action_normalized": "reset",
+        "protocol": "tcp",
+        "dest_port": "443",
+        "transport": "tcp",
+        "rule_name": "cookie_consistency_policy",
+        "log_time": "2025-03-14T08:21:59",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940519000,
+        "src_endpoint": {
+          "ip": "192.168.10.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:21:59 ns-appfw-01 03/14/2025:08:21:59 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_COOKIE_TAMPERED SUCCESS 184536 0 : 192.168.10.44 51890-443 profile_prod_web GET /account/profile cookie_consistency_policy NA ERROR RESET threat_index=8.0 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:24:33 ns-appfw-01 03/14/2025:08:24:33 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_CSRF_TAG SUCCESS 184537 0 : 203.0.113.201 33221-443 profile_prod_web POST /transfer/funds csrf_policy csrf_token_missing CRITICAL BLOCKED threat_index=9.5 status=403",
+        "_time": 1741940673,
+        "syslog_ts": "Sep 14 08:24:33",
+        "netscaler_ts": "03/14/2025:08:24:33",
+        "ppe": "0-PPE-1",
+        "sig_category": "APPFW_CSRF_TAG",
+        "result": "SUCCESS",
+        "session_id": "184537",
+        "seq": "0",
+        "src_ip": "203.0.113.201",
+        "profile": "profile_prod_web",
+        "method": "POST",
+        "url": "/transfer/funds",
+        "policy_name": "csrf_policy",
+        "signature": "csrf_token_missing",
+        "severity": "Informational",
+        "action": "BLOCKED",
+        "threat_index": "9.5",
+        "status": "403",
+        "src_port": "33221",
+        "dst_port": "443",
+        "timestamp": "2025-03-14T08:24:33",
+        "action_normalized": "blocked",
+        "protocol": "tcp",
+        "dest_port": "443",
+        "transport": "tcp",
+        "rule_name": "csrf_policy",
+        "log_time": "2025-03-14T08:24:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940673000,
+        "src_endpoint": {
+          "ip": "203.0.113.201"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:24:33 ns-appfw-01 03/14/2025:08:24:33 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_CSRF_TAG SUCCESS 184537 0 : 203.0.113.201 33221-443 profile_prod_web POST /transfer/funds csrf_policy csrf_token_missing CRITICAL BLOCKED threat_index=9.5 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:27:18 ns-appfw-01 03/14/2025:08:27:18 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_BUFFER_OVERFLOW SUCCESS 184538 0 : 45.33.12.99 60123-443 profile_prod_web POST /upload/file buffer_overflow_policy field_len=8192 CRITICAL DROPPED threat_index=9.9 status=0",
+        "_time": 1741940838,
+        "syslog_ts": "Sep 14 08:27:18",
+        "netscaler_ts": "03/14/2025:08:27:18",
+        "ppe": "0-PPE-0",
+        "sig_category": "APPFW_BUFFER_OVERFLOW",
+        "result": "SUCCESS",
+        "session_id": "184538",
+        "seq": "0",
+        "src_ip": "45.33.12.99",
+        "profile": "profile_prod_web",
+        "method": "POST",
+        "url": "/upload/file",
+        "policy_name": "buffer_overflow_policy",
+        "signature": "field_len=8192",
+        "severity": "Informational",
+        "action": "DROPPED",
+        "threat_index": "9.9",
+        "status": "0",
+        "src_port": "60123",
+        "dst_port": "443",
+        "timestamp": "2025-03-14T08:27:18",
+        "action_normalized": "dropped",
+        "protocol": "tcp",
+        "dest_port": "443",
+        "transport": "tcp",
+        "rule_name": "buffer_overflow_policy",
+        "log_time": "2025-03-14T08:27:18",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940838000,
+        "src_endpoint": {
+          "ip": "45.33.12.99"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:27:18 ns-appfw-01 03/14/2025:08:27:18 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_BUFFER_OVERFLOW SUCCESS 184538 0 : 45.33.12.99 60123-443 profile_prod_web POST /upload/file buffer_overflow_policy field_len=8192 CRITICAL DROPPED threat_index=9.9 status=0",
+        "sourcetype": "citrix:netscaler:appfw"
+      },
+      {
+        "_raw": "Sep 14 08:29:47 ns-appfw-01 03/14/2025:08:29:47 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_DENYURL SUCCESS 184539 0 : 10.0.5.77 52011-80 profile_default GET /wp-admin/install.php denyurl_policy NA WARNING BLOCKED threat_index=6.8 status=403",
+        "_time": 1741940987,
+        "syslog_ts": "Sep 14 08:29:47",
+        "netscaler_ts": "03/14/2025:08:29:47",
+        "ppe": "0-PPE-2",
+        "sig_category": "APPFW_DENYURL",
+        "result": "SUCCESS",
+        "session_id": "184539",
+        "seq": "0",
+        "src_ip": "10.0.5.77",
+        "profile": "profile_default",
+        "method": "GET",
+        "url": "/wp-admin/install.php",
+        "policy_name": "denyurl_policy",
+        "signature": "NA",
+        "severity": "Informational",
+        "action": "BLOCKED",
+        "threat_index": "6.8",
+        "status": "403",
+        "src_port": "52011",
+        "dst_port": "80",
+        "timestamp": "2025-03-14T08:29:47",
+        "action_normalized": "blocked",
+        "protocol": "tcp",
+        "dest_port": "80",
+        "transport": "tcp",
+        "rule_name": "denyurl_policy",
+        "log_time": "2025-03-14T08:29:47",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1741940987000,
+        "src_endpoint": {
+          "ip": "10.0.5.77"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "citrix netscaler appfw",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "Sep 14 08:29:47 ns-appfw-01 03/14/2025:08:29:47 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_DENYURL SUCCESS 184539 0 : 10.0.5.77 52011-80 profile_default GET /wp-admin/install.php denyurl_policy NA WARNING BLOCKED threat_index=6.8 status=403",
+        "sourcetype": "citrix:netscaler:appfw"
+      }
+    ],
+    "sampleKeys": [
+      "threat_index",
+      "status",
+      "field",
+      "field_len"
+    ],
+    "sampleRaw": [
+      "Sep 14 08:12:33 ns-appfw-01 03/14/2025:08:12:33 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_SQL_INJECTION SUCCESS 184532 0 : 203.0.113.45 51422-443 profile_prod_web POST /api/v2/login sql_inject_policy SQLi_Signature_1024 CRITICAL BLOCKED threat_index=9.8 status=403",
+      "Sep 14 08:14:02 ns-appfw-01 03/14/2025:08:14:02 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_STARTURL SUCCESS 184533 0 : 10.20.30.15 44210-80 profile_default GET /admin/config.php starturl_policy NA WARNING BLOCKED threat_index=6.2 status=403",
+      "Sep 14 08:16:45 ns-appfw-01 03/14/2025:08:16:45 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_XSS SUCCESS 184534 0 : 198.51.100.22 33291-443 profile_ecommerce POST /cart/checkout xss_policy XSS_Signature_512 HIGH TRANSFORMED threat_index=7.5 status=200",
+      "Sep 14 08:19:11 ns-appfw-01 03/14/2025:08:19:11 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_FIELDFORMAT SUCCESS 184535 0 : 172.16.5.201 40012-8080 profile_internal_app POST /forms/submit fieldformat_policy field=email_addr WARNING BLOCKED threat_index=5.1 status=403",
+      "Sep 14 08:21:59 ns-appfw-01 03/14/2025:08:21:59 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_COOKIE_TAMPERED SUCCESS 184536 0 : 192.168.10.44 51890-443 profile_prod_web GET /account/profile cookie_consistency_policy NA ERROR RESET threat_index=8.0 status=403",
+      "Sep 14 08:24:33 ns-appfw-01 03/14/2025:08:24:33 GMT ns-appfw-01 0-PPE-1 : APPFW APPFW_CSRF_TAG SUCCESS 184537 0 : 203.0.113.201 33221-443 profile_prod_web POST /transfer/funds csrf_policy csrf_token_missing CRITICAL BLOCKED threat_index=9.5 status=403",
+      "Sep 14 08:27:18 ns-appfw-01 03/14/2025:08:27:18 GMT ns-appfw-01 0-PPE-0 : APPFW APPFW_BUFFER_OVERFLOW SUCCESS 184538 0 : 45.33.12.99 60123-443 profile_prod_web POST /upload/file buffer_overflow_policy field_len=8192 CRITICAL DROPPED threat_index=9.9 status=0",
+      "Sep 14 08:29:47 ns-appfw-01 03/14/2025:08:29:47 GMT ns-appfw-01 0-PPE-2 : APPFW APPFW_DENYURL SUCCESS 184539 0 : 10.0.5.77 52011-80 profile_default GET /wp-admin/install.php denyurl_policy NA WARNING BLOCKED threat_index=6.8 status=403"
+    ],
+    "sourcetype": "citrix:netscaler:appfw"
+  }
+}
