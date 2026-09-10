@@ -1,0 +1,842 @@
+{
+  "key": "trendmicro:interscan::ocsf",
+  "sourcetype": "trendmicro:interscan",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:20.101Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]*)\\|(?<product>[^|]*)\\|(?<product_version>[^|]*)\\|(?<signature_id>[^|]*)\\|(?<event_name>[^|]*)\\|(?<severity>[^|]*)\\|(?<extension>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF header fields (vendor, product, version, signature, name, severity) and isolate the extension KVP blob"
+    },
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "extension",
+        "cleanFields": true
+      },
+      "description": "Extract space-delimited key=value pairs from the CEF extension into individual fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "rt"
+          },
+          {
+            "name": "src_ip",
+            "value": "src"
+          },
+          {
+            "name": "dst_ip",
+            "value": "dst"
+          },
+          {
+            "name": "dst_port",
+            "value": "dpt"
+          },
+          {
+            "name": "protocol",
+            "value": "proto"
+          },
+          {
+            "name": "action",
+            "value": "act"
+          },
+          {
+            "name": "user",
+            "value": "suser"
+          },
+          {
+            "name": "dst_user",
+            "value": "duser"
+          },
+          {
+            "name": "url",
+            "value": "request"
+          },
+          {
+            "name": "dst_host",
+            "value": "dhost"
+          },
+          {
+            "name": "message",
+            "value": "msg"
+          },
+          {
+            "name": "file_size",
+            "value": "cn1"
+          },
+          {
+            "name": "threat_name",
+            "value": "cs1"
+          }
+        ],
+        "remove": [
+          "rt",
+          "src",
+          "dst",
+          "dpt",
+          "proto",
+          "act",
+          "suser",
+          "duser",
+          "request",
+          "dhost",
+          "msg",
+          "cn1",
+          "cs1",
+          "cs1Label",
+          "cn1Label",
+          "extension"
+        ]
+      },
+      "description": "Normalize CEF extension abbreviations to standard field names and drop the raw KVP keys"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "protocol ? protocol.toUpperCase() : protocol"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action ? action.toLowerCase() : action"
+          },
+          {
+            "name": "severity_label",
+            "value": "Number(severity) >= 8 ? 'critical' : Number(severity) >= 5 ? 'high' : Number(severity) >= 3 ? 'medium' : 'low'"
+          }
+        ]
+      },
+      "description": "Normalize protocol/action casing and derive a human-readable severity label"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'trendmicro interscan'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'trendmicro:interscan'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "TrendmicroInterscan_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|8|rt=Feb 14 2025 03:12:44 src=192.168.10.45 dst=203.0.113.22 dpt=80 proto=HTTP request=http://malicious-download.example.com/payload.exe cs1=Trojan.Win32.GenericKD.12345 cs1Label=VirusName act=Blocked suser=jsmith cn1=1 cn1Label=FileSize duser=jsmith@corp.local",
+        "_time": 1739502764,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "100",
+        "event_name": "Virus Detected",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:12:44",
+        "src_ip": "192.168.10.45",
+        "dst_ip": "203.0.113.22",
+        "dst_port": "80",
+        "protocol": "HTTP",
+        "action": "blocked",
+        "user": "jsmith",
+        "dst_user": "jsmith@corp.local",
+        "url": "http://malicious-download.example.com/payload.exe",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|8|rt=Feb 14 2025 03:12:44 src=192.168.10.45 dst=203.0.113.22 dpt=80 proto=HTTP request=http://malicious-download.example.com/payload.exe cs1=Trojan.Win32.GenericKD.12345 cs1Label=VirusName act=Blocked suser=jsmith cn1=1 cn1Label=FileSize duser=jsmith@corp.local",
+        "file_size": "1",
+        "threat_name": "Trojan.Win32.GenericKD.12345",
+        "vendor_action": "Blocked",
+        "severity_label": "critical",
+        "dest_ip": "203.0.113.22",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "log_time": "Feb 14 2025 03:12:44",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739502764000,
+        "src_endpoint": {
+          "ip": "192.168.10.45"
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.22"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|200|URL Filtering Block|5|rt=Feb 14 2025 03:15:09 src=10.20.5.19 dst=198.51.100.77 dpt=443 proto=HTTPS request=https://gambling-site.example.net cs1=Gambling cs1Label=URLCategory act=Blocked suser=mkhan",
+        "_time": 1739502909,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "200",
+        "event_name": "URL Filtering Block",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:15:09",
+        "src_ip": "10.20.5.19",
+        "dst_ip": "198.51.100.77",
+        "dst_port": "443",
+        "protocol": "HTTPS",
+        "action": "blocked",
+        "user": "mkhan",
+        "url": "https://gambling-site.example.net",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|200|URL Filtering Block|5|rt=Feb 14 2025 03:15:09 src=10.20.5.19 dst=198.51.100.77 dpt=443 proto=HTTPS request=https://gambling-site.example.net cs1=Gambling cs1Label=URLCategory act=Blocked suser=mkhan",
+        "threat_name": "Gambling",
+        "vendor_action": "Blocked",
+        "severity_label": "high",
+        "dest_ip": "198.51.100.77",
+        "dest_port": "443",
+        "transport": "HTTPS",
+        "log_time": "Feb 14 2025 03:15:09",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739502909000,
+        "src_endpoint": {
+          "ip": "10.20.5.19"
+        },
+        "dst_endpoint": {
+          "ip": "198.51.100.77"
+        },
+        "actor": {
+          "user": {
+            "name": "mkhan"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Messaging Security Suite|9.1|300|Spam Detected|3|rt=Feb 14 2025 03:20:51 src=172.16.4.12 dst=172.16.4.200 dpt=25 proto=SMTP suser=external-sender@spamdomain.ru duser=finance@corpmail.com msg=Sample spam message subject act=Quarantined",
+        "_time": 1739503251,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Messaging Security Suite",
+        "product_version": "9.1",
+        "signature_id": "300",
+        "event_name": "Spam Detected",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:20:51",
+        "src_ip": "172.16.4.12",
+        "dst_ip": "172.16.4.200",
+        "dst_port": "25",
+        "protocol": "SMTP",
+        "action": "quarantined",
+        "user": "external-sender@spamdomain.ru",
+        "dst_user": "finance@corpmail.com",
+        "message": "Sample spam message subject",
+        "vendor_action": "Quarantined",
+        "severity_label": "medium",
+        "dest_ip": "172.16.4.200",
+        "dest_port": "25",
+        "transport": "SMTP",
+        "log_time": "Feb 14 2025 03:20:51",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739503251000,
+        "src_endpoint": {
+          "ip": "172.16.4.12"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.4.200"
+        },
+        "actor": {
+          "user": {
+            "name": "external-sender@spamdomain.ru"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|9|rt=Feb 14 2025 03:25:33 src=192.168.1.100 dst=45.33.32.156 dpt=80 proto=HTTP request=http://45.33.32.156/update.js cs1=JS_DLOADER.SMJ cs1Label=VirusName act=Cleaned suser=rgarcia",
+        "_time": 1739503533,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "100",
+        "event_name": "Virus Detected",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:25:33",
+        "src_ip": "192.168.1.100",
+        "dst_ip": "45.33.32.156",
+        "dst_port": "80",
+        "protocol": "HTTP",
+        "action": "cleaned",
+        "user": "rgarcia",
+        "url": "http://45.33.32.156/update.js",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|9|rt=Feb 14 2025 03:25:33 src=192.168.1.100 dst=45.33.32.156 dpt=80 proto=HTTP request=http://45.33.32.156/update.js cs1=JS_DLOADER.SMJ cs1Label=VirusName act=Cleaned suser=rgarcia",
+        "threat_name": "JS_DLOADER.SMJ",
+        "vendor_action": "Cleaned",
+        "severity_label": "critical",
+        "dest_ip": "45.33.32.156",
+        "dest_port": "80",
+        "transport": "HTTP",
+        "log_time": "Feb 14 2025 03:25:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739503533000,
+        "src_endpoint": {
+          "ip": "192.168.1.100"
+        },
+        "dst_endpoint": {
+          "ip": "45.33.32.156"
+        },
+        "actor": {
+          "user": {
+            "name": "rgarcia"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|400|Policy Violation|4|rt=Feb 14 2025 03:30:02 src=10.1.1.55 dst=93.184.216.34 dpt=443 proto=HTTPS request=https://socialmedia.example.com cs1=Social Media cs1Label=URLCategory act=Allowed suser=tlee",
+        "_time": 1739503802,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "400",
+        "event_name": "Policy Violation",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:30:02",
+        "src_ip": "10.1.1.55",
+        "dst_ip": "93.184.216.34",
+        "dst_port": "443",
+        "protocol": "HTTPS",
+        "action": "allowed",
+        "user": "tlee",
+        "url": "https://socialmedia.example.com",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|400|Policy Violation|4|rt=Feb 14 2025 03:30:02 src=10.1.1.55 dst=93.184.216.34 dpt=443 proto=HTTPS request=https://socialmedia.example.com cs1=Social Media cs1Label=URLCategory act=Allowed suser=tlee",
+        "threat_name": "Social Media",
+        "vendor_action": "Allowed",
+        "severity_label": "medium",
+        "dest_ip": "93.184.216.34",
+        "dest_port": "443",
+        "transport": "HTTPS",
+        "log_time": "Feb 14 2025 03:30:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739503802000,
+        "src_endpoint": {
+          "ip": "10.1.1.55"
+        },
+        "dst_endpoint": {
+          "ip": "93.184.216.34"
+        },
+        "actor": {
+          "user": {
+            "name": "tlee"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Messaging Security Suite|9.1|300|Spam Detected|2|rt=Feb 14 2025 03:35:47 src=192.168.50.10 dst=192.168.50.200 dpt=25 proto=SMTP suser=noreply@newsletter-blast.com duser=all-staff@corpmail.com act=Delivered",
+        "_time": 1739504147,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Messaging Security Suite",
+        "product_version": "9.1",
+        "signature_id": "300",
+        "event_name": "Spam Detected",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:35:47",
+        "src_ip": "192.168.50.10",
+        "dst_ip": "192.168.50.200",
+        "dst_port": "25",
+        "protocol": "SMTP",
+        "action": "delivered",
+        "user": "noreply@newsletter-blast.com",
+        "dst_user": "all-staff@corpmail.com",
+        "message": "CEF:0|Trend Micro|InterScan Messaging Security Suite|9.1|300|Spam Detected|2|rt=Feb 14 2025 03:35:47 src=192.168.50.10 dst=192.168.50.200 dpt=25 proto=SMTP suser=noreply@newsletter-blast.com duser=all-staff@corpmail.com act=Delivered",
+        "vendor_action": "Delivered",
+        "severity_label": "low",
+        "dest_ip": "192.168.50.200",
+        "dest_port": "25",
+        "transport": "SMTP",
+        "log_time": "Feb 14 2025 03:35:47",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739504147000,
+        "src_endpoint": {
+          "ip": "192.168.50.10"
+        },
+        "dst_endpoint": {
+          "ip": "192.168.50.200"
+        },
+        "actor": {
+          "user": {
+            "name": "noreply@newsletter-blast.com"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|10|rt=Feb 14 2025 03:40:15 src=10.10.10.10 dst=185.220.101.45 dpt=8443 proto=HTTPS request=https://185.220.101.45/exploit.bin cs1=Backdoor.PHP.WEBSHELL.SM cs1Label=VirusName act=Blocked suser=admin",
+        "_time": 1739504415,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "100",
+        "event_name": "Virus Detected",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:40:15",
+        "src_ip": "10.10.10.10",
+        "dst_ip": "185.220.101.45",
+        "dst_port": "8443",
+        "protocol": "HTTPS",
+        "action": "blocked",
+        "user": "admin",
+        "url": "https://185.220.101.45/exploit.bin",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|10|rt=Feb 14 2025 03:40:15 src=10.10.10.10 dst=185.220.101.45 dpt=8443 proto=HTTPS request=https://185.220.101.45/exploit.bin cs1=Backdoor.PHP.WEBSHELL.SM cs1Label=VirusName act=Blocked suser=admin",
+        "threat_name": "Backdoor.PHP.WEBSHELL.SM",
+        "vendor_action": "Blocked",
+        "severity_label": "critical",
+        "dest_ip": "185.220.101.45",
+        "dest_port": "8443",
+        "transport": "HTTPS",
+        "log_time": "Feb 14 2025 03:40:15",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739504415000,
+        "src_endpoint": {
+          "ip": "10.10.10.10"
+        },
+        "dst_endpoint": {
+          "ip": "185.220.101.45"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      },
+      {
+        "_raw": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|500|Authentication Failure|6|rt=Feb 14 2025 03:45:29 src=203.0.113.99 dst=10.0.0.5 dpt=443 proto=HTTPS request=https://iwss-admin.corp.local/login act=Failed suser=admin cs1=InvalidCredentials cs1Label=Reason",
+        "_time": 1739504729,
+        "cef_version": "0",
+        "vendor": "Trend Micro",
+        "product": "InterScan Web Security Suite",
+        "product_version": "6.5",
+        "signature_id": "500",
+        "event_name": "Authentication Failure",
+        "severity": "Informational",
+        "timestamp": "Feb 14 2025 03:45:29",
+        "src_ip": "203.0.113.99",
+        "dst_ip": "10.0.0.5",
+        "dst_port": "443",
+        "protocol": "HTTPS",
+        "action": "failed",
+        "user": "admin",
+        "url": "https://iwss-admin.corp.local/login",
+        "message": "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|500|Authentication Failure|6|rt=Feb 14 2025 03:45:29 src=203.0.113.99 dst=10.0.0.5 dpt=443 proto=HTTPS request=https://iwss-admin.corp.local/login act=Failed suser=admin cs1=InvalidCredentials cs1Label=Reason",
+        "threat_name": "InvalidCredentials",
+        "vendor_action": "Failed",
+        "severity_label": "high",
+        "dest_ip": "10.0.0.5",
+        "dest_port": "443",
+        "transport": "HTTPS",
+        "log_time": "Feb 14 2025 03:45:29",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1739504729000,
+        "src_endpoint": {
+          "ip": "203.0.113.99"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.5"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "trendmicro interscan",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "trendmicro:interscan"
+      }
+    ],
+    "sampleKeys": [
+      "src",
+      "dst",
+      "dpt",
+      "proto",
+      "request",
+      "cs1",
+      "cs1Label",
+      "act",
+      "suser",
+      "cn1",
+      "cn1Label",
+      "duser",
+      "msg"
+    ],
+    "sampleRaw": [
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|8|rt=Feb 14 2025 03:12:44 src=192.168.10.45 dst=203.0.113.22 dpt=80 proto=HTTP request=http://malicious-download.example.com/payload.exe cs1=Trojan.Win32.GenericKD.12345 cs1Label=VirusName act=Blocked suser=jsmith cn1=1 cn1Label=FileSize duser=jsmith@corp.local",
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|200|URL Filtering Block|5|rt=Feb 14 2025 03:15:09 src=10.20.5.19 dst=198.51.100.77 dpt=443 proto=HTTPS request=https://gambling-site.example.net cs1=Gambling cs1Label=URLCategory act=Blocked suser=mkhan",
+      "CEF:0|Trend Micro|InterScan Messaging Security Suite|9.1|300|Spam Detected|3|rt=Feb 14 2025 03:20:51 src=172.16.4.12 dst=172.16.4.200 dpt=25 proto=SMTP suser=external-sender@spamdomain.ru duser=finance@corpmail.com msg=Sample spam message subject act=Quarantined",
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|9|rt=Feb 14 2025 03:25:33 src=192.168.1.100 dst=45.33.32.156 dpt=80 proto=HTTP request=http://45.33.32.156/update.js cs1=JS_DLOADER.SMJ cs1Label=VirusName act=Cleaned suser=rgarcia",
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|400|Policy Violation|4|rt=Feb 14 2025 03:30:02 src=10.1.1.55 dst=93.184.216.34 dpt=443 proto=HTTPS request=https://socialmedia.example.com cs1=Social Media cs1Label=URLCategory act=Allowed suser=tlee",
+      "CEF:0|Trend Micro|InterScan Messaging Security Suite|9.1|300|Spam Detected|2|rt=Feb 14 2025 03:35:47 src=192.168.50.10 dst=192.168.50.200 dpt=25 proto=SMTP suser=noreply@newsletter-blast.com duser=all-staff@corpmail.com act=Delivered",
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|100|Virus Detected|10|rt=Feb 14 2025 03:40:15 src=10.10.10.10 dst=185.220.101.45 dpt=8443 proto=HTTPS request=https://185.220.101.45/exploit.bin cs1=Backdoor.PHP.WEBSHELL.SM cs1Label=VirusName act=Blocked suser=admin",
+      "CEF:0|Trend Micro|InterScan Web Security Suite|6.5|500|Authentication Failure|6|rt=Feb 14 2025 03:45:29 src=203.0.113.99 dst=10.0.0.5 dpt=443 proto=HTTPS request=https://iwss-admin.corp.local/login act=Failed suser=admin cs1=InvalidCredentials cs1Label=Reason"
+    ],
+    "sourcetype": "trendmicro:interscan"
+  }
+}
