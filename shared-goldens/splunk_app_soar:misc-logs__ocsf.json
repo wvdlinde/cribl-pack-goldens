@@ -1,0 +1,693 @@
+{
+  "key": "splunk_app_soar:misc-logs::ocsf",
+  "sourcetype": "splunk_app_soar:misc-logs",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:06.044Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<__ts>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}),(?<__ms>\\d{3})\\s+(?<log_level>[A-Z]+)\\s+(?<component>[\\w.]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base structure: timestamp, log level, component, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "typeof message === 'string'",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:by |for )?user '(?<user>[^']+)'|Playbook '(?<playbook>[^']+)'|Action '(?<action_name>[^']+)'|(?:on |for )asset '(?<asset>[^']+)'|container (?<container_id>\\d+)|\\(id=(?<container_id2>\\d+)\\)|Account '(?<locked_account>[^']+)'|from (?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9a-fA-F:]{2,}:[0-9a-fA-F]{1,4})|ip=(?<observed_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9a-fA-F:]{2,}:[0-9a-fA-F]{1,4})|(?:to |connection to )(?:\\w+:\\/\\/)?(?<dst_ip>(?:\\d{1,3}\\.){3}\\d{1,3}):(?<dst_port>\\d{1,5})|session id: (?<session_id>[0-9a-f-]+)|severity=(?<container_severity>\\w+)|runtime=(?<runtime>[\\d.]+)s/g",
+        "iterations": 12,
+        "overwrite": false
+      },
+      "description": "Extract entities: user, playbook, action, asset, container, source ip"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "timestamp",
+            "value": "__ts && __ms ? __ts + '.' + __ms : __ts"
+          },
+          {
+            "name": "severity",
+            "value": "log_level === 'CRITICAL' ? 'critical' : (log_level === 'ERROR' ? 'high' : (log_level === 'WARNING' ? 'medium' : (log_level === 'INFO' ? 'low' : 'informational')))"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : locked_account"
+          },
+          {
+            "name": "container_id",
+            "value": "container_id ? container_id : container_id2"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip : undefined"
+          },
+          {
+            "name": "observed_ip",
+            "value": "observed_ip ? observed_ip : undefined"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':') > -1 ? 6 : 4) : (observed_ip ? (observed_ip.indexOf(':') > -1 ? 6 : 4) : undefined)"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/succeeded|logged __e['in'] successfully|polled successfully|completed __e['with'] status 'success'|created|updated/) ? 'success' : (message.match(/failed|locked|exhausted|Unauthorized|rate-limited|timeout/) ? 'failure' : 'unknown')"
+          },
+          {
+            "name": "event_type",
+            "value": "component === 'spawn.playbook' ? 'playbook' : (component === 'spawn.action' ? 'action' : (component === 'auth.login' ? 'authentication' : (component === 'app_interface' ? 'admin' : (component === 'container.create' ? 'container' : (component === 'db.connect' ? 'database' : (component === 'ingest.poll' ? 'ingest' : 'other'))))))"
+          },
+          {
+            "name": "vendor",
+            "value": "'Splunk'"
+          },
+          {
+            "name": "product",
+            "value": "'SOAR'"
+          }
+        ],
+        "remove": [
+          "__ts",
+          "__ms",
+          "container_id2",
+          "locked_account"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action, user and IP fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'splunk app soar misc logs'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'splunk_app_soar:misc-logs'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "SplunkAppSoarMiscLogs_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14 03:12:07,441 INFO spawn.playbook: Playbook 'phishing_triage' started on container 10432 by user 'automation_soc' [asset: splunk_es]",
+        "_time": 1715656327.441,
+        "log_level": "INFO",
+        "component": "spawn.playbook",
+        "message": "Playbook 'phishing_triage' started on container 10432 by user 'automation_soc' [asset: splunk_es]",
+        "user": "automation_soc",
+        "playbook": [
+          "phishing_triage",
+          null,
+          null
+        ],
+        "container_id": [
+          "10432",
+          null
+        ],
+        "timestamp": "2024-05-14 03:12:07.441",
+        "severity": "Informational",
+        "action": "unknown",
+        "event_type": "playbook",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 03:12:07.441",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656327441,
+        "actor": {
+          "user": {
+            "name": "automation_soc"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 03:12:09,882 INFO spawn.action: Action 'geolocate ip' succeeded on asset 'maxmind' for container 10432 (param: ip=203.0.113.44)",
+        "_time": 1715656329.882,
+        "log_level": "INFO",
+        "component": "spawn.action",
+        "message": "Action 'geolocate ip' succeeded on asset 'maxmind' for container 10432 (param: ip=203.0.113.44)",
+        "action_name": [
+          "geolocate ip",
+          null,
+          null,
+          null
+        ],
+        "asset": [
+          "maxmind",
+          null,
+          null
+        ],
+        "container_id": [
+          "10432",
+          null
+        ],
+        "observed_ip": "203.0.113.44",
+        "timestamp": "2024-05-14 03:12:09.882",
+        "severity": "Informational",
+        "ip_version": 4,
+        "action": "success",
+        "event_type": "action",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 03:12:09.882",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656329882,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 04:45:33,120 ERROR spawn.action: Action 'block ip' failed on asset 'palo_alto_fw' for container 10440 - Error: Connection timeout to 172.16.5.20:443",
+        "_time": 1715661933.12,
+        "log_level": "ERROR",
+        "component": "spawn.action",
+        "message": "Action 'block ip' failed on asset 'palo_alto_fw' for container 10440 - Error: Connection timeout to 172.16.5.20:443",
+        "action_name": [
+          "block ip",
+          null,
+          null,
+          null
+        ],
+        "asset": [
+          "palo_alto_fw",
+          null,
+          null
+        ],
+        "container_id": [
+          "10440",
+          null
+        ],
+        "dst_ip": "172.16.5.20",
+        "dst_port": "443",
+        "timestamp": "2024-05-14 04:45:33.120",
+        "severity": "Informational",
+        "action": "failure",
+        "event_type": "action",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "dest_ip": "172.16.5.20",
+        "dest_port": "443",
+        "log_time": "2024-05-14 04:45:33.120",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715661933120,
+        "dst_endpoint": {
+          "ip": "172.16.5.20"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 05:01:12,207 WARNING app_interface: Authentication failed for user 'jsmith' from 198.51.100.77 (invalid password, attempt 3 of 5)",
+        "_time": 1715662872.207,
+        "log_level": "WARNING",
+        "component": "app_interface",
+        "message": "Authentication failed for user 'jsmith' from 198.51.100.77 (invalid password, attempt 3 of 5)",
+        "user": [
+          "jsmith",
+          null
+        ],
+        "src_ip": "198.51.100.77",
+        "timestamp": "2024-05-14 05:01:12.207",
+        "severity": "Informational",
+        "ip_version": 4,
+        "action": "failure",
+        "event_type": "admin",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 05:01:12.207",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715662872207,
+        "src_endpoint": {
+          "ip": "198.51.100.77"
+        },
+        "actor": {
+          "user": {
+            "name": [
+              "jsmith",
+              null
+            ]
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 05:03:44,918 CRITICAL app_interface: Account 'admin' locked after 5 consecutive failed login attempts from 45.33.32.156",
+        "_time": 1715663024.918,
+        "log_level": "CRITICAL",
+        "component": "app_interface",
+        "message": "Account 'admin' locked after 5 consecutive failed login attempts from 45.33.32.156",
+        "user": [
+          "admin",
+          null
+        ],
+        "src_ip": "45.33.32.156",
+        "timestamp": "2024-05-14 05:03:44.918",
+        "severity": "Informational",
+        "ip_version": 4,
+        "action": "failure",
+        "event_type": "admin",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 05:03:44.918",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715663024918,
+        "src_endpoint": {
+          "ip": "45.33.32.156"
+        },
+        "actor": {
+          "user": {
+            "name": [
+              "admin",
+              null
+            ]
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 06:15:02,003 INFO ingest.poll: Ingest source 'splunk_es_ingestor' polled successfully, 14 new events pulled into container pool",
+        "_time": 1715667302.003,
+        "log_level": "INFO",
+        "component": "ingest.poll",
+        "message": "Ingest source 'splunk_es_ingestor' polled successfully, 14 new events pulled into container pool",
+        "timestamp": "2024-05-14 06:15:02.003",
+        "severity": "Informational",
+        "action": "success",
+        "event_type": "ingest",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 06:15:02.003",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715667302003,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 06:20:19,556 DEBUG spawn.playbook: Evaluating decision block 'is_malicious' in playbook 'malware_response' on container 10455",
+        "_time": 1715667619.556,
+        "log_level": "DEBUG",
+        "component": "spawn.playbook",
+        "message": "Evaluating decision block 'is_malicious' in playbook 'malware_response' on container 10455",
+        "container_id": "10455",
+        "timestamp": "2024-05-14 06:20:19.556",
+        "severity": "Informational",
+        "action": "unknown",
+        "event_type": "playbook",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 06:20:19.556",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715667619556,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      },
+      {
+        "_raw": "2024-05-14 07:33:51,441 INFO auth.login: User 'admin' logged in successfully from 10.1.4.12 (session id: 8f2a1c9e-77b4)",
+        "_time": 1715672031.441,
+        "log_level": "INFO",
+        "component": "auth.login",
+        "message": "User 'admin' logged in successfully from 10.1.4.12 (session id: 8f2a1c9e-77b4)",
+        "src_ip": [
+          "10.1.4.12",
+          null
+        ],
+        "session_id": "8f2a1c9e-77b4",
+        "timestamp": "2024-05-14 07:33:51.441",
+        "severity": "Informational",
+        "ip_version": 4,
+        "action": "unknown",
+        "event_type": "authentication",
+        "vendor": "Splunk",
+        "product": "SOAR",
+        "log_time": "2024-05-14 07:33:51.441",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715672031441,
+        "src_endpoint": {
+          "ip": [
+            "10.1.4.12",
+            null
+          ]
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "splunk app soar misc logs",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "splunk_app_soar:misc-logs"
+      }
+    ],
+    "sampleKeys": [
+      "ip"
+    ],
+    "sampleRaw": [
+      "2024-05-14 03:12:07,441 INFO spawn.playbook: Playbook 'phishing_triage' started on container 10432 by user 'automation_soc' [asset: splunk_es]",
+      "2024-05-14 03:12:09,882 INFO spawn.action: Action 'geolocate ip' succeeded on asset 'maxmind' for container 10432 (param: ip=203.0.113.44)",
+      "2024-05-14 04:45:33,120 ERROR spawn.action: Action 'block ip' failed on asset 'palo_alto_fw' for container 10440 - Error: Connection timeout to 172.16.5.20:443",
+      "2024-05-14 05:01:12,207 WARNING app_interface: Authentication failed for user 'jsmith' from 198.51.100.77 (invalid password, attempt 3 of 5)",
+      "2024-05-14 05:03:44,918 CRITICAL app_interface: Account 'admin' locked after 5 consecutive failed login attempts from 45.33.32.156",
+      "2024-05-14 06:15:02,003 INFO ingest.poll: Ingest source 'splunk_es_ingestor' polled successfully, 14 new events pulled into container pool",
+      "2024-05-14 06:20:19,556 DEBUG spawn.playbook: Evaluating decision block 'is_malicious' in playbook 'malware_response' on container 10455",
+      "2024-05-14 07:33:51,441 INFO auth.login: User 'admin' logged in successfully from 10.1.4.12 (session id: 8f2a1c9e-77b4)"
+    ],
+    "sourcetype": "splunk_app_soar:misc-logs"
+  }
+}
