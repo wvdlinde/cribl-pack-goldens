@@ -16815,6 +16815,21 @@
         "score": 99,
         "band": "good"
       }
+    },
+    {
+      "key": "aws:cloudwatchlogs:vpcflow::ocsf",
+      "sourcetype": "aws:cloudwatchlogs:vpcflow",
+      "dest_format": "ocsf",
+      "score": 91,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:39.232Z",
+      "path": "shared-goldens/aws:cloudwatchlogs:vpcflow__ocsf.json",
+      "report": {
+        "score": 91,
+        "band": "good"
+      }
     }
   ]
 }
