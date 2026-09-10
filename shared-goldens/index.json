@@ -17265,6 +17265,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:etcd::ocsf",
+      "sourcetype": "vmware:esxlog:etcd",
+      "dest_format": "ocsf",
+      "score": 87,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:57.191Z",
+      "path": "shared-goldens/vmware:esxlog:etcd__ocsf.json",
+      "report": {
+        "score": 87,
+        "band": "good"
+      }
     }
   ]
 }
