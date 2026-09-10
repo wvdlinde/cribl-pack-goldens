@@ -16860,6 +16860,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco:ftd::ocsf",
+      "sourcetype": "cisco:ftd",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:54.327Z",
+      "path": "shared-goldens/cisco:ftd__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
