@@ -17475,6 +17475,21 @@
         "score": 96,
         "band": "good"
       }
+    },
+    {
+      "key": "XmlWinEventLog:Microsoft-Windows-PowerShell/Operational::ocsf",
+      "sourcetype": "XmlWinEventLog:Microsoft-Windows-PowerShell/Operational",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:50:59.474Z",
+      "path": "shared-goldens/XmlWinEventLog:Microsoft-Windows-PowerShell/Operational__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
