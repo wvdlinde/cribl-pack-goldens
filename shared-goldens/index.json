@@ -16830,6 +16830,21 @@
         "score": 91,
         "band": "good"
       }
+    },
+    {
+      "key": "aws:elb:accesslogs::ocsf",
+      "sourcetype": "aws:elb:accesslogs",
+      "dest_format": "ocsf",
+      "score": 90,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:44.841Z",
+      "path": "shared-goldens/aws:elb:accesslogs__ocsf.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
