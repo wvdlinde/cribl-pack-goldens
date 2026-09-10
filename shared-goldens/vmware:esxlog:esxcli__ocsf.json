@@ -1,0 +1,645 @@
+{
+  "key": "vmware:esxlog:esxcli::ocsf",
+  "sourcetype": "vmware:esxlog:esxcli",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:48.268Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<dst_host>\\S+)\\s+Esxcli:\\s+(?<pid>\\d+)\\s+opID=(?<op_id>\\S+)\\s+user=(?<user>\\S+)\\s+source=(?<src_ip>\\S+)\\s+cmd='(?<message>[^']+)'\\s+result=(?<result>\\S+)(?:\\s+reason='(?<reason>[^']+)')?(?:\\s+severity=(?<severity>\\S+))?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract core ESXi esxcli log fields: timestamp, host, pid, opID, user, source IP, command, result, optional reason and severity"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "result == 'Success' ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity : (result == 'Failed' ? 'ERROR' : 'INFO')"
+          }
+        ]
+      },
+      "description": "Normalize action from result field and default severity when not present"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "__is_ipv6",
+            "value": "src_ip && src_ip.match(/:/) ? true : false"
+          }
+        ]
+      },
+      "description": "Flag whether the source IP is IPv6 for downstream handling"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog esxcli'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:esxcli'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogEsxcli_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14T03:12:45.102Z esx01.dc1.local Esxcli: 178234 opID=hostd-89ab user=root source=127.0.0.1 cmd='esxcli network firewall set --enabled true' result=Success",
+        "_time": 1715656365.102,
+        "timestamp": "2024-05-14T03:12:45.102Z",
+        "dst_host": "esx01.dc1.local",
+        "pid": "178234",
+        "op_id": "hostd-89ab",
+        "user": "root",
+        "src_ip": "127.0.0.1",
+        "message": "esxcli network firewall set --enabled true",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T03:12:45.102Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656365102,
+        "src_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T04:45:11.556Z esx02.dc1.local Esxcli: 178901 opID=hostd-12cd user=jsmith source=10.20.5.14 cmd='esxcli system account list' result=Success",
+        "_time": 1715661911.556,
+        "timestamp": "2024-05-14T04:45:11.556Z",
+        "dst_host": "esx02.dc1.local",
+        "pid": "178901",
+        "op_id": "hostd-12cd",
+        "user": "jsmith",
+        "src_ip": "10.20.5.14",
+        "message": "esxcli system account list",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T04:45:11.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715661911556,
+        "src_endpoint": {
+          "ip": "10.20.5.14"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T05:02:33.998Z esx03.dc2.local Esxcli: 179456 opID=hostd-45ef user=root source=192.168.1.50 cmd='esxcli software vib install -v /tmp/unsigned-driver.vib --no-sig-check' result=Success severity=WARNING",
+        "_time": 1715662953.998,
+        "timestamp": "2024-05-14T05:02:33.998Z",
+        "dst_host": "esx03.dc2.local",
+        "pid": "179456",
+        "op_id": "hostd-45ef",
+        "user": "root",
+        "src_ip": "192.168.1.50",
+        "message": "esxcli software vib install -v /tmp/unsigned-driver.vib --no-sig-check",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "vendor_severity": "WARNING",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T05:02:33.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715662953998,
+        "src_endpoint": {
+          "ip": "192.168.1.50"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T06:18:29.334Z esx01.dc1.local Esxcli: 180012 opID=hostd-77aa user=administrator source=172.16.4.22 cmd='esxcli user account add -u backupsvc -p ********' result=Failed reason='Account already exists'",
+        "_time": 1715667509.334,
+        "timestamp": "2024-05-14T06:18:29.334Z",
+        "dst_host": "esx01.dc1.local",
+        "pid": "180012",
+        "op_id": "hostd-77aa",
+        "user": "administrator",
+        "src_ip": "172.16.4.22",
+        "message": "esxcli user account add -u backupsvc -p ********",
+        "result": "Failed",
+        "reason": "Account already exists",
+        "severity": "Informational",
+        "action": "blocked",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T06:18:29.334Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715667509334,
+        "src_endpoint": {
+          "ip": "172.16.4.22"
+        },
+        "actor": {
+          "user": {
+            "name": "administrator"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T07:29:57.771Z esx04.dc3.local Esxcli: 180345 opID=hostd-91bc user=root source=127.0.0.1 cmd='esxcli storage core device list' result=Success",
+        "_time": 1715671797.771,
+        "timestamp": "2024-05-14T07:29:57.771Z",
+        "dst_host": "esx04.dc3.local",
+        "pid": "180345",
+        "op_id": "hostd-91bc",
+        "user": "root",
+        "src_ip": "127.0.0.1",
+        "message": "esxcli storage core device list",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T07:29:57.771Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715671797771,
+        "src_endpoint": {
+          "ip": "127.0.0.1"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T08:05:14.220Z esx02.dc1.local Esxcli: 180678 opID=hostd-33dd user=svc_monitor source=10.20.5.19 cmd='esxcli hardware platform get' result=Success",
+        "_time": 1715673914.22,
+        "timestamp": "2024-05-14T08:05:14.220Z",
+        "dst_host": "esx02.dc1.local",
+        "pid": "180678",
+        "op_id": "hostd-33dd",
+        "user": "svc_monitor",
+        "src_ip": "10.20.5.19",
+        "message": "esxcli hardware platform get",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T08:05:14.220Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715673914220,
+        "src_endpoint": {
+          "ip": "10.20.5.19"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_monitor"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T09:44:02.891Z esx03.dc2.local Esxcli: 180901 opID=hostd-66ff user=root source=203.0.113.45 cmd='esxcli network firewall ruleset set --enabled true --ruleset-id sshServer' result=Success severity=INFO",
+        "_time": 1715679842.891,
+        "timestamp": "2024-05-14T09:44:02.891Z",
+        "dst_host": "esx03.dc2.local",
+        "pid": "180901",
+        "op_id": "hostd-66ff",
+        "user": "root",
+        "src_ip": "203.0.113.45",
+        "message": "esxcli network firewall ruleset set --enabled true --ruleset-id sshServer",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "vendor_severity": "INFO",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T09:44:02.891Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715679842891,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      },
+      {
+        "_raw": "2024-05-14T10:12:39.445Z esx05.dc2.local Esxcli: 181234 opID=hostd-88gg user=vpxuser source=10.20.6.7 cmd='esxcli vm process kill --type=force --world-id=234567' result=Success",
+        "_time": 1715681559.445,
+        "timestamp": "2024-05-14T10:12:39.445Z",
+        "dst_host": "esx05.dc2.local",
+        "pid": "181234",
+        "op_id": "hostd-88gg",
+        "user": "vpxuser",
+        "src_ip": "10.20.6.7",
+        "message": "esxcli vm process kill --type=force --world-id=234567",
+        "result": "Success",
+        "severity": "Informational",
+        "action": "allowed",
+        "__is_ipv6": false,
+        "log_time": "2024-05-14T10:12:39.445Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715681559445,
+        "src_endpoint": {
+          "ip": "10.20.6.7"
+        },
+        "actor": {
+          "user": {
+            "name": "vpxuser"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog esxcli",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:esxcli"
+      }
+    ],
+    "sampleKeys": [
+      "opID",
+      "user",
+      "source",
+      "cmd",
+      "result",
+      "severity",
+      "reason"
+    ],
+    "sampleRaw": [
+      "2024-05-14T03:12:45.102Z esx01.dc1.local Esxcli: 178234 opID=hostd-89ab user=root source=127.0.0.1 cmd='esxcli network firewall set --enabled true' result=Success",
+      "2024-05-14T04:45:11.556Z esx02.dc1.local Esxcli: 178901 opID=hostd-12cd user=jsmith source=10.20.5.14 cmd='esxcli system account list' result=Success",
+      "2024-05-14T05:02:33.998Z esx03.dc2.local Esxcli: 179456 opID=hostd-45ef user=root source=192.168.1.50 cmd='esxcli software vib install -v /tmp/unsigned-driver.vib --no-sig-check' result=Success severity=WARNING",
+      "2024-05-14T06:18:29.334Z esx01.dc1.local Esxcli: 180012 opID=hostd-77aa user=administrator source=172.16.4.22 cmd='esxcli user account add -u backupsvc -p ********' result=Failed reason='Account already exists'",
+      "2024-05-14T07:29:57.771Z esx04.dc3.local Esxcli: 180345 opID=hostd-91bc user=root source=127.0.0.1 cmd='esxcli storage core device list' result=Success",
+      "2024-05-14T08:05:14.220Z esx02.dc1.local Esxcli: 180678 opID=hostd-33dd user=svc_monitor source=10.20.5.19 cmd='esxcli hardware platform get' result=Success",
+      "2024-05-14T09:44:02.891Z esx03.dc2.local Esxcli: 180901 opID=hostd-66ff user=root source=203.0.113.45 cmd='esxcli network firewall ruleset set --enabled true --ruleset-id sshServer' result=Success severity=INFO",
+      "2024-05-14T10:12:39.445Z esx05.dc2.local Esxcli: 181234 opID=hostd-88gg user=vpxuser source=10.20.6.7 cmd='esxcli vm process kill --type=force --world-id=234567' result=Success"
+    ],
+    "sourcetype": "vmware:esxlog:esxcli"
+  }
+}
