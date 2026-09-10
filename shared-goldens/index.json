@@ -16905,6 +16905,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "citrix:netscaler:appfw::ocsf",
+      "sourcetype": "citrix:netscaler:appfw",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:08.355Z",
+      "path": "shared-goldens/citrix:netscaler:appfw__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
