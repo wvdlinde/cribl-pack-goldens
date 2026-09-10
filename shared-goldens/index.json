@@ -14930,14 +14930,14 @@
       "key": "aemerror::ocsf",
       "sourcetype": "aemerror",
       "dest_format": "ocsf",
-      "score": 89,
+      "score": 93,
       "part": null,
-      "author": "wlinde@cribl.io",
-      "build": 652,
-      "updated_at": "2026-09-01T14:52:23.335Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:46:16.900Z",
       "path": "shared-goldens/aemerror__ocsf.json",
       "report": {
-        "score": 89,
+        "score": 93,
         "band": "good"
       }
     },
