@@ -16845,6 +16845,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "bluecoat:proxysg:access:syslog::ocsf",
+      "sourcetype": "bluecoat:proxysg:access:syslog",
+      "dest_format": "ocsf",
+      "score": 97,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:49.843Z",
+      "path": "shared-goldens/bluecoat:proxysg:access:syslog__ocsf.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
