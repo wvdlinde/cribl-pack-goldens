@@ -1,0 +1,582 @@
+{
+  "key": "vmware:esxlog:cmmdsTimeMachineDump::ocsf",
+  "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:49:39.272Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<host>\\S+)\\s+cmmdstimemachinedump\\[(?<pid>\\d+)\\]:\\s+\\[TimeMachine\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse base syslog structure: timestamp, host, pid, and TimeMachine message body"
+    },
+    {
+      "id": "serde",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "kvDelim": "=",
+        "pairDelim": ",",
+        "cleanFields": true
+      },
+      "description": "Extract embedded key=value pairs (epoch, nodeUuid, records, sizeBytes, durationMs, oldMasterUuid, newMasterUuid, errno, sourceUser, sourceIp, action, expected, actual, file, evictedUuid, reason, exception, heapUsedMb, heapMaxMb) from the message body"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "typeof sourceUser !== 'undefined' ? sourceUser : undefined"
+          },
+          {
+            "name": "src_ip",
+            "value": "typeof sourceIp !== 'undefined' ? sourceIp : undefined"
+          }
+        ],
+        "remove": [
+          "sourceUser",
+          "sourceIp"
+        ]
+      },
+      "description": "Normalize user and src_ip field names from extracted kvp fields"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog cmmdstimemachinedump'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:cmmdsTimeMachineDump'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogCmmdsTimeMachineDump_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-01-15T03:12:44.102Z esxi-host01.corp.local cmmdstimemachinedump[2098765]: [TimeMachine] Snapshot dump initiated for CMMDS state, epoch=48213, nodeUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11",
+        "_time": 1705288364.102,
+        "timestamp": "2024-01-15T03:12:44.102Z",
+        "host": "esxi-host01.corp.local",
+        "pid": "2098765",
+        "message": "Snapshot dump initiated for CMMDS state, epoch=48213, nodeUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11",
+        "epoch": "48213",
+        "nodeUuid": "5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T03:12:44.102Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T03:12:44.315Z esxi-host02.corp.local cmmdstimemachinedump[2098766]: [TimeMachine] Dump completed successfully, records=48213, sizeBytes=15728640, durationMs=213",
+        "_time": 1705288364.315,
+        "timestamp": "2024-01-15T03:12:44.315Z",
+        "host": "esxi-host02.corp.local",
+        "pid": "2098766",
+        "message": "Dump completed successfully, records=48213, sizeBytes=15728640, durationMs=213",
+        "records": "48213",
+        "sizeBytes": "15728640",
+        "durationMs": "213",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T03:12:44.315Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T04:45:11.887Z esxi-host03.corp.local cmmdstimemachinedump[2100112]: [TimeMachine] WARNING: Slow response from CMMDS directory service, retrying attempt 2/3",
+        "_time": 1705293911.887,
+        "timestamp": "2024-01-15T04:45:11.887Z",
+        "host": "esxi-host03.corp.local",
+        "pid": "2100112",
+        "message": "WARNING: Slow response from CMMDS directory service, retrying attempt 2/3",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host03.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T04:45:11.887Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T05:33:29.410Z esxi-host01.corp.local cmmdstimemachinedump[2101234]: [TimeMachine] Node membership update detected, oldMasterUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11, newMasterUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "_time": 1705296809.41,
+        "timestamp": "2024-01-15T05:33:29.410Z",
+        "host": "esxi-host01.corp.local",
+        "pid": "2101234",
+        "message": "Node membership update detected, oldMasterUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11, newMasterUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "oldMasterUuid": "5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11",
+        "newMasterUuid": "7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host01.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T05:33:29.410Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T06:02:03.001Z esxi-host04.corp.local cmmdstimemachinedump[2102456]: [TimeMachine] ERROR: Failed to write dump file to /vmfs/volumes/vsanDatastore/.timemachine/dump_20240115.bin, errno=28 (No space left on device)",
+        "_time": 1705298523.001,
+        "timestamp": "2024-01-15T06:02:03.001Z",
+        "host": "esxi-host04.corp.local",
+        "pid": "2102456",
+        "message": "ERROR: Failed to write dump file to /vmfs/volumes/vsanDatastore/.timemachine/dump_20240115.bin, errno=28 (No space left on device)",
+        "errno": "28 (No space left on device)",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host04.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T06:02:03.001Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T07:18:55.552Z esxi-host02.corp.local cmmdstimemachinedump[2103789]: [TimeMachine] Snapshot dump initiated for CMMDS state, epoch=48214, nodeUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "_time": 1705303135.552,
+        "timestamp": "2024-01-15T07:18:55.552Z",
+        "host": "esxi-host02.corp.local",
+        "pid": "2103789",
+        "message": "Snapshot dump initiated for CMMDS state, epoch=48214, nodeUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "epoch": "48214",
+        "nodeUuid": "7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T07:18:55.552Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T07:18:56.001Z esxi-host02.corp.local cmmdstimemachinedump[2103789]: [TimeMachine] Dump completed successfully, records=48214, sizeBytes=15984256, durationMs=449",
+        "_time": 1705303136.001,
+        "timestamp": "2024-01-15T07:18:56.001Z",
+        "host": "esxi-host02.corp.local",
+        "pid": "2103789",
+        "message": "Dump completed successfully, records=48214, sizeBytes=15984256, durationMs=449",
+        "records": "48214",
+        "sizeBytes": "15984256",
+        "durationMs": "449",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "device": {
+          "hostname": "esxi-host02.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T07:18:56.001Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      },
+      {
+        "_raw": "2024-01-15T08:44:12.220Z esxi-host05.corp.local cmmdstimemachinedump[2105001]: [TimeMachine] CRITICAL: Unauthorized access attempt detected on CMMDS dump file, sourceUser=root, sourceIp=192.168.44.201, action=DENIED",
+        "_time": 1705308252.22,
+        "timestamp": "2024-01-15T08:44:12.220Z",
+        "host": "esxi-host05.corp.local",
+        "pid": "2105001",
+        "message": "CRITICAL: Unauthorized access attempt detected on CMMDS dump file, sourceUser=root, sourceIp=192.168.44.201, action=DENIED",
+        "action": "DENIED",
+        "user": "root",
+        "src_ip": "192.168.44.201",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788259797510,
+        "src_endpoint": {
+          "ip": "192.168.44.201"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "device": {
+          "hostname": "esxi-host05.corp.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog cmmdstimemachinedump",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "log_time": "2024-01-15T08:44:12.220Z",
+        "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+      }
+    ],
+    "sampleKeys": [
+      "epoch",
+      "nodeUuid",
+      "records",
+      "sizeBytes",
+      "durationMs",
+      "oldMasterUuid",
+      "newMasterUuid",
+      "errno",
+      "sourceUser",
+      "sourceIp",
+      "action"
+    ],
+    "sampleRaw": [
+      "2024-01-15T03:12:44.102Z esxi-host01.corp.local cmmdstimemachinedump[2098765]: [TimeMachine] Snapshot dump initiated for CMMDS state, epoch=48213, nodeUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11",
+      "2024-01-15T03:12:44.315Z esxi-host02.corp.local cmmdstimemachinedump[2098766]: [TimeMachine] Dump completed successfully, records=48213, sizeBytes=15728640, durationMs=213",
+      "2024-01-15T04:45:11.887Z esxi-host03.corp.local cmmdstimemachinedump[2100112]: [TimeMachine] WARNING: Slow response from CMMDS directory service, retrying attempt 2/3",
+      "2024-01-15T05:33:29.410Z esxi-host01.corp.local cmmdstimemachinedump[2101234]: [TimeMachine] Node membership update detected, oldMasterUuid=5b3f2e1a-9c44-4d2b-a1e5-8f7c3d902b11, newMasterUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+      "2024-01-15T06:02:03.001Z esxi-host04.corp.local cmmdstimemachinedump[2102456]: [TimeMachine] ERROR: Failed to write dump file to /vmfs/volumes/vsanDatastore/.timemachine/dump_20240115.bin, errno=28 (No space left on device)",
+      "2024-01-15T07:18:55.552Z esxi-host02.corp.local cmmdstimemachinedump[2103789]: [TimeMachine] Snapshot dump initiated for CMMDS state, epoch=48214, nodeUuid=7a4d1c9e-2b33-4f8a-9d21-e0c5a6b8f342",
+      "2024-01-15T07:18:56.001Z esxi-host02.corp.local cmmdstimemachinedump[2103789]: [TimeMachine] Dump completed successfully, records=48214, sizeBytes=15984256, durationMs=449",
+      "2024-01-15T08:44:12.220Z esxi-host05.corp.local cmmdstimemachinedump[2105001]: [TimeMachine] CRITICAL: Unauthorized access attempt detected on CMMDS dump file, sourceUser=root, sourceIp=192.168.44.201, action=DENIED"
+    ],
+    "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump"
+  }
+}
