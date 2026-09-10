@@ -16890,6 +16890,21 @@
         "score": 97,
         "band": "good"
       }
+    },
+    {
+      "key": "cisco:ise::ocsf",
+      "sourcetype": "cisco:ise",
+      "dest_format": "ocsf",
+      "score": 97,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:03.618Z",
+      "path": "shared-goldens/cisco:ise__ocsf.json",
+      "report": {
+        "score": 97,
+        "band": "good"
+      }
     }
   ]
 }
