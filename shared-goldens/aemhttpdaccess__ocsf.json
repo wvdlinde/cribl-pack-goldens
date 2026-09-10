@@ -2,11 +2,11 @@
   "key": "aemhttpdaccess::ocsf",
   "sourcetype": "aemhttpdaccess",
   "dest_format": "ocsf",
-  "score": 92,
+  "score": 94,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T14:55:16.333Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:30.272Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -154,107 +154,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'6003'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'6'"
-          },
-          {
-            "name": "event_type",
-            "value": "'web_proxy'"
-          },
-          {
-            "name": "time",
-            "value": "Date.parse(timestamp)"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "src_ip"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user"
-          },
-          {
-            "name": "http_request.url",
-            "value": "uri"
-          },
-          {
-            "name": "http_request.http_method",
-            "value": "method"
-          },
-          {
-            "name": "http_request.user_agent",
-            "value": "user_agent"
-          },
-          {
-            "name": "http_response.code",
-            "value": "Number(status || 0)"
-          },
-          {
-            "name": "traffic.bytes_out",
-            "value": "Number(bytes || 0)"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "protocol || 'HTTP'"
-          },
-          {
-            "name": "severity_id",
-            "value": "Number(status) >= 500 ? 4 : (Number(status) >= 400 ? 3 : 1)"
-          },
-          {
-            "name": "activity_id",
             "value": "1"
           },
           {
-            "name": "class_uid",
-            "value": "6003"
-          }
-        ]
-      },
-      "description": "Map fields to destination schema"
-    },
-    {
-      "id": "eval",
-      "filter": "true",
-      "disabled": false,
-      "conf": {
-        "add": [
-          {
-            "name": "category_uid",
-            "value": "6"
+            "name": "category_name",
+            "value": "'System Activity'"
           },
           {
             "name": "type_uid",
-            "value": "600301"
+            "value": "100100"
           },
           {
-            "name": "category_name",
-            "value": "'Network Activity'"
+            "name": "severity_id",
+            "value": "1"
           },
           {
-            "name": "metadata.product.name",
-            "value": "'Adobe Experience Manager'"
+            "name": "severity",
+            "value": "'Informational'"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'Adobe'"
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
           },
           {
             "name": "metadata.version",
-            "value": "'1.1.0'"
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'aemhttpdaccess'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-21)"
+      }
     },
     {
       "id": "eval",
@@ -281,42 +289,374 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "Aemhttpdaccess_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2024\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"5.0\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"17.4\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"x11;\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"13;\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "10.1.2.15 - jsmith [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 15234 \"https://www.mysite.com/en.html\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\" 342",
+        "_time": null,
+        "src_ip": "10.1.2.15",
+        "user": "jsmith",
+        "timestamp": "12/May/2024:03:14:22 +0000",
+        "method": "GET",
+        "uri": "/content/mysite/en/home.html",
+        "http_version": "1.1",
+        "status": "200",
+        "bytes": 15234,
+        "referer": "https://www.mysite.com/en.html",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "response_time": "342",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:14:22 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916669,
+        "src_endpoint": {
+          "ip": "10.1.2.15"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.1.2.15 - jsmith [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 15234 \"https://www.mysite.com/en.html\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\" 342",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "192.168.10.44 - - [12/May/2024:03:22:11 +0000] \"POST /libs/granite/core/content/login.html/j_security_check HTTP/1.1\" 401 512 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15\" 88",
+        "_time": null,
+        "src_ip": "192.168.10.44",
+        "user": null,
+        "timestamp": "12/May/2024:03:22:11 +0000",
+        "method": "POST",
+        "uri": "/libs/granite/core/content/login.html/j_security_check",
+        "http_version": "1.1",
+        "status": "401",
+        "bytes": 512,
+        "referer": "-",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+        "response_time": "88",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:22:11 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916671,
+        "src_endpoint": {
+          "ip": "192.168.10.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "192.168.10.44 - - [12/May/2024:03:22:11 +0000] \"POST /libs/granite/core/content/login.html/j_security_check HTTP/1.1\" 401 512 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15\" 88",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "203.0.113.77 - - [12/May/2024:03:45:09 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 289 \"-\" \"curl/8.1.2\" 12",
+        "_time": null,
+        "src_ip": "203.0.113.77",
+        "user": null,
+        "timestamp": "12/May/2024:03:45:09 +0000",
+        "method": "GET",
+        "uri": "/crx/de/index.jsp",
+        "http_version": "1.1",
+        "status": "403",
+        "bytes": 289,
+        "referer": "-",
+        "user_agent": "curl/8.1.2",
+        "response_time": "12",
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:45:09 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916671,
+        "src_endpoint": {
+          "ip": "203.0.113.77"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "203.0.113.77 - - [12/May/2024:03:45:09 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 289 \"-\" \"curl/8.1.2\" 12",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "10.0.5.201 - admin [12/May/2024:04:02:37 +0000] \"GET /system/console/bundles HTTP/1.1\" 200 45210 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" 121",
+        "_time": null,
+        "src_ip": "10.0.5.201",
+        "user": "admin",
+        "timestamp": "12/May/2024:04:02:37 +0000",
+        "method": "GET",
+        "uri": "/system/console/bundles",
+        "http_version": "1.1",
+        "status": "200",
+        "bytes": 45210,
+        "referer": "-",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+        "response_time": "121",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:02:37 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916672,
+        "src_endpoint": {
+          "ip": "10.0.5.201"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.5.201 - admin [12/May/2024:04:02:37 +0000] \"GET /system/console/bundles HTTP/1.1\" 200 45210 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" 121",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "172.16.8.19 - author01 [12/May/2024:04:18:56 +0000] \"PUT /content/dam/mysite/assets/campaign2024/hero-banner.jpg HTTP/1.1\" 201 0 \"-\" \"Adobe-AEM-Uploader/1.0\" 2044",
+        "_time": null,
+        "src_ip": "172.16.8.19",
+        "user": "author01",
+        "timestamp": "12/May/2024:04:18:56 +0000",
+        "method": "PUT",
+        "uri": "/content/dam/mysite/assets/campaign2024/hero-banner.jpg",
+        "http_version": "1.1",
+        "status": "201",
+        "bytes": 0,
+        "referer": "-",
+        "user_agent": "Adobe-AEM-Uploader/1.0",
+        "response_time": "2044",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:18:56 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916672,
+        "src_endpoint": {
+          "ip": "172.16.8.19"
+        },
+        "actor": {
+          "user": {
+            "name": "author01"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "172.16.8.19 - author01 [12/May/2024:04:18:56 +0000] \"PUT /content/dam/mysite/assets/campaign2024/hero-banner.jpg HTTP/1.1\" 201 0 \"-\" \"Adobe-AEM-Uploader/1.0\" 2044",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "198.51.100.212 - - [12/May/2024:04:33:14 +0000] \"GET /etc/clientlibs/mysite/main.js HTTP/1.1\" 200 88234 \"https://www.mysite.com/products.html\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)\" 55",
+        "_time": null,
+        "src_ip": "198.51.100.212",
+        "user": null,
+        "timestamp": "12/May/2024:04:33:14 +0000",
+        "method": "GET",
+        "uri": "/etc/clientlibs/mysite/main.js",
+        "http_version": "1.1",
+        "status": "200",
+        "bytes": 88234,
+        "referer": "https://www.mysite.com/products.html",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)",
+        "response_time": "55",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:04:33:14 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916673,
+        "src_endpoint": {
+          "ip": "198.51.100.212"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "198.51.100.212 - - [12/May/2024:04:33:14 +0000] \"GET /etc/clientlibs/mysite/main.js HTTP/1.1\" 200 88234 \"https://www.mysite.com/products.html\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)\" 55",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "10.2.14.5 - jdoe [12/May/2024:05:01:44 +0000] \"GET /content/mysite/en/careers.html HTTP/1.1\" 200 20122 \"https://www.google.com/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" 210",
+        "_time": null,
+        "src_ip": "10.2.14.5",
+        "user": "jdoe",
+        "timestamp": "12/May/2024:05:01:44 +0000",
+        "method": "GET",
+        "uri": "/content/mysite/en/careers.html",
+        "http_version": "1.1",
+        "status": "200",
+        "bytes": 20122,
+        "referer": "https://www.google.com/",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "response_time": "210",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:05:01:44 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916673,
+        "src_endpoint": {
+          "ip": "10.2.14.5"
+        },
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.2.14.5 - jdoe [12/May/2024:05:01:44 +0000] \"GET /content/mysite/en/careers.html HTTP/1.1\" 200 20122 \"https://www.google.com/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" 210",
+        "sourcetype": "aemhttpdaccess"
+      },
+      {
+        "_raw": "192.168.20.33 - - [12/May/2024:05:15:29 +0000] \"GET /libs/granite/core/content/login.html HTTP/1.1\" 200 6712 \"-\" \"Mozilla/5.0 (Linux; Android 13; SM-G991B)\" 44",
+        "_time": null,
+        "src_ip": "192.168.20.33",
+        "user": null,
+        "timestamp": "12/May/2024:05:15:29 +0000",
+        "method": "GET",
+        "uri": "/libs/granite/core/content/login.html",
+        "http_version": "1.1",
+        "status": "200",
+        "bytes": 6712,
+        "referer": "-",
+        "user_agent": "Mozilla/5.0 (Linux; Android 13; SM-G991B)",
+        "response_time": "44",
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:05:15:29 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966916675,
+        "src_endpoint": {
+          "ip": "192.168.20.33"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpdaccess",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "192.168.20.33 - - [12/May/2024:05:15:29 +0000] \"GET /libs/granite/core/content/login.html HTTP/1.1\" 200 6712 \"-\" \"Mozilla/5.0 (Linux; Android 13; SM-G991B)\" 44",
+        "sourcetype": "aemhttpdaccess"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "10.1.2.15 - jsmith [12/May/2024:03:14:22 +0000] \"GET /content/mysite/en/home.html HTTP/1.1\" 200 15234 \"https://www.mysite.com/en.html\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\" 342",
+      "192.168.10.44 - - [12/May/2024:03:22:11 +0000] \"POST /libs/granite/core/content/login.html/j_security_check HTTP/1.1\" 401 512 \"-\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15\" 88",
+      "203.0.113.77 - - [12/May/2024:03:45:09 +0000] \"GET /crx/de/index.jsp HTTP/1.1\" 403 289 \"-\" \"curl/8.1.2\" 12",
+      "10.0.5.201 - admin [12/May/2024:04:02:37 +0000] \"GET /system/console/bundles HTTP/1.1\" 200 45210 \"-\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36\" 121",
+      "172.16.8.19 - author01 [12/May/2024:04:18:56 +0000] \"PUT /content/dam/mysite/assets/campaign2024/hero-banner.jpg HTTP/1.1\" 201 0 \"-\" \"Adobe-AEM-Uploader/1.0\" 2044",
+      "198.51.100.212 - - [12/May/2024:04:33:14 +0000] \"GET /etc/clientlibs/mysite/main.js HTTP/1.1\" 200 88234 \"https://www.mysite.com/products.html\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X)\" 55",
+      "10.2.14.5 - jdoe [12/May/2024:05:01:44 +0000] \"GET /content/mysite/en/careers.html HTTP/1.1\" 200 20122 \"https://www.google.com/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\" 210",
+      "192.168.20.33 - - [12/May/2024:05:15:29 +0000] \"GET /libs/granite/core/content/login.html HTTP/1.1\" 200 6712 \"-\" \"Mozilla/5.0 (Linux; Android 13; SM-G991B)\" 44"
+    ],
+    "sourcetype": "aemhttpdaccess"
   }
 }
