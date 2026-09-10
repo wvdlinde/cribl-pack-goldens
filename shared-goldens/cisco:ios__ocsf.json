@@ -1,0 +1,632 @@
+{
+  "key": "cisco:ios::ocsf",
+  "sourcetype": "cisco:ios",
+  "dest_format": "ocsf",
+  "score": 97,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:59.257Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}\\.\\d+):/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract leading timestamp from the event"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/username:\\s*(?<target_user>\\S+)\\s+configured/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the username being configured (AAA-6-USERNAME_CONFIGURATION)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/privilege updated with priv-(?<privilege>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the privilege level assigned to the target user"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/User:(?<admin_user>\\S+)\\s+logged command:username\\s+\\S+\\s+privilege\\s+\\d+\\s+secret/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the admin user who issued the configuration command"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/!config:\\s*(?<config_status>[^\\n]*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract the config change status message (e.g. USER TABLE MODIFIED)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "target_user"
+          },
+          {
+            "name": "action",
+            "value": "'user_account_created'"
+          },
+          {
+            "name": "severity",
+            "value": "'info'"
+          },
+          {
+            "name": "message",
+            "value": "'User account ' + target_user + ' created with privilege ' + privilege + ' by ' + admin_user + '; ' + config_status"
+          }
+        ]
+      },
+      "description": "Normalize classification fields for this account-creation event type"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'cisco ios'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco:ios'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "CiscoIos_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "Aug 20 17:10:21.639: %AAA-6-USERNAME_CONFIGURATION: user with username: attacker configured Aug 20 17:10:21.664: %AAA-6-USER_PRIVILEGE_UPDATE: username: attacker privilege updated with priv-15 Aug 20 17:10:21.665: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username attacker privilege 15 secret * Aug 20 17:10:21.665: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+        "_time": 998327421.639,
+        "timestamp": "Aug 20 17:10:21.639",
+        "target_user": "attacker",
+        "privilege": "15",
+        "admin_user": "ec2-user",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "attacker",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account attacker created with privilege 15 by ec2-user; USER TABLE MODIFIED",
+        "log_time": "Aug 20 17:10:21.639",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998327421639,
+        "actor": {
+          "user": {
+            "name": "attacker"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 21 09:14:02.112: %AAA-6-USERNAME_CONFIGURATION: user with username: svc_admin configured Aug 21 09:14:02.138: %AAA-6-USER_PRIVILEGE_UPDATE: username: svc_admin privilege updated with priv-15 Aug 21 09:14:02.139: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username svc_admin privilege 15 secret * Aug 21 09:14:02.139: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+        "_time": 998385242.112,
+        "timestamp": "Aug 21 09:14:02.112",
+        "target_user": "svc_admin",
+        "privilege": "15",
+        "admin_user": "ec2-user",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "svc_admin",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account svc_admin created with privilege 15 by ec2-user; USER TABLE MODIFIED",
+        "log_time": "Aug 21 09:14:02.112",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998385242112,
+        "actor": {
+          "user": {
+            "name": "svc_admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 21 11:32:47.501: %AAA-6-USERNAME_CONFIGURATION: user with username: jdoe configured Aug 21 11:32:47.527: %AAA-6-USER_PRIVILEGE_UPDATE: username: jdoe privilege updated with priv-15 Aug 21 11:32:47.528: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:username jdoe privilege 15 secret * Aug 21 11:32:47.528: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:!config: USER TABLE MODIFIED",
+        "_time": 998393567.501,
+        "timestamp": "Aug 21 11:32:47.501",
+        "target_user": "jdoe",
+        "privilege": "15",
+        "admin_user": "admin",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "jdoe",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account jdoe created with privilege 15 by admin; USER TABLE MODIFIED",
+        "log_time": "Aug 21 11:32:47.501",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998393567501,
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 21 13:05:19.884: %AAA-6-USERNAME_CONFIGURATION: user with username: backupuser configured Aug 21 13:05:19.910: %AAA-6-USER_PRIVILEGE_UPDATE: username: backupuser privilege updated with priv-15 Aug 21 13:05:19.911: %PARSER-5-CFGLOG_LOGGEDCMD: User:root logged command:username backupuser privilege 15 secret * Aug 21 13:05:19.911: %PARSER-5-CFGLOG_LOGGEDCMD: User:root logged command:!config: USER TABLE MODIFIED",
+        "_time": 998399119.884,
+        "timestamp": "Aug 21 13:05:19.884",
+        "target_user": "backupuser",
+        "privilege": "15",
+        "admin_user": "root",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "backupuser",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account backupuser created with privilege 15 by root; USER TABLE MODIFIED",
+        "log_time": "Aug 21 13:05:19.884",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998399119884,
+        "actor": {
+          "user": {
+            "name": "backupuser"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 21 15:47:33.220: %AAA-6-USERNAME_CONFIGURATION: user with username: netadmin configured Aug 21 15:47:33.246: %AAA-6-USER_PRIVILEGE_UPDATE: username: netadmin privilege updated with priv-15 Aug 21 15:47:33.247: %PARSER-5-CFGLOG_LOGGEDCMD: User:cisco logged command:username netadmin privilege 15 secret * Aug 21 15:47:33.247: %PARSER-5-CFGLOG_LOGGEDCMD: User:cisco logged command:!config: USER TABLE MODIFIED",
+        "_time": 998408853.22,
+        "timestamp": "Aug 21 15:47:33.220",
+        "target_user": "netadmin",
+        "privilege": "15",
+        "admin_user": "cisco",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "netadmin",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account netadmin created with privilege 15 by cisco; USER TABLE MODIFIED",
+        "log_time": "Aug 21 15:47:33.220",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998408853220,
+        "actor": {
+          "user": {
+            "name": "netadmin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 22 08:21:56.673: %AAA-6-USERNAME_CONFIGURATION: user with username: guestuser configured Aug 22 08:21:56.699: %AAA-6-USER_PRIVILEGE_UPDATE: username: guestuser privilege updated with priv-15 Aug 22 08:21:56.700: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username guestuser privilege 15 secret * Aug 22 08:21:56.700: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+        "_time": 998468516.673,
+        "timestamp": "Aug 22 08:21:56.673",
+        "target_user": "guestuser",
+        "privilege": "15",
+        "admin_user": "ec2-user",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "guestuser",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account guestuser created with privilege 15 by ec2-user; USER TABLE MODIFIED",
+        "log_time": "Aug 22 08:21:56.673",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998468516673,
+        "actor": {
+          "user": {
+            "name": "guestuser"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 22 10:09:04.918: %AAA-6-USERNAME_CONFIGURATION: user with username: contractor1 configured Aug 22 10:09:04.944: %AAA-6-USER_PRIVILEGE_UPDATE: username: contractor1 privilege updated with priv-15 Aug 22 10:09:04.945: %PARSER-5-CFGLOG_LOGGEDCMD: User:sysadmin logged command:username contractor1 privilege 15 secret * Aug 22 10:09:04.945: %PARSER-5-CFGLOG_LOGGEDCMD: User:sysadmin logged command:!config: USER TABLE MODIFIED",
+        "_time": 998474944.918,
+        "timestamp": "Aug 22 10:09:04.918",
+        "target_user": "contractor1",
+        "privilege": "15",
+        "admin_user": "sysadmin",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "contractor1",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account contractor1 created with privilege 15 by sysadmin; USER TABLE MODIFIED",
+        "log_time": "Aug 22 10:09:04.918",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998474944918,
+        "actor": {
+          "user": {
+            "name": "contractor1"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      },
+      {
+        "_raw": "Aug 22 12:44:29.302: %AAA-6-USERNAME_CONFIGURATION: user with username: tempuser configured Aug 22 12:44:29.328: %AAA-6-USER_PRIVILEGE_UPDATE: username: tempuser privilege updated with priv-15 Aug 22 12:44:29.329: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:username tempuser privilege 15 secret * Aug 22 12:44:29.329: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:!config: USER TABLE MODIFIED",
+        "_time": 998484269.302,
+        "timestamp": "Aug 22 12:44:29.302",
+        "target_user": "tempuser",
+        "privilege": "15",
+        "admin_user": "admin",
+        "config_status": "USER TABLE MODIFIED",
+        "user": "tempuser",
+        "action": "user_account_created",
+        "severity": "Informational",
+        "message": "User account tempuser created with privilege 15 by admin; USER TABLE MODIFIED",
+        "log_time": "Aug 22 12:44:29.302",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 998484269302,
+        "actor": {
+          "user": {
+            "name": "tempuser"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ios",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ios"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "Aug 20 17:10:21.639: %AAA-6-USERNAME_CONFIGURATION: user with username: attacker configured Aug 20 17:10:21.664: %AAA-6-USER_PRIVILEGE_UPDATE: username: attacker privilege updated with priv-15 Aug 20 17:10:21.665: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username attacker privilege 15 secret * Aug 20 17:10:21.665: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+      "Aug 21 09:14:02.112: %AAA-6-USERNAME_CONFIGURATION: user with username: svc_admin configured Aug 21 09:14:02.138: %AAA-6-USER_PRIVILEGE_UPDATE: username: svc_admin privilege updated with priv-15 Aug 21 09:14:02.139: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username svc_admin privilege 15 secret * Aug 21 09:14:02.139: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+      "Aug 21 11:32:47.501: %AAA-6-USERNAME_CONFIGURATION: user with username: jdoe configured Aug 21 11:32:47.527: %AAA-6-USER_PRIVILEGE_UPDATE: username: jdoe privilege updated with priv-15 Aug 21 11:32:47.528: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:username jdoe privilege 15 secret * Aug 21 11:32:47.528: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:!config: USER TABLE MODIFIED",
+      "Aug 21 13:05:19.884: %AAA-6-USERNAME_CONFIGURATION: user with username: backupuser configured Aug 21 13:05:19.910: %AAA-6-USER_PRIVILEGE_UPDATE: username: backupuser privilege updated with priv-15 Aug 21 13:05:19.911: %PARSER-5-CFGLOG_LOGGEDCMD: User:root logged command:username backupuser privilege 15 secret * Aug 21 13:05:19.911: %PARSER-5-CFGLOG_LOGGEDCMD: User:root logged command:!config: USER TABLE MODIFIED",
+      "Aug 21 15:47:33.220: %AAA-6-USERNAME_CONFIGURATION: user with username: netadmin configured Aug 21 15:47:33.246: %AAA-6-USER_PRIVILEGE_UPDATE: username: netadmin privilege updated with priv-15 Aug 21 15:47:33.247: %PARSER-5-CFGLOG_LOGGEDCMD: User:cisco logged command:username netadmin privilege 15 secret * Aug 21 15:47:33.247: %PARSER-5-CFGLOG_LOGGEDCMD: User:cisco logged command:!config: USER TABLE MODIFIED",
+      "Aug 22 08:21:56.673: %AAA-6-USERNAME_CONFIGURATION: user with username: guestuser configured Aug 22 08:21:56.699: %AAA-6-USER_PRIVILEGE_UPDATE: username: guestuser privilege updated with priv-15 Aug 22 08:21:56.700: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:username guestuser privilege 15 secret * Aug 22 08:21:56.700: %PARSER-5-CFGLOG_LOGGEDCMD: User:ec2-user logged command:!config: USER TABLE MODIFIED",
+      "Aug 22 10:09:04.918: %AAA-6-USERNAME_CONFIGURATION: user with username: contractor1 configured Aug 22 10:09:04.944: %AAA-6-USER_PRIVILEGE_UPDATE: username: contractor1 privilege updated with priv-15 Aug 22 10:09:04.945: %PARSER-5-CFGLOG_LOGGEDCMD: User:sysadmin logged command:username contractor1 privilege 15 secret * Aug 22 10:09:04.945: %PARSER-5-CFGLOG_LOGGEDCMD: User:sysadmin logged command:!config: USER TABLE MODIFIED",
+      "Aug 22 12:44:29.302: %AAA-6-USERNAME_CONFIGURATION: user with username: tempuser configured Aug 22 12:44:29.328: %AAA-6-USER_PRIVILEGE_UPDATE: username: tempuser privilege updated with priv-15 Aug 22 12:44:29.329: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:username tempuser privilege 15 secret * Aug 22 12:44:29.329: %PARSER-5-CFGLOG_LOGGEDCMD: User:admin logged command:!config: USER TABLE MODIFIED"
+    ],
+    "sourcetype": "cisco:ios"
+  }
+}
