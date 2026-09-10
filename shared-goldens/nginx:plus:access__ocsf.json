@@ -1,0 +1,757 @@
+{
+  "key": "nginx:plus:access::ocsf",
+  "sourcetype": "nginx:plus:access",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:47.596Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+) - (?<user>\\S+) \\[(?<timestamp>[^\\]]+)\\] \"(?<http_method>\\S+) (?<url>\\S+) (?<http_version>[^\"]+)\" (?<status>\\d+) (?<bytes>\\d+) \"(?<referer>[^\"]*)\" \"(?<user_agent>[^\"]*)\" \"-\" rt=(?<request_time>\\S+) uct=\"(?<upstream_connect_time>[^\"]*)\" uht=\"(?<upstream_header_time>[^\"]*)\" urt=\"(?<upstream_response_time>[^\"]*)\" us=\"(?<upstream_status>[^\"]*)\" ua=\"(?<upstream_addr>[^\"]*)\"/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse nginx plus access log base fields (client IP, user, timestamp, request line, status, bytes, referer, user agent, upstream timing/addr)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "upstream_addr && upstream_addr !== '-'",
+      "disabled": false,
+      "conf": {
+        "source": "upstream_addr",
+        "regex": "/^(?<dst_ip>[^:]+):(?<dst_port>\\d+)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Split upstream address into destination IP and port when present"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "user === '-' ? null : user"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes",
+            "value": "Number(bytes)"
+          },
+          {
+            "name": "dst_port",
+            "value": "dst_port ? Number(dst_port) : null"
+          },
+          {
+            "name": "protocol",
+            "value": "'http'"
+          }
+        ]
+      },
+      "description": "Normalize user field, cast numeric fields, set protocol"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "status >= 400 ? 'blocked' : 'allowed'"
+          },
+          {
+            "name": "severity",
+            "value": "status >= 500 ? 'high' : status >= 400 ? 'medium' : 'low'"
+          }
+        ]
+      },
+      "description": "Derive action and severity from HTTP status code"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'nginx plus access'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'nginx:plus:access'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "NginxPlusAccess_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "10.0.0.15 - alice [12/May/2024:03:14:22 +0000] \"GET /api/v2/users/12345 HTTP/1.1\" 200 1543 \"https://portal.example.com/dashboard\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" \"-\" rt=0.042 uct=\"0.001\" uht=\"0.038\" urt=\"0.041\" us=\"200\" ua=\"10.0.0.101:8080\"",
+        "_time": null,
+        "src_ip": "10.0.0.15",
+        "user": "alice",
+        "timestamp": "12/May/2024:03:14:22 +0000",
+        "http_method": "GET",
+        "url": "/api/v2/users/12345",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 1543,
+        "referer": "https://portal.example.com/dashboard",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "request_time": "0.042",
+        "upstream_connect_time": "0.001",
+        "upstream_header_time": "0.038",
+        "upstream_response_time": "0.041",
+        "upstream_status": "200",
+        "upstream_addr": "10.0.0.101:8080",
+        "dst_ip": "10.0.0.101",
+        "dst_port": 8080,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "dest_ip": "10.0.0.101",
+        "dest_port": 8080,
+        "transport": "http",
+        "log_time": "12/May/2024:03:14:22 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115667,
+        "src_endpoint": {
+          "ip": "10.0.0.15"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.101"
+        },
+        "actor": {
+          "user": {
+            "name": "alice"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.0.15 - alice [12/May/2024:03:14:22 +0000] \"GET /api/v2/users/12345 HTTP/1.1\" 200 1543 \"https://portal.example.com/dashboard\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" \"-\" rt=0.042 uct=\"0.001\" uht=\"0.038\" urt=\"0.041\" us=\"200\" ua=\"10.0.0.101:8080\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "203.0.113.45 - - [12/May/2024:03:16:05 +0000] \"POST /login HTTP/1.1\" 401 287 \"https://example.com/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" \"-\" rt=0.115 uct=\"0.002\" uht=\"0.108\" urt=\"0.113\" us=\"401\" ua=\"10.0.0.102:8080\"",
+        "_time": null,
+        "src_ip": "203.0.113.45",
+        "user": null,
+        "timestamp": "12/May/2024:03:16:05 +0000",
+        "http_method": "POST",
+        "url": "/login",
+        "http_version": "HTTP/1.1",
+        "status": 401,
+        "bytes": 287,
+        "referer": "https://example.com/login",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "request_time": "0.115",
+        "upstream_connect_time": "0.002",
+        "upstream_header_time": "0.108",
+        "upstream_response_time": "0.113",
+        "upstream_status": "401",
+        "upstream_addr": "10.0.0.102:8080",
+        "dst_ip": "10.0.0.102",
+        "dst_port": 8080,
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "dest_ip": "10.0.0.102",
+        "dest_port": 8080,
+        "transport": "http",
+        "log_time": "12/May/2024:03:16:05 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115668,
+        "src_endpoint": {
+          "ip": "203.0.113.45"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.102"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "203.0.113.45 - - [12/May/2024:03:16:05 +0000] \"POST /login HTTP/1.1\" 401 287 \"https://example.com/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" \"-\" rt=0.115 uct=\"0.002\" uht=\"0.108\" urt=\"0.113\" us=\"401\" ua=\"10.0.0.102:8080\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "192.168.1.22 - bob [12/May/2024:03:18:47 +0000] \"GET /static/css/main.css HTTP/1.1\" 304 0 \"https://example.com/home\" \"Mozilla/5.0 (X11; Linux x86_64)\" \"-\" rt=0.003 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "_time": null,
+        "src_ip": "192.168.1.22",
+        "user": "bob",
+        "timestamp": "12/May/2024:03:18:47 +0000",
+        "http_method": "GET",
+        "url": "/static/css/main.css",
+        "http_version": "HTTP/1.1",
+        "status": 304,
+        "bytes": 0,
+        "referer": "https://example.com/home",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "request_time": "0.003",
+        "upstream_connect_time": "-",
+        "upstream_header_time": "-",
+        "upstream_response_time": "-",
+        "upstream_status": "-",
+        "upstream_addr": "-",
+        "dst_port": null,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:18:47 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115669,
+        "src_endpoint": {
+          "ip": "192.168.1.22"
+        },
+        "actor": {
+          "user": {
+            "name": "bob"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "192.168.1.22 - bob [12/May/2024:03:18:47 +0000] \"GET /static/css/main.css HTTP/1.1\" 304 0 \"https://example.com/home\" \"Mozilla/5.0 (X11; Linux x86_64)\" \"-\" rt=0.003 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "198.51.100.9 - - [12/May/2024:03:21:33 +0000] \"GET /wp-login.php HTTP/1.1\" 404 162 \"-\" \"curl/7.68.0\" \"-\" rt=0.008 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "_time": null,
+        "src_ip": "198.51.100.9",
+        "user": null,
+        "timestamp": "12/May/2024:03:21:33 +0000",
+        "http_method": "GET",
+        "url": "/wp-login.php",
+        "http_version": "HTTP/1.1",
+        "status": 404,
+        "bytes": 162,
+        "referer": "-",
+        "user_agent": "curl/7.68.0",
+        "request_time": "0.008",
+        "upstream_connect_time": "-",
+        "upstream_header_time": "-",
+        "upstream_response_time": "-",
+        "upstream_status": "-",
+        "upstream_addr": "-",
+        "dst_port": null,
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:21:33 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115669,
+        "src_endpoint": {
+          "ip": "198.51.100.9"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "198.51.100.9 - - [12/May/2024:03:21:33 +0000] \"GET /wp-login.php HTTP/1.1\" 404 162 \"-\" \"curl/7.68.0\" \"-\" rt=0.008 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "10.0.0.18 - carol [12/May/2024:03:25:59 +0000] \"PUT /api/v2/orders/9981 HTTP/1.1\" 200 892 \"https://portal.example.com/orders\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)\" \"-\" rt=0.067 uct=\"0.002\" uht=\"0.061\" urt=\"0.065\" us=\"200\" ua=\"10.0.0.103:8080\"",
+        "_time": null,
+        "src_ip": "10.0.0.18",
+        "user": "carol",
+        "timestamp": "12/May/2024:03:25:59 +0000",
+        "http_method": "PUT",
+        "url": "/api/v2/orders/9981",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 892,
+        "referer": "https://portal.example.com/orders",
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)",
+        "request_time": "0.067",
+        "upstream_connect_time": "0.002",
+        "upstream_header_time": "0.061",
+        "upstream_response_time": "0.065",
+        "upstream_status": "200",
+        "upstream_addr": "10.0.0.103:8080",
+        "dst_ip": "10.0.0.103",
+        "dst_port": 8080,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "dest_ip": "10.0.0.103",
+        "dest_port": 8080,
+        "transport": "http",
+        "log_time": "12/May/2024:03:25:59 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115670,
+        "src_endpoint": {
+          "ip": "10.0.0.18"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.103"
+        },
+        "actor": {
+          "user": {
+            "name": "carol"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "10.0.0.18 - carol [12/May/2024:03:25:59 +0000] \"PUT /api/v2/orders/9981 HTTP/1.1\" 200 892 \"https://portal.example.com/orders\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)\" \"-\" rt=0.067 uct=\"0.002\" uht=\"0.061\" urt=\"0.065\" us=\"200\" ua=\"10.0.0.103:8080\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "172.16.5.33 - - [12/May/2024:03:29:12 +0000] \"GET /api/v2/search?q=%27%20OR%201%3D1--+ HTTP/1.1\" 400 512 \"-\" \"sqlmap/1.6\" \"-\" rt=0.021 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "_time": null,
+        "src_ip": "172.16.5.33",
+        "user": null,
+        "timestamp": "12/May/2024:03:29:12 +0000",
+        "http_method": "GET",
+        "url": "/api/v2/search?q=%27%20OR%201%3D1--+",
+        "http_version": "HTTP/1.1",
+        "status": 400,
+        "bytes": 512,
+        "referer": "-",
+        "user_agent": "sqlmap/1.6",
+        "request_time": "0.021",
+        "upstream_connect_time": "-",
+        "upstream_header_time": "-",
+        "upstream_response_time": "-",
+        "upstream_status": "-",
+        "upstream_addr": "-",
+        "dst_port": null,
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:29:12 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115670,
+        "src_endpoint": {
+          "ip": "172.16.5.33"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "172.16.5.33 - - [12/May/2024:03:29:12 +0000] \"GET /api/v2/search?q=%27%20OR%201%3D1--+ HTTP/1.1\" 400 512 \"-\" \"sqlmap/1.6\" \"-\" rt=0.021 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "2001:db8::4f2a - dave [12/May/2024:03:32:04 +0000] \"GET /reports/annual-summary.pdf HTTP/1.1\" 200 4582991 \"https://intranet.example.com/reports\" \"Mozilla/5.0 (Windows NT 10.0)\" \"-\" rt=1.842 uct=\"0.003\" uht=\"1.801\" urt=\"1.839\" us=\"200\" ua=\"10.0.0.104:8080\"",
+        "_time": null,
+        "src_ip": "2001:db8::4f2a",
+        "user": "dave",
+        "timestamp": "12/May/2024:03:32:04 +0000",
+        "http_method": "GET",
+        "url": "/reports/annual-summary.pdf",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 4582991,
+        "referer": "https://intranet.example.com/reports",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0)",
+        "request_time": "1.842",
+        "upstream_connect_time": "0.003",
+        "upstream_header_time": "1.801",
+        "upstream_response_time": "1.839",
+        "upstream_status": "200",
+        "upstream_addr": "10.0.0.104:8080",
+        "dst_ip": "10.0.0.104",
+        "dst_port": 8080,
+        "protocol": "http",
+        "action": "allowed",
+        "severity": "Informational",
+        "dest_ip": "10.0.0.104",
+        "dest_port": 8080,
+        "transport": "http",
+        "log_time": "12/May/2024:03:32:04 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115670,
+        "src_endpoint": {
+          "ip": "2001:db8::4f2a"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.0.104"
+        },
+        "actor": {
+          "user": {
+            "name": "dave"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "2001:db8::4f2a - dave [12/May/2024:03:32:04 +0000] \"GET /reports/annual-summary.pdf HTTP/1.1\" 200 4582991 \"https://intranet.example.com/reports\" \"Mozilla/5.0 (Windows NT 10.0)\" \"-\" rt=1.842 uct=\"0.003\" uht=\"1.801\" urt=\"1.839\" us=\"200\" ua=\"10.0.0.104:8080\"",
+        "sourcetype": "nginx:plus:access"
+      },
+      {
+        "_raw": "45.33.22.156 - - [12/May/2024:03:35:41 +0000] \"GET /.env HTTP/1.1\" 404 158 \"-\" \"python-requests/2.25.1\" \"-\" rt=0.005 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "_time": null,
+        "src_ip": "45.33.22.156",
+        "user": null,
+        "timestamp": "12/May/2024:03:35:41 +0000",
+        "http_method": "GET",
+        "url": "/.env",
+        "http_version": "HTTP/1.1",
+        "status": 404,
+        "bytes": 158,
+        "referer": "-",
+        "user_agent": "python-requests/2.25.1",
+        "request_time": "0.005",
+        "upstream_connect_time": "-",
+        "upstream_header_time": "-",
+        "upstream_response_time": "-",
+        "upstream_status": "-",
+        "upstream_addr": "-",
+        "dst_port": null,
+        "protocol": "http",
+        "action": "blocked",
+        "severity": "Informational",
+        "transport": "http",
+        "log_time": "12/May/2024:03:35:41 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788967115672,
+        "src_endpoint": {
+          "ip": "45.33.22.156"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "nginx plus access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "45.33.22.156 - - [12/May/2024:03:35:41 +0000] \"GET /.env HTTP/1.1\" 404 158 \"-\" \"python-requests/2.25.1\" \"-\" rt=0.005 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+        "sourcetype": "nginx:plus:access"
+      }
+    ],
+    "sampleKeys": [
+      "rt",
+      "uct",
+      "uht",
+      "urt",
+      "us",
+      "ua"
+    ],
+    "sampleRaw": [
+      "10.0.0.15 - alice [12/May/2024:03:14:22 +0000] \"GET /api/v2/users/12345 HTTP/1.1\" 200 1543 \"https://portal.example.com/dashboard\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" \"-\" rt=0.042 uct=\"0.001\" uht=\"0.038\" urt=\"0.041\" us=\"200\" ua=\"10.0.0.101:8080\"",
+      "203.0.113.45 - - [12/May/2024:03:16:05 +0000] \"POST /login HTTP/1.1\" 401 287 \"https://example.com/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" \"-\" rt=0.115 uct=\"0.002\" uht=\"0.108\" urt=\"0.113\" us=\"401\" ua=\"10.0.0.102:8080\"",
+      "192.168.1.22 - bob [12/May/2024:03:18:47 +0000] \"GET /static/css/main.css HTTP/1.1\" 304 0 \"https://example.com/home\" \"Mozilla/5.0 (X11; Linux x86_64)\" \"-\" rt=0.003 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+      "198.51.100.9 - - [12/May/2024:03:21:33 +0000] \"GET /wp-login.php HTTP/1.1\" 404 162 \"-\" \"curl/7.68.0\" \"-\" rt=0.008 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+      "10.0.0.18 - carol [12/May/2024:03:25:59 +0000] \"PUT /api/v2/orders/9981 HTTP/1.1\" 200 892 \"https://portal.example.com/orders\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)\" \"-\" rt=0.067 uct=\"0.002\" uht=\"0.061\" urt=\"0.065\" us=\"200\" ua=\"10.0.0.103:8080\"",
+      "172.16.5.33 - - [12/May/2024:03:29:12 +0000] \"GET /api/v2/search?q=%27%20OR%201%3D1--+ HTTP/1.1\" 400 512 \"-\" \"sqlmap/1.6\" \"-\" rt=0.021 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\"",
+      "2001:db8::4f2a - dave [12/May/2024:03:32:04 +0000] \"GET /reports/annual-summary.pdf HTTP/1.1\" 200 4582991 \"https://intranet.example.com/reports\" \"Mozilla/5.0 (Windows NT 10.0)\" \"-\" rt=1.842 uct=\"0.003\" uht=\"1.801\" urt=\"1.839\" us=\"200\" ua=\"10.0.0.104:8080\"",
+      "45.33.22.156 - - [12/May/2024:03:35:41 +0000] \"GET /.env HTTP/1.1\" 404 158 \"-\" \"python-requests/2.25.1\" \"-\" rt=0.005 uct=\"-\" uht=\"-\" urt=\"-\" us=\"-\" ua=\"-\""
+    ],
+    "sourcetype": "nginx:plus:access"
+  }
+}
