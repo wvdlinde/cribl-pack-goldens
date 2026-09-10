@@ -17040,6 +17040,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "nginx:plus:access::ocsf",
+      "sourcetype": "nginx:plus:access",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:47.596Z",
+      "path": "shared-goldens/nginx:plus:access__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
