@@ -1,0 +1,776 @@
+{
+  "key": "vmware:esxlog:hostdCgiServer::ocsf",
+  "sourcetype": "vmware:esxlog:hostdCgiServer",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:19.347Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[\\w\\-]+)\\[(?<pid>\\d+)\\]:\\s+\\[Originator@(?<originator>\\d+)\\s+sub=(?<sub_component>[^\\s\\]]+)(?:\\s+(?<log_level>warning|error|critical|verbose|info))?(?:\\s+opID=(?<op_id>[^\\s\\]]+))?\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse ESXi hostd-cgi-server syslog header (timestamp, host, process, pid, Originator context)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\\s/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/^(?<http_method>[A-Z]+)\\s+(?<uri_path>\\S+)\\s+HTTP\\/(?<http_version>[\\d.]+)\\s+(?<status_code>\\d{3})\\s+(?<status_message>[A-Za-z ]+?)(?:\\s+size=(?<bytes>\\d+))?\\s+client=(?<src_ip>\\[[0-9a-fA-F:]+\\]|[0-9a-fA-F:.]+)(?:\\s+responseTime=(?<response_time_ms>\\d+)ms)?\\s*$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse HTTP request lines (method, uri, status, client, bytes, response time)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !src_ip",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:^(?<__inline_level>warning|error|critical):\\s*)?(?:.*?user\\s+'(?<user>[^']+)')?(?:.*?\\b(?:from|by|client|Client|with client)\\s+\\[?(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|[0-9a-fA-F]{0,4}(?::[0-9a-fA-F]{0,4}){2,7})\\]?(?::(?<src_port>\\d{1,5}))?)?/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract inline severity prefix, username and client IP/port from non-HTTP messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && !user && /User\\s+'/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/User\\s+'(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract username from 'User <name> authenticated' style messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "Date.parse(timestamp)/1000"
+          },
+          {
+            "name": "severity",
+            "value": "log_level ? log_level.toLowerCase() : (__inline_level ? __inline_level.toLowerCase() : 'info')"
+          },
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip.replace(/[\\[\\]]/g,'') : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dst_port",
+            "value": "443"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app",
+            "value": "'https'"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes ? Number(bytes) : undefined"
+          },
+          {
+            "name": "status_code",
+            "value": "status_code ? Number(status_code) : undefined"
+          },
+          {
+            "name": "response_time_ms",
+            "value": "response_time_ms ? Number(response_time_ms) : undefined"
+          },
+          {
+            "name": "pid",
+            "value": "pid ? Number(pid) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "status_code ? (Number(status_code) < 400 ? 'success' : 'failure') : (/successful|successfully|accepted|authenticated/i.test(message) ? 'success' : (/fail|reject|invalid|unable|error|unsupported|traversal|brute/i.test(message) ? 'failure' : 'info'))"
+          },
+          {
+            "name": "event_type",
+            "value": "/authentic|login|token/i.test(message) ? 'authentication' : (status_code ? 'http_request' : (/ssl|certificate|cipher/i.test(message) ? 'tls' : (/connection/i.test(message) ? 'connection' : 'other')))"
+          },
+          {
+            "name": "direction",
+            "value": "src_ip ? (/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)/.test(src_ip) ? 'inbound_internal' : 'inbound') : undefined"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          }
+        ],
+        "remove": [
+          "__inline_level"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action, protocol, numerics and IPv6 formatting"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog hostdcgiserver'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:hostdCgiServer'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogHostdCgiServer_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-05-14T03:12:41.882Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] Accepted connection from 10.20.5.44:53421 to /cgi-bin/rhttpproxy",
+        "_time": 1715656361.882,
+        "timestamp": "2024-05-14T03:12:41.882Z",
+        "dst_host": "esxi01.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097627,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "Accepted connection from 10.20.5.44:53421 to /cgi-bin/rhttpproxy",
+        "src_ip": "10.20.5.44",
+        "src_port": 53421,
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "success",
+        "event_type": "connection",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:12:41.882Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656361882,
+        "src_endpoint": {
+          "ip": "10.20.5.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:15:09.114Z esxi02.corp.local hostd-cgi-server[2097630]: [Originator@6876 sub=Default opID=hostd-cgi-0a3f] Successful authentication for user 'root' from 192.168.10.15 via basic auth",
+        "_time": 1715656509.114,
+        "timestamp": "2024-05-14T03:15:09.114Z",
+        "dst_host": "esxi02.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097630,
+        "originator": "6876",
+        "sub_component": "Default",
+        "op_id": "hostd-cgi-0a3f",
+        "message": "Successful authentication for user 'root' from 192.168.10.15 via basic auth",
+        "user": "root",
+        "src_ip": "192.168.10.15",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "success",
+        "event_type": "authentication",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:15:09.114Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656509114,
+        "src_endpoint": {
+          "ip": "192.168.10.15"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:18:52.775Z esxi03.corp.local hostd-cgi-server[2097633]: [Originator@6876 sub=Default] warning: Failed login attempt for user 'administrator' from 203.0.113.44 - invalid credentials",
+        "_time": 1715656732.775,
+        "timestamp": "2024-05-14T03:18:52.775Z",
+        "dst_host": "esxi03.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097633,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "warning: Failed login attempt for user 'administrator' from 203.0.113.44 - invalid credentials",
+        "user": "administrator",
+        "src_ip": "203.0.113.44",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "failure",
+        "event_type": "authentication",
+        "direction": "inbound",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:18:52.775Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656732775,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "actor": {
+          "user": {
+            "name": "administrator"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:22:14.301Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] GET /folder?dcPath=ha-datacenter&dsName=datastore1 HTTP/1.1 200 OK client=10.20.5.44",
+        "_time": 1715656934.301,
+        "timestamp": "2024-05-14T03:22:14.301Z",
+        "dst_host": "esxi01.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097627,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "GET /folder?dcPath=ha-datacenter&dsName=datastore1 HTTP/1.1 200 OK client=10.20.5.44",
+        "http_method": "GET",
+        "uri_path": "/folder?dcPath=ha-datacenter&dsName=datastore1",
+        "http_version": "1.1",
+        "status_code": 200,
+        "status_message": "OK",
+        "src_ip": "10.20.5.44",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "success",
+        "event_type": "http_request",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:22:14.301Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715656934301,
+        "src_endpoint": {
+          "ip": "10.20.5.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:29:47.550Z esxi04.corp.local hostd-cgi-server[2097641]: [Originator@6876 sub=Default] error: SSL handshake failed with client 172.16.8.12:44012 - unsupported cipher suite",
+        "_time": 1715657387.55,
+        "timestamp": "2024-05-14T03:29:47.550Z",
+        "dst_host": "esxi04.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097641,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "error: SSL handshake failed with client 172.16.8.12:44012 - unsupported cipher suite",
+        "src_ip": "172.16.8.12",
+        "src_port": 44012,
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "failure",
+        "event_type": "tls",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:29:47.550Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715657387550,
+        "src_endpoint": {
+          "ip": "172.16.8.12"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:33:02.998Z esxi02.corp.local hostd-cgi-server[2097630]: [Originator@6876 sub=Default] PUT /host/datastore/vmdk?path=/vmfs/volumes/ds01/vm1.vmdk HTTP/1.1 201 Created size=549755813888 client=10.20.5.44",
+        "_time": 1715657582.998,
+        "timestamp": "2024-05-14T03:33:02.998Z",
+        "dst_host": "esxi02.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097630,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "PUT /host/datastore/vmdk?path=/vmfs/volumes/ds01/vm1.vmdk HTTP/1.1 201 Created size=549755813888 client=10.20.5.44",
+        "http_method": "PUT",
+        "uri_path": "/host/datastore/vmdk?path=/vmfs/volumes/ds01/vm1.vmdk",
+        "http_version": "1.1",
+        "status_code": 201,
+        "status_message": "Created",
+        "bytes": 549755813888,
+        "src_ip": "10.20.5.44",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "success",
+        "event_type": "http_request",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:33:02.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715657582998,
+        "src_endpoint": {
+          "ip": "10.20.5.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:40:19.412Z esxi05.corp.local hostd-cgi-server[2097655]: [Originator@6876 sub=Default critical] Repeated failed authentication attempts (5) detected from 198.51.100.77 for user 'root' - possible brute force",
+        "_time": 1715658019.412,
+        "timestamp": "2024-05-14T03:40:19.412Z",
+        "dst_host": "esxi05.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097655,
+        "originator": "6876",
+        "sub_component": "Default",
+        "log_level": "critical",
+        "message": "Repeated failed authentication attempts (5) detected from 198.51.100.77 for user 'root' - possible brute force",
+        "user": "root",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "failure",
+        "event_type": "authentication",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:40:19.412Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715658019412,
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      },
+      {
+        "_raw": "2024-05-14T03:45:33.221Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] Connection closed by client 10.20.5.44 after 342.1 seconds",
+        "_time": 1715658333.221,
+        "timestamp": "2024-05-14T03:45:33.221Z",
+        "dst_host": "esxi01.corp.local",
+        "process": "hostd-cgi-server",
+        "pid": 2097627,
+        "originator": "6876",
+        "sub_component": "Default",
+        "message": "Connection closed by client 10.20.5.44 after 342.1 seconds",
+        "src_ip": "10.20.5.44",
+        "severity": "Informational",
+        "dst_port": 443,
+        "protocol": "tcp",
+        "app": "https",
+        "action": "info",
+        "event_type": "connection",
+        "direction": "inbound_internal",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": 443,
+        "transport": "tcp",
+        "application": "https",
+        "log_time": "2024-05-14T03:45:33.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1715658333221,
+        "src_endpoint": {
+          "ip": "10.20.5.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog hostdcgiserver",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:hostdCgiServer"
+      }
+    ],
+    "sampleKeys": [
+      "sub",
+      "opID",
+      "client",
+      "size"
+    ],
+    "sampleRaw": [
+      "2024-05-14T03:12:41.882Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] Accepted connection from 10.20.5.44:53421 to /cgi-bin/rhttpproxy",
+      "2024-05-14T03:15:09.114Z esxi02.corp.local hostd-cgi-server[2097630]: [Originator@6876 sub=Default opID=hostd-cgi-0a3f] Successful authentication for user 'root' from 192.168.10.15 via basic auth",
+      "2024-05-14T03:18:52.775Z esxi03.corp.local hostd-cgi-server[2097633]: [Originator@6876 sub=Default] warning: Failed login attempt for user 'administrator' from 203.0.113.44 - invalid credentials",
+      "2024-05-14T03:22:14.301Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] GET /folder?dcPath=ha-datacenter&dsName=datastore1 HTTP/1.1 200 OK client=10.20.5.44",
+      "2024-05-14T03:29:47.550Z esxi04.corp.local hostd-cgi-server[2097641]: [Originator@6876 sub=Default] error: SSL handshake failed with client 172.16.8.12:44012 - unsupported cipher suite",
+      "2024-05-14T03:33:02.998Z esxi02.corp.local hostd-cgi-server[2097630]: [Originator@6876 sub=Default] PUT /host/datastore/vmdk?path=/vmfs/volumes/ds01/vm1.vmdk HTTP/1.1 201 Created size=549755813888 client=10.20.5.44",
+      "2024-05-14T03:40:19.412Z esxi05.corp.local hostd-cgi-server[2097655]: [Originator@6876 sub=Default critical] Repeated failed authentication attempts (5) detected from 198.51.100.77 for user 'root' - possible brute force",
+      "2024-05-14T03:45:33.221Z esxi01.corp.local hostd-cgi-server[2097627]: [Originator@6876 sub=Default] Connection closed by client 10.20.5.44 after 342.1 seconds"
+    ],
+    "sourcetype": "vmware:esxlog:hostdCgiServer"
+  }
+}
