@@ -2,11 +2,11 @@
   "key": "aemerror::ocsf",
   "sourcetype": "aemerror",
   "dest_format": "ocsf",
-  "score": 89,
+  "score": 93,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T14:52:23.335Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:16.900Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -162,87 +162,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4001'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
-          },
-          {
-            "name": "event_type",
-            "value": "'Network Activity'"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "dst_ip || ''"
-          },
-          {
-            "name": "dst_endpoint.port",
-            "value": "Number(dst_port || 0)"
-          },
-          {
-            "name": "connection_info.protocol_name",
-            "value": "protocol || ''"
-          },
-          {
-            "name": "time",
-            "value": "Number(epoch_ms || _time || 0)"
-          },
-          {
-            "name": "severity_id",
-            "value": "(severity=='ERROR'||vendor_severity=='ERROR')?4:(severity=='WARN'||vendor_severity=='WARN')?3:(severity=='INFO'||vendor_severity=='INFO')?1:0"
-          },
-          {
-            "name": "class_uid",
-            "value": "4001"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
-          },
-          {
-            "name": "activity_id",
             "value": "1"
           },
           {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
             "name": "type_uid",
-            "value": "400101"
+            "value": "100100"
           },
           {
-            "name": "metadata.product.name",
-            "value": "'AEM'"
+            "name": "severity_id",
+            "value": "1"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'Adobe'"
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
           }
         ]
-      },
-      "description": "Map fields to destination schema"
+      }
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF envelope (cont. 16)",
       "conf": {
         "add": [
           {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
             "name": "metadata.version",
-            "value": "'1.0.0'"
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'aemerror'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-16)"
+      }
     },
     {
       "id": "eval",
@@ -269,30 +297,177 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "Aemerror_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"*error*\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"1.1\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"*warn*\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 4,
+    "outputCount": 4,
+    "outputSample": [
+      {
+        "_raw": "27.05.2024 05:59:41.005 *ERROR* [0:0:0:0:0:0:0:1 [1716785981005] POST /bin/receive?sling:authRequestLogin=1 HTTP/1.1] com.day.cq.replication.impl.ReplicationServiceImpl Replication agent 'publish' failed to connect to target host 10.0.3.20:4503 - Connection refused",
+        "_time": null,
+        "timestamp": "27.05.2024 05:59:41.005",
+        "severity": "Informational",
+        "src_ip": "0:0:0:0:0:0:0:1",
+        "epoch_ms": "1716785981005",
+        "http_method": "POST",
+        "uri_path": "/bin/receive?sling:authRequestLogin=1",
+        "java_class": "com.day.cq.replication.impl.ReplicationServiceImpl",
+        "message": "Replication agent 'publish' failed to connect to target host 10.0.3.20:4503 - Connection refused",
+        "dst_ip": "10.0.3.20",
+        "dst_port": "4503",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "blocked",
+        "dest_ip": "10.0.3.20",
+        "dest_port": "4503",
+        "transport": "http",
+        "log_time": "27.05.2024 05:59:41.005",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966911476,
+        "src_endpoint": {
+          "ip": "0:0:0:0:0:0:0:1"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.3.20"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemerror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemerror"
+      },
+      {
+        "_raw": "27.05.2024 08:47:19.777 *ERROR* [198.51.100.23 [1716796039777] POST /bin/querybuilder.json HTTP/1.1] com.day.cq.search.impl.builder.QueryBuilderImpl Query execution exceeded maximum result limit - possible denial of service attempt, query size 15843 nodes",
+        "_time": null,
+        "timestamp": "27.05.2024 08:47:19.777",
+        "severity": "Informational",
+        "src_ip": "198.51.100.23",
+        "epoch_ms": "1716796039777",
+        "http_method": "POST",
+        "uri_path": "/bin/querybuilder.json",
+        "java_class": "com.day.cq.search.impl.builder.QueryBuilderImpl",
+        "message": "Query execution exceeded maximum result limit - possible denial of service attempt, query size 15843 nodes",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "denied",
+        "transport": "http",
+        "log_time": "27.05.2024 08:47:19.777",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966911478,
+        "src_endpoint": {
+          "ip": "198.51.100.23"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemerror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemerror"
+      },
+      {
+        "_raw": "27.05.2024 13:41:29.309 *WARN* [10.0.6.88 [1716813689309] POST /bin/wcm/contentfinder/connector/search.json HTTP/1.1] com.day.cq.search.impl.SearchServiceImpl Large payload detected in search request - 25MB, exceeding recommended threshold",
+        "_time": null,
+        "timestamp": "27.05.2024 13:41:29.309",
+        "severity": "Informational",
+        "src_ip": "10.0.6.88",
+        "epoch_ms": "1716813689309",
+        "http_method": "POST",
+        "uri_path": "/bin/wcm/contentfinder/connector/search.json",
+        "java_class": "com.day.cq.search.impl.SearchServiceImpl",
+        "message": "Large payload detected in search request - 25MB, exceeding recommended threshold",
+        "vendor_severity": "WARN",
+        "protocol": "http",
+        "action": "observed",
+        "transport": "http",
+        "log_time": "27.05.2024 13:41:29.309",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966911479,
+        "src_endpoint": {
+          "ip": "10.0.6.88"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemerror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemerror"
+      },
+      {
+        "_raw": "27.05.2024 16:47:55.098 *ERROR* [ [1716825775098] GET /content/mysite/en/product-detail.html HTTP/1.1] com.day.cq.wcm.core.impl.WCMDebugFilter Malformed request - missing client IP header, possible proxy misconfiguration, empty selector field",
+        "_time": null,
+        "timestamp": "27.05.2024 16:47:55.098",
+        "severity": "Informational",
+        "epoch_ms": "1716825775098",
+        "http_method": "GET",
+        "uri_path": "/content/mysite/en/product-detail.html",
+        "java_class": "com.day.cq.wcm.core.impl.WCMDebugFilter",
+        "message": "Malformed request - missing client IP header, possible proxy misconfiguration, empty selector field",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "invalid",
+        "transport": "http",
+        "log_time": "27.05.2024 16:47:55.098",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966911480,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemerror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemerror"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "27.05.2024 05:59:41.005 *ERROR* [0:0:0:0:0:0:0:1 [1716785981005] POST /bin/receive?sling:authRequestLogin=1 HTTP/1.1] com.day.cq.replication.impl.ReplicationServiceImpl Replication agent 'publish' failed to connect to target host 10.0.3.20:4503 - Connection refused",
+      "27.05.2024 08:47:19.777 *ERROR* [198.51.100.23 [1716796039777] POST /bin/querybuilder.json HTTP/1.1] com.day.cq.search.impl.builder.QueryBuilderImpl Query execution exceeded maximum result limit - possible denial of service attempt, query size 15843 nodes",
+      "27.05.2024 13:41:29.309 *WARN* [10.0.6.88 [1716813689309] POST /bin/wcm/contentfinder/connector/search.json HTTP/1.1] com.day.cq.search.impl.SearchServiceImpl Large payload detected in search request - 25MB, exceeding recommended threshold",
+      "27.05.2024 16:47:55.098 *ERROR* [ [1716825775098] GET /content/mysite/en/product-detail.html HTTP/1.1] com.day.cq.wcm.core.impl.WCMDebugFilter Malformed request - missing client IP header, possible proxy misconfiguration, empty selector field"
+    ],
+    "sourcetype": "aemerror"
   }
 }
