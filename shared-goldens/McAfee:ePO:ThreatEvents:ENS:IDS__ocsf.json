@@ -1,0 +1,861 @@
+{
+  "key": "McAfee:ePO:ThreatEvents:ENS:IDS::ocsf",
+  "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:34.401Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^CEF:(?<cef_version>\\d+)\\|(?<vendor>[^|]*)\\|(?<product>[^|]*)\\|(?<product_version>[^|]*)\\|(?<signature_id>[^|]*)\\|(?<signature_name>[^|]*)\\|(?<cef_severity>[^|]*)\\|/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF header (pipe-delimited) into vendor/product/signature fields"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/rt=(?<rt>\\w{3}\\s+\\d{1,2}\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\s+src=(?<src_ip>\\S+)\\s+dst=(?<dst_ip>\\S+)\\s+spt=(?<src_port>\\d+)\\s+dpt=(?<dst_port>\\d+)\\s+proto=(?<proto_raw>\\S+)\\s+cat=(?<category>\\S+)\\s+act=(?<act_raw>\\S+)\\s+cs1=(?<threat_name>.*?)\\s+cs1Label=/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse CEF extension core network fields (space-delimited KVP with space-bearing cs1 value)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/\\bdvchost=(?<dst_host>\\S+)/",
+        "regexList": [
+          {
+            "regex": "/\\bduser=(?<user>[^\\s=]+)/"
+          },
+          {
+            "regex": "/(?:^|\\s)dvc=(?<dvc_ip>\\S+)/"
+          },
+          {
+            "regex": "/\\bcs2=(?<payload_note>\\S+)/"
+          },
+          {
+            "regex": "/\\boutcome=(?<outcome>\\S+)/"
+          }
+        ],
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse remaining CEF extension fields (device host, user, device ip, extra payload note, outcome)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "rt ? strptime(rt, '%b %d %Y %H:%M:%S') / 1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "rt"
+          },
+          {
+            "name": "protocol",
+            "value": "proto_raw ? proto_raw.toLowerCase() : undefined"
+          },
+          {
+            "name": "action",
+            "value": "act_raw ? (act_raw.toLowerCase() === 'blocked' ? 'blocked' : (act_raw.toLowerCase() === 'allowed' ? 'allowed' : act_raw.toLowerCase())) : undefined"
+          },
+          {
+            "name": "severity_id",
+            "value": "cef_severity ? Number(cef_severity) : undefined"
+          },
+          {
+            "name": "severity",
+            "value": "Number(cef_severity) >= 9 ? 'critical' : (Number(cef_severity) >= 7 ? 'high' : (Number(cef_severity) >= 4 ? 'medium' : 'low'))"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':') > -1 ? 6 : 4"
+          },
+          {
+            "name": "src_is_internal",
+            "value": "src_ip ? (src_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|127\\.|fe80:|fc|fd)/i) ? true : false) : undefined"
+          },
+          {
+            "name": "dst_is_internal",
+            "value": "dst_ip ? (dst_ip.match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.|127\\.|fe80:|fc|fd)/i) ? true : false) : undefined"
+          },
+          {
+            "name": "direction",
+            "value": "src_is_internal && dst_is_internal ? 'internal' : (src_is_internal ? 'outbound' : (dst_is_internal ? 'inbound' : 'external'))"
+          },
+          {
+            "name": "event_type",
+            "value": "category ? category.toLowerCase() : 'firewall.ids'"
+          },
+          {
+            "name": "message",
+            "value": "signature_name && threat_name ? signature_name + ': ' + threat_name : signature_name"
+          },
+          {
+            "name": "user",
+            "value": "user && user.length > 0 ? user : undefined"
+          }
+        ],
+        "remove": [
+          "rt",
+          "proto_raw",
+          "act_raw",
+          "cef_severity"
+        ]
+      },
+      "description": "Normalize timestamp, protocol, action, severity, direction and IP version"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'mcafee epo threatevents ens ids'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'McAfee:ePO:ThreatEvents:ENS:IDS'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "McAfeeEPOThreatEventsENSIDS_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|7|rt=Feb 03 2025 03:12:44 src=192.168.1.45 dst=10.0.2.15 spt=51422 dpt=445 proto=TCP cat=Firewall.IntrusionDetection act=Blocked cs1=Suspicious SMB Connection Attempt cs1Label=ThreatName dvchost=WKSTN-FIN02 duser=jsmith dvc=10.0.2.15 outcome=Success",
+        "_time": 1738552364,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1090",
+        "signature_name": "Firewall IDS Alert",
+        "src_ip": "192.168.1.45",
+        "dst_ip": "10.0.2.15",
+        "src_port": "51422",
+        "dst_port": "445",
+        "category": "Firewall.IntrusionDetection",
+        "threat_name": "Suspicious SMB Connection Attempt",
+        "dst_host": "WKSTN-FIN02",
+        "user": "jsmith",
+        "dvc_ip": "10.0.2.15",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 03:12:44",
+        "protocol": "tcp",
+        "action": "blocked",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": true,
+        "dst_is_internal": true,
+        "direction": "internal",
+        "event_type": "firewall.intrusiondetection",
+        "message": "Firewall IDS Alert: Suspicious SMB Connection Attempt",
+        "dest_ip": "10.0.2.15",
+        "dest_port": "445",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 03:12:44",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738552364000,
+        "src_endpoint": {
+          "ip": "192.168.1.45"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.2.15"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|ENS IDS Port Scan Detected|8|rt=Feb 03 2025 03:14:02 src=203.0.113.77 dst=10.0.2.16 spt=443 dpt=22 proto=TCP cat=Firewall.PortScan act=Blocked cs1=Port Scan Detected cs1Label=ThreatName dvchost=SRV-DB01 duser= outcome=Success",
+        "_time": 1738552442,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1092",
+        "signature_name": "ENS IDS Port Scan Detected",
+        "src_ip": "203.0.113.77",
+        "dst_ip": "10.0.2.16",
+        "src_port": "443",
+        "dst_port": "22",
+        "category": "Firewall.PortScan",
+        "threat_name": "Port Scan Detected",
+        "dst_host": "SRV-DB01",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 03:14:02",
+        "protocol": "tcp",
+        "action": "blocked",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": false,
+        "dst_is_internal": true,
+        "direction": "inbound",
+        "event_type": "firewall.portscan",
+        "message": "ENS IDS Port Scan Detected: Port Scan Detected",
+        "dest_ip": "10.0.2.16",
+        "dest_port": "22",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 03:14:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738552442000,
+        "src_endpoint": {
+          "ip": "203.0.113.77"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.2.16"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|4|rt=Feb 03 2025 04:01:19 src=10.0.5.23 dst=172.16.4.9 spt=59211 dpt=3389 proto=TCP cat=Firewall.IntrusionDetection act=Allowed cs1=RDP Brute Force Attempt cs1Label=ThreatName dvchost=WKSTN-HR11 duser=mwilliams outcome=Failure",
+        "_time": 1738555279,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1090",
+        "signature_name": "Firewall IDS Alert",
+        "src_ip": "10.0.5.23",
+        "dst_ip": "172.16.4.9",
+        "src_port": "59211",
+        "dst_port": "3389",
+        "category": "Firewall.IntrusionDetection",
+        "threat_name": "RDP Brute Force Attempt",
+        "dst_host": "WKSTN-HR11",
+        "user": "mwilliams",
+        "outcome": "Failure",
+        "timestamp": "Feb 03 2025 04:01:19",
+        "protocol": "tcp",
+        "action": "allowed",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": true,
+        "dst_is_internal": true,
+        "direction": "internal",
+        "event_type": "firewall.intrusiondetection",
+        "message": "Firewall IDS Alert: RDP Brute Force Attempt",
+        "dest_ip": "172.16.4.9",
+        "dest_port": "3389",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 04:01:19",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738555279000,
+        "src_endpoint": {
+          "ip": "10.0.5.23"
+        },
+        "dst_endpoint": {
+          "ip": "172.16.4.9"
+        },
+        "actor": {
+          "user": {
+            "name": "mwilliams"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1096|ENS IDS Signature Match|9|rt=Feb 03 2025 05:33:56 src=198.51.100.22 dst=10.0.3.44 spt=44321 dpt=80 proto=TCP cat=Firewall.SignatureMatch act=Blocked cs1=SQL Injection Attempt cs1Label=ThreatName dvchost=WEBSRV02 duser= outcome=Success",
+        "_time": 1738560836,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1096",
+        "signature_name": "ENS IDS Signature Match",
+        "src_ip": "198.51.100.22",
+        "dst_ip": "10.0.3.44",
+        "src_port": "44321",
+        "dst_port": "80",
+        "category": "Firewall.SignatureMatch",
+        "threat_name": "SQL Injection Attempt",
+        "dst_host": "WEBSRV02",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 05:33:56",
+        "protocol": "tcp",
+        "action": "blocked",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": false,
+        "dst_is_internal": true,
+        "direction": "inbound",
+        "event_type": "firewall.signaturematch",
+        "message": "ENS IDS Signature Match: SQL Injection Attempt",
+        "dest_ip": "10.0.3.44",
+        "dest_port": "80",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 05:33:56",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738560836000,
+        "src_endpoint": {
+          "ip": "198.51.100.22"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.3.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|3|rt=Feb 03 2025 06:12:07 src=10.0.1.10 dst=10.0.1.15 spt=137 dpt=137 proto=UDP cat=Firewall.IntrusionDetection act=Allowed cs1=NetBIOS Broadcast cs1Label=ThreatName dvchost=SRV-FILE01 duser=svc_backup outcome=Success",
+        "_time": 1738563127,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1090",
+        "signature_name": "Firewall IDS Alert",
+        "src_ip": "10.0.1.10",
+        "dst_ip": "10.0.1.15",
+        "src_port": "137",
+        "dst_port": "137",
+        "category": "Firewall.IntrusionDetection",
+        "threat_name": "NetBIOS Broadcast",
+        "dst_host": "SRV-FILE01",
+        "user": "svc_backup",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 06:12:07",
+        "protocol": "udp",
+        "action": "allowed",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": true,
+        "dst_is_internal": true,
+        "direction": "internal",
+        "event_type": "firewall.intrusiondetection",
+        "message": "Firewall IDS Alert: NetBIOS Broadcast",
+        "dest_ip": "10.0.1.15",
+        "dest_port": "137",
+        "transport": "udp",
+        "log_time": "Feb 03 2025 06:12:07",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738563127000,
+        "src_endpoint": {
+          "ip": "10.0.1.10"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.1.15"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1099|ENS IDS Anomaly Detection|10|rt=Feb 03 2025 07:45:31 src=45.33.32.156 dst=10.0.2.200 spt=6667 dpt=6667 proto=TCP cat=Firewall.Anomaly act=Blocked cs1=Possible Botnet C2 Communication cs1Label=ThreatName dvchost=WKSTN-IT05 duser=agupta outcome=Success",
+        "_time": 1738568731,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1099",
+        "signature_name": "ENS IDS Anomaly Detection",
+        "src_ip": "45.33.32.156",
+        "dst_ip": "10.0.2.200",
+        "src_port": "6667",
+        "dst_port": "6667",
+        "category": "Firewall.Anomaly",
+        "threat_name": "Possible Botnet C2 Communication",
+        "dst_host": "WKSTN-IT05",
+        "user": "agupta",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 07:45:31",
+        "protocol": "tcp",
+        "action": "blocked",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": false,
+        "dst_is_internal": true,
+        "direction": "inbound",
+        "event_type": "firewall.anomaly",
+        "message": "ENS IDS Anomaly Detection: Possible Botnet C2 Communication",
+        "dest_ip": "10.0.2.200",
+        "dest_port": "6667",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 07:45:31",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738568731000,
+        "src_endpoint": {
+          "ip": "45.33.32.156"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.2.200"
+        },
+        "actor": {
+          "user": {
+            "name": "agupta"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|6|rt=Feb 03 2025 08:22:14 src=fe80::a00:27ff:fe4e:66a1 dst=fe80::1 spt=546 dpt=547 proto=UDP cat=Firewall.IntrusionDetection act=Allowed cs1=DHCPv6 Solicit cs1Label=ThreatName dvchost=LAPTOP-ENG03 duser=tlee outcome=Success",
+        "_time": 1738570934,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1090",
+        "signature_name": "Firewall IDS Alert",
+        "src_ip": "fe80::a00:27ff:fe4e:66a1",
+        "dst_ip": "fe80::1",
+        "src_port": "546",
+        "dst_port": "547",
+        "category": "Firewall.IntrusionDetection",
+        "threat_name": "DHCPv6 Solicit",
+        "dst_host": "LAPTOP-ENG03",
+        "user": "tlee",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 08:22:14",
+        "protocol": "udp",
+        "action": "allowed",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 6,
+        "src_is_internal": true,
+        "dst_is_internal": true,
+        "direction": "internal",
+        "event_type": "firewall.intrusiondetection",
+        "message": "Firewall IDS Alert: DHCPv6 Solicit",
+        "dest_ip": "fe80::1",
+        "dest_port": "547",
+        "transport": "udp",
+        "log_time": "Feb 03 2025 08:22:14",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738570934000,
+        "src_endpoint": {
+          "ip": "fe80::a00:27ff:fe4e:66a1"
+        },
+        "dst_endpoint": {
+          "ip": "fe80::1"
+        },
+        "actor": {
+          "user": {
+            "name": "tlee"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      },
+      {
+        "_raw": "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1093|ENS IDS Exploit Detected|9|rt=Feb 03 2025 09:05:59 src=192.168.10.88 dst=10.0.4.12 spt=59392 dpt=445 proto=TCP cat=Firewall.Exploit act=Blocked cs1=EternalBlue Exploit Attempt cs1Label=ThreatName dvchost=SRV-APP03 duser= outcome=Success",
+        "_time": 1738573559,
+        "cef_version": "0",
+        "vendor": "McAfee",
+        "product": "ePolicy Orchestrator",
+        "product_version": "5.10.0",
+        "signature_id": "1093",
+        "signature_name": "ENS IDS Exploit Detected",
+        "src_ip": "192.168.10.88",
+        "dst_ip": "10.0.4.12",
+        "src_port": "59392",
+        "dst_port": "445",
+        "category": "Firewall.Exploit",
+        "threat_name": "EternalBlue Exploit Attempt",
+        "dst_host": "SRV-APP03",
+        "outcome": "Success",
+        "timestamp": "Feb 03 2025 09:05:59",
+        "protocol": "tcp",
+        "action": "blocked",
+        "severity_id": 1,
+        "severity": "Informational",
+        "ip_version": 4,
+        "src_is_internal": true,
+        "dst_is_internal": true,
+        "direction": "internal",
+        "event_type": "firewall.exploit",
+        "message": "ENS IDS Exploit Detected: EternalBlue Exploit Attempt",
+        "dest_ip": "10.0.4.12",
+        "dest_port": "445",
+        "transport": "tcp",
+        "log_time": "Feb 03 2025 09:05:59",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "time": 1738573559000,
+        "src_endpoint": {
+          "ip": "192.168.10.88"
+        },
+        "dst_endpoint": {
+          "ip": "10.0.4.12"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "mcafee epo threatevents ens ids",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+      }
+    ],
+    "sampleKeys": [
+      "src",
+      "dst",
+      "spt",
+      "dpt",
+      "proto",
+      "cat",
+      "act",
+      "cs1",
+      "cs1Label",
+      "dvchost",
+      "duser",
+      "dvc",
+      "outcome"
+    ],
+    "sampleRaw": [
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|7|rt=Feb 03 2025 03:12:44 src=192.168.1.45 dst=10.0.2.15 spt=51422 dpt=445 proto=TCP cat=Firewall.IntrusionDetection act=Blocked cs1=Suspicious SMB Connection Attempt cs1Label=ThreatName dvchost=WKSTN-FIN02 duser=jsmith dvc=10.0.2.15 outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1092|ENS IDS Port Scan Detected|8|rt=Feb 03 2025 03:14:02 src=203.0.113.77 dst=10.0.2.16 spt=443 dpt=22 proto=TCP cat=Firewall.PortScan act=Blocked cs1=Port Scan Detected cs1Label=ThreatName dvchost=SRV-DB01 duser= outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|4|rt=Feb 03 2025 04:01:19 src=10.0.5.23 dst=172.16.4.9 spt=59211 dpt=3389 proto=TCP cat=Firewall.IntrusionDetection act=Allowed cs1=RDP Brute Force Attempt cs1Label=ThreatName dvchost=WKSTN-HR11 duser=mwilliams outcome=Failure",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1096|ENS IDS Signature Match|9|rt=Feb 03 2025 05:33:56 src=198.51.100.22 dst=10.0.3.44 spt=44321 dpt=80 proto=TCP cat=Firewall.SignatureMatch act=Blocked cs1=SQL Injection Attempt cs1Label=ThreatName dvchost=WEBSRV02 duser= outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|3|rt=Feb 03 2025 06:12:07 src=10.0.1.10 dst=10.0.1.15 spt=137 dpt=137 proto=UDP cat=Firewall.IntrusionDetection act=Allowed cs1=NetBIOS Broadcast cs1Label=ThreatName dvchost=SRV-FILE01 duser=svc_backup outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1099|ENS IDS Anomaly Detection|10|rt=Feb 03 2025 07:45:31 src=45.33.32.156 dst=10.0.2.200 spt=6667 dpt=6667 proto=TCP cat=Firewall.Anomaly act=Blocked cs1=Possible Botnet C2 Communication cs1Label=ThreatName dvchost=WKSTN-IT05 duser=agupta outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1090|Firewall IDS Alert|6|rt=Feb 03 2025 08:22:14 src=fe80::a00:27ff:fe4e:66a1 dst=fe80::1 spt=546 dpt=547 proto=UDP cat=Firewall.IntrusionDetection act=Allowed cs1=DHCPv6 Solicit cs1Label=ThreatName dvchost=LAPTOP-ENG03 duser=tlee outcome=Success",
+      "CEF:0|McAfee|ePolicy Orchestrator|5.10.0|1093|ENS IDS Exploit Detected|9|rt=Feb 03 2025 09:05:59 src=192.168.10.88 dst=10.0.4.12 spt=59392 dpt=445 proto=TCP cat=Firewall.Exploit act=Blocked cs1=EternalBlue Exploit Attempt cs1Label=ThreatName dvchost=SRV-APP03 duser= outcome=Success"
+    ],
+    "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS"
+  }
+}
