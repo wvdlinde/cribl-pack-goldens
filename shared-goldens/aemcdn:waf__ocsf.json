@@ -1,0 +1,597 @@
+{
+  "key": "aemcdn:waf::ocsf",
+  "sourcetype": "aemcdn:waf",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:23.382Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "json",
+        "srcField": "_raw"
+      },
+      "description": "Try JSON parse"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'aemcdn waf'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aemcdn:waf'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AemcdnWaf_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T02:14:22Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"203.0.113.44\",\"request_method\":\"GET\",\"request_url\":\"/content/dam/site/images/banner.jpg\",\"response_status\":200,\"waf_action\":\"logged\",\"rule_id\":\"942100\",\"rule_message\":\"SQL Injection Attack Detected\",\"severity\":2,\"anomaly_score\":5,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\",\"host\":\"www.example.com\"}",
+        "_time": 1717380862,
+        "timestamp": "2024-06-03T02:14:22Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "203.0.113.44",
+        "request_method": "GET",
+        "request_url": "/content/dam/site/images/banner.jpg",
+        "response_status": 200,
+        "waf_action": "logged",
+        "rule_id": "942100",
+        "rule_message": "SQL Injection Attack Detected",
+        "severity": "Informational",
+        "anomaly_score": 5,
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "host": "www.example.com",
+        "log_time": "2024-06-03T02:14:22Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717380862000,
+        "device": {
+          "hostname": "www.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T02:14:22Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"203.0.113.44\",\"request_method\":\"GET\",\"request_url\":\"/content/dam/site/images/banner.jpg\",\"response_status\":200,\"waf_action\":\"logged\",\"rule_id\":\"942100\",\"rule_message\":\"SQL Injection Attack Detected\",\"severity\":2,\"anomaly_score\":5,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\",\"host\":\"www.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T02:20:11Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"198.51.100.9\",\"request_method\":\"POST\",\"request_url\":\"/bin/login\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"973304\",\"rule_message\":\"XSS Attack Detected via libinjection\",\"severity\":1,\"anomaly_score\":15,\"user_agent\":\"curl/7.68.0\",\"host\":\"www.example.com\"}",
+        "_time": 1717381211,
+        "timestamp": "2024-06-03T02:20:11Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "198.51.100.9",
+        "request_method": "POST",
+        "request_url": "/bin/login",
+        "response_status": 403,
+        "waf_action": "blocked",
+        "rule_id": "973304",
+        "rule_message": "XSS Attack Detected via libinjection",
+        "severity": "Informational",
+        "anomaly_score": 15,
+        "user_agent": "curl/7.68.0",
+        "host": "www.example.com",
+        "log_time": "2024-06-03T02:20:11Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717381211000,
+        "device": {
+          "hostname": "www.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T02:20:11Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"198.51.100.9\",\"request_method\":\"POST\",\"request_url\":\"/bin/login\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"973304\",\"rule_message\":\"XSS Attack Detected via libinjection\",\"severity\":1,\"anomaly_score\":15,\"user_agent\":\"curl/7.68.0\",\"host\":\"www.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T03:05:47Z\",\"service_id\":\"aemcs-stage-9982\",\"client_ip\":\"10.24.6.19\",\"request_method\":\"GET\",\"request_url\":\"/health-check\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":5,\"anomaly_score\":0,\"user_agent\":\"AEM-HealthCheck/1.0\",\"host\":\"stage.internal.example.com\"}",
+        "_time": 1717383947,
+        "timestamp": "2024-06-03T03:05:47Z",
+        "service_id": "aemcs-stage-9982",
+        "client_ip": "10.24.6.19",
+        "request_method": "GET",
+        "request_url": "/health-check",
+        "response_status": 200,
+        "waf_action": "passed",
+        "rule_id": "",
+        "rule_message": "",
+        "severity": "Informational",
+        "anomaly_score": 0,
+        "user_agent": "AEM-HealthCheck/1.0",
+        "host": "stage.internal.example.com",
+        "log_time": "2024-06-03T03:05:47Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717383947000,
+        "device": {
+          "hostname": "stage.internal.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T03:05:47Z\",\"service_id\":\"aemcs-stage-9982\",\"client_ip\":\"10.24.6.19\",\"request_method\":\"GET\",\"request_url\":\"/health-check\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":5,\"anomaly_score\":0,\"user_agent\":\"AEM-HealthCheck/1.0\",\"host\":\"stage.internal.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T03:12:39Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"185.220.101.7\",\"request_method\":\"GET\",\"request_url\":\"/etc/passwd\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"930100\",\"rule_message\":\"Path Traversal Attack Detected\",\"severity\":1,\"anomaly_score\":20,\"user_agent\":\"python-requests/2.25.1\",\"host\":\"www.example.com\"}",
+        "_time": 1717384359,
+        "timestamp": "2024-06-03T03:12:39Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "185.220.101.7",
+        "request_method": "GET",
+        "request_url": "/etc/passwd",
+        "response_status": 403,
+        "waf_action": "blocked",
+        "rule_id": "930100",
+        "rule_message": "Path Traversal Attack Detected",
+        "severity": "Informational",
+        "anomaly_score": 20,
+        "user_agent": "python-requests/2.25.1",
+        "host": "www.example.com",
+        "log_time": "2024-06-03T03:12:39Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717384359000,
+        "device": {
+          "hostname": "www.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T03:12:39Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"185.220.101.7\",\"request_method\":\"GET\",\"request_url\":\"/etc/passwd\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"930100\",\"rule_message\":\"Path Traversal Attack Detected\",\"severity\":1,\"anomaly_score\":20,\"user_agent\":\"python-requests/2.25.1\",\"host\":\"www.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T04:01:03Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"172.16.5.101\",\"request_method\":\"PUT\",\"request_url\":\"/content/dam/assets/large-upload.zip\",\"response_status\":201,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"AEM-Uploader/3.2\",\"host\":\"assets.example.com\",\"payload_size\":524288000}",
+        "_time": 1717387263,
+        "timestamp": "2024-06-03T04:01:03Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "172.16.5.101",
+        "request_method": "PUT",
+        "request_url": "/content/dam/assets/large-upload.zip",
+        "response_status": 201,
+        "waf_action": "passed",
+        "rule_id": "",
+        "rule_message": "",
+        "severity": "Informational",
+        "anomaly_score": 0,
+        "user_agent": "AEM-Uploader/3.2",
+        "host": "assets.example.com",
+        "payload_size": 524288000,
+        "log_time": "2024-06-03T04:01:03Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717387263000,
+        "device": {
+          "hostname": "assets.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T04:01:03Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"172.16.5.101\",\"request_method\":\"PUT\",\"request_url\":\"/content/dam/assets/large-upload.zip\",\"response_status\":201,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"AEM-Uploader/3.2\",\"host\":\"assets.example.com\",\"payload_size\":524288000}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T05:30:58Z\",\"service_id\":\"aemcs-prod-8823\",\"client_ip\":\"192.168.10.4\",\"request_method\":\"GET\",\"request_url\":\"/admin/config\",\"response_status\":401,\"waf_action\":\"logged\",\"rule_id\":\"921110\",\"rule_message\":\"HTTP Request Smuggling Attempt\",\"severity\":2,\"anomaly_score\":10,\"user_agent\":\"Mozilla/5.0 (X11; Linux x86_64)\",\"host\":\"admin.example.com\"}",
+        "_time": 1717392658,
+        "timestamp": "2024-06-03T05:30:58Z",
+        "service_id": "aemcs-prod-8823",
+        "client_ip": "192.168.10.4",
+        "request_method": "GET",
+        "request_url": "/admin/config",
+        "response_status": 401,
+        "waf_action": "logged",
+        "rule_id": "921110",
+        "rule_message": "HTTP Request Smuggling Attempt",
+        "severity": "Informational",
+        "anomaly_score": 10,
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "host": "admin.example.com",
+        "log_time": "2024-06-03T05:30:58Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717392658000,
+        "device": {
+          "hostname": "admin.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T05:30:58Z\",\"service_id\":\"aemcs-prod-8823\",\"client_ip\":\"192.168.10.4\",\"request_method\":\"GET\",\"request_url\":\"/admin/config\",\"response_status\":401,\"waf_action\":\"logged\",\"rule_id\":\"921110\",\"rule_message\":\"HTTP Request Smuggling Attempt\",\"severity\":2,\"anomaly_score\":10,\"user_agent\":\"Mozilla/5.0 (X11; Linux x86_64)\",\"host\":\"admin.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T06:14:16Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"2001:db8:85a3::8a2e:370:7334\",\"request_method\":\"GET\",\"request_url\":\"/content/site/en/products.html\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)\",\"host\":\"www.example.com\"}",
+        "_time": 1717395256,
+        "timestamp": "2024-06-03T06:14:16Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "2001:db8:85a3::8a2e:370:7334",
+        "request_method": "GET",
+        "request_url": "/content/site/en/products.html",
+        "response_status": 200,
+        "waf_action": "passed",
+        "rule_id": "",
+        "rule_message": "",
+        "severity": "Informational",
+        "anomaly_score": 0,
+        "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)",
+        "host": "www.example.com",
+        "log_time": "2024-06-03T06:14:16Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717395256000,
+        "device": {
+          "hostname": "www.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T06:14:16Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"2001:db8:85a3::8a2e:370:7334\",\"request_method\":\"GET\",\"request_url\":\"/content/site/en/products.html\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)\",\"host\":\"www.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      },
+      {
+        "_raw": "{\"timestamp\":\"2024-06-03T07:45:29Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"45.33.32.156\",\"request_method\":\"POST\",\"request_url\":\"/bin/wcm/contentfinder/connector/search.json\",\"response_status\":429,\"waf_action\":\"rate_limited\",\"rule_id\":\"rate-limit-01\",\"rule_message\":\"Rate limit exceeded for endpoint\",\"severity\":3,\"anomaly_score\":8,\"user_agent\":\"Go-http-client/1.1\",\"host\":\"www.example.com\"}",
+        "_time": 1717400729,
+        "timestamp": "2024-06-03T07:45:29Z",
+        "service_id": "aemcs-prod-4471",
+        "client_ip": "45.33.32.156",
+        "request_method": "POST",
+        "request_url": "/bin/wcm/contentfinder/connector/search.json",
+        "response_status": 429,
+        "waf_action": "rate_limited",
+        "rule_id": "rate-limit-01",
+        "rule_message": "Rate limit exceeded for endpoint",
+        "severity": "Informational",
+        "anomaly_score": 8,
+        "user_agent": "Go-http-client/1.1",
+        "host": "www.example.com",
+        "log_time": "2024-06-03T07:45:29Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717400729000,
+        "device": {
+          "hostname": "www.example.com"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemcdn waf",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "message": "{\"timestamp\":\"2024-06-03T07:45:29Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"45.33.32.156\",\"request_method\":\"POST\",\"request_url\":\"/bin/wcm/contentfinder/connector/search.json\",\"response_status\":429,\"waf_action\":\"rate_limited\",\"rule_id\":\"rate-limit-01\",\"rule_message\":\"Rate limit exceeded for endpoint\",\"severity\":3,\"anomaly_score\":8,\"user_agent\":\"Go-http-client/1.1\",\"host\":\"www.example.com\"}",
+        "sourcetype": "aemcdn:waf"
+      }
+    ],
+    "sampleKeys": [
+      "timestamp",
+      "service_id",
+      "client_ip",
+      "request_method",
+      "request_url",
+      "response_status",
+      "waf_action",
+      "rule_id",
+      "rule_message",
+      "severity",
+      "anomaly_score",
+      "user_agent",
+      "host",
+      "payload_size"
+    ],
+    "sampleRaw": [
+      "{\"timestamp\":\"2024-06-03T02:14:22Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"203.0.113.44\",\"request_method\":\"GET\",\"request_url\":\"/content/dam/site/images/banner.jpg\",\"response_status\":200,\"waf_action\":\"logged\",\"rule_id\":\"942100\",\"rule_message\":\"SQL Injection Attack Detected\",\"severity\":2,\"anomaly_score\":5,\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64)\",\"host\":\"www.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T02:20:11Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"198.51.100.9\",\"request_method\":\"POST\",\"request_url\":\"/bin/login\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"973304\",\"rule_message\":\"XSS Attack Detected via libinjection\",\"severity\":1,\"anomaly_score\":15,\"user_agent\":\"curl/7.68.0\",\"host\":\"www.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T03:05:47Z\",\"service_id\":\"aemcs-stage-9982\",\"client_ip\":\"10.24.6.19\",\"request_method\":\"GET\",\"request_url\":\"/health-check\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":5,\"anomaly_score\":0,\"user_agent\":\"AEM-HealthCheck/1.0\",\"host\":\"stage.internal.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T03:12:39Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"185.220.101.7\",\"request_method\":\"GET\",\"request_url\":\"/etc/passwd\",\"response_status\":403,\"waf_action\":\"blocked\",\"rule_id\":\"930100\",\"rule_message\":\"Path Traversal Attack Detected\",\"severity\":1,\"anomaly_score\":20,\"user_agent\":\"python-requests/2.25.1\",\"host\":\"www.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T04:01:03Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"172.16.5.101\",\"request_method\":\"PUT\",\"request_url\":\"/content/dam/assets/large-upload.zip\",\"response_status\":201,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"AEM-Uploader/3.2\",\"host\":\"assets.example.com\",\"payload_size\":524288000}",
+      "{\"timestamp\":\"2024-06-03T05:30:58Z\",\"service_id\":\"aemcs-prod-8823\",\"client_ip\":\"192.168.10.4\",\"request_method\":\"GET\",\"request_url\":\"/admin/config\",\"response_status\":401,\"waf_action\":\"logged\",\"rule_id\":\"921110\",\"rule_message\":\"HTTP Request Smuggling Attempt\",\"severity\":2,\"anomaly_score\":10,\"user_agent\":\"Mozilla/5.0 (X11; Linux x86_64)\",\"host\":\"admin.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T06:14:16Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"2001:db8:85a3::8a2e:370:7334\",\"request_method\":\"GET\",\"request_url\":\"/content/site/en/products.html\",\"response_status\":200,\"waf_action\":\"passed\",\"rule_id\":\"\",\"rule_message\":\"\",\"severity\":6,\"anomaly_score\":0,\"user_agent\":\"Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)\",\"host\":\"www.example.com\"}",
+      "{\"timestamp\":\"2024-06-03T07:45:29Z\",\"service_id\":\"aemcs-prod-4471\",\"client_ip\":\"45.33.32.156\",\"request_method\":\"POST\",\"request_url\":\"/bin/wcm/contentfinder/connector/search.json\",\"response_status\":429,\"waf_action\":\"rate_limited\",\"rule_id\":\"rate-limit-01\",\"rule_message\":\"Rate limit exceeded for endpoint\",\"severity\":3,\"anomaly_score\":8,\"user_agent\":\"Go-http-client/1.1\",\"host\":\"www.example.com\"}"
+    ],
+    "sourcetype": "aemcdn:waf"
+  }
+}
