@@ -2,11 +2,11 @@
   "key": "aemhttpderror::ocsf",
   "sourcetype": "aemhttpderror",
   "dest_format": "ocsf",
-  "score": 86,
+  "score": 92,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T14:58:11.249Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:45.557Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -164,91 +164,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4001'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
+            "value": "1"
           },
           {
-            "name": "event_type",
-            "value": "'Network Activity: Traffic'"
-          },
-          {
-            "name": "class_uid",
-            "value": "4001"
-          },
-          {
-            "name": "category_uid",
-            "value": "4"
-          },
-          {
-            "name": "activity_id",
-            "value": "(action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : 6)"
+            "name": "category_name",
+            "value": "'System Activity'"
           },
           {
             "name": "type_uid",
-            "value": "4001 * 100 + ((action || '').toLowerCase() == 'blocked' || (action || '').toLowerCase() == 'denied' ? 5 : ((action || '').toLowerCase() == 'failure' || (action || '').toLowerCase() == 'failed' ? 4 : 6))"
+            "value": "100100"
           },
           {
             "name": "severity_id",
-            "value": "(severity || '').toUpperCase() == 'ERROR' ? 4 : ((severity || '').toUpperCase() == 'WARN' ? 3 : ((severity || '').toUpperCase() == 'FATAL' ? 5 : ((severity || '').toUpperCase() == 'DEBUG' ? 1 : 1)))"
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
           },
           {
             "name": "time",
-            "value": "Number(epoch_ms || (_time ? _time * 1000 : 0))"
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
           },
           {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
           },
           {
-            "name": "dst_endpoint.port",
-            "value": "Number(http_status || 0) >= 400 ? 443 : 80"
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
           },
           {
-            "name": "connection_info.protocol_name",
-            "value": "(protocol || (http_version || '')).toString().toLowerCase().indexOf('https') > -1 ? 'https' : 'http'"
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
           },
           {
-            "name": "actor.user.name",
-            "value": "user || ''"
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
           },
           {
-            "name": "device.hostname",
-            "value": "logger || ''"
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
           },
           {
-            "name": "metadata.version",
-            "value": "'1.1.0'"
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
           }
         ]
-      },
-      "description": "Map fields to destination schema"
+      }
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF envelope (cont. 16)",
       "conf": {
         "add": [
           {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
             "name": "metadata.product.name",
-            "value": "'Adobe Experience Manager'"
+            "value": "'Security'"
           },
           {
             "name": "metadata.product.vendor_name",
-            "value": "'Adobe'"
+            "value": "'aemhttpderror'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-17)"
+      }
     },
     {
       "id": "eval",
@@ -275,42 +299,297 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "Aemhttpderror_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"*warn*\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"*info*\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"*error*\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2001\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"db8\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 7,
+    "outputCount": 7,
+    "outputSample": [
+      {
+        "_raw": "28.05.2024 03:15:02.331 *WARN* [192.168.1.45 [1653712502331] POST /bin/login HTTP/1.1] com.day.crx.security.AuthenticationHandlerImpl Login failed for user 'admin' - invalid credentials, attempt 3 of 5",
+        "_time": null,
+        "timestamp": "28.05.2024 03:15:02.331",
+        "severity": "Informational",
+        "src_ip": "192.168.1.45",
+        "epoch_ms": "1653712502331",
+        "method": "POST",
+        "url": "/bin/login",
+        "http_version": "1.1",
+        "logger": "com.day.crx.security.AuthenticationHandlerImpl",
+        "message": "Login failed for user 'admin' - invalid credentials, attempt 3 of 5",
+        "user": "admin",
+        "vendor_severity": "WARN",
+        "protocol": "http",
+        "action": "failure",
+        "transport": "http",
+        "log_time": "28.05.2024 03:15:02.331",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917172,
+        "src_endpoint": {
+          "ip": "192.168.1.45"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 04:19:55.887 *INFO* [10.0.2.200 [1653716395887] GET /content/mysite/en/careers.html HTTP/1.1] com.day.cq.wcm.core.impl.WCMDebugFilter Request served from dispatcher cache, response time 12ms",
+        "_time": null,
+        "timestamp": "28.05.2024 04:19:55.887",
+        "severity": "Informational",
+        "src_ip": "10.0.2.200",
+        "epoch_ms": "1653716395887",
+        "method": "GET",
+        "url": "/content/mysite/en/careers.html",
+        "http_version": "1.1",
+        "logger": "com.day.cq.wcm.core.impl.WCMDebugFilter",
+        "message": "Request served from dispatcher cache, response time 12ms",
+        "vendor_severity": "INFO",
+        "protocol": "http",
+        "action": "success",
+        "transport": "http",
+        "log_time": "28.05.2024 04:19:55.887",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917174,
+        "src_endpoint": {
+          "ip": "10.0.2.200"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 04:26:12.331 *ERROR* [2001:db8::1 [1653716772331] GET /content/mysite/en/checkout HTTP/1.1] com.mysite.core.filters.SessionValidationFilter Session token expired - redirecting to login, HTTP 302",
+        "_time": null,
+        "timestamp": "28.05.2024 04:26:12.331",
+        "severity": "Informational",
+        "src_ip": "2001:db8::1",
+        "epoch_ms": "1653716772331",
+        "method": "GET",
+        "url": "/content/mysite/en/checkout",
+        "http_version": "1.1",
+        "logger": "com.mysite.core.filters.SessionValidationFilter",
+        "message": "Session token expired - redirecting to login, HTTP 302",
+        "http_status": "302",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "denied",
+        "transport": "http",
+        "log_time": "28.05.2024 04:26:12.331",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917174,
+        "src_endpoint": {
+          "ip": "2001:db8::1"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 04:34:48.500 *ERROR* [] [1653717288500] GET /content/mysite/undefined HTTP/1.1] org.apache.sling.engine.impl.SlingMainServlet Malformed request - missing required headers, HTTP 400 Bad Request",
+        "_time": null,
+        "timestamp": "28.05.2024 04:34:48.500",
+        "severity": "Informational",
+        "epoch_ms": "1653717288500",
+        "method": "GET",
+        "url": "/content/mysite/undefined",
+        "http_version": "1.1",
+        "logger": "org.apache.sling.engine.impl.SlingMainServlet",
+        "message": "Malformed request - missing required headers, HTTP 400 Bad Request",
+        "http_status": "400",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "blocked",
+        "transport": "http",
+        "log_time": "28.05.2024 04:34:48.500",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917175,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 04:48:39.775 *INFO* [172.16.8.33 [1653718119775] GET /content/mysite/sitemap.xml HTTP/1.1] org.apache.sling.engine.impl.SlingRequestProcessorImpl Sitemap generated successfully, 1247 URLs included",
+        "_time": null,
+        "timestamp": "28.05.2024 04:48:39.775",
+        "severity": "Informational",
+        "src_ip": "172.16.8.33",
+        "epoch_ms": "1653718119775",
+        "method": "GET",
+        "url": "/content/mysite/sitemap.xml",
+        "http_version": "1.1",
+        "logger": "org.apache.sling.engine.impl.SlingRequestProcessorImpl",
+        "message": "Sitemap generated successfully, 1247 URLs included",
+        "vendor_severity": "INFO",
+        "protocol": "http",
+        "action": "success",
+        "transport": "http",
+        "log_time": "28.05.2024 04:48:39.775",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917176,
+        "src_endpoint": {
+          "ip": "172.16.8.33"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 04:55:17.902 *ERROR* [89.34.12.201 [1653718517902] GET /content/mysite/en/../../etc/keystore HTTP/1.1] com.day.crx.security.AuthenticationHandlerImpl Blocked directory traversal attempt targeting keystore, source flagged as malicious",
+        "_time": null,
+        "timestamp": "28.05.2024 04:55:17.902",
+        "severity": "Informational",
+        "src_ip": "89.34.12.201",
+        "epoch_ms": "1653718517902",
+        "method": "GET",
+        "url": "/content/mysite/en/../../etc/keystore",
+        "http_version": "1.1",
+        "logger": "com.day.crx.security.AuthenticationHandlerImpl",
+        "message": "Blocked directory traversal attempt targeting keystore, source flagged as malicious",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "blocked",
+        "transport": "http",
+        "log_time": "28.05.2024 04:55:17.902",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917176,
+        "src_endpoint": {
+          "ip": "89.34.12.201"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      },
+      {
+        "_raw": "28.05.2024 05:11:29.988 *ERROR* [192.168.50.10 [1653719489988] GET /content/mysite/en/dashboard HTTP/1.1] org.apache.sling.engine.impl.SlingMainServlet Connection timeout to backend service after 30000ms, HTTP 504 Gateway Timeout",
+        "_time": null,
+        "timestamp": "28.05.2024 05:11:29.988",
+        "severity": "Informational",
+        "src_ip": "192.168.50.10",
+        "epoch_ms": "1653719489988",
+        "method": "GET",
+        "url": "/content/mysite/en/dashboard",
+        "http_version": "1.1",
+        "logger": "org.apache.sling.engine.impl.SlingMainServlet",
+        "message": "Connection timeout to backend service after 30000ms, HTTP 504 Gateway Timeout",
+        "http_status": "504",
+        "vendor_severity": "ERROR",
+        "protocol": "http",
+        "action": "timeout",
+        "transport": "http",
+        "log_time": "28.05.2024 05:11:29.988",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966917177,
+        "src_endpoint": {
+          "ip": "192.168.50.10"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "aemhttpderror",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aemhttpderror"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "28.05.2024 03:15:02.331 *WARN* [192.168.1.45 [1653712502331] POST /bin/login HTTP/1.1] com.day.crx.security.AuthenticationHandlerImpl Login failed for user 'admin' - invalid credentials, attempt 3 of 5",
+      "28.05.2024 04:19:55.887 *INFO* [10.0.2.200 [1653716395887] GET /content/mysite/en/careers.html HTTP/1.1] com.day.cq.wcm.core.impl.WCMDebugFilter Request served from dispatcher cache, response time 12ms",
+      "28.05.2024 04:26:12.331 *ERROR* [2001:db8::1 [1653716772331] GET /content/mysite/en/checkout HTTP/1.1] com.mysite.core.filters.SessionValidationFilter Session token expired - redirecting to login, HTTP 302",
+      "28.05.2024 04:34:48.500 *ERROR* [] [1653717288500] GET /content/mysite/undefined HTTP/1.1] org.apache.sling.engine.impl.SlingMainServlet Malformed request - missing required headers, HTTP 400 Bad Request",
+      "28.05.2024 04:48:39.775 *INFO* [172.16.8.33 [1653718119775] GET /content/mysite/sitemap.xml HTTP/1.1] org.apache.sling.engine.impl.SlingRequestProcessorImpl Sitemap generated successfully, 1247 URLs included",
+      "28.05.2024 04:55:17.902 *ERROR* [89.34.12.201 [1653718517902] GET /content/mysite/en/../../etc/keystore HTTP/1.1] com.day.crx.security.AuthenticationHandlerImpl Blocked directory traversal attempt targeting keystore, source flagged as malicious",
+      "28.05.2024 05:11:29.988 *ERROR* [192.168.50.10 [1653719489988] GET /content/mysite/en/dashboard HTTP/1.1] org.apache.sling.engine.impl.SlingMainServlet Connection timeout to backend service after 30000ms, HTTP 504 Gateway Timeout"
+    ],
+    "sourcetype": "aemhttpderror"
   }
 }
