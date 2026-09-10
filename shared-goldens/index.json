@@ -15755,14 +15755,14 @@
       "key": "aemhttpderror::ocsf",
       "sourcetype": "aemhttpderror",
       "dest_format": "ocsf",
-      "score": 86,
+      "score": 92,
       "part": null,
-      "author": "wlinde@cribl.io",
-      "build": 652,
-      "updated_at": "2026-09-01T14:58:11.249Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:46:45.557Z",
       "path": "shared-goldens/aemhttpderror__ocsf.json",
       "report": {
-        "score": 86,
+        "score": 92,
         "band": "good"
       }
     },
