@@ -17115,6 +17115,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "symantec:email:cloud:atp::ocsf",
+      "sourcetype": "symantec:email:cloud:atp",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:10.121Z",
+      "path": "shared-goldens/symantec:email:cloud:atp__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
