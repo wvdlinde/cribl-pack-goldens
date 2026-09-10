@@ -1,0 +1,658 @@
+{
+  "key": "vmware:esxlog:healthdPlugins::ocsf",
+  "sourcetype": "vmware:esxlog:healthdPlugins",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:14.966Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>\\w+):\\s+\\[(?<thread_id>[^\\]]+)\\]\\s+(?<component_module>HealthdPlugins):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse ESXi Healthd HealthdPlugins base structure: timestamp, host, process, thread, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:component=(?<component>[^\\s]+))|(?:status=(?<status>[^\\s]+))|(?:reading=(?<reading>[^\\s]+))|(?:threshold=(?<threshold>[^\\s]+))|(?:severity=(?<severity_raw>[^\\s]+))|(?:result=(?<result>[^\\s]+))|(?:errorCode=(?<error_code>[^\\s]+))|(?:sensor=(?<sensor>[^\\s]+))|(?:reason=(?<reason>[^\\s]+))|(?:count=(?<failure_count>\\d+))|(?:action=(?<action_raw>[^\\s]+))|(?:port=(?<dst_port>\\d+))|(?:oldState=(?<old_state>[^\\s]+))|(?:newState=(?<new_state>[^\\s]+))|(?:version=(?<plugin_version>[^\\s]+))|(?:disk=(?<disk>[^\\s]+))|(?:slot=(?<slot>\\d+))|(?:fan=(?<fan>[^\\s]+))|(?:rpm=(?<rpm>\\d+))|(?:OverallStatus=(?<overall_status>[^\\s]+))/",
+        "iterations": 25,
+        "overwrite": false
+      },
+      "description": "Extract key=value pairs from message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(source=|from |requestedBy=)/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:source=(?<src_ip>[0-9a-fA-F:.]+))|(?:from\\s+(?<src_ip2>[0-9a-fA-F:.]+))|(?:user=(?<user>[^\\s]+))|(?:requestedBy=(?<user2>[^@\\s]+)@(?<src_ip3>[0-9a-fA-F:.]+))/",
+        "iterations": 5,
+        "overwrite": false
+      },
+      "description": "Extract source IP (IPv4/IPv6) and user from auth/access messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /plugin\\s|Plugin\\s/.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/(?:[Pp]lugin\\s+(?<plugin>cim_\\w+))/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract plugin name from plugin lifecycle messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip ? src_ip : (src_ip2 ? src_ip2 : src_ip3)"
+          },
+          {
+            "name": "user",
+            "value": "user ? user : user2"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (String(src_ip).indexOf(':') > -1 ? 'ipv6' : 'ipv4') : undefined"
+          },
+          {
+            "name": "action",
+            "value": "action_raw ? (/Blocked|DENIED|Denied/i.test(action_raw) ? 'blocked' : 'allowed') : (result ? (/SUCCESS/i.test(result) ? 'allowed' : (/DENIED|FAILURE/i.test(result) ? 'blocked' : String(result).toLowerCase())) : undefined)"
+          },
+          {
+            "name": "severity",
+            "value": "severity_raw ? String(severity_raw).toLowerCase() : (/Failed|failure|Unauthorized|predictive failure|timeout|anomaly/i.test(message) ? 'error' : 'info')"
+          },
+          {
+            "name": "event_type",
+            "value": "/Unauthorized|Login failure|authentication failures/i.test(message) ? 'authentication' : (/CIM indication subscription/i.test(message) ? 'subscription' : (/[Pp]lugin/.test(message) ? 'plugin' : (/Sensor|Voltage|Fan RPM|threshold/i.test(message) ? 'sensor' : (/Health (state|rollup)/i.test(message) ? 'health_status' : (/Storage predictive/i.test(message) ? 'storage' : 'other')))))"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi'"
+          }
+        ],
+        "remove": [
+          "src_ip2",
+          "src_ip3",
+          "user2",
+          "action_raw",
+          "severity_raw"
+        ]
+      },
+      "description": "Normalize source IP/user, action, severity, and classify event type"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog healthdplugins'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:healthdPlugins'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogHealthdPlugins_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-06-11T00:14:22.104Z esxi-prod-01.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: cim_power_supply status=OK reading=115V component=PowerSupply1",
+        "_time": 1718064862.104,
+        "timestamp": "2024-06-11T00:14:22.104Z",
+        "dst_host": "esxi-prod-01.dc1.local",
+        "process": "Healthd",
+        "thread_id": "7f8a3c112700",
+        "component_module": "HealthdPlugins",
+        "message": "cim_power_supply status=OK reading=115V component=PowerSupply1",
+        "status": "OK",
+        "severity": "Informational",
+        "event_type": "other",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T00:14:22.104Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718064862104,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T00:47:55.882Z esxi-prod-02.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Sensor threshold exceeded: HDD Temp reading=71C threshold=65C component=Storage severity=WARNING",
+        "_time": 1718066875.882,
+        "timestamp": "2024-06-11T00:47:55.882Z",
+        "dst_host": "esxi-prod-02.dc1.local",
+        "process": "Healthd",
+        "thread_id": "7f8a3c112700",
+        "component_module": "HealthdPlugins",
+        "message": "Sensor threshold exceeded: HDD Temp reading=71C threshold=65C component=Storage severity=WARNING",
+        "reading": "71C",
+        "severity": "Informational",
+        "event_type": "sensor",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T00:47:55.882Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718066875882,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T01:02:11.330Z esxi-hq-03.corp.local Healthd: [1a2b3c4d] HealthdPlugins: Failed to load plugin cim_fan: module dependency missing errorCode=0x8000000d",
+        "_time": 1718067731.33,
+        "timestamp": "2024-06-11T01:02:11.330Z",
+        "dst_host": "esxi-hq-03.corp.local",
+        "process": "Healthd",
+        "thread_id": "1a2b3c4d",
+        "component_module": "HealthdPlugins",
+        "message": "Failed to load plugin cim_fan: module dependency missing errorCode=0x8000000d",
+        "error_code": "0x8000000d",
+        "plugin": "cim_fan",
+        "severity": "Informational",
+        "event_type": "plugin",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T01:02:11.330Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718067731330,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T01:33:47.221Z esxi-prod-01.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Health state changed component=Memory oldState=Green newState=Red DIMM_B2 uncorrectable ECC error detected",
+        "_time": 1718069627.221,
+        "timestamp": "2024-06-11T01:33:47.221Z",
+        "dst_host": "esxi-prod-01.dc1.local",
+        "process": "Healthd",
+        "thread_id": "7f8a3c112700",
+        "component_module": "HealthdPlugins",
+        "message": "Health state changed component=Memory oldState=Green newState=Red DIMM_B2 uncorrectable ECC error detected",
+        "component": "Memory",
+        "severity": "Informational",
+        "event_type": "health_status",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T01:33:47.221Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718069627221,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T02:05:09.556Z esxi-dr-05.dc2.local Healthd: [9c8f2211] HealthdPlugins: CIM indication subscription request from 10.20.5.44 port=5989 result=SUCCESS",
+        "_time": 1718071509.556,
+        "timestamp": "2024-06-11T02:05:09.556Z",
+        "dst_host": "esxi-dr-05.dc2.local",
+        "process": "Healthd",
+        "thread_id": "9c8f2211",
+        "component_module": "HealthdPlugins",
+        "message": "CIM indication subscription request from 10.20.5.44 port=5989 result=SUCCESS",
+        "dst_port": "5989",
+        "src_ip": "10.20.5.44",
+        "ip_version": "ipv4",
+        "severity": "Informational",
+        "event_type": "subscription",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "dest_port": "5989",
+        "log_time": "2024-06-11T02:05:09.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718071509556,
+        "src_endpoint": {
+          "ip": "10.20.5.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T02:41:33.998Z esxi-prod-04.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Unauthorized WSMAN access attempt source=203.0.113.87 user=anonymous result=DENIED",
+        "_time": 1718073693.998,
+        "timestamp": "2024-06-11T02:41:33.998Z",
+        "dst_host": "esxi-prod-04.dc1.local",
+        "process": "Healthd",
+        "thread_id": "7f8a3c112700",
+        "component_module": "HealthdPlugins",
+        "message": "Unauthorized WSMAN access attempt source=203.0.113.87 user=anonymous result=DENIED",
+        "result": "DENIED",
+        "src_ip": "203.0.113.87",
+        "ip_version": "ipv4",
+        "action": "blocked",
+        "severity": "Informational",
+        "event_type": "authentication",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T02:41:33.998Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718073693998,
+        "src_endpoint": {
+          "ip": "203.0.113.87"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T03:12:04.712Z esxi-branch-02.remote.local Healthd: [aa11bb22] HealthdPlugins: Plugin cim_battery reload triggered by config change requestedBy=root@172.16.4.20",
+        "_time": 1718075524.712,
+        "timestamp": "2024-06-11T03:12:04.712Z",
+        "dst_host": "esxi-branch-02.remote.local",
+        "process": "Healthd",
+        "thread_id": "aa11bb22",
+        "component_module": "HealthdPlugins",
+        "message": "Plugin cim_battery reload triggered by config change requestedBy=root@172.16.4.20",
+        "src_ip": "172.16.4.20",
+        "user": "root",
+        "plugin": "cim_battery",
+        "ip_version": "ipv4",
+        "severity": "Informational",
+        "event_type": "plugin",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T03:12:04.712Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718075524712,
+        "src_endpoint": {
+          "ip": "172.16.4.20"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      },
+      {
+        "_raw": "2024-06-11T03:58:19.470Z esxi-prod-02.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Sensor read timeout component=CPU sensor=Package0Temp errorCode=0x0badf00d",
+        "_time": 1718078299.47,
+        "timestamp": "2024-06-11T03:58:19.470Z",
+        "dst_host": "esxi-prod-02.dc1.local",
+        "process": "Healthd",
+        "thread_id": "7f8a3c112700",
+        "component_module": "HealthdPlugins",
+        "message": "Sensor read timeout component=CPU sensor=Package0Temp errorCode=0x0badf00d",
+        "component": "CPU",
+        "severity": "Informational",
+        "event_type": "sensor",
+        "vendor": "VMware",
+        "product": "ESXi",
+        "log_time": "2024-06-11T03:58:19.470Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1718078299470,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog healthdplugins",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:healthdPlugins"
+      }
+    ],
+    "sampleKeys": [
+      "status",
+      "reading",
+      "component",
+      "threshold",
+      "severity",
+      "errorCode",
+      "oldState",
+      "newState",
+      "port",
+      "result",
+      "source",
+      "user",
+      "requestedBy",
+      "sensor"
+    ],
+    "sampleRaw": [
+      "2024-06-11T00:14:22.104Z esxi-prod-01.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: cim_power_supply status=OK reading=115V component=PowerSupply1",
+      "2024-06-11T00:47:55.882Z esxi-prod-02.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Sensor threshold exceeded: HDD Temp reading=71C threshold=65C component=Storage severity=WARNING",
+      "2024-06-11T01:02:11.330Z esxi-hq-03.corp.local Healthd: [1a2b3c4d] HealthdPlugins: Failed to load plugin cim_fan: module dependency missing errorCode=0x8000000d",
+      "2024-06-11T01:33:47.221Z esxi-prod-01.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Health state changed component=Memory oldState=Green newState=Red DIMM_B2 uncorrectable ECC error detected",
+      "2024-06-11T02:05:09.556Z esxi-dr-05.dc2.local Healthd: [9c8f2211] HealthdPlugins: CIM indication subscription request from 10.20.5.44 port=5989 result=SUCCESS",
+      "2024-06-11T02:41:33.998Z esxi-prod-04.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Unauthorized WSMAN access attempt source=203.0.113.87 user=anonymous result=DENIED",
+      "2024-06-11T03:12:04.712Z esxi-branch-02.remote.local Healthd: [aa11bb22] HealthdPlugins: Plugin cim_battery reload triggered by config change requestedBy=root@172.16.4.20",
+      "2024-06-11T03:58:19.470Z esxi-prod-02.dc1.local Healthd: [7f8a3c112700] HealthdPlugins: Sensor read timeout component=CPU sensor=Package0Temp errorCode=0x0badf00d"
+    ],
+    "sourcetype": "vmware:esxlog:healthdPlugins"
+  }
+}
