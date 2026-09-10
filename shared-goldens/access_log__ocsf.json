@@ -1,0 +1,825 @@
+{
+  "key": "access_log::ocsf",
+  "sourcetype": "access_log",
+  "dest_format": "ocsf",
+  "score": 89,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:14.130Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<src_ip>\\S+)\\s+(?<ident>\\S+)\\s+(?<user>\\S+)\\s+\\[(?<timestamp>[^\\]]+)\\]\\s+\"(?<http_method>\\w+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]+)\"\\s+(?<status>\\d+)\\s+(?<bytes>\\d+)(?:\\s+\"(?<http_referrer>[^\"]*)\"\\s+\"(?<http_user_agent>[^\"]*)\")?/"
+      },
+      "description": "Parse combined/common access log format"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "timestamp ? Date.parse(timestamp.replace(/^(\\d+)\\/(\\w+)\\/(\\d+):/, '$1 $2 $3 ')) / 1000 : undefined"
+          },
+          {
+            "name": "url",
+            "value": "uri || undefined"
+          },
+          {
+            "name": "user",
+            "value": "user && user !== '-' ? user : undefined"
+          },
+          {
+            "name": "src_user",
+            "value": "user && user !== '-' ? user : undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "status",
+            "value": "status != null ? Number(status) : undefined"
+          },
+          {
+            "name": "action",
+            "value": "status ? (Number(status) >= 400 ? 'blocked' : 'allowed') : undefined"
+          },
+          {
+            "name": "app",
+            "value": "'http'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'apache'"
+          }
+        ]
+      },
+      "description": "Normalize access-log fields to the canonical model"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'apache access'"
+          },
+          {
+            "name": "product",
+            "value": "'Security'"
+          },
+          {
+            "name": "version",
+            "value": "'1.0'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF HTTP Activity (4002) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4002"
+          },
+          {
+            "name": "class_name",
+            "value": "'HTTP Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "400200"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '') || ((dest_port || dst_port || dstport) != null && String(dest_port || dst_port || dstport) != 'undefined' && String(dest_port || dst_port || dstport) != 'null' && String(dest_port || dst_port || dstport) != '-' && String(dest_port || dst_port || dstport) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request",
+            "value": "(((url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '') || ((http_method || method || requestMethod) != null && String(http_method || method || requestMethod) != 'undefined' && String(http_method || method || requestMethod) != 'null' && String(http_method || method || requestMethod) != '-' && String(http_method || method || requestMethod) != '') || ((http_user_agent || user_agent || useragent) != null && String(http_user_agent || user_agent || useragent) != 'undefined' && String(http_user_agent || user_agent || useragent) != 'null' && String(http_user_agent || user_agent || useragent) != '-' && String(http_user_agent || user_agent || useragent) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_request.url",
+            "value": "(((url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '')) ? {} : undefined"
+          },
+          {
+            "name": "http_response",
+            "value": "(((status || status_code || http_status || response_code) != null && String(status || status_code || http_status || response_code) != 'undefined' && String(status || status_code || http_status || response_code) != 'null' && String(status || status_code || http_status || response_code) != '-' && String(status || status_code || http_status || response_code) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port || dst_port || dstport) != null && String(dest_port || dst_port || dstport) != 'undefined' && String(dest_port || dst_port || dstport) != 'null' && String(dest_port || dst_port || dstport) != '-' && String(dest_port || dst_port || dstport) != '' ? Number(dest_port || dst_port || dstport) : undefined"
+          },
+          {
+            "name": "http_request.url.text",
+            "value": "(url || uri || request || http_url) != null && String(url || uri || request || http_url) != 'undefined' && String(url || uri || request || http_url) != 'null' && String(url || uri || request || http_url) != '-' && String(url || uri || request || http_url) != '' ? (url || uri || request || http_url) : undefined"
+          },
+          {
+            "name": "http_request.http_method",
+            "value": "(http_method || method || requestMethod) != null && String(http_method || method || requestMethod) != 'undefined' && String(http_method || method || requestMethod) != 'null' && String(http_method || method || requestMethod) != '-' && String(http_method || method || requestMethod) != '' ? (http_method || method || requestMethod) : undefined"
+          },
+          {
+            "name": "http_request.user_agent",
+            "value": "(http_user_agent || user_agent || useragent) != null && String(http_user_agent || user_agent || useragent) != 'undefined' && String(http_user_agent || user_agent || useragent) != 'null' && String(http_user_agent || user_agent || useragent) != '-' && String(http_user_agent || user_agent || useragent) != '' ? (http_user_agent || user_agent || useragent) : undefined"
+          },
+          {
+            "name": "http_response.code",
+            "value": "(status || status_code || http_status || response_code) != null && String(status || status_code || http_status || response_code) != 'undefined' && String(status || status_code || http_status || response_code) != 'null' && String(status || status_code || http_status || response_code) != '-' && String(status || status_code || http_status || response_code) != '' ? Number(status || status_code || http_status || response_code) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'apache access'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 31)",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'access_log'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "uri === '/health' || uri === '/favicon.ico'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop health checks and favicon requests (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "drop",
+      "filter": "uri && /\\.(js|css|png|jpg|gif|woff2?|map|svg|ico)$/.test(uri)",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop static asset requests (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AccessLog_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "203.0.113.24 - - [12/Jan/2025:14:35:02 +0000] \"GET /index.html HTTP/1.1\" 200 4523 \"https://acme.local/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36\"",
+        "_time": 1736692502,
+        "src_ip": "203.0.113.24",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:02 +0000",
+        "http_method": "GET",
+        "uri": "/index.html",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 4523,
+        "http_referrer": "https://acme.local/",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "log_time": 1736692502,
+        "url": "/index.html",
+        "bytes_out": 4523,
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "203.0.113.24"
+        },
+        "http_request": {
+          "url": {
+            "text": "/index.html"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "198.51.100.7 - - [12/Jan/2025:14:35:04 +0000] \"POST /api/login HTTP/1.1\" 302 0 \"https://acme.local/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15\"",
+        "_time": 1736692504,
+        "src_ip": "198.51.100.7",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:04 +0000",
+        "http_method": "POST",
+        "uri": "/api/login",
+        "http_version": "HTTP/1.1",
+        "status": 302,
+        "bytes": 0,
+        "http_referrer": "https://acme.local/login",
+        "http_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        "log_time": 1736692504,
+        "url": "/api/login",
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "198.51.100.7"
+        },
+        "http_request": {
+          "url": {
+            "text": "/api/login"
+          },
+          "http_method": "POST",
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        },
+        "http_response": {
+          "code": 302
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "203.0.113.98 - jdoe [12/Jan/2025:14:35:07 +0000] \"GET /dashboard HTTP/1.1\" 200 18234 \"https://acme.local/api/login\" \"Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0\"",
+        "_time": 1736692507,
+        "src_ip": "203.0.113.98",
+        "ident": "-",
+        "user": "jdoe",
+        "timestamp": "12/Jan/2025:14:35:07 +0000",
+        "http_method": "GET",
+        "uri": "/dashboard",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 18234,
+        "http_referrer": "https://acme.local/api/login",
+        "http_user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "log_time": 1736692507,
+        "url": "/dashboard",
+        "src_user": "jdoe",
+        "bytes_out": 18234,
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "203.0.113.98"
+        },
+        "http_request": {
+          "url": {
+            "text": "/dashboard"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "192.0.2.44 - - [12/Jan/2025:14:35:10 +0000] \"GET /admin/../../etc/passwd HTTP/1.1\" 404 199 \"-\" \"curl/8.4.0\"",
+        "_time": 1736692510,
+        "src_ip": "192.0.2.44",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:10 +0000",
+        "http_method": "GET",
+        "uri": "/admin/../../etc/passwd",
+        "http_version": "HTTP/1.1",
+        "status": 404,
+        "bytes": 199,
+        "http_referrer": "-",
+        "http_user_agent": "curl/8.4.0",
+        "log_time": 1736692510,
+        "url": "/admin/../../etc/passwd",
+        "bytes_out": 199,
+        "action": "blocked",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "192.0.2.44"
+        },
+        "http_request": {
+          "url": {
+            "text": "/admin/../../etc/passwd"
+          },
+          "http_method": "GET",
+          "user_agent": "curl/8.4.0"
+        },
+        "http_response": {
+          "code": 404
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "198.51.100.203 - - [12/Jan/2025:14:35:12 +0000] \"GET /images/logo.png HTTP/1.1\" 304 0 \"https://acme.local/index.html\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1\"",
+        "_time": 1736692512,
+        "src_ip": "198.51.100.203",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:12 +0000",
+        "http_method": "GET",
+        "uri": "/images/logo.png",
+        "http_version": "HTTP/1.1",
+        "status": 304,
+        "bytes": 0,
+        "http_referrer": "https://acme.local/index.html",
+        "http_user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+        "log_time": 1736692512,
+        "url": "/images/logo.png",
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "198.51.100.203"
+        },
+        "http_request": {
+          "url": {
+            "text": "/images/logo.png"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+        },
+        "http_response": {
+          "code": 304
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "203.0.113.24 - - [12/Jan/2025:14:35:15 +0000] \"GET /index.html HTTP/1.1\" 200 4530 \"https://acme.local/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36\"",
+        "_time": 1736692515,
+        "src_ip": "203.0.113.24",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:15 +0000",
+        "http_method": "GET",
+        "uri": "/index.html",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 4530,
+        "http_referrer": "https://acme.local/",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "log_time": 1736692515,
+        "url": "/index.html",
+        "bytes_out": 4530,
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "203.0.113.24"
+        },
+        "http_request": {
+          "url": {
+            "text": "/index.html"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "198.51.100.19 - - [12/Jan/2025:14:35:18 +0000] \"POST /api/login HTTP/1.1\" 401 0 \"https://acme.local/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15\"",
+        "_time": 1736692518,
+        "src_ip": "198.51.100.19",
+        "ident": "-",
+        "timestamp": "12/Jan/2025:14:35:18 +0000",
+        "http_method": "POST",
+        "uri": "/api/login",
+        "http_version": "HTTP/1.1",
+        "status": 401,
+        "bytes": 0,
+        "http_referrer": "https://acme.local/login",
+        "http_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        "log_time": 1736692518,
+        "url": "/api/login",
+        "action": "blocked",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "198.51.100.19"
+        },
+        "http_request": {
+          "url": {
+            "text": "/api/login"
+          },
+          "http_method": "POST",
+          "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        },
+        "http_response": {
+          "code": 401
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      },
+      {
+        "_raw": "203.0.113.98 - jdoe [12/Jan/2025:14:35:21 +0000] \"GET /dashboard HTTP/1.1\" 200 18300 \"https://acme.local/api/login\" \"Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0\"",
+        "_time": 1736692521,
+        "src_ip": "203.0.113.98",
+        "ident": "-",
+        "user": "jdoe",
+        "timestamp": "12/Jan/2025:14:35:21 +0000",
+        "http_method": "GET",
+        "uri": "/dashboard",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes": 18300,
+        "http_referrer": "https://acme.local/api/login",
+        "http_user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        "log_time": 1736692521,
+        "url": "/dashboard",
+        "src_user": "jdoe",
+        "bytes_out": 18300,
+        "action": "allowed",
+        "app": "http",
+        "vendor_product": "apache",
+        "application": "http",
+        "vendor": "apache access",
+        "product": "Security",
+        "version": "1.0",
+        "class_uid": 4002,
+        "class_name": "HTTP Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400200,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255664198,
+        "src_endpoint": {
+          "ip": "203.0.113.98"
+        },
+        "http_request": {
+          "url": {
+            "text": "/dashboard"
+          },
+          "http_method": "GET",
+          "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0"
+        },
+        "http_response": {
+          "code": 200
+        },
+        "actor": {
+          "user": {
+            "name": "jdoe"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "apache access",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_log"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "203.0.113.24 - - [12/Jan/2025:14:35:02 +0000] \"GET /index.html HTTP/1.1\" 200 4523 \"https://acme.local/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36\"",
+      "198.51.100.7 - - [12/Jan/2025:14:35:04 +0000] \"POST /api/login HTTP/1.1\" 302 0 \"https://acme.local/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15\"",
+      "203.0.113.98 - jdoe [12/Jan/2025:14:35:07 +0000] \"GET /dashboard HTTP/1.1\" 200 18234 \"https://acme.local/api/login\" \"Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0\"",
+      "192.0.2.44 - - [12/Jan/2025:14:35:10 +0000] \"GET /admin/../../etc/passwd HTTP/1.1\" 404 199 \"-\" \"curl/8.4.0\"",
+      "198.51.100.203 - - [12/Jan/2025:14:35:12 +0000] \"GET /images/logo.png HTTP/1.1\" 304 0 \"https://acme.local/index.html\" \"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1\"",
+      "203.0.113.24 - - [12/Jan/2025:14:35:15 +0000] \"GET /index.html HTTP/1.1\" 200 4530 \"https://acme.local/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36\"",
+      "198.51.100.19 - - [12/Jan/2025:14:35:18 +0000] \"POST /api/login HTTP/1.1\" 401 0 \"https://acme.local/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15\"",
+      "203.0.113.98 - jdoe [12/Jan/2025:14:35:21 +0000] \"GET /dashboard HTTP/1.1\" 200 18300 \"https://acme.local/api/login\" \"Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0\""
+    ],
+    "sourcetype": "access_log"
+  }
+}
