@@ -1,0 +1,763 @@
+{
+  "key": "aws:cloudwatchlogs:vpcflow::ocsf",
+  "sourcetype": "aws:cloudwatchlogs:vpcflow",
+  "dest_format": "ocsf",
+  "score": 91,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:39.232Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<version>\\d+)\\s+(?<account_id>\\d+)\\s+(?<interface_id>\\S+)\\s+(?<src_ip>\\S+)\\s+(?<dest_ip>\\S+)\\s+(?<src_port>\\d+)\\s+(?<dest_port>\\d+)\\s+(?<ip_protocol>\\d+)\\s+(?<packets>\\d+)\\s+(?<bytes>\\d+)\\s+(?<start>\\d+)\\s+(?<end>\\d+)\\s+(?<action>\\w+)\\s+(?<log_status>\\w+)/"
+      },
+      "description": "Parse VPC Flow log fields (v2/v5 default record layout)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "start != null ? Number(start) : undefined"
+          },
+          {
+            "name": "duration",
+            "value": "start != null && end != null ? Number(end) - Number(start) : undefined"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port != null ? Number(src_port) : undefined"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port != null ? Number(dest_port) : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "ip_protocol === '6' ? 'tcp' : ip_protocol === '17' ? 'udp' : ip_protocol === '1' ? 'icmp' : ip_protocol === '58' ? 'ipv6-icmp' : ip_protocol === '47' ? 'gre' : ip_protocol === '50' ? 'esp' : ip_protocol != null ? String(ip_protocol) : undefined"
+          },
+          {
+            "name": "protocol",
+            "value": "transport || undefined"
+          },
+          {
+            "name": "bytes",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes != null ? Number(bytes) : undefined"
+          },
+          {
+            "name": "packets",
+            "value": "packets != null ? Number(packets) : undefined"
+          },
+          {
+            "name": "packets_out",
+            "value": "packets != null ? Number(packets) : undefined"
+          },
+          {
+            "name": "vendor_action",
+            "value": "action || undefined"
+          },
+          {
+            "name": "action",
+            "value": "action === 'ACCEPT' ? 'allowed' : action === 'REJECT' ? 'blocked' : action ? String(action).toLowerCase() : undefined"
+          },
+          {
+            "name": "dev_id",
+            "value": "interface_id || undefined"
+          },
+          {
+            "name": "vendor",
+            "value": "'AWS'"
+          },
+          {
+            "name": "product",
+            "value": "'VPC Flow Logs'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'AWS VPC Flow Logs'"
+          }
+        ]
+      },
+      "description": "Normalize VPC Flow fields to the canonical model"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'AWS'"
+          },
+          {
+            "name": "product",
+            "value": "'VPC Flow Logs'"
+          },
+          {
+            "name": "version",
+            "value": "'5'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Network Activity (4001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "4001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "category_uid",
+            "value": "4"
+          },
+          {
+            "name": "category_name",
+            "value": "'Network Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "400100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '') || ((src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '') || ((dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '')) ? {} : undefined"
+          },
+          {
+            "name": "connection_info",
+            "value": "((((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '')) ? {} : undefined"
+          },
+          {
+            "name": "traffic",
+            "value": "(((bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '') || ((bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          },
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "src_endpoint.port",
+            "value": "(src_port || srcport || spt) != null && String(src_port || srcport || spt) != 'undefined' && String(src_port || srcport || spt) != 'null' && String(src_port || srcport || spt) != '-' && String(src_port || srcport || spt) != '' ? Number(src_port || srcport || spt) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "dst_endpoint.port",
+            "value": "(dest_port || dst_port || dstport || dpt) != null && String(dest_port || dst_port || dstport || dpt) != 'undefined' && String(dest_port || dst_port || dstport || dpt) != 'null' && String(dest_port || dst_port || dstport || dpt) != '-' && String(dest_port || dst_port || dstport || dpt) != '' ? Number(dest_port || dst_port || dstport || dpt) : undefined"
+          },
+          {
+            "name": "connection_info.protocol_name",
+            "value": "((transport || protocol || proto || '').toString().toLowerCase() || undefined) != null && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'undefined' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != 'null' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '-' && String((transport || protocol || proto || '').toString().toLowerCase() || undefined) != '' ? ((transport || protocol || proto || '').toString().toLowerCase() || undefined) : undefined"
+          },
+          {
+            "name": "traffic.bytes_in",
+            "value": "(bytes_in || rcvdbyte || in_bytes) != null && String(bytes_in || rcvdbyte || in_bytes) != 'undefined' && String(bytes_in || rcvdbyte || in_bytes) != 'null' && String(bytes_in || rcvdbyte || in_bytes) != '-' && String(bytes_in || rcvdbyte || in_bytes) != '' ? Number(bytes_in || rcvdbyte || in_bytes) : undefined"
+          },
+          {
+            "name": "traffic.bytes_out",
+            "value": "(bytes_out || sentbyte || out_bytes) != null && String(bytes_out || sentbyte || out_bytes) != 'undefined' && String(bytes_out || sentbyte || out_bytes) != 'null' && String(bytes_out || sentbyte || out_bytes) != '-' && String(bytes_out || sentbyte || out_bytes) != '' ? Number(bytes_out || sentbyte || out_bytes) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'VPC Flow Logs'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'AWS'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'5'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'aws:cloudwatchlogs:vpcflow'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "action === 'allowed' && dest_port === 443",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop routine HTTPS accept flows (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AwsCloudwatchlogsVpcflow_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "3 000000000000 - 1.128.0.0 2a02:cf40:: 64072 22 17 46 14927 1755678619 1755678641 REJECT OK - - - - - - - - - - - - - ingress - arn:aws:ecs:us-east-1:000000000000:cluster/frontend-cluster frontend-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/frontend-cluster/i-82bfd814a3c34e21a i-82bfd814a3c34e21a 574fc0af-908 816bc224-160 payments-service arn:aws:ecs:us-east-1:000000000000:task-definition/backend:3 arn:aws:ecs:us-east-1:000000000000:task/frontend-cluster/6adbd0d6-211 6adbd0d6-211",
+        "_time": 1755678619,
+        "version": "5",
+        "account_id": "000000000000",
+        "interface_id": "-",
+        "src_ip": "1.128.0.0",
+        "dest_ip": "2a02:cf40::",
+        "src_port": 64072,
+        "dest_port": 22,
+        "ip_protocol": "17",
+        "packets": 46,
+        "bytes": 14927,
+        "start": "1755678619",
+        "end": "1755678641",
+        "action": "blocked",
+        "log_status": "OK",
+        "log_time": 1755678619,
+        "duration": 22,
+        "transport": "udp",
+        "protocol": "udp",
+        "bytes_out": 14927,
+        "packets_out": 46,
+        "vendor_action": "REJECT",
+        "dev_id": "-",
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "src_endpoint": {
+          "ip": "1.128.0.0",
+          "port": 64072
+        },
+        "dst_endpoint": {
+          "ip": "2a02:cf40::",
+          "port": 22
+        },
+        "connection_info": {
+          "protocol_name": "udp"
+        },
+        "traffic": {
+          "bytes_out": 14927
+        },
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "3 - 748335378900 tgw-0a12bc34de56f7890 tgw-attach-0789ijkl - - vpc-0jkl5678 vpc-0ghi9012 - - eni-0cc3dd4ee5f66aa7b eni-0cc3dd4ee5f66aa7b - - - 1.128.0.0 2a02:cf40:: 39464 22 6 49 8947 1755592533 1755592558 SKIPDATA - - - - - - - ingress - -",
+        "_time": 1788255095.686,
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "version": "5",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "2 123456789010 eni-1235b8ca123456789 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 34892 22 6 54 8855 1477913708 1477913820 ACCEPT OK",
+        "_time": 1477913708,
+        "version": "5",
+        "account_id": "123456789010",
+        "interface_id": "eni-1235b8ca123456789",
+        "src_ip": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+        "dest_ip": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+        "src_port": 34892,
+        "dest_port": 22,
+        "ip_protocol": "6",
+        "packets": 54,
+        "bytes": 8855,
+        "start": "1477913708",
+        "end": "1477913820",
+        "action": "allowed",
+        "log_status": "OK",
+        "log_time": 1477913708,
+        "duration": 112,
+        "transport": "tcp",
+        "protocol": "tcp",
+        "bytes_out": 8855,
+        "packets_out": 54,
+        "vendor_action": "ACCEPT",
+        "dev_id": "eni-1235b8ca123456789",
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "src_endpoint": {
+          "ip": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "port": 34892
+        },
+        "dst_endpoint": {
+          "ip": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
+          "port": 22
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "traffic": {
+          "bytes_out": 8855
+        },
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "3 vpc-abcdefab012345678 subnet-aaaaaaaa012345678 i-01234567890123456 eni-1235b8ca123456789 123456789010 IPv4 89.160.20.156 10.0.0.62 43416 5001 89.160.20.156 10.0.0.62 6 568 8 1566848875 1566848933 ACCEPT 2 OK",
+        "_time": 1788255095.686,
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "version": "5",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "3 000000000000 - 2a02:cf40:: 1.128.0.0 42910 80 17 51 33615 1755678754 1755678775 REJECT NODATA - - - - - - - - - - - - - ingress - arn:aws:ecs:us-east-1:000000000000:cluster/backend-cluster backend-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/backend-cluster/i-18de3682c033431da i-18de3682c033431da 601a6500-efa dea79277-480 payments-service arn:aws:ecs:us-east-1:000000000000:task-definition/orders:12 arn:aws:ecs:us-east-1:000000000000:task/backend-cluster/e504f037-35c e504f037-35c BPA",
+        "_time": 1755678754,
+        "version": "5",
+        "account_id": "000000000000",
+        "interface_id": "-",
+        "src_ip": "2a02:cf40::",
+        "dest_ip": "1.128.0.0",
+        "src_port": 42910,
+        "dest_port": 80,
+        "ip_protocol": "17",
+        "packets": 51,
+        "bytes": 33615,
+        "start": "1755678754",
+        "end": "1755678775",
+        "action": "blocked",
+        "log_status": "NODATA",
+        "log_time": 1755678754,
+        "duration": 21,
+        "transport": "udp",
+        "protocol": "udp",
+        "bytes_out": 33615,
+        "packets_out": 51,
+        "vendor_action": "REJECT",
+        "dev_id": "-",
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "src_endpoint": {
+          "ip": "2a02:cf40::",
+          "port": 42910
+        },
+        "dst_endpoint": {
+          "ip": "1.128.0.0",
+          "port": 80
+        },
+        "connection_info": {
+          "protocol_name": "udp"
+        },
+        "traffic": {
+          "bytes_out": 33615
+        },
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "5 64111117617 eni-069xxxxxb7a490 89.160.20.156 10.200.0.0 50041 33004 17 52 1 164000066 1640000297 REJECT OK vpc-09676f97xxxxxb8a7 subnet-02d645xxxxxxxdbc0 i-0axxxxxx1ad77 1 IPv4 89.160.20.156 10.200.0.80 us-east-1 use1-az5 - - AMAZON CLOUDFRONT ingress 1",
+        "_time": 1788255095.686,
+        "version": "5",
+        "account_id": "64111117617",
+        "interface_id": "eni-069xxxxxb7a490",
+        "src_ip": "89.160.20.156",
+        "dest_ip": "10.200.0.0",
+        "src_port": 50041,
+        "dest_port": 33004,
+        "ip_protocol": "17",
+        "packets": 52,
+        "bytes": 1,
+        "start": "164000066",
+        "end": "1640000297",
+        "action": "blocked",
+        "log_status": "OK",
+        "log_time": 164000066,
+        "duration": 1476000231,
+        "transport": "udp",
+        "protocol": "udp",
+        "bytes_out": 1,
+        "packets_out": 52,
+        "vendor_action": "REJECT",
+        "dev_id": "eni-069xxxxxb7a490",
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "src_endpoint": {
+          "ip": "89.160.20.156",
+          "port": 50041
+        },
+        "dst_endpoint": {
+          "ip": "10.200.0.0",
+          "port": 33004
+        },
+        "connection_info": {
+          "protocol_name": "udp"
+        },
+        "traffic": {
+          "bytes_out": 1
+        },
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "{\"message\":\"2 428961148399 eni-0e0bf7be352692297 - - - - - - - 1671029698 1671029728 - NODATA\"}",
+        "_time": 1788255095.686,
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "version": "5",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      },
+      {
+        "_raw": "3 000000000000 - 175.16.199.0 67.43.156.0 63715 3306 6 6 1515 1755678634 1755678662 ACCEPT NODATA - - - - - - - - - - - - - egress - arn:aws:ecs:us-east-1:000000000000:cluster/orders-cluster orders-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/orders-cluster/i-1cb81722735e4bcfa i-1cb81722735e4bcfa 7a93be1b-d3f b20d4561-ebb orders-service arn:aws:ecs:us-east-1:000000000000:task-definition/backend:3 arn:aws:ecs:us-east-1:000000000000:task/orders-cluster/b42ecfbe-17f b42ecfbe-17f",
+        "_time": 1755678634,
+        "version": "5",
+        "account_id": "000000000000",
+        "interface_id": "-",
+        "src_ip": "175.16.199.0",
+        "dest_ip": "67.43.156.0",
+        "src_port": 63715,
+        "dest_port": 3306,
+        "ip_protocol": "6",
+        "packets": 6,
+        "bytes": 1515,
+        "start": "1755678634",
+        "end": "1755678662",
+        "action": "allowed",
+        "log_status": "NODATA",
+        "log_time": 1755678634,
+        "duration": 28,
+        "transport": "tcp",
+        "protocol": "tcp",
+        "bytes_out": 1515,
+        "packets_out": 6,
+        "vendor_action": "ACCEPT",
+        "dev_id": "-",
+        "vendor": "AWS",
+        "product": "VPC Flow Logs",
+        "vendor_product": "AWS VPC Flow Logs",
+        "class_uid": 4001,
+        "class_name": "Network Activity",
+        "category_uid": 4,
+        "category_name": "Network Activity",
+        "type_uid": 400100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1788255095686,
+        "src_endpoint": {
+          "ip": "175.16.199.0",
+          "port": 63715
+        },
+        "dst_endpoint": {
+          "ip": "67.43.156.0",
+          "port": 3306
+        },
+        "connection_info": {
+          "protocol_name": "tcp"
+        },
+        "traffic": {
+          "bytes_out": 1515
+        },
+        "metadata": {
+          "product": {
+            "name": "VPC Flow Logs",
+            "vendor_name": "AWS",
+            "version": "5"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "aws:cloudwatchlogs:vpcflow"
+      }
+    ],
+    "sampleKeys": [
+      "message"
+    ],
+    "sampleRaw": [
+      "3 000000000000 - 1.128.0.0 2a02:cf40:: 64072 22 17 46 14927 1755678619 1755678641 REJECT OK - - - - - - - - - - - - - ingress - arn:aws:ecs:us-east-1:000000000000:cluster/frontend-cluster frontend-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/frontend-cluster/i-82bfd814a3c34e21a i-82bfd814a3c34e21a 574fc0af-908 816bc224-160 payments-service arn:aws:ecs:us-east-1:000000000000:task-definition/backend:3 arn:aws:ecs:us-east-1:000000000000:task/frontend-cluster/6adbd0d6-211 6adbd0d6-211",
+      "3 - 748335378900 tgw-0a12bc34de56f7890 tgw-attach-0789ijkl - - vpc-0jkl5678 vpc-0ghi9012 - - eni-0cc3dd4ee5f66aa7b eni-0cc3dd4ee5f66aa7b - - - 1.128.0.0 2a02:cf40:: 39464 22 6 49 8947 1755592533 1755592558 SKIPDATA - - - - - - - ingress - -",
+      "2 123456789010 eni-1235b8ca123456789 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6 34892 22 6 54 8855 1477913708 1477913820 ACCEPT OK",
+      "3 vpc-abcdefab012345678 subnet-aaaaaaaa012345678 i-01234567890123456 eni-1235b8ca123456789 123456789010 IPv4 89.160.20.156 10.0.0.62 43416 5001 89.160.20.156 10.0.0.62 6 568 8 1566848875 1566848933 ACCEPT 2 OK",
+      "3 000000000000 - 2a02:cf40:: 1.128.0.0 42910 80 17 51 33615 1755678754 1755678775 REJECT NODATA - - - - - - - - - - - - - ingress - arn:aws:ecs:us-east-1:000000000000:cluster/backend-cluster backend-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/backend-cluster/i-18de3682c033431da i-18de3682c033431da 601a6500-efa dea79277-480 payments-service arn:aws:ecs:us-east-1:000000000000:task-definition/orders:12 arn:aws:ecs:us-east-1:000000000000:task/backend-cluster/e504f037-35c e504f037-35c BPA",
+      "5 64111117617 eni-069xxxxxb7a490 89.160.20.156 10.200.0.0 50041 33004 17 52 1 164000066 1640000297 REJECT OK vpc-09676f97xxxxxb8a7 subnet-02d645xxxxxxxdbc0 i-0axxxxxx1ad77 1 IPv4 89.160.20.156 10.200.0.80 us-east-1 use1-az5 - - AMAZON CLOUDFRONT ingress 1",
+      "{\"message\":\"2 428961148399 eni-0e0bf7be352692297 - - - - - - - 1671029698 1671029728 - NODATA\"}",
+      "3 000000000000 - 175.16.199.0 67.43.156.0 63715 3306 6 6 1515 1755678634 1755678662 ACCEPT NODATA - - - - - - - - - - - - - egress - arn:aws:ecs:us-east-1:000000000000:cluster/orders-cluster orders-cluster arn:aws:ecs:us-east-1:000000000000:container-instance/orders-cluster/i-1cb81722735e4bcfa i-1cb81722735e4bcfa 7a93be1b-d3f b20d4561-ebb orders-service arn:aws:ecs:us-east-1:000000000000:task-definition/backend:3 arn:aws:ecs:us-east-1:000000000000:task/orders-cluster/b42ecfbe-17f b42ecfbe-17f"
+    ],
+    "sourcetype": "aws:cloudwatchlogs:vpcflow"
+  }
+}
