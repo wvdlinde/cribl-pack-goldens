@@ -17505,6 +17505,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "linux_audit::cef::__mapping__",
+      "sourcetype": "linux_audit",
+      "dest_format": "cef::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 687,
+      "updated_at": "2026-09-10T15:28:25.485Z",
+      "path": "shared-goldens/linux_audit__cef____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
