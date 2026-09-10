@@ -1,0 +1,757 @@
+{
+  "key": "pan:system::ocsf",
+  "sourcetype": "pan:system",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:52.246Z",
+  "functions": [
+    {
+      "id": "serde",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "csv",
+        "srcField": "_raw",
+        "fields": [
+          "future_use1",
+          "receive_time",
+          "serial",
+          "log_type",
+          "subtype",
+          "future_use2",
+          "generate_time",
+          "vsys",
+          "eventid",
+          "object",
+          "future_use3",
+          "future_use4",
+          "module",
+          "severity",
+          "message",
+          "seqno",
+          "actionflags",
+          "future_use5",
+          "future_use6",
+          "future_use7",
+          "future_use8",
+          "vsys_name",
+          "device_name",
+          "future_use9",
+          "future_use10",
+          "timestamp"
+        ],
+        "cleanFields": true
+      },
+      "description": "Parse PAN-OS SYSTEM log CSV fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "new Date(timestamp.replace(/\\//g,'-')).getTime()/1000"
+          }
+        ]
+      },
+      "description": "Derive _time from the millisecond-precision timestamp field"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('logged in via WebUI') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/User (?<user>\\S+) logged in via WebUI from (?<src_ip>[\\d.]+) using (?<protocol>\\S+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user, src_ip, protocol from successful WebUI login messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('Failed login attempt') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Failed login attempt for user (?<user>\\S+) from (?<src_ip>[\\d.]+) using (?<protocol>\\S+): (?<reason>.+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user, src_ip, protocol, and reason from failed login attempt messages"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('Repeated authentication failures') !== -1",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "regex": "/Repeated authentication failures detected for user (?<user>\\S+) from (?<src_ip>[\\d.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract user and src_ip from repeated authentication failure messages"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.indexOf('Failed')!==-1 || message.indexOf('failures')!==-1 || message.indexOf('failed')!==-1 || message.indexOf('down')!==-1 || message.indexOf('exceeded')!==-1 ? 'failure' : (message.indexOf('succeeded')!==-1 || message.indexOf('successfully')!==-1 || message.indexOf('successful')!==-1) ? 'success' : 'info'"
+          }
+        ]
+      },
+      "description": "Classify action as success, failure, or info based on message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'pan system'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'pan:system'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "remove": [
+          "_raw",
+          "msg_body",
+          "msg_format",
+          "event_category",
+          "event_action",
+          "__*"
+        ]
+      },
+      "description": "Keep mapped CIM fields + all extracted source fields before serialization"
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "PanSystem_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_time": 1710403953,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 08:12:33",
+        "serial": "007955000123456",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 08:12:34",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "User admin logged in via WebUI from 192.168.1.45 using HTTPS",
+        "seqno": "100234567",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-hq-01",
+        "timestamp": "2024/03/14 08:12:34.221",
+        "user": "admin",
+        "src_ip": "192.168.1.45",
+        "protocol": "HTTPS",
+        "action": "info",
+        "transport": "HTTPS",
+        "log_time": "2024/03/14 08:12:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710403953000,
+        "src_endpoint": {
+          "ip": "192.168.1.45"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710404102,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 08:15:02",
+        "serial": "007955000123456",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 08:15:03",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "Repeated authentication failures detected for user svc_backup from 203.0.113.77",
+        "seqno": "100234568",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-hq-01",
+        "timestamp": "2024/03/14 08:15:03.004",
+        "user": "svc_backup",
+        "src_ip": "203.0.113.77",
+        "action": "failure",
+        "log_time": "2024/03/14 08:15:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710404102000,
+        "src_endpoint": {
+          "ip": "203.0.113.77"
+        },
+        "actor": {
+          "user": {
+            "name": "svc_backup"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710404447,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 08:20:47",
+        "serial": "007955000987654",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 08:20:48",
+        "vsys": "vsys2",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "Commit succeeded for configuration change by user jdoe",
+        "seqno": "100234569",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys2",
+        "device_name": "fw-branch-02",
+        "timestamp": "2024/03/14 08:20:48.117",
+        "action": "success",
+        "log_time": "2024/03/14 08:20:47",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710404447000,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710405195,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 08:33:15",
+        "serial": "007955000123456",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 08:33:16",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "routing",
+        "severity": "Informational",
+        "message": "BGP peer 10.10.5.1 went down: hold timer expired",
+        "seqno": "100234570",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-hq-01",
+        "timestamp": "2024/03/14 08:33:16.902",
+        "action": "failure",
+        "log_time": "2024/03/14 08:33:15",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710405195000,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710405719,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 08:41:59",
+        "serial": "007955000123456",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 08:42:00",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "hasync",
+        "severity": "Informational",
+        "message": "HA link between fw-hq-01 and fw-hq-02 is down",
+        "seqno": "100234571",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-hq-01",
+        "timestamp": "2024/03/14 08:42:00.333",
+        "action": "failure",
+        "log_time": "2024/03/14 08:41:59",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710405719000,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710406930,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 09:02:10",
+        "serial": "007955000456789",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 09:02:11",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "Scheduled software update check completed successfully",
+        "seqno": "100234572",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-dc-03",
+        "timestamp": "2024/03/14 09:02:11.056",
+        "action": "success",
+        "log_time": "2024/03/14 09:02:10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710406930000,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710407666,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 09:14:26",
+        "serial": "007955000123456",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 09:14:27",
+        "vsys": "vsys1",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "Failed login attempt for user root from 172.16.0.99 using SSH: invalid credentials",
+        "seqno": "100234573",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys1",
+        "device_name": "fw-hq-01",
+        "timestamp": "2024/03/14 09:14:27.489",
+        "user": "root",
+        "src_ip": "172.16.0.99",
+        "protocol": "SSH",
+        "reason": "invalid credentials",
+        "action": "failure",
+        "transport": "SSH",
+        "log_time": "2024/03/14 09:14:26",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710407666000,
+        "src_endpoint": {
+          "ip": "172.16.0.99"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      },
+      {
+        "_time": 1710408423,
+        "future_use1": "1",
+        "receive_time": "2024/03/14 09:27:03",
+        "serial": "007955000987654",
+        "log_type": "SYSTEM",
+        "subtype": "general",
+        "future_use2": "0",
+        "generate_time": "2024/03/14 09:27:04",
+        "vsys": "vsys2",
+        "eventid": "general",
+        "module": "general",
+        "severity": "Informational",
+        "message": "Certificate 'GlobalProtect-Portal-Cert' will expire in 30 days",
+        "seqno": "100234574",
+        "actionflags": "0x0",
+        "future_use5": "0",
+        "future_use6": "0",
+        "future_use7": "0",
+        "future_use8": "0",
+        "vsys_name": "vsys2",
+        "device_name": "fw-branch-02",
+        "timestamp": "2024/03/14 09:27:04.771",
+        "action": "info",
+        "log_time": "2024/03/14 09:27:03",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1710408423000,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "pan system",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "pan:system"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "1,2024/03/14 08:12:33,007955000123456,SYSTEM,general,0,2024/03/14 08:12:34,vsys1,general,,,,general,informational,\"User admin logged in via WebUI from 192.168.1.45 using HTTPS\",100234567,0x0,0,0,0,0,vsys1,fw-hq-01,,,2024/03/14 08:12:34.221",
+      "1,2024/03/14 08:15:02,007955000123456,SYSTEM,general,0,2024/03/14 08:15:03,vsys1,general,,,,general,high,\"Repeated authentication failures detected for user svc_backup from 203.0.113.77\",100234568,0x0,0,0,0,0,vsys1,fw-hq-01,,,2024/03/14 08:15:03.004",
+      "1,2024/03/14 08:20:47,007955000987654,SYSTEM,general,0,2024/03/14 08:20:48,vsys2,general,,,,general,informational,\"Commit succeeded for configuration change by user jdoe\",100234569,0x0,0,0,0,0,vsys2,fw-branch-02,,,2024/03/14 08:20:48.117",
+      "1,2024/03/14 08:33:15,007955000123456,SYSTEM,general,0,2024/03/14 08:33:16,vsys1,general,,,,routing,medium,\"BGP peer 10.10.5.1 went down: hold timer expired\",100234570,0x0,0,0,0,0,vsys1,fw-hq-01,,,2024/03/14 08:33:16.902",
+      "1,2024/03/14 08:41:59,007955000123456,SYSTEM,general,0,2024/03/14 08:42:00,vsys1,general,,,,hasync,critical,\"HA link between fw-hq-01 and fw-hq-02 is down\",100234571,0x0,0,0,0,0,vsys1,fw-hq-01,,,2024/03/14 08:42:00.333",
+      "1,2024/03/14 09:02:10,007955000456789,SYSTEM,general,0,2024/03/14 09:02:11,vsys1,general,,,,general,informational,\"Scheduled software update check completed successfully\",100234572,0x0,0,0,0,0,vsys1,fw-dc-03,,,2024/03/14 09:02:11.056",
+      "1,2024/03/14 09:14:26,007955000123456,SYSTEM,general,0,2024/03/14 09:14:27,vsys1,general,,,,general,high,\"Failed login attempt for user root from 172.16.0.99 using SSH: invalid credentials\",100234573,0x0,0,0,0,0,vsys1,fw-hq-01,,,2024/03/14 09:14:27.489",
+      "1,2024/03/14 09:27:03,007955000987654,SYSTEM,general,0,2024/03/14 09:27:04,vsys2,general,,,,general,low,\"Certificate 'GlobalProtect-Portal-Cert' will expire in 30 days\",100234574,0x0,0,0,0,0,vsys2,fw-branch-02,,,2024/03/14 09:27:04.771"
+    ],
+    "sourcetype": "pan:system"
+  }
+}
