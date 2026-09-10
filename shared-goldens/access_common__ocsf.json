@@ -1,0 +1,785 @@
+{
+  "key": "access_common::ocsf",
+  "sourcetype": "access_common",
+  "dest_format": "ocsf",
+  "score": 84,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:47:08.866Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<src_ip>\\S+)\\s+(?<__ident>\\S+)\\s+(?<user>\\S+)\\s+\\[(?<__ts>[^\\]]+)\\]\\s+\"(?<http_method>[A-Z]+)\\s+(?<uri>\\S+)\\s+(?<http_version>[^\"]*)\"\\s+(?<status>\\d{3})\\s+(?<bytes_out>\\d+|-)\\s+\"(?<http_referrer>[^\"]*)\"\\s+\"(?<http_user_agent>[^\"]*)\"\\s+(?<duration>\\d+)\\s+(?<dst_host>\\S+)/"
+      },
+      "description": "Parse extended NCSA common access log line (IPv4/IPv6 client, ident, user, ts, request, status, bytes, referrer, UA, duration, server host)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "uri",
+      "disabled": false,
+      "conf": {
+        "source": "uri",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<uri_path>[^?]*)(?:\\?(?<uri_query>.*))?$/"
+      },
+      "description": "Split URI into path and query string"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? C.Time.strptime(__ts, '%d/%b/%Y:%H:%M:%S %z').getTime()/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "user",
+            "value": "user == '-' ? undefined : user"
+          },
+          {
+            "name": "http_referrer",
+            "value": "http_referrer == '-' ? undefined : http_referrer"
+          },
+          {
+            "name": "status",
+            "value": "Number(status)"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out == '-' ? 0 : Number(bytes_out)"
+          },
+          {
+            "name": "duration_ms",
+            "value": "Number(duration)"
+          },
+          {
+            "name": "protocol",
+            "value": "'tcp'"
+          },
+          {
+            "name": "app_protocol",
+            "value": "String(http_version).match(/^HTTPS/i) ? 'https' : 'http'"
+          },
+          {
+            "name": "ip_version",
+            "value": "String(src_ip).indexOf(':') > -1 ? 'ipv6' : 'ipv4'"
+          },
+          {
+            "name": "action",
+            "value": "Number(status) < 400 ? 'allowed' : 'blocked'"
+          },
+          {
+            "name": "severity",
+            "value": "Number(status) >= 500 ? 'high' : (Number(status) >= 400 ? 'medium' : 'low')"
+          },
+          {
+            "name": "direction",
+            "value": "String(src_ip).match(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|127\\.|fd|fe80)/i) ? 'internal' : 'inbound'"
+          },
+          {
+            "name": "message",
+            "value": "http_method + ' ' + uri + ' ' + status"
+          }
+        ],
+        "remove": [
+          "__ts",
+          "__ident",
+          "duration"
+        ]
+      },
+      "description": "Normalize timestamp, numerics, user, protocol, action, severity and direction"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "event_type",
+            "value": "String(uri_path).match(/login/i) ? 'authentication' : (String(uri_path).match(/^\\/(healthz|metrics)$/) ? 'health_check' : 'web_request')"
+          },
+          {
+            "name": "auth_result",
+            "value": "String(uri_path).match(/login/i) ? (Number(status) < 400 ? 'success' : 'failure') : undefined"
+          },
+          {
+            "name": "is_suspicious",
+            "value": "String(uri).match(/(\\.env|wp-login|\\.\\.\\/|etc\\/passwd)/i) || String(http_user_agent).match(/(sqlmap|nmap|nikto|python-requests|curl)/i) ? true : false"
+          },
+          {
+            "name": "tool_signature",
+            "value": "String(http_user_agent).match(/sqlmap/i) ? 'sqlmap' : (String(http_user_agent).match(/Nmap/i) ? 'nmap' : (String(http_user_agent).match(/python-requests/i) ? 'python-requests' : (String(http_user_agent).match(/curl/i) ? 'curl' : undefined)))"
+          }
+        ]
+      },
+      "description": "Classify event type and flag likely reconnaissance/attack tooling or paths"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'access common'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'access_common'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "AccessCommon_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "10.42.3.15 - jsmith [14/Mar/2025:03:22:11 +0000] \"GET /api/v2/accounts/summary HTTP/1.1\" 200 4821 \"https://portal.internal.corp/dashboard\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 112 app-prod-07.internal.corp",
+        "_time": null,
+        "src_ip": "10.42.3.15",
+        "user": "jsmith",
+        "http_method": "GET",
+        "uri": "/api/v2/accounts/summary",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes_out": 4821,
+        "http_referrer": "https://portal.internal.corp/dashboard",
+        "http_user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "dst_host": "app-prod-07.internal.corp",
+        "uri_path": "/api/v2/accounts/summary",
+        "timestamp": "14/Mar/2025:03:22:11 +0000",
+        "duration_ms": 112,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "allowed",
+        "severity": "Informational",
+        "direction": "internal",
+        "message": "GET /api/v2/accounts/summary 200",
+        "event_type": "web_request",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:03:22:11 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900212,
+        "src_endpoint": {
+          "ip": "10.42.3.15"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "203.0.113.44 - - [14/Mar/2025:03:24:55 +0000] \"POST /login HTTP/1.1\" 401 512 \"-\" \"curl/7.81.0\" 45 edge-gw-02.corp.net",
+        "_time": null,
+        "src_ip": "203.0.113.44",
+        "http_method": "POST",
+        "uri": "/login",
+        "http_version": "HTTP/1.1",
+        "status": 401,
+        "bytes_out": 512,
+        "http_user_agent": "curl/7.81.0",
+        "dst_host": "edge-gw-02.corp.net",
+        "uri_path": "/login",
+        "timestamp": "14/Mar/2025:03:24:55 +0000",
+        "duration_ms": 45,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "blocked",
+        "severity": "Informational",
+        "direction": "inbound",
+        "message": "POST /login 401",
+        "event_type": "authentication",
+        "auth_result": "failure",
+        "is_suspicious": true,
+        "tool_signature": "curl",
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:03:24:55 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900215,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "192.168.1.101 - mrodriguez [14/Mar/2025:04:01:07 +0000] \"PUT /api/v2/orders/88213 HTTP/1.1\" 200 1103 \"https://internal.corp/orders\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 89 app-prod-03.internal.corp",
+        "_time": null,
+        "src_ip": "192.168.1.101",
+        "user": "mrodriguez",
+        "http_method": "PUT",
+        "uri": "/api/v2/orders/88213",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes_out": 1103,
+        "http_referrer": "https://internal.corp/orders",
+        "http_user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "dst_host": "app-prod-03.internal.corp",
+        "uri_path": "/api/v2/orders/88213",
+        "timestamp": "14/Mar/2025:04:01:07 +0000",
+        "duration_ms": 89,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "allowed",
+        "severity": "Informational",
+        "direction": "internal",
+        "message": "PUT /api/v2/orders/88213 200",
+        "event_type": "web_request",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:04:01:07 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900215,
+        "src_endpoint": {
+          "ip": "192.168.1.101"
+        },
+        "actor": {
+          "user": {
+            "name": "mrodriguez"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "172.16.5.9 - svc-backup [14/Mar/2025:05:11:33 +0000] \"GET /healthz HTTP/1.1\" 200 12 \"-\" \"kube-probe/1.29\" 3 backup-node-01.internal.corp",
+        "_time": null,
+        "src_ip": "172.16.5.9",
+        "user": "svc-backup",
+        "http_method": "GET",
+        "uri": "/healthz",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes_out": 12,
+        "http_user_agent": "kube-probe/1.29",
+        "dst_host": "backup-node-01.internal.corp",
+        "uri_path": "/healthz",
+        "timestamp": "14/Mar/2025:05:11:33 +0000",
+        "duration_ms": 3,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "allowed",
+        "severity": "Informational",
+        "direction": "internal",
+        "message": "GET /healthz 200",
+        "event_type": "health_check",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:05:11:33 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900216,
+        "src_endpoint": {
+          "ip": "172.16.5.9"
+        },
+        "actor": {
+          "user": {
+            "name": "svc-backup"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "198.51.100.77 - - [14/Mar/2025:05:47:19 +0000] \"GET /wp-login.php HTTP/1.1\" 404 210 \"-\" \"Mozilla/5.0 (compatible; Nmap Scripting Engine)\" 21 web-frontend-11.corp.net",
+        "_time": null,
+        "src_ip": "198.51.100.77",
+        "http_method": "GET",
+        "uri": "/wp-login.php",
+        "http_version": "HTTP/1.1",
+        "status": 404,
+        "bytes_out": 210,
+        "http_user_agent": "Mozilla/5.0 (compatible; Nmap Scripting Engine)",
+        "dst_host": "web-frontend-11.corp.net",
+        "uri_path": "/wp-login.php",
+        "timestamp": "14/Mar/2025:05:47:19 +0000",
+        "duration_ms": 21,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "blocked",
+        "severity": "Informational",
+        "direction": "inbound",
+        "message": "GET /wp-login.php 404",
+        "event_type": "authentication",
+        "auth_result": "failure",
+        "is_suspicious": true,
+        "tool_signature": "nmap",
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:05:47:19 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900217,
+        "src_endpoint": {
+          "ip": "198.51.100.77"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "10.10.2.45 - akhan [14/Mar/2025:06:15:02 +0000] \"DELETE /api/v2/users/4471 HTTP/1.1\" 403 340 \"https://internal.corp/admin\" \"Mozilla/5.0 (X11; Linux x86_64)\" 67 app-prod-07.internal.corp",
+        "_time": null,
+        "src_ip": "10.10.2.45",
+        "user": "akhan",
+        "http_method": "DELETE",
+        "uri": "/api/v2/users/4471",
+        "http_version": "HTTP/1.1",
+        "status": 403,
+        "bytes_out": 340,
+        "http_referrer": "https://internal.corp/admin",
+        "http_user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "dst_host": "app-prod-07.internal.corp",
+        "uri_path": "/api/v2/users/4471",
+        "timestamp": "14/Mar/2025:06:15:02 +0000",
+        "duration_ms": 67,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "blocked",
+        "severity": "Informational",
+        "direction": "internal",
+        "message": "DELETE /api/v2/users/4471 403",
+        "event_type": "web_request",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:06:15:02 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900217,
+        "src_endpoint": {
+          "ip": "10.10.2.45"
+        },
+        "actor": {
+          "user": {
+            "name": "akhan"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "2001:db8:85a3::8a2e:370:7334 - - [14/Mar/2025:07:02:41 +0000] \"GET /assets/report_final_v3.pdf HTTP/1.1\" 200 20485760 \"https://reports.corp.net/view\" \"Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X)\" 3021 cdn-edge-04.corp.net",
+        "_time": null,
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "http_method": "GET",
+        "uri": "/assets/report_final_v3.pdf",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes_out": 20485760,
+        "http_referrer": "https://reports.corp.net/view",
+        "http_user_agent": "Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X)",
+        "dst_host": "cdn-edge-04.corp.net",
+        "uri_path": "/assets/report_final_v3.pdf",
+        "timestamp": "14/Mar/2025:07:02:41 +0000",
+        "duration_ms": 3021,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv6",
+        "action": "allowed",
+        "severity": "Informational",
+        "direction": "inbound",
+        "message": "GET /assets/report_final_v3.pdf 200",
+        "event_type": "web_request",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:07:02:41 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900217,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      },
+      {
+        "_raw": "10.0.0.5 - root [14/Mar/2025:08:33:15 +0000] \"GET /admin/config HTTP/1.1\" 200 998 \"-\" \"Mozilla/5.0 (Windows NT 6.1)\" 56 legacy-srv-01.internal.corp",
+        "_time": null,
+        "src_ip": "10.0.0.5",
+        "user": "root",
+        "http_method": "GET",
+        "uri": "/admin/config",
+        "http_version": "HTTP/1.1",
+        "status": 200,
+        "bytes_out": 998,
+        "http_user_agent": "Mozilla/5.0 (Windows NT 6.1)",
+        "dst_host": "legacy-srv-01.internal.corp",
+        "uri_path": "/admin/config",
+        "timestamp": "14/Mar/2025:08:33:15 +0000",
+        "duration_ms": 56,
+        "protocol": "tcp",
+        "app_protocol": "http",
+        "ip_version": "ipv4",
+        "action": "allowed",
+        "severity": "Informational",
+        "direction": "internal",
+        "message": "GET /admin/config 200",
+        "event_type": "web_request",
+        "is_suspicious": false,
+        "transport": "tcp",
+        "log_time": "14/Mar/2025:08:33:15 +0000",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788966900219,
+        "src_endpoint": {
+          "ip": "10.0.0.5"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "access common",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "access_common"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "10.42.3.15 - jsmith [14/Mar/2025:03:22:11 +0000] \"GET /api/v2/accounts/summary HTTP/1.1\" 200 4821 \"https://portal.internal.corp/dashboard\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\" 112 app-prod-07.internal.corp",
+      "203.0.113.44 - - [14/Mar/2025:03:24:55 +0000] \"POST /login HTTP/1.1\" 401 512 \"-\" \"curl/7.81.0\" 45 edge-gw-02.corp.net",
+      "192.168.1.101 - mrodriguez [14/Mar/2025:04:01:07 +0000] \"PUT /api/v2/orders/88213 HTTP/1.1\" 200 1103 \"https://internal.corp/orders\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)\" 89 app-prod-03.internal.corp",
+      "172.16.5.9 - svc-backup [14/Mar/2025:05:11:33 +0000] \"GET /healthz HTTP/1.1\" 200 12 \"-\" \"kube-probe/1.29\" 3 backup-node-01.internal.corp",
+      "198.51.100.77 - - [14/Mar/2025:05:47:19 +0000] \"GET /wp-login.php HTTP/1.1\" 404 210 \"-\" \"Mozilla/5.0 (compatible; Nmap Scripting Engine)\" 21 web-frontend-11.corp.net",
+      "10.10.2.45 - akhan [14/Mar/2025:06:15:02 +0000] \"DELETE /api/v2/users/4471 HTTP/1.1\" 403 340 \"https://internal.corp/admin\" \"Mozilla/5.0 (X11; Linux x86_64)\" 67 app-prod-07.internal.corp",
+      "2001:db8:85a3::8a2e:370:7334 - - [14/Mar/2025:07:02:41 +0000] \"GET /assets/report_final_v3.pdf HTTP/1.1\" 200 20485760 \"https://reports.corp.net/view\" \"Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X)\" 3021 cdn-edge-04.corp.net",
+      "10.0.0.5 - root [14/Mar/2025:08:33:15 +0000] \"GET /admin/config HTTP/1.1\" 200 998 \"-\" \"Mozilla/5.0 (Windows NT 6.1)\" 56 legacy-srv-01.internal.corp"
+    ],
+    "sourcetype": "access_common"
+  }
+}
