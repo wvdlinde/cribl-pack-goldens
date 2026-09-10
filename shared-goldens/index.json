@@ -17100,6 +17100,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "splunk_app_soar:misc-logs::ocsf",
+      "sourcetype": "splunk_app_soar:misc-logs",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:06.044Z",
+      "path": "shared-goldens/splunk_app_soar:misc-logs__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
