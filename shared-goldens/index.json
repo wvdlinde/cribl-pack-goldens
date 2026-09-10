@@ -17130,6 +17130,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "tenable:sc:admin::ocsf",
+      "sourcetype": "tenable:sc:admin",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:15.192Z",
+      "path": "shared-goldens/tenable:sc:admin__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
