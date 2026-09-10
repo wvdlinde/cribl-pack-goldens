@@ -17205,6 +17205,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware:esxlog:cmmdsTimeMachineDump::ocsf",
+      "sourcetype": "vmware:esxlog:cmmdsTimeMachineDump",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:39.272Z",
+      "path": "shared-goldens/vmware:esxlog:cmmdsTimeMachineDump__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
