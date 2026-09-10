@@ -17145,6 +17145,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "trendmicro:interscan::ocsf",
+      "sourcetype": "trendmicro:interscan",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:49:20.101Z",
+      "path": "shared-goldens/trendmicro:interscan__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
