@@ -2,11 +2,11 @@
   "key": "ivanti_splunkd::ocsf",
   "sourcetype": "ivanti_splunkd",
   "dest_format": "ocsf",
-  "score": 85,
+  "score": 87,
   "part": null,
-  "author": "wlinde@cribl.io",
-  "build": 652,
-  "updated_at": "2026-09-01T14:56:30.400Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:46:39.841Z",
   "functions": [
     {
       "id": "regex_extract",
@@ -179,95 +179,115 @@
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF Base Event (1001) envelope",
       "conf": {
         "add": [
           {
             "name": "class_uid",
-            "value": "'4001'"
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
           },
           {
             "name": "category_uid",
-            "value": "'4'"
+            "value": "1"
           },
           {
-            "name": "event_type",
-            "value": "'Network Activity'"
-          },
-          {
-            "name": "src_endpoint.ip",
-            "value": "src_ip || ''"
-          },
-          {
-            "name": "dst_endpoint.ip",
-            "value": "dst_host || dvc_host || vpn_assigned_ip || ''"
-          },
-          {
-            "name": "actor.user.name",
-            "value": "user || attempted_user || ''"
-          },
-          {
-            "name": "device.hostname",
-            "value": "dvc_host || ''"
-          },
-          {
-            "name": "time",
-            "value": "Number(Date.parse(timestamp))"
-          },
-          {
-            "name": "severity_id",
-            "value": "severity == 'critical' ? 5 : severity == 'error' ? 4 : severity == 'warning' ? 3 : severity == 'informational' ? 1 : 0"
-          },
-          {
-            "name": "activity_id",
-            "value": "action == 'success' || action == 'established' ? 1 : (action == 'failure' || action == 'terminated' ? 2 : 99)"
+            "name": "category_name",
+            "value": "'System Activity'"
           },
           {
             "name": "type_uid",
-            "value": "400100 + (action == 'success' || action == 'established' ? 1 : (action == 'failure' || action == 'terminated' ? 2 : 99))"
+            "value": "100100"
           },
           {
-            "name": "category_uid",
-            "value": "4"
+            "name": "severity_id",
+            "value": "1"
           },
           {
-            "name": "class_uid",
-            "value": "4001"
+            "name": "severity",
+            "value": "'Informational'"
           },
           {
-            "name": "connection_info.protocol_name",
-            "value": "event_code && event_code.indexOf('VPN') === 0 ? 'VPN' : ''"
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
           },
           {
-            "name": "src_endpoint.port",
-            "value": "Number(0)"
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
           }
         ]
-      },
-      "description": "Map fields to destination schema"
+      }
     },
     {
       "id": "eval",
-      "filter": "true",
-      "disabled": false,
+      "description": "OCSF envelope (cont. 16)",
       "conf": {
         "add": [
           {
-            "name": "metadata.product.name",
-            "value": "'Ivanti Connect Secure'"
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
           },
           {
-            "name": "metadata.product.vendor_name",
-            "value": "'Ivanti'"
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
           },
           {
             "name": "metadata.version",
-            "value": "'1.1.0'"
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'ivanti splunkd'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
           }
         ]
-      },
-      "description": "Map fields (continued 16-18)"
+      }
     },
     {
       "id": "eval",
@@ -294,48 +314,365 @@
   ],
   "recipe": null,
   "report": {
+    "pipelineId": "IvantiSplunkd_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
     "band": "fail",
-    "scoreSource": "value-coverage",
-    "findings": [
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"2001\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"db8\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"85a3\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"8a2e\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"370\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      },
-      {
-        "severity": "medium",
-        "field": "_value",
-        "issue": "sample value \"7334\" was not extracted/mapped into the output",
-        "pointImpact": 0
-      }
-    ],
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
     "missingFields": [],
     "emptyFields": [],
-    "summary": "Deterministic live preview completed."
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-06-03 08:12:45 - ics01 - [10.42.3.15] jsmith(Employees)[Full_Access] - AUT24281 - Primary authentication successful for jsmith/Employees from 10.42.3.15 using auth server ADAuth1.",
+        "_time": 1717402365,
+        "timestamp": "2024-06-03 08:12:45",
+        "dvc_host": "ics01",
+        "src_ip": "10.42.3.15",
+        "user": "jsmith",
+        "user_realm": "Employees",
+        "user_role": "Full_Access",
+        "event_code": "AUT24281",
+        "message": "Primary authentication successful for jsmith/Employees from 10.42.3.15 using auth server ADAuth1.",
+        "auth_server": "ADAuth1",
+        "event_category": "authentication",
+        "action": "success",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics01",
+        "log_time": "2024-06-03 08:12:45",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717402365000,
+        "src_endpoint": {
+          "ip": "10.42.3.15"
+        },
+        "actor": {
+          "user": {
+            "name": "jsmith"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 08:14:02 - ics01 - [203.0.113.44] mrogers(Contractors)[Limited_Access] - AUT22673 - Authentication failed for mrogers/Contractors from 203.0.113.44 (invalid password) attempt 3.",
+        "_time": 1717402442,
+        "timestamp": "2024-06-03 08:14:02",
+        "dvc_host": "ics01",
+        "src_ip": "203.0.113.44",
+        "user": "mrogers",
+        "user_realm": "Contractors",
+        "user_role": "Limited_Access",
+        "event_code": "AUT22673",
+        "message": "Authentication failed for mrogers/Contractors from 203.0.113.44 (invalid password) attempt 3.",
+        "failure_reason": "invalid password",
+        "event_category": "authentication",
+        "action": "failure",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics01",
+        "log_time": "2024-06-03 08:14:02",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717402442000,
+        "src_endpoint": {
+          "ip": "203.0.113.44"
+        },
+        "actor": {
+          "user": {
+            "name": "mrogers"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 08:20:11 - ics02 - [172.16.5.9] admin(Admin_Users)[Full_Admin] - ADM24327 - Administrator admin logged into admin console from 172.16.5.9.",
+        "_time": 1717402811,
+        "timestamp": "2024-06-03 08:20:11",
+        "dvc_host": "ics02",
+        "src_ip": "172.16.5.9",
+        "user": "admin",
+        "user_realm": "Admin_Users",
+        "user_role": "Full_Admin",
+        "event_code": "ADM24327",
+        "message": "Administrator admin logged into admin console from 172.16.5.9.",
+        "event_category": "administration",
+        "action": "success",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics02",
+        "log_time": "2024-06-03 08:20:11",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717402811000,
+        "src_endpoint": {
+          "ip": "172.16.5.9"
+        },
+        "actor": {
+          "user": {
+            "name": "admin"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 08:31:55 - ics01 - [192.168.1.201] khall(Employees)[Full_Access] - VPN31007 - VPN tunnel established for khall from 192.168.1.201, assigned IP 10.10.10.55.",
+        "_time": 1717403515,
+        "timestamp": "2024-06-03 08:31:55",
+        "dvc_host": "ics01",
+        "src_ip": "192.168.1.201",
+        "user": "khall",
+        "user_realm": "Employees",
+        "user_role": "Full_Access",
+        "event_code": "VPN31007",
+        "message": "VPN tunnel established for khall from 192.168.1.201, assigned IP 10.10.10.55.",
+        "vpn_assigned_ip": "10.10.10.55.",
+        "event_category": "vpn",
+        "action": "success",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics01",
+        "log_time": "2024-06-03 08:31:55",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717403515000,
+        "src_endpoint": {
+          "ip": "192.168.1.201"
+        },
+        "actor": {
+          "user": {
+            "name": "khall"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 09:02:19 - ics02 - [198.51.100.77] - AUT22677 - Authentication failed: unknown username 'root' from 198.51.100.77.",
+        "_time": 1717405339,
+        "timestamp": "2024-06-03 09:02:19",
+        "dvc_host": "ics02",
+        "src_ip": "198.51.100.77",
+        "user": "root",
+        "event_code": "AUT22677",
+        "message": "Authentication failed: unknown username 'root' from 198.51.100.77.",
+        "attempted_user": "root",
+        "event_category": "authentication",
+        "action": "failure",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics02",
+        "log_time": "2024-06-03 09:02:19",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717405339000,
+        "src_endpoint": {
+          "ip": "198.51.100.77"
+        },
+        "actor": {
+          "user": {
+            "name": "root"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 09:15:33 - ics01 - [10.42.3.20] dwalsh(Employees)[Full_Access] - SYS31640 - Session timed out for dwalsh after 30 minutes of inactivity.",
+        "_time": 1717406133,
+        "timestamp": "2024-06-03 09:15:33",
+        "dvc_host": "ics01",
+        "src_ip": "10.42.3.20",
+        "user": "dwalsh",
+        "user_realm": "Employees",
+        "user_role": "Full_Access",
+        "event_code": "SYS31640",
+        "message": "Session timed out for dwalsh after 30 minutes of inactivity.",
+        "event_category": "system",
+        "action": "info",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics01",
+        "log_time": "2024-06-03 09:15:33",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717406133000,
+        "src_endpoint": {
+          "ip": "10.42.3.20"
+        },
+        "actor": {
+          "user": {
+            "name": "dwalsh"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 09:44:07 - ics03 - [2001:db8:85a3::8a2e:370:7334] tnguyen(Employees)[Full_Access] - VPN31009 - VPN tunnel terminated for tnguyen, session duration 00:22:14, bytes transferred 4523112.",
+        "_time": 1717407847,
+        "timestamp": "2024-06-03 09:44:07",
+        "dvc_host": "ics03",
+        "src_ip": "2001:db8:85a3::8a2e:370:7334",
+        "user": "tnguyen",
+        "user_realm": "Employees",
+        "user_role": "Full_Access",
+        "event_code": "VPN31009",
+        "message": "VPN tunnel terminated for tnguyen, session duration 00:22:14, bytes transferred 4523112.",
+        "session_duration": "00:22:14",
+        "event_category": "vpn",
+        "action": "info",
+        "severity": "Informational",
+        "src_ip_version": 6,
+        "dst_host": "ics03",
+        "log_time": "2024-06-03 09:44:07",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717407847000,
+        "src_endpoint": {
+          "ip": "2001:db8:85a3::8a2e:370:7334"
+        },
+        "actor": {
+          "user": {
+            "name": "tnguyen"
+          }
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      },
+      {
+        "_raw": "2024-06-03 10:05:52 - ics02 - [45.33.22.156] - SEC29981 - Possible brute force attack detected: 15 failed login attempts from 45.33.22.156 within 60 seconds.",
+        "_time": 1717409152,
+        "timestamp": "2024-06-03 10:05:52",
+        "dvc_host": "ics02",
+        "src_ip": "45.33.22.156",
+        "event_code": "SEC29981",
+        "message": "Possible brute force attack detected: 15 failed login attempts from 45.33.22.156 within 60 seconds.",
+        "event_category": "security",
+        "action": "failure",
+        "severity": "Informational",
+        "src_ip_version": 4,
+        "dst_host": "ics02",
+        "log_time": "2024-06-03 10:05:52",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1717409152000,
+        "src_endpoint": {
+          "ip": "45.33.22.156"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "ivanti splunkd",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "ivanti_splunkd"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-06-03 08:12:45 - ics01 - [10.42.3.15] jsmith(Employees)[Full_Access] - AUT24281 - Primary authentication successful for jsmith/Employees from 10.42.3.15 using auth server ADAuth1.",
+      "2024-06-03 08:14:02 - ics01 - [203.0.113.44] mrogers(Contractors)[Limited_Access] - AUT22673 - Authentication failed for mrogers/Contractors from 203.0.113.44 (invalid password) attempt 3.",
+      "2024-06-03 08:20:11 - ics02 - [172.16.5.9] admin(Admin_Users)[Full_Admin] - ADM24327 - Administrator admin logged into admin console from 172.16.5.9.",
+      "2024-06-03 08:31:55 - ics01 - [192.168.1.201] khall(Employees)[Full_Access] - VPN31007 - VPN tunnel established for khall from 192.168.1.201, assigned IP 10.10.10.55.",
+      "2024-06-03 09:02:19 - ics02 - [198.51.100.77] - AUT22677 - Authentication failed: unknown username 'root' from 198.51.100.77.",
+      "2024-06-03 09:15:33 - ics01 - [10.42.3.20] dwalsh(Employees)[Full_Access] - SYS31640 - Session timed out for dwalsh after 30 minutes of inactivity.",
+      "2024-06-03 09:44:07 - ics03 - [2001:db8:85a3::8a2e:370:7334] tnguyen(Employees)[Full_Access] - VPN31009 - VPN tunnel terminated for tnguyen, session duration 00:22:14, bytes transferred 4523112.",
+      "2024-06-03 10:05:52 - ics02 - [45.33.22.156] - SEC29981 - Possible brute force attack detected: 15 failed login attempts from 45.33.22.156 within 60 seconds."
+    ],
+    "sourcetype": "ivanti_splunkd"
   }
 }
