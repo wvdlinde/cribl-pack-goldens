@@ -1,0 +1,627 @@
+{
+  "key": "XmlWinEventLog:System::ocsf",
+  "sourcetype": "XmlWinEventLog:System",
+  "dest_format": "ocsf",
+  "score": 100,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:51:04.031Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('<Event')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/<Provider Name='(?<provider>[^']+)'.*?<EventID[^>]*>(?<event_id>\\d+)<\\/EventID>[\\s\\S]*?<TimeCreated SystemTime='(?<timestamp>[^']+)'\\/>[\\s\\S]*?<Computer>(?<host>[^<]+)<\\/Computer>[\\s\\S]*?<Security UserID='(?<user_sid>[^']+)'\\/>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract core System block fields from Windows XML event (provider, event id, timestamp, host, user SID)"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('<Event')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/<EventData>(?<message>[\\s\\S]*)<\\/EventData>/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract raw EventData block as message for XML-formatted Windows events"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "_raw.startsWith('eventsourcename=')",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/eventsourcename=(?<provider>.*?) guid=(?<guid>\\{[^}]+\\}) name=(?<message>.*?) processid=(?<process_id>\\d+) qualifiers=(?<qualifiers>\\d+) systemtime=(?<timestamp>\\S+) threadid=(?<thread_id>\\d+) userid=(?<user_sid>\\S+) xmlns=/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Extract fields from KVP-formatted Windows event (provider, guid, message, process/thread ids, timestamp, user SID)"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "typeof timestamp === 'string' ? Date.parse(timestamp)/1000 : _time"
+          },
+          {
+            "name": "action",
+            "value": "event_id === '7045' ? 'service_installed' : event_id === '7036' ? 'service_state_change' : event_id === '7040' ? 'service_config_change' : event_id === '1074' ? 'shutdown_restart' : event_id === '41' ? 'unexpected_shutdown' : (message && message.indexOf('service was installed') !== -1) ? 'service_installed' : (message && message.indexOf('entered the running state') !== -1) ? 'service_state_change' : (message && message.indexOf('start type of the') !== -1) ? 'service_config_change' : (message && message.indexOf('has initiated the restart') !== -1) ? 'shutdown_restart' : 'unknown'"
+          }
+        ]
+      },
+      "description": "Derive _time from extracted timestamp and normalize action based on event_id or message content"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'Windows'"
+          },
+          {
+            "name": "version",
+            "value": "'10'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Windows'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'10'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'XmlWinEventLog:System'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '7036' || event_code === '7036'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop service entered running/stopped state (7036) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "XmlWinEventLogSystem_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:24:00.123456700Z'/><EventRecordID>88214</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='4056'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='ServiceName'>PSEXESVC</Data><Data Name='ImagePath'>%SystemRoot%\\PSEXESVC.exe</Data><Data Name='ServiceType'>user mode service</Data><Data Name='StartType'>demand start</Data><Data Name='AccountName'>LocalSystem</Data></EventData></Event>",
+        "_time": 1715016240.123,
+        "provider": "Service Control Manager",
+        "event_id": "7045",
+        "timestamp": "2024-05-06T17:24:00.123456700Z",
+        "host": "WKS-1042.acme.local",
+        "user_sid": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "message": "<Data Name='ServiceName'>PSEXESVC</Data><Data Name='ImagePath'>%SystemRoot%\\PSEXESVC.exe</Data><Data Name='ServiceType'>user mode service</Data><Data Name='StartType'>demand start</Data><Data Name='AccountName'>LocalSystem</Data>",
+        "action": "service_installed",
+        "log_time": "2024-05-06T17:24:00.123456700Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715016240123,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:25:12.884000000Z'/><EventRecordID>88215</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='1204'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Windows Update</Data><Data Name='param2'>running</Data></EventData></Event>",
+        "_time": 1715016312.884,
+        "provider": "Service Control Manager",
+        "event_id": "7036",
+        "timestamp": "2024-05-06T17:25:12.884000000Z",
+        "host": "WKS-1042.acme.local",
+        "user_sid": "S-1-5-18",
+        "message": "<Data Name='param1'>Windows Update</Data><Data Name='param2'>running</Data>",
+        "action": "service_state_change",
+        "log_time": "2024-05-06T17:25:12.884000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715016312884,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7040</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:26:40.005000000Z'/><EventRecordID>88216</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='4056'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Background Intelligent Transfer Service</Data><Data Name='param2'>demand start</Data><Data Name='param3'>auto start</Data><Data Name='param4'>BITS</Data></EventData></Event>",
+        "_time": 1715016400.005,
+        "provider": "Service Control Manager",
+        "event_id": "7040",
+        "timestamp": "2024-05-06T17:26:40.005000000Z",
+        "host": "WKS-1042.acme.local",
+        "user_sid": "S-1-5-18",
+        "message": "<Data Name='param1'>Background Intelligent Transfer Service</Data><Data Name='param2'>demand start</Data><Data Name='param3'>auto start</Data><Data Name='param4'>BITS</Data>",
+        "action": "service_config_change",
+        "log_time": "2024-05-06T17:26:40.005000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715016400005,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='User32' Guid='{b0aa8734-56f7-41cc-b2f4-de228e98b946}' EventSourceName='User32'/><EventID Qualifiers='32768'>1074</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:27:02.220000000Z'/><EventRecordID>88217</EventRecordID><Correlation/><Execution ProcessID='1160' ThreadID='5528'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data>C:\\Windows\\system32\\RuntimeBroker.exe (WKS-1042)</Data><Data>WKS-1042</Data><Data>No title for this reason could be found</Data><Data>0x500ff</Data><Data>power off</Data><Data></Data><Data>ACME\\jdoe</Data></EventData></Event>",
+        "_time": 1715016422.22,
+        "provider": "User32",
+        "event_id": "1074",
+        "timestamp": "2024-05-06T17:27:02.220000000Z",
+        "host": "WKS-1042.acme.local",
+        "user_sid": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "message": "<Data>C:\\Windows\\system32\\RuntimeBroker.exe (WKS-1042)</Data><Data>WKS-1042</Data><Data>No title for this reason could be found</Data><Data>0x500ff</Data><Data>power off</Data><Data></Data><Data>ACME\\jdoe</Data>",
+        "action": "shutdown_restart",
+        "log_time": "2024-05-06T17:27:02.220000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715016422220,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Kernel-Power' Guid='{331c3b3a-2005-44c2-ac5e-77220c37d6b4}'/><EventID>41</EventID><Version>0</Version><Level>1</Level><Task>63</Task><Opcode>0</Opcode><Keywords>0x8000000000000002</Keywords><TimeCreated SystemTime='2024-05-06T17:28:15.771000000Z'/><EventRecordID>88218</EventRecordID><Correlation/><Execution ProcessID='4' ThreadID='8'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='BugcheckCode'>0</Data><Data Name='BugcheckParameter1'>0x0</Data><Data Name='SleepInProgress'>0</Data><Data Name='PowerButtonTimestamp'>0</Data><Data Name='BootAppStatus'>0</Data></EventData></Event>",
+        "_time": 1715016495.771,
+        "provider": "Microsoft-Windows-Kernel-Power",
+        "event_id": "41",
+        "timestamp": "2024-05-06T17:28:15.771000000Z",
+        "host": "WKS-1042.acme.local",
+        "user_sid": "S-1-5-18",
+        "message": "<Data Name='BugcheckCode'>0</Data><Data Name='BugcheckParameter1'>0x0</Data><Data Name='SleepInProgress'>0</Data><Data Name='PowerButtonTimestamp'>0</Data><Data Name='BootAppStatus'>0</Data>",
+        "action": "unexpected_shutdown",
+        "log_time": "2024-05-06T17:28:15.771000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715016495771,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=A service was installed in the system. Service Name: TermService Service File Name: C:\\Windows\\System32\\svchost.exe -k netsvcs Service Type: user mode service Service Start Type: auto start Service Account: LocalSystem This event indicates a new service registration recorded by the Service Control Manager on this host. It also reflects the configured startup type at the time the service was first registered on this workstation. processid=728 qualifiers=16384 systemtime=2024-05-07T09:14:22.556000000Z threadid=3312 userid=S-1-5-21-1004336348-1177238915-682003330-1021 xmlns=http://schemas.microsoft.com/win/2004/08/events/event",
+        "_time": 1715073262.556,
+        "provider": "Service Control Manager",
+        "guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
+        "message": "A service was installed in the system. Service Name: TermService Service File Name: C:\\Windows\\System32\\svchost.exe -k netsvcs Service Type: user mode service Service Start Type: auto start Service Account: LocalSystem This event indicates a new service registration recorded by the Service Control Manager on this host. It also reflects the configured startup type at the time the service was first registered on this workstation.",
+        "process_id": "728",
+        "qualifiers": "16384",
+        "timestamp": "2024-05-07T09:14:22.556000000Z",
+        "thread_id": "3312",
+        "user_sid": "S-1-5-21-1004336348-1177238915-682003330-1021",
+        "action": "service_installed",
+        "log_time": "2024-05-07T09:14:22.556000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715073262556,
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=The Print Spooler service entered the running state. This message is generated whenever a service transitions between running, stopped, or paused states as tracked by the Service Control Manager on this workstation. Service Control Manager logs this state transition for auditing and troubleshooting purposes, allowing administrators to correlate service health changes with other system activity recorded in the System event log around the same timestamp on this particular workstation instance, and other related audit trails maintained by the Service Control Manager subsystem for this host over time. processid=696 qualifiers=16384 systemtime=2024-05-07T10:41:05.902000000Z threadid=2044 userid=S-1-5-18 xmlns=http://schemas.microsoft.com/win/2004/08/events/event",
+        "_time": 1715078465.902,
+        "provider": "Service Control Manager",
+        "guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
+        "message": "The Print Spooler service entered the running state. This message is generated whenever a service transitions between running, stopped, or paused states as tracked by the Service Control Manager on this workstation. Service Control Manager logs this state transition for auditing and troubleshooting purposes, allowing administrators to correlate service health changes with other system activity recorded in the System event log around the same timestamp on this particular workstation instance, and other related audit trails maintained by the Service Control Manager subsystem for this host over time.",
+        "process_id": "696",
+        "qualifiers": "16384",
+        "timestamp": "2024-05-07T10:41:05.902000000Z",
+        "thread_id": "2044",
+        "user_sid": "S-1-5-18",
+        "action": "service_state_change",
+        "log_time": "2024-05-07T10:41:05.902000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715078465902,
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      },
+      {
+        "_raw": "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=The start type of the Remote Desktop Services service was changed from demand start to auto start. This event indicates an administrative or scripted modification to the startup configuration for the TermService service, which controls how the service behaves during system boot as managed by the Service Control Manager on this workstation. Such changes are typically initiated through the Services management console, PowerShell cmdlets, or Group Policy applied to this host. processid=696 qualifiers=16384 systemtime=2024-05-07T11:12:47.118000000Z threadid=1892 userid=S-1-5-21-1004336348-1177238915-682003330-1015 xmlns=http://schemas.microsoft.com/win/2004/08/events/event",
+        "_time": 1715080367.118,
+        "provider": "Service Control Manager",
+        "guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
+        "message": "The start type of the Remote Desktop Services service was changed from demand start to auto start. This event indicates an administrative or scripted modification to the startup configuration for the TermService service, which controls how the service behaves during system boot as managed by the Service Control Manager on this workstation. Such changes are typically initiated through the Services management console, PowerShell cmdlets, or Group Policy applied to this host.",
+        "process_id": "696",
+        "qualifiers": "16384",
+        "timestamp": "2024-05-07T11:12:47.118000000Z",
+        "thread_id": "1892",
+        "user_sid": "S-1-5-21-1004336348-1177238915-682003330-1015",
+        "action": "service_config_change",
+        "log_time": "2024-05-07T11:12:47.118000000Z",
+        "vendor": "Microsoft",
+        "product": "Windows",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "severity": "Informational",
+        "time": 1715080367118,
+        "metadata": {
+          "product": {
+            "name": "Windows",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:System"
+      }
+    ],
+    "sampleKeys": [
+      "xmlns",
+      "Name",
+      "Guid",
+      "EventSourceName",
+      "Qualifiers",
+      "SystemTime",
+      "ProcessID",
+      "ThreadID",
+      "UserID",
+      "eventsourcename",
+      "guid",
+      "name",
+      "processid",
+      "qualifiers",
+      "systemtime",
+      "threadid",
+      "userid"
+    ],
+    "sampleRaw": [
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7045</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:24:00.123456700Z'/><EventRecordID>88214</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='4056'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='ServiceName'>PSEXESVC</Data><Data Name='ImagePath'>%SystemRoot%\\PSEXESVC.exe</Data><Data Name='ServiceType'>user mode service</Data><Data Name='StartType'>demand start</Data><Data Name='AccountName'>LocalSystem</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7036</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:25:12.884000000Z'/><EventRecordID>88215</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='1204'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Windows Update</Data><Data Name='param2'>running</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Service Control Manager' Guid='{555908d1-a6d7-4695-8e1e-26931d2012f4}' EventSourceName='Service Control Manager'/><EventID Qualifiers='16384'>7040</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:26:40.005000000Z'/><EventRecordID>88216</EventRecordID><Correlation/><Execution ProcessID='696' ThreadID='4056'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='param1'>Background Intelligent Transfer Service</Data><Data Name='param2'>demand start</Data><Data Name='param3'>auto start</Data><Data Name='param4'>BITS</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='User32' Guid='{b0aa8734-56f7-41cc-b2f4-de228e98b946}' EventSourceName='User32'/><EventID Qualifiers='32768'>1074</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8080000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:27:02.220000000Z'/><EventRecordID>88217</EventRecordID><Correlation/><Execution ProcessID='1160' ThreadID='5528'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data>C:\\Windows\\system32\\RuntimeBroker.exe (WKS-1042)</Data><Data>WKS-1042</Data><Data>No title for this reason could be found</Data><Data>0x500ff</Data><Data>power off</Data><Data></Data><Data>ACME\\jdoe</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-Kernel-Power' Guid='{331c3b3a-2005-44c2-ac5e-77220c37d6b4}'/><EventID>41</EventID><Version>0</Version><Level>1</Level><Task>63</Task><Opcode>0</Opcode><Keywords>0x8000000000000002</Keywords><TimeCreated SystemTime='2024-05-06T17:28:15.771000000Z'/><EventRecordID>88218</EventRecordID><Correlation/><Execution ProcessID='4' ThreadID='8'/><Channel>System</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='BugcheckCode'>0</Data><Data Name='BugcheckParameter1'>0x0</Data><Data Name='SleepInProgress'>0</Data><Data Name='PowerButtonTimestamp'>0</Data><Data Name='BootAppStatus'>0</Data></EventData></Event>",
+      "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=A service was installed in the system. Service Name: TermService Service File Name: C:\\Windows\\System32\\svchost.exe -k netsvcs Service Type: user mode service Service Start Type: auto start Service Account: LocalSystem This event indicates a new service registration recorded by the Service Control Manager on this host. It also reflects the configured startup type at the time the service was first registered on this workstation. processid=728 qualifiers=16384 systemtime=2024-05-07T09:14:22.556000000Z threadid=3312 userid=S-1-5-21-1004336348-1177238915-682003330-1021 xmlns=http://schemas.microsoft.com/win/2004/08/events/event",
+      "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=The Print Spooler service entered the running state. This message is generated whenever a service transitions between running, stopped, or paused states as tracked by the Service Control Manager on this workstation. Service Control Manager logs this state transition for auditing and troubleshooting purposes, allowing administrators to correlate service health changes with other system activity recorded in the System event log around the same timestamp on this particular workstation instance, and other related audit trails maintained by the Service Control Manager subsystem for this host over time. processid=696 qualifiers=16384 systemtime=2024-05-07T10:41:05.902000000Z threadid=2044 userid=S-1-5-18 xmlns=http://schemas.microsoft.com/win/2004/08/events/event",
+      "eventsourcename=Service Control Manager guid={555908d1-a6d7-4695-8e1e-26931d2012f4} name=The start type of the Remote Desktop Services service was changed from demand start to auto start. This event indicates an administrative or scripted modification to the startup configuration for the TermService service, which controls how the service behaves during system boot as managed by the Service Control Manager on this workstation. Such changes are typically initiated through the Services management console, PowerShell cmdlets, or Group Policy applied to this host. processid=696 qualifiers=16384 systemtime=2024-05-07T11:12:47.118000000Z threadid=1892 userid=S-1-5-21-1004336348-1177238915-682003330-1015 xmlns=http://schemas.microsoft.com/win/2004/08/events/event"
+    ],
+    "sourcetype": "XmlWinEventLog:System"
+  }
+}
