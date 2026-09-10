@@ -16755,6 +16755,21 @@
         "score": 89,
         "band": "good"
       }
+    },
+    {
+      "key": "access_log-too_small::ocsf",
+      "sourcetype": "access_log-too_small",
+      "dest_format": "ocsf",
+      "score": 89,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:18.670Z",
+      "path": "shared-goldens/access_log-too_small__ocsf.json",
+      "report": {
+        "score": 89,
+        "band": "good"
+      }
     }
   ]
 }
