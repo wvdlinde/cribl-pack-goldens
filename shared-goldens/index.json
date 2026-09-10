@@ -16800,6 +16800,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "audit_log::ocsf",
+      "sourcetype": "audit_log",
+      "dest_format": "ocsf",
+      "score": 99,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:32.584Z",
+      "path": "shared-goldens/audit_log__ocsf.json",
+      "report": {
+        "score": 99,
+        "band": "good"
+      }
     }
   ]
 }
