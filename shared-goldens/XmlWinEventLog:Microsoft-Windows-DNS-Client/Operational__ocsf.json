@@ -1,0 +1,927 @@
+{
+  "key": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational::ocsf",
+  "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational",
+  "dest_format": "ocsf",
+  "score": 96,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:54.877Z",
+  "functions": [
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_raw",
+            "value": "_raw.replace(/[{}\\t]/gm,'').replace(/[\\n\\r]+/gm,',')"
+          },
+          {
+            "name": "_raw",
+            "value": "C.Text.parseWinEvent(_raw,['0x0','0','-'])"
+          }
+        ]
+      },
+      "description": "Parse and compact Windows DNS Client XML with the native Windows event parser"
+    },
+    {
+      "id": "flatten",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "fields": [
+          "_raw"
+        ],
+        "prefix": "",
+        "depth": 5,
+        "delimiter": "_"
+      },
+      "description": "Flatten the parsed Windows event into top-level fields"
+    },
+    {
+      "id": "rename",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "baseFields": [],
+        "renameExpr": "name.replace(/_raw_Event_\\w+_/,'')",
+        "rename": []
+      },
+      "description": "Remove verbose Windows XML path prefixes from field names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "log_time",
+            "value": "SystemTime || TimeCreated_SystemTime || undefined"
+          },
+          {
+            "name": "host",
+            "value": "Computer || undefined"
+          },
+          {
+            "name": "event_code",
+            "value": "EventID || undefined"
+          },
+          {
+            "name": "query",
+            "value": "QueryName || undefined"
+          },
+          {
+            "name": "dns_query",
+            "value": "QueryName || undefined"
+          },
+          {
+            "name": "url",
+            "value": "QueryName || undefined"
+          },
+          {
+            "name": "query_type",
+            "value": "QueryType == '1' ? 'A' : QueryType == '2' ? 'NS' : QueryType == '5' ? 'CNAME' : QueryType == '6' ? 'SOA' : QueryType == '12' ? 'PTR' : QueryType == '15' ? 'MX' : QueryType == '16' ? 'TXT' : QueryType == '28' ? 'AAAA' : QueryType == '33' ? 'SRV' : QueryType == '65' ? 'HTTPS' : QueryType || undefined"
+          },
+          {
+            "name": "answer",
+            "value": "QueryResults ? String(QueryResults).replace(/;+$/,'').replace(/;/g,',') : undefined"
+          },
+          {
+            "name": "dns_answer",
+            "value": "QueryResults ? String(QueryResults).replace(/;+$/,'').replace(/;/g,',') : undefined"
+          },
+          {
+            "name": "dest_ip",
+            "value": "ServerList ? String(ServerList).replace(/;+$/,'').split(';')[0] : undefined"
+          },
+          {
+            "name": "reply_code_id",
+            "value": "QueryStatus || undefined"
+          },
+          {
+            "name": "reply_code",
+            "value": "QueryStatus == '0' ? 'NOERROR' : QueryStatus == '9003' ? 'NXDOMAIN' : QueryStatus == '9501' ? 'NODATA' : QueryStatus == '9002' ? 'SERVFAIL' : QueryStatus || undefined"
+          },
+          {
+            "name": "action",
+            "value": "QueryStatus === undefined ? 'query' : QueryStatus == '0' ? 'success' : 'failure'"
+          },
+          {
+            "name": "signature",
+            "value": "EventID == '3006' ? 'DNS query sent to resolver' : EventID == '3008' ? 'DNS query completed' : EventID == '3009' ? 'DNS query answered from cache' : EventID == '3010' ? 'DNS query sent' : EventID == '3020' ? 'DNS response received' : undefined"
+          },
+          {
+            "name": "process_id",
+            "value": "ProcessID || Execution_ProcessID || undefined"
+          },
+          {
+            "name": "user_id",
+            "value": "UserID || Security_UserID || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "Level == '0' ? 6 : Level == '1' ? 2 : Level == '2' ? 3 : Level == '3' ? 4 : Level == '4' ? 6 : Level == '5' ? 7 : undefined"
+          },
+          {
+            "name": "transport",
+            "value": "'udp'"
+          },
+          {
+            "name": "dest_port",
+            "value": "ServerList ? 53 : undefined"
+          },
+          {
+            "name": "app",
+            "value": "'Windows DNS Client'"
+          },
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'DNS Client'"
+          },
+          {
+            "name": "vendor_product",
+            "value": "'Microsoft Windows DNS Client'"
+          }
+        ]
+      },
+      "description": "Alias Windows DNS Client fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "product",
+            "value": "'DNS Client'"
+          },
+          {
+            "name": "version",
+            "value": "'10'"
+          }
+        ]
+      },
+      "description": "Set device vendor/product/version"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'DNS Client'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'Microsoft'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'10'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational'"
+          },
+          {
+            "name": "_time",
+            "value": "(log_time) && (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set sourcetype + _time"
+    },
+    {
+      "id": "drop",
+      "filter": "EventID === '3006' || event_code === '3006'",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop query-sent half of the 3006/3008 pair (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "XmlWinEventLogMicrosoftWindowsDNSClientOperational_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_time": 1715016240.123,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3006",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:24:00.123456700Z",
+        "EventRecordID": "1201",
+        "ProcessID": "2412",
+        "ThreadID": "3120",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "www.microsoft.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "ServerList": "10.0.1.1;",
+        "IsNetworkQuery": "1",
+        "log_time": "2024-05-06T17:24:00.123456700Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3006",
+        "query": "www.microsoft.com",
+        "dns_query": "www.microsoft.com",
+        "url": "www.microsoft.com",
+        "query_type": "A",
+        "dest_ip": "10.0.1.1",
+        "action": "query",
+        "signature": "DNS query sent to resolver",
+        "process_id": "2412",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "dest_port": 53,
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "dst_endpoint": {
+          "ip": "10.0.1.1"
+        },
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016240.155,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3008",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:24:00.155000000Z",
+        "EventRecordID": "1202",
+        "ProcessID": "2412",
+        "ThreadID": "3120",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "www.microsoft.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "QueryResults": "23.55.72.14;23.55.72.20;",
+        "log_time": "2024-05-06T17:24:00.155000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3008",
+        "query": "www.microsoft.com",
+        "dns_query": "www.microsoft.com",
+        "url": "www.microsoft.com",
+        "query_type": "A",
+        "answer": "23.55.72.14,23.55.72.20",
+        "dns_answer": "23.55.72.14,23.55.72.20",
+        "action": "query",
+        "signature": "DNS query completed",
+        "process_id": "2412",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016312.884,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3008",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:25:12.884000000Z",
+        "EventRecordID": "1203",
+        "ProcessID": "4088",
+        "ThreadID": "2044",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-18",
+        "QueryName": "malware-c2.example.net",
+        "QueryType": "28",
+        "QueryOptions": "140737488355328",
+        "QueryStatus": "9003",
+        "log_time": "2024-05-06T17:25:12.884000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3008",
+        "query": "malware-c2.example.net",
+        "dns_query": "malware-c2.example.net",
+        "url": "malware-c2.example.net",
+        "query_type": "AAAA",
+        "reply_code_id": "9003",
+        "reply_code": "NXDOMAIN",
+        "action": "failure",
+        "signature": "DNS query completed",
+        "process_id": "4088",
+        "user_id": "S-1-5-18",
+        "severity": "Informational",
+        "transport": "udp",
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016400.005,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3006",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:26:40.005000000Z",
+        "EventRecordID": "1204",
+        "ProcessID": "6120",
+        "ThreadID": "7020",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "ctldl.windowsupdate.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "ServerList": "10.0.1.1;",
+        "IsNetworkQuery": "1",
+        "log_time": "2024-05-06T17:26:40.005000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3006",
+        "query": "ctldl.windowsupdate.com",
+        "dns_query": "ctldl.windowsupdate.com",
+        "url": "ctldl.windowsupdate.com",
+        "query_type": "A",
+        "dest_ip": "10.0.1.1",
+        "action": "query",
+        "signature": "DNS query sent to resolver",
+        "process_id": "6120",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "dest_port": 53,
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "dst_endpoint": {
+          "ip": "10.0.1.1"
+        },
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016495.771,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3008",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:28:15.771000000Z",
+        "EventRecordID": "1205",
+        "ProcessID": "6120",
+        "ThreadID": "7020",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "ctldl.windowsupdate.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "QueryResults": "::ffff:8.241.11.126;",
+        "log_time": "2024-05-06T17:28:15.771000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3008",
+        "query": "ctldl.windowsupdate.com",
+        "dns_query": "ctldl.windowsupdate.com",
+        "url": "ctldl.windowsupdate.com",
+        "query_type": "A",
+        "answer": "::ffff:8.241.11.126",
+        "dns_answer": "::ffff:8.241.11.126",
+        "action": "query",
+        "signature": "DNS query completed",
+        "process_id": "6120",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016542.331,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3006",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:29:02.331000000Z",
+        "EventRecordID": "1206",
+        "ProcessID": "2412",
+        "ThreadID": "3120",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "login.live.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "ServerList": "10.0.1.1;8.8.8.8;",
+        "IsNetworkQuery": "1",
+        "log_time": "2024-05-06T17:29:02.331000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3006",
+        "query": "login.live.com",
+        "dns_query": "login.live.com",
+        "url": "login.live.com",
+        "query_type": "A",
+        "dest_ip": "10.0.1.1",
+        "action": "query",
+        "signature": "DNS query sent to resolver",
+        "process_id": "2412",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "dest_port": 53,
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "dst_endpoint": {
+          "ip": "10.0.1.1"
+        },
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016542.412,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3008",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:29:02.412000000Z",
+        "EventRecordID": "1207",
+        "ProcessID": "2412",
+        "ThreadID": "3120",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "QueryName": "login.live.com",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "QueryResults": "40.126.31.67;40.126.31.69;",
+        "log_time": "2024-05-06T17:29:02.412000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3008",
+        "query": "login.live.com",
+        "dns_query": "login.live.com",
+        "url": "login.live.com",
+        "query_type": "A",
+        "answer": "40.126.31.67,40.126.31.69",
+        "dns_answer": "40.126.31.67,40.126.31.69",
+        "action": "query",
+        "signature": "DNS query completed",
+        "process_id": "2412",
+        "user_id": "S-1-5-21-1004336348-1177238915-682003330-1013",
+        "severity": "Informational",
+        "transport": "udp",
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      },
+      {
+        "_time": 1715016707.998,
+        "Name": "Microsoft-Windows-DNS-Client",
+        "Guid": "1c95126e-7eea-49a9-a3fe-a378b03ddb4d",
+        "EventID": "3006",
+        "Level": "4",
+        "Keywords": "0x8000000000000000",
+        "SystemTime": "2024-05-06T17:31:47.998000000Z",
+        "EventRecordID": "1208",
+        "ProcessID": "5504",
+        "ThreadID": "6608",
+        "Channel": "Microsoft-Windows-DNS-Client/Operational",
+        "Computer": "WKS-1042.acme.local",
+        "UserID": "S-1-5-18",
+        "QueryName": "badupdate-cdn.example.org",
+        "QueryType": "1",
+        "QueryOptions": "140737488355328",
+        "ServerList": "10.0.1.1;",
+        "IsNetworkQuery": "1",
+        "log_time": "2024-05-06T17:31:47.998000000Z",
+        "host": "WKS-1042.acme.local",
+        "event_code": "3006",
+        "query": "badupdate-cdn.example.org",
+        "dns_query": "badupdate-cdn.example.org",
+        "url": "badupdate-cdn.example.org",
+        "query_type": "A",
+        "dest_ip": "10.0.1.1",
+        "action": "query",
+        "signature": "DNS query sent to resolver",
+        "process_id": "5504",
+        "user_id": "S-1-5-18",
+        "severity": "Informational",
+        "transport": "udp",
+        "dest_port": 53,
+        "app": "Windows DNS Client",
+        "vendor": "Microsoft",
+        "product": "DNS Client",
+        "vendor_product": "Microsoft Windows DNS Client",
+        "protocol": "udp",
+        "application": "Windows DNS Client",
+        "version": "10",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1788257070063,
+        "dst_endpoint": {
+          "ip": "10.0.1.1"
+        },
+        "device": {
+          "hostname": "WKS-1042.acme.local"
+        },
+        "metadata": {
+          "product": {
+            "name": "DNS Client",
+            "vendor_name": "Microsoft",
+            "version": "10"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+      }
+    ],
+    "sampleKeys": [
+      "xmlns",
+      "Name",
+      "Guid",
+      "SystemTime",
+      "ProcessID",
+      "ThreadID",
+      "UserID"
+    ],
+    "sampleRaw": [
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3006</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:24:00.123456700Z'/><EventRecordID>1201</EventRecordID><Correlation/><Execution ProcessID='2412' ThreadID='3120'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>www.microsoft.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='ServerList'>10.0.1.1;</Data><Data Name='IsNetworkQuery'>1</Data><Data Name='NetworkQueryIndex'>0</Data><Data Name='InterfaceIndex'>0</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3008</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:24:00.155000000Z'/><EventRecordID>1202</EventRecordID><Correlation/><Execution ProcessID='2412' ThreadID='3120'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>www.microsoft.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='QueryStatus'>0</Data><Data Name='QueryResults'>23.55.72.14;23.55.72.20;</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3008</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:25:12.884000000Z'/><EventRecordID>1203</EventRecordID><Correlation/><Execution ProcessID='4088' ThreadID='2044'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='QueryName'>malware-c2.example.net</Data><Data Name='QueryType'>28</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='QueryStatus'>9003</Data><Data Name='QueryResults'></Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3006</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:26:40.005000000Z'/><EventRecordID>1204</EventRecordID><Correlation/><Execution ProcessID='6120' ThreadID='7020'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>ctldl.windowsupdate.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='ServerList'>10.0.1.1;</Data><Data Name='IsNetworkQuery'>1</Data><Data Name='NetworkQueryIndex'>0</Data><Data Name='InterfaceIndex'>0</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3008</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:28:15.771000000Z'/><EventRecordID>1205</EventRecordID><Correlation/><Execution ProcessID='6120' ThreadID='7020'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>ctldl.windowsupdate.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='QueryStatus'>0</Data><Data Name='QueryResults'>::ffff:8.241.11.126;</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3006</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:29:02.331000000Z'/><EventRecordID>1206</EventRecordID><Correlation/><Execution ProcessID='2412' ThreadID='3120'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>login.live.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='ServerList'>10.0.1.1;8.8.8.8;</Data><Data Name='IsNetworkQuery'>1</Data><Data Name='NetworkQueryIndex'>0</Data><Data Name='InterfaceIndex'>0</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3008</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:29:02.412000000Z'/><EventRecordID>1207</EventRecordID><Correlation/><Execution ProcessID='2412' ThreadID='3120'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-21-1004336348-1177238915-682003330-1013'/></System><EventData><Data Name='QueryName'>login.live.com</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='QueryStatus'>0</Data><Data Name='QueryResults'>40.126.31.67;40.126.31.69;</Data></EventData></Event>",
+      "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='Microsoft-Windows-DNS-Client' Guid='{1c95126e-7eea-49a9-a3fe-a378b03ddb4d}'/><EventID>3006</EventID><Version>0</Version><Level>4</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime='2024-05-06T17:31:47.998000000Z'/><EventRecordID>1208</EventRecordID><Correlation/><Execution ProcessID='5504' ThreadID='6608'/><Channel>Microsoft-Windows-DNS-Client/Operational</Channel><Computer>WKS-1042.acme.local</Computer><Security UserID='S-1-5-18'/></System><EventData><Data Name='QueryName'>badupdate-cdn.example.org</Data><Data Name='QueryType'>1</Data><Data Name='QueryOptions'>140737488355328</Data><Data Name='ServerList'>10.0.1.1;</Data><Data Name='IsNetworkQuery'>1</Data><Data Name='NetworkQueryIndex'>0</Data><Data Name='InterfaceIndex'>0</Data></EventData></Event>"
+    ],
+    "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational"
+  }
+}
