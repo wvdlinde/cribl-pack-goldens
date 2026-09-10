@@ -17025,6 +17025,21 @@
         "score": 93,
         "band": "good"
       }
+    },
+    {
+      "key": "ncsc:rsa:netwitness::ocsf",
+      "sourcetype": "ncsc:rsa:netwitness",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:43.054Z",
+      "path": "shared-goldens/ncsc:rsa:netwitness__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
