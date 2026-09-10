@@ -16995,6 +16995,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "McAfee:ePO:ThreatEvents:ENS:IDS::ocsf",
+      "sourcetype": "McAfee:ePO:ThreatEvents:ENS:IDS",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:34.401Z",
+      "path": "shared-goldens/McAfee:ePO:ThreatEvents:ENS:IDS__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
