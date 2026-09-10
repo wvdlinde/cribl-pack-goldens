@@ -1,0 +1,651 @@
+{
+  "key": "vmware:esxlog:vsand::ocsf",
+  "sourcetype": "vmware:esxlog:vsand",
+  "dest_format": "ocsf",
+  "score": 98,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:50:32.766Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/^(?<__ts>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z)\\s+(?<dst_host>\\S+)\\s+(?<process>[a-zA-Z0-9_\\-]+)\\[(?<pid>\\d+)\\]:\\s+\\[(?<subsystem>[^\\]]+)\\]\\s+(?<log_level>[A-Z]+):\\s+(?<message>.*)$/"
+      },
+      "description": "Parse vSAN daemon syslog header: timestamp, host, process, pid, subsystem, severity, message"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3}|(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?:::)?[0-9a-fA-F]{0,4})/"
+      },
+      "description": "Extract IPv4/IPv6 address and device/disk identifiers from the message body"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && /(?:disk|device|volume)\\s/i.test(message)",
+      "disabled": false,
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:device|disk|volume)\\s+(?<device>(?:naa\\.[0-9a-zA-Z]+|mpx\\.[^\\s,]+|vsan[^\\s,]*|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))/i"
+      },
+      "description": "Extract storage device / disk / object identifiers"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "__ts ? Date.parse(__ts)/1000 : _time"
+          },
+          {
+            "name": "timestamp",
+            "value": "__ts"
+          },
+          {
+            "name": "severity",
+            "value": "log_level=='CRITICAL' ? 'critical' : (log_level=='ERROR' ? 'high' : (log_level=='WARNING' ? 'medium' : 'low'))"
+          },
+          {
+            "name": "protocol",
+            "value": "'vsan'"
+          },
+          {
+            "name": "action",
+            "value": "message && /access denied|denied|unauthorized|quarantin|rate limiting/i.test(message) ? 'blocked' : (message && /fail|corrupt|absent|unreachable|unresponsive/i.test(message) ? 'failure' : 'success')"
+          },
+          {
+            "name": "event_type",
+            "value": "message && /Unauthorized|Suspicious|rogue actor/i.test(message) ? 'security' : (log_level=='INFO' ? 'operational' : 'health')"
+          },
+          {
+            "name": "vendor",
+            "value": "'VMware'"
+          },
+          {
+            "name": "product",
+            "value": "'ESXi vSAN'"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip ? (src_ip.indexOf(':')>-1 ? 6 : 4) : null"
+          }
+        ],
+        "remove": [
+          "__ts"
+        ]
+      },
+      "description": "Normalize timestamp, severity, action, and derive event classification"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'vmware esxlog vsand'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'vmware:esxlog:vsand'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "VmwareEsxlogVsand_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "2024-01-15T03:22:14.412Z esxi-host-04.corp.local vsand[2101823]: [ClomWorkingSet] WARNING: Disk 52a1f3c9-8e21-4b7a-9c3d-1a2b3c4d5e6f capacity utilization at 87%, monitor closely",
+        "_time": 1705288934.412,
+        "dst_host": "esxi-host-04.corp.local",
+        "process": "vsand",
+        "pid": "2101823",
+        "subsystem": "ClomWorkingSet",
+        "log_level": "WARNING",
+        "message": "Disk 52a1f3c9-8e21-4b7a-9c3d-1a2b3c4d5e6f capacity utilization at 87%, monitor closely",
+        "timestamp": "2024-01-15T03:22:14.412Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "success",
+        "event_type": "health",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": null,
+        "transport": "vsan",
+        "log_time": "2024-01-15T03:22:14.412Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705288934412,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T03:45:31.882Z esxi-host-12.corp.local vsand[1893472]: [VsanSystem] INFO: vSAN cluster membership updated, host 10.20.30.41 joined cluster with UUID 5a3b2c1d-9e8f-4a7b-6c5d-4e3f2a1b0c9d",
+        "_time": 1705290331.882,
+        "dst_host": "esxi-host-12.corp.local",
+        "process": "vsand",
+        "pid": "1893472",
+        "subsystem": "VsanSystem",
+        "log_level": "INFO",
+        "message": "vSAN cluster membership updated, host 10.20.30.41 joined cluster with UUID 5a3b2c1d-9e8f-4a7b-6c5d-4e3f2a1b0c9d",
+        "src_ip": "10.20.30.41",
+        "timestamp": "2024-01-15T03:45:31.882Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "success",
+        "event_type": "operational",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": 4,
+        "transport": "vsan",
+        "log_time": "2024-01-15T03:45:31.882Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705290331882,
+        "src_endpoint": {
+          "ip": "10.20.30.41"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T04:02:09.117Z esxi-host-07.corp.local vsand[2245613]: [LSOMCommon] ERROR: Failed to read metadata from disk naa.6001405abc123def, I/O error 5, retrying operation",
+        "_time": 1705291329.117,
+        "dst_host": "esxi-host-07.corp.local",
+        "process": "vsand",
+        "pid": "2245613",
+        "subsystem": "LSOMCommon",
+        "log_level": "ERROR",
+        "message": "Failed to read metadata from disk naa.6001405abc123def, I/O error 5, retrying operation",
+        "timestamp": "2024-01-15T04:02:09.117Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "failure",
+        "event_type": "health",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": null,
+        "transport": "vsan",
+        "log_time": "2024-01-15T04:02:09.117Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705291329117,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T04:15:47.293Z esxi-host-01.dmz.local vsand[1756298]: [CMMDS] WARNING: Node 172.16.5.22 marked unresponsive after 3 consecutive heartbeat timeouts, initiating network partition check",
+        "_time": 1705292147.293,
+        "dst_host": "esxi-host-01.dmz.local",
+        "process": "vsand",
+        "pid": "1756298",
+        "subsystem": "CMMDS",
+        "log_level": "WARNING",
+        "message": "Node 172.16.5.22 marked unresponsive after 3 consecutive heartbeat timeouts, initiating network partition check",
+        "src_ip": "172.16.5.22",
+        "timestamp": "2024-01-15T04:15:47.293Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "failure",
+        "event_type": "health",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": 4,
+        "transport": "vsan",
+        "log_time": "2024-01-15T04:15:47.293Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705292147293,
+        "src_endpoint": {
+          "ip": "172.16.5.22"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T05:33:22.556Z esxi-host-04.corp.local vsand[2101823]: [DOM] INFO: Object 8f2e1d3c-4b5a-6789-abcd-ef0123456789 resync completed successfully, 2.3GB transferred in 145s",
+        "_time": 1705296802.556,
+        "dst_host": "esxi-host-04.corp.local",
+        "process": "vsand",
+        "pid": "2101823",
+        "subsystem": "DOM",
+        "log_level": "INFO",
+        "message": "Object 8f2e1d3c-4b5a-6789-abcd-ef0123456789 resync completed successfully, 2.3GB transferred in 145s",
+        "timestamp": "2024-01-15T05:33:22.556Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "success",
+        "event_type": "operational",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": null,
+        "transport": "vsan",
+        "log_time": "2024-01-15T05:33:22.556Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705296802556,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T06:11:03.891Z esxi-host-19.corp.local vsand[1923847]: [ClomWorkingSet] ERROR: Disk group on host 10.44.12.9 reported as absent, degraded state detected, initiating repair",
+        "_time": 1705299063.891,
+        "dst_host": "esxi-host-19.corp.local",
+        "process": "vsand",
+        "pid": "1923847",
+        "subsystem": "ClomWorkingSet",
+        "log_level": "ERROR",
+        "message": "Disk group on host 10.44.12.9 reported as absent, degraded state detected, initiating repair",
+        "src_ip": "10.44.12.9",
+        "timestamp": "2024-01-15T06:11:03.891Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "failure",
+        "event_type": "health",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": 4,
+        "transport": "vsan",
+        "log_time": "2024-01-15T06:11:03.891Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705299063891,
+        "src_endpoint": {
+          "ip": "10.44.12.9"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T06:44:38.204Z esxi-host-03.corp.local vsand[2087341]: [CBRC] INFO: Content-based read cache statistics: hit rate 94.2%, cache size 8192MB, evictions 1203",
+        "_time": 1705301078.204,
+        "dst_host": "esxi-host-03.corp.local",
+        "process": "vsand",
+        "pid": "2087341",
+        "subsystem": "CBRC",
+        "log_level": "INFO",
+        "message": "Content-based read cache statistics: hit rate 94.2%, cache size 8192MB, evictions 1203",
+        "timestamp": "2024-01-15T06:44:38.204Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "success",
+        "event_type": "operational",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": null,
+        "transport": "vsan",
+        "log_time": "2024-01-15T06:44:38.204Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705301078204,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      },
+      {
+        "_raw": "2024-01-15T07:19:52.667Z esxi-host-08.dmz.local vsand[1745620]: [VsanSparse] WARNING: Snapshot chain depth exceeds recommended threshold (32) on volume vsanDatastore, current depth 41",
+        "_time": 1705303192.667,
+        "dst_host": "esxi-host-08.dmz.local",
+        "process": "vsand",
+        "pid": "1745620",
+        "subsystem": "VsanSparse",
+        "log_level": "WARNING",
+        "message": "Snapshot chain depth exceeds recommended threshold (32) on volume vsanDatastore, current depth 41",
+        "timestamp": "2024-01-15T07:19:52.667Z",
+        "severity": "Informational",
+        "protocol": "vsan",
+        "action": "success",
+        "event_type": "health",
+        "vendor": "VMware",
+        "product": "ESXi vSAN",
+        "ip_version": null,
+        "transport": "vsan",
+        "log_time": "2024-01-15T07:19:52.667Z",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1705303192667,
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "vmware esxlog vsand",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "vmware:esxlog:vsand"
+      }
+    ],
+    "sampleKeys": [],
+    "sampleRaw": [
+      "2024-01-15T03:22:14.412Z esxi-host-04.corp.local vsand[2101823]: [ClomWorkingSet] WARNING: Disk 52a1f3c9-8e21-4b7a-9c3d-1a2b3c4d5e6f capacity utilization at 87%, monitor closely",
+      "2024-01-15T03:45:31.882Z esxi-host-12.corp.local vsand[1893472]: [VsanSystem] INFO: vSAN cluster membership updated, host 10.20.30.41 joined cluster with UUID 5a3b2c1d-9e8f-4a7b-6c5d-4e3f2a1b0c9d",
+      "2024-01-15T04:02:09.117Z esxi-host-07.corp.local vsand[2245613]: [LSOMCommon] ERROR: Failed to read metadata from disk naa.6001405abc123def, I/O error 5, retrying operation",
+      "2024-01-15T04:15:47.293Z esxi-host-01.dmz.local vsand[1756298]: [CMMDS] WARNING: Node 172.16.5.22 marked unresponsive after 3 consecutive heartbeat timeouts, initiating network partition check",
+      "2024-01-15T05:33:22.556Z esxi-host-04.corp.local vsand[2101823]: [DOM] INFO: Object 8f2e1d3c-4b5a-6789-abcd-ef0123456789 resync completed successfully, 2.3GB transferred in 145s",
+      "2024-01-15T06:11:03.891Z esxi-host-19.corp.local vsand[1923847]: [ClomWorkingSet] ERROR: Disk group on host 10.44.12.9 reported as absent, degraded state detected, initiating repair",
+      "2024-01-15T06:44:38.204Z esxi-host-03.corp.local vsand[2087341]: [CBRC] INFO: Content-based read cache statistics: hit rate 94.2%, cache size 8192MB, evictions 1203",
+      "2024-01-15T07:19:52.667Z esxi-host-08.dmz.local vsand[1745620]: [VsanSparse] WARNING: Snapshot chain depth exceeds recommended threshold (32) on volume vsanDatastore, current depth 41"
+    ],
+    "sourcetype": "vmware:esxlog:vsand"
+  }
+}
