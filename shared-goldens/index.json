@@ -16785,6 +16785,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "arbor:pravailaps::ocsf",
+      "sourcetype": "arbor:pravailaps",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:28.214Z",
+      "path": "shared-goldens/arbor:pravailaps__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
