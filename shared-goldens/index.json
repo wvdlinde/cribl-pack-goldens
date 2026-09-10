@@ -17460,6 +17460,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational::ocsf",
+      "sourcetype": "XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational",
+      "dest_format": "ocsf",
+      "score": 96,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:50:54.877Z",
+      "path": "shared-goldens/XmlWinEventLog:Microsoft-Windows-DNS-Client/Operational__ocsf.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
