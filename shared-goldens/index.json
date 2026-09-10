@@ -16770,6 +16770,21 @@
         "score": 89,
         "band": "good"
       }
+    },
+    {
+      "key": "aemcdn:waf::ocsf",
+      "sourcetype": "aemcdn:waf",
+      "dest_format": "ocsf",
+      "score": 100,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:47:23.382Z",
+      "path": "shared-goldens/aemcdn:waf__ocsf.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
