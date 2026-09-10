@@ -15335,14 +15335,14 @@
       "key": "aemaccess::ocsf",
       "sourcetype": "aemaccess",
       "dest_format": "ocsf",
-      "score": 88,
+      "score": 91,
       "part": null,
-      "author": "wlinde@cribl.io",
-      "build": 652,
-      "updated_at": "2026-09-01T14:55:26.513Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:46:34.274Z",
       "path": "shared-goldens/aemaccess__ocsf.json",
       "report": {
-        "score": 88,
+        "score": 91,
         "band": "good"
       }
     },
