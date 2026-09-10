@@ -17010,6 +17010,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "ms:iis:auto::ocsf",
+      "sourcetype": "ms:iis:auto",
+      "dest_format": "ocsf",
+      "score": 93,
+      "part": null,
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-10T12:48:39.201Z",
+      "path": "shared-goldens/ms:iis:auto__ocsf.json",
+      "report": {
+        "score": 93,
+        "band": "good"
+      }
     }
   ]
 }
