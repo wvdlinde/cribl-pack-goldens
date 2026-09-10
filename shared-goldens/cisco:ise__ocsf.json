@@ -1,0 +1,971 @@
+{
+  "key": "cisco:ise::ocsf",
+  "sourcetype": "cisco:ise",
+  "dest_format": "ocsf",
+  "score": 97,
+  "part": null,
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-10T12:48:03.618Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<syslog_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<message_type>CISE_\\S+)\\s+(?<seq1>\\d+)\\s+(?<seq2>\\d+)\\s+(?<seq3>\\d+)\\s+(?<timestamp>\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?)\\s+(?<tz>[+-]\\d{2}:\\d{2})\\s+(?<seq4>\\d+)\\s+(?<message_code>\\d+)\\s+(?<severity>\\w+)\\s+(?<message_name>[^:]+):\\s*(?<message>[^,]+),\\s*(?<kvp>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse standard Cisco ISE syslog header, message metadata, and trailing key-value payload"
+    },
+    {
+      "id": "regex_extract",
+      "filter": "!message_name && _raw.indexOf('CISE_Alarm')>-1",
+      "disabled": false,
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<pri>\\d+)>(?<syslog_time>\\w{3}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<message_type>CISE_\\S+)\\s+(?<severity>\\w+):\\s+(?<message_name>[^:]+):\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      },
+      "description": "Parse alternate CISE_Alarm format that lacks sequence numbers and structured timestamp"
+    },
+    {
+      "id": "serde",
+      "filter": "kvp",
+      "disabled": false,
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvp",
+        "cleanFields": true
+      },
+      "description": "Extract key=value pairs from the trailing KVP payload into individual top-level fields"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "user",
+            "value": "this['User_Name'] ? this['User_Name'] : (this['UserName'] ? this['UserName'] : (this['AdminName'] ? this['AdminName'] : (this['GuestUserName'] ? this['GuestUserName'] : (this['User'] ? this['User'] : null))))"
+          },
+          {
+            "name": "src_ip",
+            "value": "this['Device_IP_Address'] ? this['Device_IP_Address'] : (this['NAS_IP_Address'] ? this['NAS_IP_Address'] : (this['AdminIPAddress'] ? this['AdminIPAddress'] : (this['IpAddress'] ? this['IpAddress'] : null)))"
+          },
+          {
+            "name": "dst_ip",
+            "value": "this['DestinationIPAddress'] ? this['DestinationIPAddress'] : null"
+          },
+          {
+            "name": "dst_port",
+            "value": "this['DestinationPort'] ? Number(this['DestinationPort']) : null"
+          },
+          {
+            "name": "protocol",
+            "value": "this['Protocol'] ? this['Protocol'] : null"
+          },
+          {
+            "name": "action",
+            "value": "message_name ? message_name : null"
+          }
+        ]
+      },
+      "description": "Normalize common identity, network, and protocol fields from the extracted KVP data"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity=='NOTICE' ? 'info' : severity=='WARN' ? 'warning' : severity=='DEBUG' ? 'debug' : severity=='INFO' ? 'info' : severity=='ERR' ? 'error' : 'unknown'"
+          },
+          {
+            "name": "_time",
+            "value": "timestamp ? new Date(timestamp.replace(' ','T') + (tz ? tz : '')).getTime()/1000 : _time"
+          }
+        ]
+      },
+      "description": "Normalize severity levels and derive event time from parsed timestamp and timezone offset"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "src_ip || source__ip || client__ip || srcaddr || srcip"
+          },
+          {
+            "name": "dest_ip",
+            "value": "dest_ip || dst_ip || destination__ip || server__ip || dstaddr || dstip"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port || source__port || spt || srcport || sport"
+          },
+          {
+            "name": "dest_port",
+            "value": "dest_port || dst_port || destination__port || dpt || dstport || dport"
+          },
+          {
+            "name": "protocol",
+            "value": "protocol || transport || network__transport || proto"
+          },
+          {
+            "name": "transport",
+            "value": "transport || protocol || network__transport || proto"
+          },
+          {
+            "name": "action",
+            "value": "action || event__outcome || act"
+          },
+          {
+            "name": "application",
+            "value": "application || app || network__application || service"
+          },
+          {
+            "name": "bytes_in",
+            "value": "bytes_in || destination__bytes || rcvd_bytes || rcvdbyte"
+          },
+          {
+            "name": "bytes_out",
+            "value": "bytes_out || source__bytes || sent_bytes || sentbyte"
+          },
+          {
+            "name": "duration",
+            "value": "duration || event__duration"
+          },
+          {
+            "name": "rule_name",
+            "value": "rule_name || rule__name || policy_name || policyname"
+          },
+          {
+            "name": "src_zone",
+            "value": "src_zone || observer__ingress__zone"
+          },
+          {
+            "name": "dest_zone",
+            "value": "dest_zone || dst_zone || observer__egress__zone || observer__egress_zone"
+          },
+          {
+            "name": "host",
+            "value": "host || observer__hostname || hostname"
+          },
+          {
+            "name": "log_time",
+            "value": "log_time || generated_time || receive_time || start_time || event__created || timestamp || event__start"
+          }
+        ]
+      },
+      "description": "Alias Copilot/schematizer OCSF-style fields to canonical names"
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "_time",
+            "value": "(typeof log_time != 'undefined' && log_time) ? (/^\\d{13}$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}$/.test(String(log_time)) ? Number(log_time) * 1000 : /^\\d{13}\\.\\d+$/.test(String(log_time)) ? Number(log_time) : /^\\d{10}\\.\\d+$/.test(String(log_time)) ? Number(log_time) * 1000 : new Date(String(log_time)).getTime()) / 1000 : _time"
+          }
+        ]
+      },
+      "description": "Set _time from the parsed timestamp (log_time), if one was captured"
+    },
+    {
+      "id": "eval",
+      "description": "OCSF Base Event (1001) envelope",
+      "conf": {
+        "add": [
+          {
+            "name": "class_uid",
+            "value": "1001"
+          },
+          {
+            "name": "class_name",
+            "value": "'Base Event'"
+          },
+          {
+            "name": "category_uid",
+            "value": "1"
+          },
+          {
+            "name": "category_name",
+            "value": "'System Activity'"
+          },
+          {
+            "name": "type_uid",
+            "value": "100100"
+          },
+          {
+            "name": "severity_id",
+            "value": "1"
+          },
+          {
+            "name": "severity",
+            "value": "'Informational'"
+          },
+          {
+            "name": "time",
+            "value": "Math.round((_time || Date.now()/1000) * 1000)"
+          },
+          {
+            "name": "src_endpoint",
+            "value": "(((src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '')) ? {} : undefined"
+          },
+          {
+            "name": "dst_endpoint",
+            "value": "(((dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "actor.user",
+            "value": "(((user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '')) ? {} : undefined"
+          },
+          {
+            "name": "device",
+            "value": "(((host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '')) ? {} : undefined"
+          },
+          {
+            "name": "metadata",
+            "value": "{}"
+          },
+          {
+            "name": "metadata.product",
+            "value": "{}"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "description": "OCSF envelope (cont. 16)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_endpoint.ip",
+            "value": "(src_ip || srcaddr || srcip || src) != null && String(src_ip || srcaddr || srcip || src) != 'undefined' && String(src_ip || srcaddr || srcip || src) != 'null' && String(src_ip || srcaddr || srcip || src) != '-' && String(src_ip || srcaddr || srcip || src) != '' ? (src_ip || srcaddr || srcip || src) : undefined"
+          },
+          {
+            "name": "dst_endpoint.ip",
+            "value": "(dest_ip || dst_ip || dstaddr || dstip || dst) != null && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'undefined' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != 'null' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '-' && String(dest_ip || dst_ip || dstaddr || dstip || dst) != '' ? (dest_ip || dst_ip || dstaddr || dstip || dst) : undefined"
+          },
+          {
+            "name": "actor.user.name",
+            "value": "(user || src_user || suser || username) != null && String(user || src_user || suser || username) != 'undefined' && String(user || src_user || suser || username) != 'null' && String(user || src_user || suser || username) != '-' && String(user || src_user || suser || username) != '' ? (user || src_user || suser || username) : undefined"
+          },
+          {
+            "name": "device.hostname",
+            "value": "(host || hostname || devname || dvchost) != null && String(host || hostname || devname || dvchost) != 'undefined' && String(host || hostname || devname || dvchost) != 'null' && String(host || hostname || devname || dvchost) != '-' && String(host || hostname || devname || dvchost) != '' ? (host || hostname || devname || dvchost) : undefined"
+          },
+          {
+            "name": "message",
+            "value": "(message || msg || _raw) != null && String(message || msg || _raw) != 'undefined' && String(message || msg || _raw) != 'null' && String(message || msg || _raw) != '-' && String(message || msg || _raw) != '' ? (message || msg || _raw) : undefined"
+          },
+          {
+            "name": "metadata.version",
+            "value": "'1.9.0'"
+          },
+          {
+            "name": "metadata.product.name",
+            "value": "'Security'"
+          },
+          {
+            "name": "metadata.product.vendor_name",
+            "value": "'cisco ise'"
+          },
+          {
+            "name": "metadata.product.version",
+            "value": "'1.0'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "conf": {
+        "add": [
+          {
+            "name": "sourcetype",
+            "value": "'cisco:ise'"
+          }
+        ]
+      },
+      "description": "Set source-native sourcetype"
+    },
+    {
+      "id": "drop",
+      "filter": "_raw && _raw.trim().length < 10",
+      "disabled": true,
+      "conf": {},
+      "description": "Drop events shorter than 10 characters (empty/noise) (enable in Cribl UI to activate)",
+      "final": true
+    }
+  ],
+  "recipe": null,
+  "report": {
+    "pipelineId": "CiscoIse_OCSF",
+    "destFormat": "ocsf",
+    "score": 0,
+    "band": "fail",
+    "aiSkipped": true,
+    "sampleFormatOk": true,
+    "sampleFormatNote": "",
+    "outputFormatOk": true,
+    "findings": [],
+    "missingFields": [],
+    "emptyFields": [],
+    "summary": "Deterministic live preview completed.",
+    "lessons": [],
+    "inputCount": 8,
+    "outputCount": 8,
+    "outputSample": [
+      {
+        "_raw": "<181>Mar 2 09:09:13 cisco-ise-host CISE_Failed_Attempts 0000075134 1 0 2022-03-02 09:09:13.790 +00:00 0000075201 5405 NOTICE Failed-Attempt: RADIUS Request dropped, ConfigVersionId=1364, Device IP Address=81.2.69.193, Device Port=42946, DestinationIPAddress=81.2.69.145, DestinationPort=1812, Protocol=Radius, NetworkDeviceName=testDevice, User-Name=testDevice1, NAS-IP-Address=81.2.69.193, NAS-Port=1, Service-Type=Framed, Session-Timeout=30, Calling-Station-ID=00-23-DF-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=G0/25, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, AcsSessionID=cisco-ise-host/435083133/47, FailureReason=11036 The Message-Authenticator RADIUS attribute is invalid, Step=11001, Step=11017, Step=11036, Step=5405, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No,",
+        "_time": 1646212153.79,
+        "pri": "181",
+        "syslog_time": "Mar 2 09:09:13",
+        "host": "cisco-ise-host",
+        "message_type": "CISE_Failed_Attempts",
+        "seq1": "0000075134",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-02 09:09:13.790",
+        "tz": "+00:00",
+        "seq4": "0000075201",
+        "message_code": "5405",
+        "severity": "Informational",
+        "message_name": "Failed-Attempt",
+        "message": "RADIUS Request dropped",
+        "kvp": "ConfigVersionId=1364, Device IP Address=81.2.69.193, Device Port=42946, DestinationIPAddress=81.2.69.145, DestinationPort=1812, Protocol=Radius, NetworkDeviceName=testDevice, User-Name=testDevice1, NAS-IP-Address=81.2.69.193, NAS-Port=1, Service-Type=Framed, Session-Timeout=30, Calling-Station-ID=00-23-DF-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=G0/25, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, AcsSessionID=cisco-ise-host/435083133/47, FailureReason=11036 The Message-Authenticator RADIUS attribute is invalid, Step=11001, Step=11017, Step=11036, Step=5405, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No,",
+        "ConfigVersionId": "1364, Device IP",
+        "Address": "81.2.69.193, Device",
+        "Port": "42946",
+        "DestinationIPAddress": "81.2.69.145",
+        "DestinationPort": "1812",
+        "Protocol": "Radius",
+        "NetworkDeviceName": "testDevice",
+        "User_Name": "testDevice1",
+        "NAS_IP_Address": "81.2.69.193",
+        "NAS_Port": "1",
+        "Service_Type": "Framed",
+        "Session_Timeout": "30",
+        "Calling_Station_ID": "00-23-DF-00-00-01",
+        "NAS_Port_Type": "Wireless - IEEE 802.11",
+        "NAS_Port_Id": "G0/25",
+        "NetworkDeviceProfileName": "Cisco",
+        "NetworkDeviceProfileId": "b0699505-3150-4215-a80e-6753d45bf56c",
+        "AcsSessionID": "cisco-ise-host/435083133/47",
+        "FailureReason": "11036 The Message-Authenticator RADIUS attribute is invalid",
+        "Step": "5405",
+        "NetworkDeviceGroups": "Device Type#All Device Types",
+        "DTLSSupport": "Unknown, Model",
+        "Name": "Unknown, Network Device",
+        "Profile": "Cisco",
+        "Location": "Location#All Locations, Device",
+        "Type": "Device Type#All Device Types",
+        "IPSEC": "IPSEC#Is IPSEC Device#No,",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "Failed-Attempt",
+        "vendor_severity": "NOTICE",
+        "log_time": "2022-03-02 09:09:13.790",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646212153790,
+        "device": {
+          "hostname": "cisco-ise-host"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<181>Mar 3 11:37:34 cisco-ise-host CISE_Passed_Authentications 0000083423 1 0 2022-03-03 11:37:34.978 +00:00 0000083490 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=1696, Device IP Address=81.2.69.143, DestinationIPAddress=81.2.69.193, DestinationPort=1812, UserName=92-09-00-00-00-01, Protocol=Radius, NetworkDeviceName=Simulator, User-Name=92-09-00-00-00-01, NAS-IP-Address=81.2.69.143, NAS-Port=86, Service-Type=Call Check, Calling-Station-ID=92:09:00:00:00:01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=gigabitEthernet1/0/1, Airespace-Wlan-Id=3, OriginalUserName=92-09-00-00-00-01, MisconfiguredClientFixReason=Passed, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, IsThirdPartyDeviceFlow=false, RadiusFlowType=WirelessMAB, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, SelectedAuthorizationProfiles=hotspot, UseCase=Host Lookup, RequestLatency=90, Step=11001, Step=11017, Step=11117, Step=11027, Step=15049, Step=15008, Step=15041, Step=15048, Step=15013, Step=24209, Step=24217, Step=22056, Step=22058, Step=22060, Step=24715, Step=15036, Step=24209, Step=24217, Step=15016, Step=11002, Step=5239, SelectedAuthenticationIdentityStores=Internal Endpoints, AuthenticationStatus=UnknownUser, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, IdentityPolicyMatchedRule=MAB, AuthorizationPolicyMatchedRule=Hotspot, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, EndPointMACAddress=92-09-00-00-00-01, PostureAssessmentStatus=Pending, ISEPolicySetName=Default, IdentitySelectionMatchedRule=MAB, StepData=7= Normalised Radius.RadiusFlowType, StepData=8=Internal Endpoints, TotalAuthenLatency=90, ClientLatency=0, allowEasyWiredSession=false, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No, Response={Class=CACS:0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M:cisco-ise-host/435083133/126; cisco-av-pair=url-redirect-acl=REDIRECT; cisco-av-pair=url-redirect=https://cisco-ise-host.local:8443/portal/gateway?sessionId=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M&portal=77b653c9-924d-41a5-a5c3-1c40c4e7a5a7&action=cwa&type=drw&token=65402552fb76ff96c08edaab722f880e; LicenseTypes=1; },",
+        "_time": 1646307454.978,
+        "pri": "181",
+        "syslog_time": "Mar 3 11:37:34",
+        "host": "cisco-ise-host",
+        "message_type": "CISE_Passed_Authentications",
+        "seq1": "0000083423",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-03 11:37:34.978",
+        "tz": "+00:00",
+        "seq4": "0000083490",
+        "message_code": "5200",
+        "severity": "Informational",
+        "message_name": "Passed-Authentication",
+        "message": "Authentication succeeded",
+        "kvp": "ConfigVersionId=1696, Device IP Address=81.2.69.143, DestinationIPAddress=81.2.69.193, DestinationPort=1812, UserName=92-09-00-00-00-01, Protocol=Radius, NetworkDeviceName=Simulator, User-Name=92-09-00-00-00-01, NAS-IP-Address=81.2.69.143, NAS-Port=86, Service-Type=Call Check, Calling-Station-ID=92:09:00:00:00:01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=gigabitEthernet1/0/1, Airespace-Wlan-Id=3, OriginalUserName=92-09-00-00-00-01, MisconfiguredClientFixReason=Passed, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, IsThirdPartyDeviceFlow=false, RadiusFlowType=WirelessMAB, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, SelectedAuthorizationProfiles=hotspot, UseCase=Host Lookup, RequestLatency=90, Step=11001, Step=11017, Step=11117, Step=11027, Step=15049, Step=15008, Step=15041, Step=15048, Step=15013, Step=24209, Step=24217, Step=22056, Step=22058, Step=22060, Step=24715, Step=15036, Step=24209, Step=24217, Step=15016, Step=11002, Step=5239, SelectedAuthenticationIdentityStores=Internal Endpoints, AuthenticationStatus=UnknownUser, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, IdentityPolicyMatchedRule=MAB, AuthorizationPolicyMatchedRule=Hotspot, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, EndPointMACAddress=92-09-00-00-00-01, PostureAssessmentStatus=Pending, ISEPolicySetName=Default, IdentitySelectionMatchedRule=MAB, StepData=7= Normalised Radius.RadiusFlowType, StepData=8=Internal Endpoints, TotalAuthenLatency=90, ClientLatency=0, allowEasyWiredSession=false, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No, Response={Class=CACS:0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M:cisco-ise-host/435083133/126; cisco-av-pair=url-redirect-acl=REDIRECT; cisco-av-pair=url-redirect=https://cisco-ise-host.local:8443/portal/gateway?sessionId=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M&portal=77b653c9-924d-41a5-a5c3-1c40c4e7a5a7&action=cwa&type=drw&token=65402552fb76ff96c08edaab722f880e; LicenseTypes=1; },",
+        "ConfigVersionId": "1696, Device IP",
+        "Address": "81.2.69.143",
+        "DestinationIPAddress": "81.2.69.193",
+        "DestinationPort": "1812",
+        "UserName": "92-09-00-00-00-01",
+        "Protocol": "Radius",
+        "NetworkDeviceName": "Simulator",
+        "User_Name": "92-09-00-00-00-01",
+        "NAS_IP_Address": "81.2.69.143",
+        "NAS_Port": "86",
+        "Service_Type": "Call Check",
+        "Calling_Station_ID": "92:09:00:00:00:01",
+        "NAS_Port_Type": "Wireless - IEEE 802.11",
+        "NAS_Port_Id": "gigabitEthernet1/0/1",
+        "Airespace_Wlan_Id": "3",
+        "OriginalUserName": "92-09-00-00-00-01",
+        "MisconfiguredClientFixReason": "Passed",
+        "NetworkDeviceProfileName": "Cisco",
+        "NetworkDeviceProfileId": "b0699505-3150-4215-a80e-6753d45bf56c",
+        "IsThirdPartyDeviceFlow": "false",
+        "RadiusFlowType": "WirelessMAB",
+        "AcsSessionID": "cisco-ise-host/435083133/126",
+        "AuthenticationMethod": "Lookup",
+        "SelectedAccessService": "Default Network Access",
+        "SelectedAuthorizationProfiles": "hotspot",
+        "UseCase": "Host Lookup",
+        "RequestLatency": "90",
+        "Step": "5239",
+        "SelectedAuthenticationIdentityStores": "Internal Endpoints",
+        "AuthenticationStatus": "UnknownUser",
+        "NetworkDeviceGroups": "Device Type#All Device Types",
+        "IdentityPolicyMatchedRule": "MAB",
+        "AuthorizationPolicyMatchedRule": "Hotspot",
+        "CPMSessionID": "0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M",
+        "EndPointMACAddress": "92-09-00-00-00-01",
+        "PostureAssessmentStatus": "Pending",
+        "ISEPolicySetName": "Default",
+        "IdentitySelectionMatchedRule": "MAB",
+        "StepData": "",
+        "StepData_7": "Normalised Radius.RadiusFlowType",
+        "StepData_8": "Internal Endpoints",
+        "TotalAuthenLatency": "90",
+        "ClientLatency": "0",
+        "allowEasyWiredSession": "false",
+        "DTLSSupport": "Unknown, Model",
+        "Name": "Unknown, Network Device",
+        "Profile": "Cisco",
+        "Location": "Location#All Locations, Device",
+        "Type": "Device Type#All Device Types",
+        "IPSEC": "IPSEC#Is IPSEC Device#No",
+        "Response": "",
+        "Class": "CACS:0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M:cisco-ise-host/435083133/126",
+        "cisco_av_pair": "",
+        "cisco_av_pair_url_redirect_acl": "REDIRECT",
+        "cisco_av_pair_url_redirect": "https://cisco-ise-host.local:8443/portal/gateway",
+        "sessionId": "0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M",
+        "portal": "77b653c9-924d-41a5-a5c3-1c40c4e7a5a7",
+        "action": "Passed-Authentication",
+        "type": "drw",
+        "token": "65402552fb76ff96c08edaab722f880e",
+        "LicenseTypes": "1; },",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "vendor_severity": "NOTICE",
+        "log_time": "2022-03-03 11:37:34.978",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646307454978,
+        "device": {
+          "hostname": "cisco-ise-host"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<183>Mar 2 10:54:40 cisco-ise-host CISE_RADIUS_Diagnostics 0000076010 1 0 2022-03-02 10:54:40.275 +00:00 0000076076 11001 DEBUG RADIUS: Received RADIUS Access-Request, ConfigVersionId=1383, Device IP Address=81.2.69.143, Device Port=39818, DestinationIPAddress=81.2.69.144, DestinationPort=1812, AcsSessionID=cisco-ise-host/435083133/83, SelectedAccessService=Default Network Access, EapTunnel=PEAP, User-Name=testDevice1, NAS-IP-Address=81.2.69.143, NAS-Port=1, Calling-Station-ID=00-00-00-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, CPMSessionID=0a0009ccqDyAnAWJUIb_A9r1F7EclNP/asP/HfDHLoNi2qUcIMc,",
+        "_time": 1646218480.275,
+        "pri": "183",
+        "syslog_time": "Mar 2 10:54:40",
+        "host": "cisco-ise-host",
+        "message_type": "CISE_RADIUS_Diagnostics",
+        "seq1": "0000076010",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-02 10:54:40.275",
+        "tz": "+00:00",
+        "seq4": "0000076076",
+        "message_code": "11001",
+        "severity": "Informational",
+        "message_name": "RADIUS",
+        "message": "Received RADIUS Access-Request",
+        "kvp": "ConfigVersionId=1383, Device IP Address=81.2.69.143, Device Port=39818, DestinationIPAddress=81.2.69.144, DestinationPort=1812, AcsSessionID=cisco-ise-host/435083133/83, SelectedAccessService=Default Network Access, EapTunnel=PEAP, User-Name=testDevice1, NAS-IP-Address=81.2.69.143, NAS-Port=1, Calling-Station-ID=00-00-00-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, CPMSessionID=0a0009ccqDyAnAWJUIb_A9r1F7EclNP/asP/HfDHLoNi2qUcIMc,",
+        "ConfigVersionId": "1383, Device IP",
+        "Address": "81.2.69.143, Device",
+        "Port": "39818",
+        "DestinationIPAddress": "81.2.69.144",
+        "DestinationPort": "1812",
+        "AcsSessionID": "cisco-ise-host/435083133/83",
+        "SelectedAccessService": "Default Network Access",
+        "EapTunnel": "PEAP",
+        "User_Name": "testDevice1",
+        "NAS_IP_Address": "81.2.69.143",
+        "NAS_Port": "1",
+        "Calling_Station_ID": "00-00-00-00-00-01",
+        "NAS_Port_Type": "Wireless - IEEE 802.11",
+        "CPMSessionID": "0a0009ccqDyAnAWJUIb_A9r1F7EclNP/asP/HfDHLoNi2qUcIMc,",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "RADIUS",
+        "vendor_severity": "DEBUG",
+        "log_time": "2022-03-02 10:54:40.275",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646218480275,
+        "device": {
+          "hostname": "cisco-ise-host"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<181>Oct  9 10:58:08 host01 CISE_Administrative_and_Operational_Audit 0000027385 1 0 2023-10-09 10:58:08.408 +02:00 0000188271 51001 NOTICE Administrator-Login: Administrator authentication succeeded, ConfigVersionId=2732, AdminInterface=GUI, AdminIPAddress=192.168.0.1, AdminSession=AdminGUI_Session, AdminName=supercooluser, OperationMessageText=Administrator authentication successful. The user accepted the pre-login banner information.,",
+        "_time": 1696849088.408,
+        "pri": "181",
+        "syslog_time": "Oct  9 10:58:08",
+        "host": "host01",
+        "message_type": "CISE_Administrative_and_Operational_Audit",
+        "seq1": "0000027385",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2023-10-09 10:58:08.408",
+        "tz": "+02:00",
+        "seq4": "0000188271",
+        "message_code": "51001",
+        "severity": "Informational",
+        "message_name": "Administrator-Login",
+        "message": "Administrator authentication succeeded",
+        "kvp": "ConfigVersionId=2732, AdminInterface=GUI, AdminIPAddress=192.168.0.1, AdminSession=AdminGUI_Session, AdminName=supercooluser, OperationMessageText=Administrator authentication successful. The user accepted the pre-login banner information.,",
+        "ConfigVersionId": "2732",
+        "AdminInterface": "GUI",
+        "AdminIPAddress": "192.168.0.1",
+        "AdminSession": "AdminGUI_Session",
+        "AdminName": "supercooluser",
+        "OperationMessageText": "Administrator authentication successful. The user accepted the pre-login banner information.,",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "Administrator-Login",
+        "vendor_severity": "NOTICE",
+        "log_time": "2023-10-09 10:58:08.408",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1696849088408,
+        "device": {
+          "hostname": "host01"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<182>Feb 21 19:13:08 cisco-ise-host CISE_TACACS_Accounting 0000000001 4 0 2020-02-21 19:13:08.328 +00:00 0018415781 3300 NOTICE Tacacs-Accounting: TACACS+ Accounting with Command, ConfigVersionId=1829, Device IP Address=81.2.69.144, CmdSet=[ CmdAV=show mac-address-table <cr> ], RequestLatency=1, NetworkDeviceName=wlnwan1, Type=Accounting, Privilege-Level=15, Service=Login, User=psxvne, Port=tty10, Remote-Address=81.2.69.144, Authen-Method=TacacsPlus, AVPair=task_id=2962, AVPair=timezone=GMT, AVPair=start_time=1585185432, AVPair=priv-lvl=15, AcctRequest-Flags=Stop, Service-Argument=shell, AcsSessionID=ldnnacpsn1/359344348/952729, SelectedAccessService=Device Admin - TACACS, Step=13006, Step=15049, Step=15008, Step=15048, Step=13035, NetworkDeviceGroups=Location#All Locations#EMEA, NetworkDeviceGroups=Device Type#All Device Types#Routers, NetworkDeviceGroups=IPSEC#Is IPSEC Device, CPMSessionID=81.2.69.144Accounting306034364, Model Name=Unknown, Software Version=Unknown, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }",
+        "_time": 1582312388.328,
+        "pri": "182",
+        "syslog_time": "Feb 21 19:13:08",
+        "host": "cisco-ise-host",
+        "message_type": "CISE_TACACS_Accounting",
+        "seq1": "0000000001",
+        "seq2": "4",
+        "seq3": "0",
+        "timestamp": "2020-02-21 19:13:08.328",
+        "tz": "+00:00",
+        "seq4": "0018415781",
+        "message_code": "3300",
+        "severity": "Informational",
+        "message_name": "Tacacs-Accounting",
+        "message": "TACACS+ Accounting with Command",
+        "kvp": "ConfigVersionId=1829, Device IP Address=81.2.69.144, CmdSet=[ CmdAV=show mac-address-table <cr> ], RequestLatency=1, NetworkDeviceName=wlnwan1, Type=Accounting, Privilege-Level=15, Service=Login, User=psxvne, Port=tty10, Remote-Address=81.2.69.144, Authen-Method=TacacsPlus, AVPair=task_id=2962, AVPair=timezone=GMT, AVPair=start_time=1585185432, AVPair=priv-lvl=15, AcctRequest-Flags=Stop, Service-Argument=shell, AcsSessionID=ldnnacpsn1/359344348/952729, SelectedAccessService=Device Admin - TACACS, Step=13006, Step=15049, Step=15008, Step=15048, Step=13035, NetworkDeviceGroups=Location#All Locations#EMEA, NetworkDeviceGroups=Device Type#All Device Types#Routers, NetworkDeviceGroups=IPSEC#Is IPSEC Device, CPMSessionID=81.2.69.144Accounting306034364, Model Name=Unknown, Software Version=Unknown, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }",
+        "ConfigVersionId": "1829, Device IP",
+        "Address": "81.2.69.144",
+        "CmdSet": "",
+        "CmdAV": "show mac-address-table <cr",
+        "RequestLatency": "1",
+        "NetworkDeviceName": "wlnwan1",
+        "Type": "Device Type#All Device Types#Routers",
+        "Privilege_Level": "15",
+        "Service": "Login",
+        "User": "psxvne",
+        "Port": "tty10",
+        "Remote_Address": "81.2.69.144",
+        "Authen_Method": "TacacsPlus",
+        "AVPair": "",
+        "AVPair_task_id": "2962",
+        "AVPair_timezone": "GMT",
+        "AVPair_start_time": "1585185432",
+        "AVPair_priv_lvl": "15",
+        "AcctRequest_Flags": "Stop",
+        "Service_Argument": "shell",
+        "AcsSessionID": "ldnnacpsn1/359344348/952729",
+        "SelectedAccessService": "Device Admin - TACACS",
+        "Step": "13035",
+        "NetworkDeviceGroups": "IPSEC#Is IPSEC Device",
+        "CPMSessionID": "81.2.69.144Accounting306034364, Model",
+        "Name": "Unknown, Software",
+        "Version": "Unknown, Network Device",
+        "Profile": "Cisco",
+        "Location": "Location#All Locations#EMEA, Device",
+        "IPSEC": "IPSEC#Is IPSEC Device",
+        "Response": "",
+        "AcctReply_Status": "Success; }",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "Tacacs-Accounting",
+        "vendor_severity": "NOTICE",
+        "log_time": "2020-02-21 19:13:08.328",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1582312388328,
+        "device": {
+          "hostname": "cisco-ise-host"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<183>Mar 3 11:37:34 cisco-ise-host CISE_Identity_Stores_Diagnostics 0000083418 1 0 2022-03-03 11:37:34.933 +00:00 0000083485 24209 DEBUG Local-user-DB: Looking up Endpoint in Internal Endpoints IDStore, ConfigVersionId=1696, UserName=92-09-00-00-00-01, Protocol=Radius, OriginalUserName=92-09-00-00-00-01, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, Response={AuthenticationResult=UnknownUser; QueryResult=UnknownUser; },",
+        "_time": 1646307454.933,
+        "pri": "183",
+        "syslog_time": "Mar 3 11:37:34",
+        "host": "cisco-ise-host",
+        "message_type": "CISE_Identity_Stores_Diagnostics",
+        "seq1": "0000083418",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-03 11:37:34.933",
+        "tz": "+00:00",
+        "seq4": "0000083485",
+        "message_code": "24209",
+        "severity": "Informational",
+        "message_name": "Local-user-DB",
+        "message": "Looking up Endpoint in Internal Endpoints IDStore",
+        "kvp": "ConfigVersionId=1696, UserName=92-09-00-00-00-01, Protocol=Radius, OriginalUserName=92-09-00-00-00-01, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, Response={AuthenticationResult=UnknownUser; QueryResult=UnknownUser; },",
+        "ConfigVersionId": "1696",
+        "UserName": "92-09-00-00-00-01",
+        "Protocol": "Radius",
+        "OriginalUserName": "92-09-00-00-00-01",
+        "AcsSessionID": "cisco-ise-host/435083133/126",
+        "AuthenticationMethod": "Lookup",
+        "SelectedAccessService": "Default Network Access",
+        "CPMSessionID": "0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M",
+        "Response": "",
+        "AuthenticationResult": "UnknownUser",
+        "QueryResult": "UnknownUser; },",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "Local-user-DB",
+        "vendor_severity": "DEBUG",
+        "log_time": "2022-03-03 11:37:34.933",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646307454933,
+        "device": {
+          "hostname": "cisco-ise-host"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<181>Mar 3 10:10:23 isehost CISE_System_Statistics 0000082933 1 0 2022-03-03 10:10:23.294 +00:00 0000082999 70000 NOTICE System-Stats: ISE Utilization, ConfigVersionId=1659, SysStatsUtilizationCpu=7.32%, SysStatsUtilizationNetwork=eth3: rcvd = 955455; sent = 0 ;rcvd_dropped = 124; sent_dropped = 0, SysStatsUtilizationNetwork=vethbbd4eb0a: rcvd = 0; sent = 70 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth09eb1105: rcvd = 70; sent = 140 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth2f7196e5: rcvd = 1506; sent = 1616 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationMemory=42.82%, SysStatsUtilizationDiskIO=0.03%, SysStatsUtilizationDiskSpace=12% /, SysStatsUtilizationDiskSpace=1% /tmp, SysStatsUtilizationDiskSpace=17% /boot, SysStatsUtilizationDiskSpace=19% /opt, SysStatsUtilizationDiskSpace=2% /storedconfig, SysStatsUtilizationDiskSpace=19% /opt/podman/containers/storage/overlay, AverageRadiusRequestLatency=0, AverageTacacsRequestLatency=0, DeltaRadiusRequestCount=0, DeltaTacacsRequestCount=0, SysStatsUtilizationLoadAvg=0.65, SysStatsCpuCount=4, SysStatsProcessMemoryMB=11987, ActiveSessionCount=-10,",
+        "_time": 1646302223.294,
+        "pri": "181",
+        "syslog_time": "Mar 3 10:10:23",
+        "host": "isehost",
+        "message_type": "CISE_System_Statistics",
+        "seq1": "0000082933",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-03 10:10:23.294",
+        "tz": "+00:00",
+        "seq4": "0000082999",
+        "message_code": "70000",
+        "severity": "Informational",
+        "message_name": "System-Stats",
+        "message": "ISE Utilization",
+        "kvp": "ConfigVersionId=1659, SysStatsUtilizationCpu=7.32%, SysStatsUtilizationNetwork=eth3: rcvd = 955455; sent = 0 ;rcvd_dropped = 124; sent_dropped = 0, SysStatsUtilizationNetwork=vethbbd4eb0a: rcvd = 0; sent = 70 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth09eb1105: rcvd = 70; sent = 140 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth2f7196e5: rcvd = 1506; sent = 1616 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationMemory=42.82%, SysStatsUtilizationDiskIO=0.03%, SysStatsUtilizationDiskSpace=12% /, SysStatsUtilizationDiskSpace=1% /tmp, SysStatsUtilizationDiskSpace=17% /boot, SysStatsUtilizationDiskSpace=19% /opt, SysStatsUtilizationDiskSpace=2% /storedconfig, SysStatsUtilizationDiskSpace=19% /opt/podman/containers/storage/overlay, AverageRadiusRequestLatency=0, AverageTacacsRequestLatency=0, DeltaRadiusRequestCount=0, DeltaTacacsRequestCount=0, SysStatsUtilizationLoadAvg=0.65, SysStatsCpuCount=4, SysStatsProcessMemoryMB=11987, ActiveSessionCount=-10,",
+        "ConfigVersionId": "1659",
+        "SysStatsUtilizationCpu": "7.32%",
+        "SysStatsUtilizationNetwork": "veth2f7196e5:",
+        "rcvd": "1506",
+        "sent": "1616",
+        "rcvd_dropped": "0",
+        "sent_dropped": "0",
+        "SysStatsUtilizationMemory": "42.82%",
+        "SysStatsUtilizationDiskIO": "0.03%",
+        "SysStatsUtilizationDiskSpace": "19% /opt/podman/containers/storage/overlay",
+        "AverageRadiusRequestLatency": "0",
+        "AverageTacacsRequestLatency": "0",
+        "DeltaRadiusRequestCount": "0",
+        "DeltaTacacsRequestCount": "0",
+        "SysStatsUtilizationLoadAvg": "0.65",
+        "SysStatsCpuCount": "4",
+        "SysStatsProcessMemoryMB": "11987",
+        "ActiveSessionCount": "-10,",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "System-Stats",
+        "vendor_severity": "NOTICE",
+        "log_time": "2022-03-03 10:10:23.294",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646302223294,
+        "device": {
+          "hostname": "isehost"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      },
+      {
+        "_raw": "<183>Mar 3 09:22:59 isehost CISE_Authentication_Flow_Diagnostics 0000082628 1 0 2022-03-03 09:22:59.360 +00:00 0000082695 22016 DEBUG Workflow: Identity sequence completed iterating the IDStores, ConfigVersionId=1628, UserName=admin, SelectedAccessService=AuthenticateUserAPI, AcsSessionID=isehost/435083133/112, AuthenticationIdentityStore=All_AD_Join_Points, AuthenticationMethod=PAP_ASCII, WorkflowCurrentIDStoreIndex=2, WorkflowSequenceType=AuthenticationSequence, CurrentIDStoreName=All_AD_Join_Points, WorkflowIfUserNotFound=Reject, WorkflowIfProcessError=Reject, WorkflowIfAuthenticationFailed=Reject, CPMSessionID=isehost:userauth19, Response={AuthenticationResult=UnknownUser; },",
+        "_time": 1646299379.36,
+        "pri": "183",
+        "syslog_time": "Mar 3 09:22:59",
+        "host": "isehost",
+        "message_type": "CISE_Authentication_Flow_Diagnostics",
+        "seq1": "0000082628",
+        "seq2": "1",
+        "seq3": "0",
+        "timestamp": "2022-03-03 09:22:59.360",
+        "tz": "+00:00",
+        "seq4": "0000082695",
+        "message_code": "22016",
+        "severity": "Informational",
+        "message_name": "Workflow",
+        "message": "Identity sequence completed iterating the IDStores",
+        "kvp": "ConfigVersionId=1628, UserName=admin, SelectedAccessService=AuthenticateUserAPI, AcsSessionID=isehost/435083133/112, AuthenticationIdentityStore=All_AD_Join_Points, AuthenticationMethod=PAP_ASCII, WorkflowCurrentIDStoreIndex=2, WorkflowSequenceType=AuthenticationSequence, CurrentIDStoreName=All_AD_Join_Points, WorkflowIfUserNotFound=Reject, WorkflowIfProcessError=Reject, WorkflowIfAuthenticationFailed=Reject, CPMSessionID=isehost:userauth19, Response={AuthenticationResult=UnknownUser; },",
+        "ConfigVersionId": "1628",
+        "UserName": "admin",
+        "SelectedAccessService": "AuthenticateUserAPI",
+        "AcsSessionID": "isehost/435083133/112",
+        "AuthenticationIdentityStore": "All_AD_Join_Points",
+        "AuthenticationMethod": "PAP_ASCII",
+        "WorkflowCurrentIDStoreIndex": "2",
+        "WorkflowSequenceType": "AuthenticationSequence",
+        "CurrentIDStoreName": "All_AD_Join_Points",
+        "WorkflowIfUserNotFound": "Reject",
+        "WorkflowIfProcessError": "Reject",
+        "WorkflowIfAuthenticationFailed": "Reject",
+        "CPMSessionID": "isehost:userauth19",
+        "Response": "",
+        "AuthenticationResult": "UnknownUser; },",
+        "user": null,
+        "dst_ip": null,
+        "dst_port": null,
+        "action": "Workflow",
+        "vendor_severity": "DEBUG",
+        "log_time": "2022-03-03 09:22:59.360",
+        "class_uid": 1001,
+        "class_name": "Base Event",
+        "category_uid": 1,
+        "category_name": "System Activity",
+        "type_uid": 100100,
+        "severity_id": 1,
+        "time": 1646299379360,
+        "device": {
+          "hostname": "isehost"
+        },
+        "metadata": {
+          "product": {
+            "name": "Security",
+            "vendor_name": "cisco ise",
+            "version": "1.0"
+          },
+          "version": "1.9.0"
+        },
+        "sourcetype": "cisco:ise"
+      }
+    ],
+    "sampleKeys": [
+      "ConfigVersionId",
+      "Address",
+      "Port",
+      "DestinationIPAddress",
+      "DestinationPort",
+      "Protocol",
+      "NetworkDeviceName",
+      "NetworkDeviceProfileName",
+      "NetworkDeviceProfileId",
+      "AcsSessionID",
+      "FailureReason",
+      "Step",
+      "NetworkDeviceGroups",
+      "DTLSSupport",
+      "Name",
+      "Profile",
+      "Location",
+      "Type",
+      "IPSEC",
+      "UserName",
+      "OriginalUserName",
+      "MisconfiguredClientFixReason",
+      "IsThirdPartyDeviceFlow",
+      "RadiusFlowType",
+      "AuthenticationMethod",
+      "SelectedAccessService",
+      "SelectedAuthorizationProfiles",
+      "UseCase",
+      "RequestLatency",
+      "SelectedAuthenticationIdentityStores",
+      "AuthenticationStatus",
+      "IdentityPolicyMatchedRule",
+      "AuthorizationPolicyMatchedRule",
+      "CPMSessionID",
+      "EndPointMACAddress",
+      "PostureAssessmentStatus",
+      "ISEPolicySetName",
+      "IdentitySelectionMatchedRule",
+      "StepData",
+      "TotalAuthenLatency",
+      "ClientLatency",
+      "allowEasyWiredSession",
+      "Response",
+      "LicenseTypes",
+      "EapTunnel",
+      "AdminInterface",
+      "AdminIPAddress",
+      "AdminSession",
+      "AdminName",
+      "OperationMessageText",
+      "CmdSet",
+      "CmdAV",
+      "Service",
+      "User",
+      "AVPair",
+      "Version",
+      "QueryResult",
+      "SysStatsUtilizationCpu",
+      "SysStatsUtilizationNetwork",
+      "SysStatsUtilizationMemory",
+      "SysStatsUtilizationDiskIO",
+      "SysStatsUtilizationDiskSpace",
+      "AverageRadiusRequestLatency",
+      "AverageTacacsRequestLatency",
+      "DeltaRadiusRequestCount",
+      "DeltaTacacsRequestCount",
+      "SysStatsUtilizationLoadAvg",
+      "SysStatsCpuCount",
+      "SysStatsProcessMemoryMB",
+      "ActiveSessionCount",
+      "AuthenticationIdentityStore",
+      "WorkflowCurrentIDStoreIndex",
+      "WorkflowSequenceType",
+      "CurrentIDStoreName",
+      "WorkflowIfUserNotFound",
+      "WorkflowIfProcessError",
+      "WorkflowIfAuthenticationFailed"
+    ],
+    "sampleRaw": [
+      "<181>Mar 2 09:09:13 cisco-ise-host CISE_Failed_Attempts 0000075134 1 0 2022-03-02 09:09:13.790 +00:00 0000075201 5405 NOTICE Failed-Attempt: RADIUS Request dropped, ConfigVersionId=1364, Device IP Address=81.2.69.193, Device Port=42946, DestinationIPAddress=81.2.69.145, DestinationPort=1812, Protocol=Radius, NetworkDeviceName=testDevice, User-Name=testDevice1, NAS-IP-Address=81.2.69.193, NAS-Port=1, Service-Type=Framed, Session-Timeout=30, Calling-Station-ID=00-23-DF-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=G0/25, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, AcsSessionID=cisco-ise-host/435083133/47, FailureReason=11036 The Message-Authenticator RADIUS attribute is invalid, Step=11001, Step=11017, Step=11036, Step=5405, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No,",
+      "<181>Mar 3 11:37:34 cisco-ise-host CISE_Passed_Authentications 0000083423 1 0 2022-03-03 11:37:34.978 +00:00 0000083490 5200 NOTICE Passed-Authentication: Authentication succeeded, ConfigVersionId=1696, Device IP Address=81.2.69.143, DestinationIPAddress=81.2.69.193, DestinationPort=1812, UserName=92-09-00-00-00-01, Protocol=Radius, NetworkDeviceName=Simulator, User-Name=92-09-00-00-00-01, NAS-IP-Address=81.2.69.143, NAS-Port=86, Service-Type=Call Check, Calling-Station-ID=92:09:00:00:00:01, NAS-Port-Type=Wireless - IEEE 802.11, NAS-Port-Id=gigabitEthernet1/0/1, Airespace-Wlan-Id=3, OriginalUserName=92-09-00-00-00-01, MisconfiguredClientFixReason=Passed, NetworkDeviceProfileName=Cisco, NetworkDeviceProfileId=b0699505-3150-4215-a80e-6753d45bf56c, IsThirdPartyDeviceFlow=false, RadiusFlowType=WirelessMAB, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, SelectedAuthorizationProfiles=hotspot, UseCase=Host Lookup, RequestLatency=90, Step=11001, Step=11017, Step=11117, Step=11027, Step=15049, Step=15008, Step=15041, Step=15048, Step=15013, Step=24209, Step=24217, Step=22056, Step=22058, Step=22060, Step=24715, Step=15036, Step=24209, Step=24217, Step=15016, Step=11002, Step=5239, SelectedAuthenticationIdentityStores=Internal Endpoints, AuthenticationStatus=UnknownUser, NetworkDeviceGroups=IPSEC#Is IPSEC Device#No, NetworkDeviceGroups=Location#All Locations, NetworkDeviceGroups=Device Type#All Device Types, IdentityPolicyMatchedRule=MAB, AuthorizationPolicyMatchedRule=Hotspot, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, EndPointMACAddress=92-09-00-00-00-01, PostureAssessmentStatus=Pending, ISEPolicySetName=Default, IdentitySelectionMatchedRule=MAB, StepData=7= Normalised Radius.RadiusFlowType, StepData=8=Internal Endpoints, TotalAuthenLatency=90, ClientLatency=0, allowEasyWiredSession=false, DTLSSupport=Unknown, Model Name=Unknown, Network Device Profile=Cisco, Location=Location#All Locations, Device Type=Device Type#All Device Types, IPSEC=IPSEC#Is IPSEC Device#No, Response={Class=CACS:0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M:cisco-ise-host/435083133/126; cisco-av-pair=url-redirect-acl=REDIRECT; cisco-av-pair=url-redirect=https://cisco-ise-host.local:8443/portal/gateway?sessionId=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M&portal=77b653c9-924d-41a5-a5c3-1c40c4e7a5a7&action=cwa&type=drw&token=65402552fb76ff96c08edaab722f880e; LicenseTypes=1; },",
+      "<183>Mar 2 10:54:40 cisco-ise-host CISE_RADIUS_Diagnostics 0000076010 1 0 2022-03-02 10:54:40.275 +00:00 0000076076 11001 DEBUG RADIUS: Received RADIUS Access-Request, ConfigVersionId=1383, Device IP Address=81.2.69.143, Device Port=39818, DestinationIPAddress=81.2.69.144, DestinationPort=1812, AcsSessionID=cisco-ise-host/435083133/83, SelectedAccessService=Default Network Access, EapTunnel=PEAP, User-Name=testDevice1, NAS-IP-Address=81.2.69.143, NAS-Port=1, Calling-Station-ID=00-00-00-00-00-01, NAS-Port-Type=Wireless - IEEE 802.11, CPMSessionID=0a0009ccqDyAnAWJUIb_A9r1F7EclNP/asP/HfDHLoNi2qUcIMc,",
+      "<181>Oct  9 10:58:08 host01 CISE_Administrative_and_Operational_Audit 0000027385 1 0 2023-10-09 10:58:08.408 +02:00 0000188271 51001 NOTICE Administrator-Login: Administrator authentication succeeded, ConfigVersionId=2732, AdminInterface=GUI, AdminIPAddress=192.168.0.1, AdminSession=AdminGUI_Session, AdminName=supercooluser, OperationMessageText=Administrator authentication successful. The user accepted the pre-login banner information.,",
+      "<182>Feb 21 19:13:08 cisco-ise-host CISE_TACACS_Accounting 0000000001 4 0 2020-02-21 19:13:08.328 +00:00 0018415781 3300 NOTICE Tacacs-Accounting: TACACS+ Accounting with Command, ConfigVersionId=1829, Device IP Address=81.2.69.144, CmdSet=[ CmdAV=show mac-address-table <cr> ], RequestLatency=1, NetworkDeviceName=wlnwan1, Type=Accounting, Privilege-Level=15, Service=Login, User=psxvne, Port=tty10, Remote-Address=81.2.69.144, Authen-Method=TacacsPlus, AVPair=task_id=2962, AVPair=timezone=GMT, AVPair=start_time=1585185432, AVPair=priv-lvl=15, AcctRequest-Flags=Stop, Service-Argument=shell, AcsSessionID=ldnnacpsn1/359344348/952729, SelectedAccessService=Device Admin - TACACS, Step=13006, Step=15049, Step=15008, Step=15048, Step=13035, NetworkDeviceGroups=Location#All Locations#EMEA, NetworkDeviceGroups=Device Type#All Device Types#Routers, NetworkDeviceGroups=IPSEC#Is IPSEC Device, CPMSessionID=81.2.69.144Accounting306034364, Model Name=Unknown, Software Version=Unknown, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }, Network Device Profile=Cisco, Location=Location#All Locations#EMEA, Device Type=Device Type#All Device Types#Routers, IPSEC=IPSEC#Is IPSEC Device, Response={AcctReply-Status=Success; }",
+      "<183>Mar 3 11:37:34 cisco-ise-host CISE_Identity_Stores_Diagnostics 0000083418 1 0 2022-03-03 11:37:34.933 +00:00 0000083485 24209 DEBUG Local-user-DB: Looking up Endpoint in Internal Endpoints IDStore, ConfigVersionId=1696, UserName=92-09-00-00-00-01, Protocol=Radius, OriginalUserName=92-09-00-00-00-01, AcsSessionID=cisco-ise-host/435083133/126, AuthenticationMethod=Lookup, SelectedAccessService=Default Network Access, CPMSessionID=0a0009ccdD2BsLZMkW8ZRUAE/sDVf78pplxJC0wv2VwZR6N070M, Response={AuthenticationResult=UnknownUser; QueryResult=UnknownUser; },",
+      "<181>Mar 3 10:10:23 isehost CISE_System_Statistics 0000082933 1 0 2022-03-03 10:10:23.294 +00:00 0000082999 70000 NOTICE System-Stats: ISE Utilization, ConfigVersionId=1659, SysStatsUtilizationCpu=7.32%, SysStatsUtilizationNetwork=eth3: rcvd = 955455; sent = 0 ;rcvd_dropped = 124; sent_dropped = 0, SysStatsUtilizationNetwork=vethbbd4eb0a: rcvd = 0; sent = 70 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth09eb1105: rcvd = 70; sent = 140 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationNetwork=veth2f7196e5: rcvd = 1506; sent = 1616 ;rcvd_dropped = 0; sent_dropped = 0, SysStatsUtilizationMemory=42.82%, SysStatsUtilizationDiskIO=0.03%, SysStatsUtilizationDiskSpace=12% /, SysStatsUtilizationDiskSpace=1% /tmp, SysStatsUtilizationDiskSpace=17% /boot, SysStatsUtilizationDiskSpace=19% /opt, SysStatsUtilizationDiskSpace=2% /storedconfig, SysStatsUtilizationDiskSpace=19% /opt/podman/containers/storage/overlay, AverageRadiusRequestLatency=0, AverageTacacsRequestLatency=0, DeltaRadiusRequestCount=0, DeltaTacacsRequestCount=0, SysStatsUtilizationLoadAvg=0.65, SysStatsCpuCount=4, SysStatsProcessMemoryMB=11987, ActiveSessionCount=-10,",
+      "<183>Mar 3 09:22:59 isehost CISE_Authentication_Flow_Diagnostics 0000082628 1 0 2022-03-03 09:22:59.360 +00:00 0000082695 22016 DEBUG Workflow: Identity sequence completed iterating the IDStores, ConfigVersionId=1628, UserName=admin, SelectedAccessService=AuthenticateUserAPI, AcsSessionID=isehost/435083133/112, AuthenticationIdentityStore=All_AD_Join_Points, AuthenticationMethod=PAP_ASCII, WorkflowCurrentIDStoreIndex=2, WorkflowSequenceType=AuthenticationSequence, CurrentIDStoreName=All_AD_Join_Points, WorkflowIfUserNotFound=Reject, WorkflowIfProcessError=Reject, WorkflowIfAuthenticationFailed=Reject, CPMSessionID=isehost:userauth19, Response={AuthenticationResult=UnknownUser; },"
+    ],
+    "sourcetype": "cisco:ise"
+  }
+}
