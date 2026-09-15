@@ -17715,6 +17715,21 @@
         "score": 95,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_yara_error_corelight::__optimization__",
+      "sourcetype": "corelight_yara_error_corelight",
+      "dest_format": "__optimization__",
+      "score": 100,
+      "part": "optimization",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:41:15.429Z",
+      "path": "shared-goldens/corelight_yara_error_corelight____optimization__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
