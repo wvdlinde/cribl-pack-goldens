@@ -17565,6 +17565,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostd::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_hostd",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T12:35:46.049Z",
+      "path": "shared-goldens/vmware_esxlog_hostd__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
