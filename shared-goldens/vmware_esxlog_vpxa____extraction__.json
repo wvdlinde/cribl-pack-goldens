@@ -1,0 +1,109 @@
+{
+  "key": "vmware_esxlog_vpxa::__extraction__",
+  "sourcetype": "vmware_esxlog_vpxa",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 691,
+  "updated_at": "2026-09-15T13:18:33.923Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse base VPXA log structure: timestamp, esx host, pid, sub-component, opID, user, and message",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+) (?<esx_host>\\S+) Vpxa\\[(?<pid>\\d+)\\]: \\[Originator@\\d+ sub=(?<subcomponent>\\S+) opID=(?<opid>\\S+) user=(?<user>\\S+)\\] (?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/)",
+      "disabled": false,
+      "description": "Extract IPv4 address referenced in message (e.g. host, connection source)",
+      "conf": {
+        "source": "message",
+        "regex": "/(?<src_ip>(?:\\d{1,3}\\.){3}\\d{1,3})/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/\\[[0-9a-fA-F:]+\\]/)",
+      "disabled": false,
+      "description": "Extract bracketed IPv6 address referenced in message",
+      "conf": {
+        "source": "message",
+        "regex": "/\\[(?<src_ip>[0-9a-fA-F:]+)\\]/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/port=\\d+/)",
+      "disabled": false,
+      "description": "Extract destination port when present in message",
+      "conf": {
+        "source": "message",
+        "regex": "/port=(?<dst_port>\\d+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.match(/target=\\S+/)",
+      "disabled": false,
+      "description": "Extract destination host when a relocate/target host is referenced",
+      "conf": {
+        "source": "message",
+        "regex": "/target=(?<dst_host>[\\w.\\-]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify severity and action based on message content",
+      "conf": {
+        "add": [
+          {
+            "name": "severity",
+            "value": "message.match(/ERROR/) ? 'error' : message.match(/WARNING/) ? 'warning' : message.match(/INFO:/) ? 'info' : 'info'"
+          },
+          {
+            "name": "action",
+            "value": "message.match(/failed: invalid credentials/) ? 'login_failure' : message.match(/succeeded after/) ? 'login_success' : message.match(/authenticated via SOAP/) ? 'login_success' : message.match(/Unauthorized API call blocked/) ? 'blocked' : message.match(/completed successfully/) ? 'task_success' : message.match(/Failed to establish/) ? 'connection_failure' : message.match(/Reconnected/) ? 'reconnected' : message.match(/power state changed/) ? 'state_change' : message.match(/Health status/) ? 'health_alert' : 'info'"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "entity",
+        "host",
+        "latency",
+        "opid",
+        "port",
+        "status",
+        "sub",
+        "target",
+        "tid",
+        "user",
+        "vm"
+      ]
+    }
+  },
+  "report": null
+}
