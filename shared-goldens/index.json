@@ -17745,6 +17745,21 @@
         "score": 90,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_ntp::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_ntp",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:56:54.055Z",
+      "path": "shared-goldens/corelight_ntp__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
