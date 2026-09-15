@@ -17685,6 +17685,21 @@
         "score": 92,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostdcgiserver::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_hostdcgiserver",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:04:55.599Z",
+      "path": "shared-goldens/vmware_esxlog_hostdcgiserver__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
