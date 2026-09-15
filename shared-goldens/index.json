@@ -17625,6 +17625,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vpxa::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_vpxa",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T13:26:15.304Z",
+      "path": "shared-goldens/vmware_esxlog_vpxa__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
