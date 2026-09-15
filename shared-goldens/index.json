@@ -17610,6 +17610,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_vpxa::__extraction__",
+      "sourcetype": "vmware_esxlog_vpxa",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T13:18:33.923Z",
+      "path": "shared-goldens/vmware_esxlog_vpxa____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
