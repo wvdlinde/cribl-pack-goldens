@@ -1,0 +1,117 @@
+{
+  "key": "isva_syslog::__extraction__",
+  "sourcetype": "isva_syslog",
+  "dest_format": "__extraction__",
+  "score": 100,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 691,
+  "updated_at": "2026-09-15T13:07:05.163Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse syslog header, ISVA message code, human-readable message, and trailing key=value pairs",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^<(?<priority>\\d+)>(?<timestamp>\\w{3}\\s+\\d{1,2}\\s\\d{2}:\\d{2}:\\d{2})\\s+(?<host>\\S+)\\s+(?<process>\\S+?)\\[(?<pid>\\d+)\\]:\\s+(?<msg_code>\\S+)\\s+(?<message>.*?)\\s+(?<kvpairs>\\S+=.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf(\"'\") !== -1",
+      "disabled": false,
+      "description": "Extract username from message text when present (quoted single-quote user reference)",
+      "conf": {
+        "source": "message",
+        "regex": "/'(?<user>[^']+)'/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "kvpairs && kvpairs.length > 0",
+      "disabled": false,
+      "description": "Extract KVP fields (severity, sourceip, port, method, resource, authmethod, sessionid, reason, outcome, etc.) from trailing key=value segment",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "kvpairs",
+        "cleanFields": true
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Normalize network and outcome fields into consistent schema (src_ip, dst_host, dst_port, protocol, action, severity)",
+      "conf": {
+        "add": [
+          {
+            "name": "src_ip",
+            "value": "sourceip"
+          },
+          {
+            "name": "dst_host",
+            "value": "host"
+          },
+          {
+            "name": "dst_port",
+            "value": "port"
+          },
+          {
+            "name": "protocol",
+            "value": "dst_port=='443' || dst_port=='8443' || dst_port=='9443' ? 'https' : 'tcp'"
+          },
+          {
+            "name": "action",
+            "value": "outcome=='SUCCESS' ? 'allow' : outcome=='FAILURE' ? 'deny' : outcome=='PENDING' ? 'pending' : 'unknown'"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
+          },
+          {
+            "name": "severity",
+            "value": "severity ? severity.toLowerCase() : severity"
+          }
+        ],
+        "remove": [
+          "kvpairs",
+          "priority",
+          "pid",
+          "process"
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "authmethod",
+        "blockedbypolicy",
+        "issuercn",
+        "lockoutduration",
+        "method",
+        "notafter",
+        "note",
+        "outcome",
+        "port",
+        "reason",
+        "resource",
+        "retrycount",
+        "sessionid",
+        "severity",
+        "sourceip",
+        "sslprotocol",
+        "tokenexpiry"
+      ]
+    }
+  },
+  "report": null
+}
