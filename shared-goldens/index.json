@@ -17550,6 +17550,21 @@
         "score": 96,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostd::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_hostd",
+      "dest_format": "cim#network::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T12:33:04.523Z",
+      "path": "shared-goldens/vmware_esxlog_hostd__cim#network____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
