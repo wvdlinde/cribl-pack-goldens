@@ -17520,6 +17520,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "http_fpc_metadata::cim#network::__mapping__",
+      "sourcetype": "http_fpc_metadata",
+      "dest_format": "cim#network::__mapping__",
+      "score": 94,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T11:26:35.585Z",
+      "path": "shared-goldens/http_fpc_metadata__cim#network____mapping__.json",
+      "report": {
+        "score": 94,
+        "band": "good"
+      }
     }
   ]
 }
