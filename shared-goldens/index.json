@@ -17700,6 +17700,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_yara_error_corelight::cim#network::__mapping__",
+      "sourcetype": "corelight_yara_error_corelight",
+      "dest_format": "cim#network::__mapping__",
+      "score": 95,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:40:19.597Z",
+      "path": "shared-goldens/corelight_yara_error_corelight__cim#network____mapping__.json",
+      "report": {
+        "score": 95,
+        "band": "good"
+      }
     }
   ]
 }
