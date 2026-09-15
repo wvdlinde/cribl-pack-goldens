@@ -17670,6 +17670,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostdcgiserver::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_hostdcgiserver",
+      "dest_format": "cim#network::__mapping__",
+      "score": 92,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:00:07.946Z",
+      "path": "shared-goldens/vmware_esxlog_hostdcgiserver__cim#network____mapping__.json",
+      "report": {
+        "score": 92,
+        "band": "good"
+      }
     }
   ]
 }
