@@ -17730,6 +17730,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_fdm::cim#network::__mapping__",
+      "sourcetype": "vmware_esxlog_fdm",
+      "dest_format": "cim#network::__mapping__",
+      "score": 90,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T14:42:30.083Z",
+      "path": "shared-goldens/vmware_esxlog_fdm__cim#network____mapping__.json",
+      "report": {
+        "score": 90,
+        "band": "good"
+      }
     }
   ]
 }
