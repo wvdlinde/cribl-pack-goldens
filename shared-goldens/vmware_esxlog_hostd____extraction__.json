@@ -1,0 +1,94 @@
+{
+  "key": "vmware_esxlog_hostd::__extraction__",
+  "sourcetype": "vmware_esxlog_hostd",
+  "dest_format": "__extraction__",
+  "score": 96,
+  "part": "extraction",
+  "author": "unknown",
+  "build": 691,
+  "updated_at": "2026-09-15T12:27:52.408Z",
+  "functions": [
+    {
+      "id": "regex_extract",
+      "filter": "true",
+      "disabled": false,
+      "description": "Parse hostd syslog envelope: timestamp, host, severity, pid, sub-component, opID, user and optional vm/task/sid/port/path context, plus trailing message text.",
+      "conf": {
+        "source": "_raw",
+        "regex": "/^(?<timestamp>\\S+)\\s+(?<esx_host>\\S+)\\s+Hostd:\\s+\\S+\\s+(?<severity>\\w+)\\s+hostd\\[(?<pid>\\d+)\\]\\s+\\[Originator@\\d+\\s+sub=(?<sub>\\S+)\\s+opID=(?<opID>\\S+)\\s+user=(?<user>[^\\s\\]]+)(?:\\s+vm=(?<vm>[^\\s\\]]+))?(?:\\s+task=(?<task>[^\\s\\]]+))?(?:\\s+sid=(?<sid>[^\\s\\]]+))?(?:\\s+port=(?<port>[^\\s\\]]+))?(?:\\s+path=(?<path>[^\\]]+))?\\]\\s+(?<message>.*)$/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('from') !== -1",
+      "disabled": false,
+      "description": "Extract source IP (IPv4, IPv6 or CIDR) from messages referencing 'from <ip>' such as failed logins, sessions, or firewall rules.",
+      "conf": {
+        "source": "message",
+        "regex": "/from\\s+(?<src_ip>[0-9a-fA-F:.]+(?:\\/\\d+)?)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && message.indexOf('@') !== -1 && message.indexOf('User') !== -1",
+      "disabled": false,
+      "description": "Extract subject user and source IPv4 from 'User <user>@<ip>' patterns in login/privilege event messages.",
+      "conf": {
+        "source": "message",
+        "regex": "/User\\s+(?<src_user>[^\\s@]+)@(?<src_ip>[0-9.]+)/",
+        "iterations": 1,
+        "overwrite": false
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Classify hostd message into a normalized action taxonomy for downstream analytics.",
+      "conf": {
+        "add": [
+          {
+            "name": "action",
+            "value": "message.match(/logged __e['in']/) ? 'login_success' : message.match(/Login failed/) ? 'login_failed' : message.match(/Session created/) ? 'session_created' : message.match(/Powering on/) ? 'power_on' : message.match(/PowerOff/) ? 'power_off' : message.match(/completed successfully/) ? 'task_success' : message.match(/Failed to mount/) ? 'mount_failed' : message.match(/attempted privileged operation/) ? 'privilege_denied' : message.match(/Certificate/) ? 'cert_expiry_warning' : message.match(/Firewall rule/) ? 'firewall_update' : message.match(/failed/) ? 'task_failed' : 'other'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eval",
+      "filter": "true",
+      "disabled": false,
+      "description": "Derive protocol context when explicitly referenced in the hostd message text (NFS, iSCSI, HTTPS).",
+      "conf": {
+        "add": [
+          {
+            "name": "protocol",
+            "value": "message.match(/NFS/i) ? 'nfs' : message.match(/iSCSI/i) ? 'iscsi' : message.match(/HTTPS/i) ? 'https' : null"
+          }
+        ]
+      }
+    }
+  ],
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "duration",
+        "opid",
+        "path",
+        "payload",
+        "port",
+        "sid",
+        "sub",
+        "task",
+        "user",
+        "vm"
+      ]
+    }
+  },
+  "report": null
+}
