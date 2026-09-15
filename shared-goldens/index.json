@@ -17535,6 +17535,21 @@
         "score": 94,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_hostd::__extraction__",
+      "sourcetype": "vmware_esxlog_hostd",
+      "dest_format": "__extraction__",
+      "score": 96,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T12:27:52.408Z",
+      "path": "shared-goldens/vmware_esxlog_hostd____extraction__.json",
+      "report": {
+        "score": 96,
+        "band": "good"
+      }
     }
   ]
 }
