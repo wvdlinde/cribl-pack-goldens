@@ -17580,6 +17580,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "corelight_smtp_links::commonsecuritylog::__mapping__",
+      "sourcetype": "corelight_smtp_links",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 98,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T12:39:50.090Z",
+      "path": "shared-goldens/corelight_smtp_links__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 98,
+        "band": "good"
+      }
     }
   ]
 }
