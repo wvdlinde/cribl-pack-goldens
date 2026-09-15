@@ -17595,6 +17595,21 @@
         "score": 98,
         "band": "good"
       }
+    },
+    {
+      "key": "isva_syslog::__extraction__",
+      "sourcetype": "isva_syslog",
+      "dest_format": "__extraction__",
+      "score": 100,
+      "part": "extraction",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T13:07:05.163Z",
+      "path": "shared-goldens/isva_syslog____extraction__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
