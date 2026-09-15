@@ -17655,6 +17655,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "aws_elb_accesslog::commonsecuritylog::__mapping__",
+      "sourcetype": "aws_elb_accesslog",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T13:51:22.445Z",
+      "path": "shared-goldens/aws_elb_accesslog__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
