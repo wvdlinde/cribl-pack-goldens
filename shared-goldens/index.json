@@ -17760,6 +17760,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_sut::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_sut",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 691,
+      "updated_at": "2026-09-15T15:19:21.304Z",
+      "path": "shared-goldens/vmware_esxlog_sut__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
