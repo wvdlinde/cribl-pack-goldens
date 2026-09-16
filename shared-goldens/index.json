@@ -6830,14 +6830,14 @@
       "key": "ivanti_sentry_sentry::cim#network::__mapping__",
       "sourcetype": "ivanti_sentry_sentry",
       "dest_format": "cim#network::__mapping__",
-      "score": 91,
+      "score": 100,
       "part": "mapping",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T11:43:51.969Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-16T11:08:43.955Z",
       "path": "shared-goldens/ivanti_sentry_sentry__cim#network____mapping__.json",
       "report": {
-        "score": 91,
+        "score": 100,
         "band": "good"
       }
     },
