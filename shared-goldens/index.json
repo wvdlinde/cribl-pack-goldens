@@ -7910,14 +7910,14 @@
       "key": "mcafee_epo_threatevents_ens::commonsecuritylog::__mapping__",
       "sourcetype": "mcafee_epo_threatevents_ens",
       "dest_format": "commonsecuritylog::__mapping__",
-      "score": 90,
+      "score": 91,
       "part": "mapping",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T12:06:03.164Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-16T11:08:56.214Z",
       "path": "shared-goldens/mcafee_epo_threatevents_ens__commonsecuritylog____mapping__.json",
       "report": {
-        "score": 90,
+        "score": 91,
         "band": "good"
       }
     },
