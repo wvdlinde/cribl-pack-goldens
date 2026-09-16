@@ -17775,6 +17775,21 @@
         "score": 100,
         "band": "good"
       }
+    },
+    {
+      "key": "vmware_esxlog_sandboxd::commonsecuritylog::__mapping__",
+      "sourcetype": "vmware_esxlog_sandboxd",
+      "dest_format": "commonsecuritylog::__mapping__",
+      "score": 100,
+      "part": "mapping",
+      "author": "unknown",
+      "build": 698,
+      "updated_at": "2026-09-16T11:25:11.128Z",
+      "path": "shared-goldens/vmware_esxlog_sandboxd__commonsecuritylog____mapping__.json",
+      "report": {
+        "score": 100,
+        "band": "good"
+      }
     }
   ]
 }
