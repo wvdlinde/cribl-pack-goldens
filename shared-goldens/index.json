@@ -4670,14 +4670,14 @@
       "key": "f5_bigip_ltm_ssl_error::__extraction__",
       "sourcetype": "f5_bigip_ltm_ssl_error",
       "dest_format": "__extraction__",
-      "score": 93,
+      "score": 95,
       "part": "extraction",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-09-01T07:36:59.872Z",
+      "updated_at": "2026-09-16T16:00:06.198Z",
       "path": "shared-goldens/f5_bigip_ltm_ssl_error____extraction__.json",
       "report": {
-        "score": 93,
+        "score": 95,
         "band": "good"
       }
     },
