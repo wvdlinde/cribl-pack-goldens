@@ -5435,14 +5435,14 @@
       "key": "hypori::cim#network::__mapping__",
       "sourcetype": "hypori",
       "dest_format": "cim#network::__mapping__",
-      "score": 91,
+      "score": 100,
       "part": "mapping",
-      "author": "unknown",
-      "build": 648,
-      "updated_at": "2026-08-31T10:22:18.912Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-16T11:08:37.647Z",
       "path": "shared-goldens/hypori__cim#network____mapping__.json",
       "report": {
-        "score": 91,
+        "score": 100,
         "band": "good"
       }
     },
