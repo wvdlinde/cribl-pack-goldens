@@ -290,14 +290,14 @@
       "key": "aemerror::__extraction__",
       "sourcetype": "aemerror",
       "dest_format": "__extraction__",
-      "score": 90,
+      "score": 93,
       "part": "extraction",
-      "author": "unknown",
-      "build": 378,
-      "updated_at": "2026-08-07T13:05:43.733Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-16T11:08:27.787Z",
       "path": "shared-goldens/aemerror____extraction__.json",
       "report": {
-        "score": 90,
+        "score": 93,
         "band": "good"
       }
     },
