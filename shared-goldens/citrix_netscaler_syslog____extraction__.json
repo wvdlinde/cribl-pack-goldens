@@ -2,67 +2,239 @@
   "key": "citrix_netscaler_syslog::__extraction__",
   "sourcetype": "citrix_netscaler_syslog",
   "dest_format": "__extraction__",
-  "score": 93,
+  "score": 97,
   "part": "extraction",
-  "author": "unknown",
-  "build": 378,
-  "updated_at": "2026-08-07T13:11:36.874Z",
+  "author": "push",
+  "build": 0,
+  "updated_at": "2026-09-16T11:08:32.685Z",
   "functions": [
     {
       "id": "regex_extract",
       "filter": "true",
       "disabled": false,
-      "description": "Parse the Citrix NetScaler syslog header and event envelope",
+      "description": "Parse Citrix NetScaler syslog header: syslog time, device, NS timestamp, module, event type/id, source IP/port and remaining message",
       "conf": {
         "source": "_raw",
-        "regex": "/^(?<syslog_timestamp>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+<(?<priority>\\d+)>\\s+(?<host>\\S+)\\s+(?<timestamp>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\\s+(?<timezone>\\S+)\\s+(?<process>[^:]+):\\s+(?<partition>\\S+)\\s+(?<module>\\S+)\\s+(?<event_type>\\S+)\\s+(?<event_id>\\d+)\\s+(?<event_counter>\\d+)\\s+:\\s+(?<message>.*)$/",
         "iterations": 1,
-        "overwrite": false
+        "overwrite": false,
+        "regex": "/^(?<syslog_time>[A-Z][a-z]{2}\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\s+(?<dst_host>\\S+)\\s+(?<ns_timestamp>\\d{2}\\/\\d{2}\\/\\d{4}:\\d{2}:\\d{2}:\\d{2})\\s+(?<ns_timezone>\\S+)\\s+\\S+\\s+(?<ppe>\\d+-PPE-\\d+)\\s+:\\s+(?<log_partition>\\S+)\\s+(?<module>\\S+)\\s+(?<event_type>\\S+)\\s+(?<event_id>\\d+)\\s+\\d+\\s+:\\s+(?<src_ip>[0-9a-fA-F:.]+)\\s+(?<src_port>\\d+)(?:-PPE\\d+)?\\s+(?<message>.*)$/"
       }
     },
     {
       "id": "regex_extract",
-      "filter": "message",
+      "filter": "module=='APPFW' && message && message.indexOf('APPFW_ACTION')>=0",
       "disabled": false,
-      "description": "Extract common NetScaler event attributes from the message payload",
+      "description": "Extract AppFirewall action verdict and violation detail",
       "conf": {
         "source": "message",
-        "regex": "/^(?:(?=.*User \"(?<user>[^\"]+)\")|(?!.*User \"))(?:(?=.*(?:Client_ip|Source) (?<src_ip>\\[[^\\]]+\\]|[^:\\s-]+)(?::(?<src_port>\\d+))?(?= -|$))|(?!.*(?:Client_ip|Source) ))(?:(?=.*Nat_ip (?<nat_ip>\\[[^\\]]+\\]|[^\\s-]+))|(?!.*Nat_ip ))(?:(?=.*(?:(?:Destination|Vserver) |Service \"[^\"]+\" )(?<dst_ip>\\[[^\\]]+\\]|[^\":\\s-]+):(?<dst_port>\\d+))|(?!.*(?:(?:Destination|Vserver) |Service \"[^\"]+\" )(?:\\[[^\\]]+\\]|[^\":\\s-]+):\\d+))(?:(?=.*(?:Vserver|Service) \"(?<dst_host>[^\"]+)\")|(?!.*(?:Vserver|Service) \"))(?:(?=.*Status \"(?<status>[^\"]+)\")|(?!.*Status \"))(?:(?=.*Reason \"(?<reason>[^\"]+)\")|(?!.*Reason \"))(?:(?=.*Action \"(?<action>[^\"]+)\")|(?!.*Action \"))(?:(?=.*Severity \"(?<severity>[^\"]+)\")|(?!.*Severity \"))(?:(?=.*Auth_type (?<auth_type>\\S+)(?= -|$))|(?!.*Auth_type ))(?:(?=.*Session_id (?<session_id>\\S+)(?= -|$))|(?!.*Session_id ))(?:(?=.*Client_type \"(?<client_type>[^\"]+)\")|(?!.*Client_type \"))(?:(?=.*Profile \"(?<profile>[^\"]+)\")|(?!.*Profile \"))(?:(?=.*Sig_category \"(?<signature_category>[^\"]+)\")|(?!.*Sig_category \"))(?:(?=.*Request \"(?<request>[^\"]+)\")|(?!.*Request \"))(?:(?=.*Command \"(?<command>[^\"]+)\")|(?!.*Command \"))(?:(?=.*Cipher \"(?<cipher>[^\"]+)\")|(?!.*Cipher \"))(?:(?=.*Cert_name \"(?<certificate_name>[^\"]+)\")|(?!.*Cert_name \"))(?:(?=.*Days_remaining (?<days_remaining>\\d+)(?= -|$))|(?!.*Days_remaining ))(?:(?=.*Duration \"(?<duration>\\d+)\")|(?!.*Duration \"))(?:(?=.*Previous_state \"(?<previous_state>[^\"]+)\")|(?!.*Previous_state \"))(?:(?=.*New_state \"(?<new_state>[^\"]+)\")|(?!.*New_state \"))(?:(?=.*Node (?<node>\\d+)(?= -|$))|(?!.*Node ))(?:(?=.*Peer_node (?<peer_node>\\d+)(?= -|$))|(?!.*Peer_node ))(?:(?=.*Monitor \"(?<monitor>[^\"]+)\")|(?!.*Monitor \"))(?:(?=.*Site \"(?<site>[^\"]+)\")|(?!.*Site \"))(?:(?=.*Ip (?<site_ip>\\[[^\\]]+\\]|[^\\s-]+)(?= -|$))|(?!.*Ip )).*$/",
         "iterations": 1,
-        "overwrite": false
+        "overwrite": false,
+        "regex": "/APPFW_ACTION\\s+\\[(?<appfw_action>\\w+)\\]\\s+(?<violation_detail>.*)$/"
+      }
+    },
+    {
+      "id": "regex_extract",
+      "filter": "message && (message.indexOf('field=')>=0 || message.indexOf('param=')>=0 || message.indexOf('request=')>=0)",
+      "disabled": false,
+      "description": "Extract AppFirewall field/param, payload value and offending request",
+      "conf": {
+        "source": "message",
+        "iterations": 1,
+        "overwrite": false,
+        "regex": "/(?:field|param)=\"(?<violation_field>[^\"]*)\"(?:\\s+value=\"(?<violation_value>.*?)\")?(?:\\s+request=\"(?<http_request>[^\"]*)\")?/"
+      }
+    },
+    {
+      "id": "serde",
+      "filter": "message && message.indexOf('=')>=0",
+      "disabled": false,
+      "description": "Extract key=value pairs (User, Auth_Type, Vserver, Status, State, Reason, Bytes, etc.) from the message body",
+      "conf": {
+        "mode": "extract",
+        "type": "kvp",
+        "srcField": "message",
+        "delimChar": " ",
+        "kvDelimChar": "=",
+        "cleanFields": true
       }
     },
     {
       "id": "eval",
       "filter": "true",
       "disabled": false,
-      "description": "Normalize action, status, severity, protocol, and network direction",
+      "description": "Normalize NetScaler fields: timestamp, user, action, severity, category, IP version and rename KVP fields",
       "conf": {
         "add": [
           {
+            "name": "_time",
+            "value": "strptime(ns_timestamp, '%m/%d/%Y:%H:%M:%S')"
+          },
+          {
+            "name": "timestamp",
+            "value": "ns_timestamp"
+          },
+          {
+            "name": "vendor",
+            "value": "'Citrix'"
+          },
+          {
+            "name": "product",
+            "value": "'NetScaler'"
+          },
+          {
+            "name": "user",
+            "value": "User || null"
+          },
+          {
+            "name": "auth_type",
+            "value": "Auth_Type || null"
+          },
+          {
+            "name": "client_type",
+            "value": "Client_Type || null"
+          },
+          {
+            "name": "vserver",
+            "value": "Vserver || null"
+          },
+          {
+            "name": "service",
+            "value": "Service || null"
+          },
+          {
+            "name": "monitor",
+            "value": "Monitor || null"
+          },
+          {
+            "name": "site",
+            "value": "Site || null"
+          },
+          {
+            "name": "cert_name",
+            "value": "Cert || null"
+          },
+          {
+            "name": "days_to_expiry",
+            "value": "DaysToExpiry ? Number(DaysToExpiry) : null"
+          },
+          {
+            "name": "object_state",
+            "value": "State ? State.toLowerCase() : null"
+          },
+          {
+            "name": "prev_state",
+            "value": "LastState ? LastState.toLowerCase() : null"
+          },
+          {
             "name": "status",
-            "value": "status ? status.toLowerCase() : undefined"
+            "value": "Status ? Status.toLowerCase() : null"
+          },
+          {
+            "name": "reason",
+            "value": "Reason || null"
+          },
+          {
+            "name": "duration",
+            "value": "Duration || null"
+          },
+          {
+            "name": "bytes_in",
+            "value": "BytesIn ? Number(BytesIn) : null"
+          },
+          {
+            "name": "bytes_out",
+            "value": "BytesOut ? Number(BytesOut) : null"
+          },
+          {
+            "name": "client_ip",
+            "value": "ClientIP || null"
+          },
+          {
+            "name": "src_port",
+            "value": "src_port ? Number(src_port) : null"
+          },
+          {
+            "name": "ip_version",
+            "value": "src_ip && src_ip.indexOf(':')>=0 ? 'ipv6' : 'ipv4'"
           },
           {
             "name": "action",
-            "value": "action ? action.toLowerCase() : event_type === 'LOGIN_SUCCESS' ? 'allow' : event_type === 'LOGIN_FAIL' ? 'deny' : event_type === 'VPN_SESSION_ESTABLISHED' ? 'allow' : event_type === 'VPN_SESSION_TERMINATED' ? 'disconnect' : event_type === 'SSL_HANDSHAKE_FAILED' ? 'deny' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warn' : event_type === 'CMD_EXECUTED' ? 'execute' : event_type === 'LB_VSERVER_STATE_DOWN' || event_type === 'GSLB_SITE_DOWN' ? 'down' : event_type === 'LB_MONITOR_UP' ? 'up' : event_type === 'HA_STATE_CHANGE' ? 'change' : undefined"
+            "value": "appfw_action ? (appfw_action.toLowerCase()=='block' ? 'blocked' : appfw_action.toLowerCase()=='transform' ? 'transformed' : appfw_action.toLowerCase()) : (Status ? (Status.toUpperCase()=='SUCCESS' ? 'allowed' : 'blocked') : (State ? State.toLowerCase() : 'unknown'))"
+          },
+          {
+            "name": "vendor_severity",
+            "value": "severity || undefined"
           },
           {
             "name": "severity",
-            "value": "severity ? severity.toLowerCase() : priority === '131' ? 'error' : event_type === 'SSL_CERT_EXPIRY_WARNING' ? 'warning' : 'info'"
+            "value": "severity ? severity.toUpperCase() : (Severity ? Severity.toUpperCase() : (event_type && event_type.match(/SQL|XSS|INJECTION|OVERFLOW|COOKIE|DENY/) ? 'CRITICAL' : event_type && event_type.match(/FAIL|DOWN|EXPIRY/) ? 'HIGH' : 'INFO'))"
           },
           {
-            "name": "protocol",
-            "value": "dst_port ? 'tcp' : undefined"
-          },
-          {
-            "name": "direction",
-            "value": "src_ip && dst_ip ? 'inbound' : undefined"
+            "name": "event_category",
+            "value": "module=='APPFW' ? 'web_application_firewall' : module=='AAA' ? 'authentication' : module=='SSLVPN' ? 'vpn' : module=='LB' ? 'load_balancing' : module=='GSLB' ? 'global_load_balancing' : module=='SSL' ? 'certificate' : 'other'"
           }
+        ],
+        "remove": [
+          "User",
+          "Auth_Type",
+          "Client_Type",
+          "Vserver",
+          "Status",
+          "State",
+          "LastState",
+          "Reason",
+          "Duration",
+          "BytesIn",
+          "BytesOut",
+          "ClientIP",
+          "Service",
+          "Monitor",
+          "Site",
+          "Cert",
+          "DaysToExpiry",
+          "Severity",
+          "appfw_action"
         ]
       }
     }
   ],
-  "recipe": null,
+  "recipe": {
+    "fingerprint": {
+      "format": "kvp",
+      "keys": [
+        "action",
+        "actual",
+        "actual",
+        "auth_type",
+        "bytesin",
+        "bytesout",
+        "cert",
+        "client_type",
+        "clientip",
+        "daystoexpiry",
+        "duration",
+        "expected",
+        "field",
+        "laststate",
+        "length",
+        "max",
+        "monitor",
+        "param",
+        "reason",
+        "request",
+        "service",
+        "severity",
+        "severity",
+        "site",
+        "state",
+        "status",
+        "threshold",
+        "threshold",
+        "user",
+        "value",
+        "vserver"
+      ]
+    }
+  },
   "report": null
 }
