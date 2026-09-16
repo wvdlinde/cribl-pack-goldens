@@ -6834,7 +6834,7 @@
       "part": "mapping",
       "author": "push",
       "build": 0,
-      "updated_at": "2026-09-16T11:08:43.955Z",
+      "updated_at": "2026-09-16T11:08:50.063Z",
       "path": "shared-goldens/ivanti_sentry_sentry__cim#network____mapping__.json",
       "report": {
         "score": 100,
