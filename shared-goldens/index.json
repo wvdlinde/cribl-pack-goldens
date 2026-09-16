@@ -2060,14 +2060,14 @@
       "key": "citrix_netscaler_syslog::__extraction__",
       "sourcetype": "citrix_netscaler_syslog",
       "dest_format": "__extraction__",
-      "score": 93,
+      "score": 97,
       "part": "extraction",
-      "author": "unknown",
-      "build": 378,
-      "updated_at": "2026-08-07T13:11:36.874Z",
+      "author": "push",
+      "build": 0,
+      "updated_at": "2026-09-16T11:08:32.685Z",
       "path": "shared-goldens/citrix_netscaler_syslog____extraction__.json",
       "report": {
-        "score": 93,
+        "score": 97,
         "band": "good"
       }
     },
